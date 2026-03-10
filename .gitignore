@@ -29,6 +29,14 @@ Thumbs.db
 *.swo
 *.log
 
-# Secrets (keep README)
+# Secrets and local env (keep README and examples)
 00_Admin/configs/secrets/*
 !00_Admin/configs/secrets/README.md
+!00_Admin/configs/secrets/.gitkeep
+00_Admin/configs/env/*.env
+!00_Admin/configs/env/*.example.env
+
+# ai_ops dynamic config (machine-local)
+.ai_ops/config.yaml
+.ai_ops/profiles/active_crew.yaml
+.aiops_session
