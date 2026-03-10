@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "description": "ai_ops governance plugin commands, skills, and agents.",
   "author": "servatusprime",
-  "homepage": "https://github.com/servatusprime/ai-ops-governance",
-  "repository": "https://github.com/servatusprime/ai-ops-governance",
+  "homepage": "https://github.com/servatusprime/ai_ops",
+  "repository": "https://github.com/servatusprime/ai_ops",
   "keywords": [
     "ai-ops",
     "governance",
