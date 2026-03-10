@@ -1,0 +1,40 @@
+version: 0.1.0
+archetypes:
+  - id: rider_safe_default
+    name: Safe Default
+    status: active
+    description: Baseline cautious profile for new users.
+    safety:
+      allow_destructive: false
+      require_confirmation: true
+      max_scope_level: 2
+    autonomy:
+      allowed_actions:
+        - read
+        - analyze
+        - propose
+      blocked_actions:
+        - destructive_edit
+    prompts:
+      self_review_required: true
+      max_followups: 2
+
+  - id: rider_fast_iterate
+    name: Fast Iterate
+    status: active
+    description: Faster execution with broader permissions and strict logging.
+    safety:
+      allow_destructive: false
+      require_confirmation: true
+      max_scope_level: 3
+    autonomy:
+      allowed_actions:
+        - read
+        - analyze
+        - propose
+        - implement
+      blocked_actions:
+        - destructive_edit
+    prompts:
+      self_review_required: true
+      max_followups: 1

@@ -1,0 +1,25 @@
+version: 0.1.0
+# User override example. Promote to .ai_ops/local/config.yaml in target repos.
+
+customizations:
+  session_limits:
+    max_size_kb: null        # null = no limit; override with a number (KB) if desired
+    compacted_context_max_chars: 750  # override if you prefer a different summary target
+  bootstrap_preferences:
+    max_read_depth: <set>
+    allow_deepening_on_mismatch: <true|false>
+  profile_layering:
+    global_profile_path: <null_or_path>
+    repo_overrides_path: .ai_ops/local/config.yaml
+  model_capabilities:
+    declaration_source: user_declared
+    default_model: <model_or_null>
+    available_models: []
+  external_context:
+    manifest_path: <path_or_null>
+    bundle_root: <path_or_null>
+    scope: export
+    include_patterns: []
+    exclude_patterns: []
+  notes:
+    free_form: ""

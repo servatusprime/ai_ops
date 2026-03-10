@@ -1,0 +1,16 @@
+id: 02_environments
+name: Environments
+version: 0.1.0
+status: active
+owner: ai_ops
+description: >
+  Setup and environment contract module used by /bootstrap and /ai_ops_setup.
+inputs:
+
+  - 02_Modules/02_environments/setup/install_matrix.yaml
+outputs:
+  - .ai_ops/local/setup/state.yaml
+dependencies: []
+specs: []
+prompts: []
+tests: []

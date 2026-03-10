@@ -1,0 +1,19 @@
+---
+# Invalid aiops.yaml for testing - schema violation
+# Valid YAML syntax but missing required fields
+
+repo_summary: |
+  Test repository - this manifest is missing required bootstrap section.
+
+# Missing: version (required)
+# Missing: manifest_version (required)
+# Missing: data_version (required)
+# Missing: bootstrap section (required)
+
+customization:
+  profile_type: rider
+  profile_path: 02_Modules/01_agent_profiles/profiles/rider_default.yaml
+
+session_limits:
+  max_turns: 100
+  auto_compress_threshold: 0.75

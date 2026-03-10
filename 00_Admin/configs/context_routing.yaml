@@ -1,0 +1,448 @@
+# Agent Pragmatic Guidance
+# This config is both a current enforcement surface and a target-state
+# specification. Some keys describe contracts that require runtime
+# session-state tracking (`trigger_detection_contract`,
+# `bootstrap_missing_condition`). Current LLM agents in stateless chat
+# interfaces cannot fully evaluate these.
+#
+# Agent rule:
+# 1) Apply all `guard_profile`, `always_read`, and `require_*` keys literally.
+# 2) For keys that reference `session_flags`, `session_state`, or
+#    `file_state_hash_changed`: if you cannot evaluate the condition, apply
+#    `unknown_state_policy` (`treat_as_missing`) and proceed.
+# 3) Do not ignore target-state sections; do not fabricate unverifiable state.
+# 4) When runtime session-state tracking becomes available, evaluate
+#    `trigger_detection_contract` symbols directly instead of fallback.
+#
+# Quick-read contract:
+# - Tier 1 (always read): usage, fallback, reporting, commands, skills.
+# - Tier 2 (when needed): hook_points.
+# - Tier 3 (policy engine): policy/global_execution_gates semantics.
+
+version: 0.5.0
+status: active
+updated: 2026-03-04
+owner: ai_ops
+usage:
+  resolution_order:
+  - command_profile
+  - mode_override
+  - skill_inherit
+  - conservative_fallback
+  non_goals:
+  - no_per_action_dispatch
+  - no_recenter_on_session_start
+  canonical_bootstrap_contract:
+    first_turn_minimum_reads:
+    - ai_ops/AGENTS.md
+    read_on_demand_when_needed:
+    - ai_ops/CONTRIBUTING.md
+    note: >
+      AGENTS.md is the canonical bootstrap entry point; CONTRIBUTING.md is
+      consulted on demand for contributor policy.
+fallback:
+  profile: conservative
+  required_report_fields:
+  - routing_profile
+  - routing_fallback_used
+  - routing_fallback_reason
+reporting:
+  required_output_metadata:
+  - routing_profile
+  - routing_fallback_used
+  - routing_fallback_reason
+  - context_reset_applied
+  - scope_echo
+  - output_root_echo
+  - bootstrap_path
+  - resume_basis
+  - reads_applied
+  optional_output_metadata:
+  - exclusions_echo
+commands:
+  _defaults:
+    guard_profile:
+      apply_global_execution_gates: true
+      mode: action
+      require_context_reset: true
+      require_scope_echo: true
+      require_work_handoff_for_canonical_edits: true
+    report_metadata:
+      required_fields:
+      - routing_profile
+      - routing_fallback_used
+      - routing_fallback_reason
+      - context_reset_applied
+      - scope_echo
+      - output_root_echo
+      - bootstrap_path
+      - resume_basis
+      - reads_applied
+      optional_fields:
+      - exclusions_echo
+    onboarding_tiers:
+      resolution_order:
+      - fresh_bootstrap
+      - resume_same_scope
+      - recenter
+      fresh_bootstrap:
+        description: Unknown state or missing bootstrap requirements.
+        bootstrap_path: fresh_bootstrap
+        required_reads:
+        - ai_ops/AGENTS.md
+      resume_same_scope:
+        description: Same target repo and stable state; reuse prior reads.
+        bootstrap_path: resume_same_scope
+        required_reads:
+        - ai_ops/AGENTS.md
+        required_session_contract:
+        - same_target_repo
+        - no_recenter_trigger
+        - bootstrap_reads_still_valid
+        fast_path_allows:
+        - skip_heavy_role_profile_topology_gate
+      recenter:
+        description: Explicit recenter trigger requires bootstrap refresh.
+        bootstrap_path: recenter
+        required_reads:
+        - ai_ops/AGENTS.md
+  _family_baselines:
+    execution:
+      resume_policy: resume_same_scope_supported
+      expected_outputs:
+      - bootstrap_path
+      - resume_basis
+      - reads_applied
+    review:
+      remediation_policy: findings_only_handoff_to_work
+      expected_outputs:
+      - bootstrap_path
+      - resume_basis
+      - reads_applied
+    report:
+      remediation_policy: report_only_handoff_to_work
+      expected_outputs:
+      - bootstrap_path
+      - resume_basis
+      - reads_applied
+    action:
+      remediation_policy: execute_with_authority_gates
+      expected_outputs:
+      - bootstrap_path
+      - resume_basis
+      - reads_applied
+    setup:
+      remediation_policy: setup_surface_only
+      expected_outputs:
+      - bootstrap_path
+      - resume_basis
+      - reads_applied
+    status:
+      remediation_policy: read_only
+      expected_outputs:
+      - bootstrap_path
+      - resume_basis
+      - reads_applied
+    checkpoint:
+      remediation_policy: checkpoint_only
+      expected_outputs:
+      - bootstrap_path
+      - resume_basis
+      - reads_applied
+  work:
+    family: execution
+    guard_profile:
+      mode: execution_lane
+      require_work_handoff_for_canonical_edits: false
+      require_context_reset: true
+      require_scope_echo: true
+    default:
+      always_read:
+      - ai_ops/AGENTS.md
+      - ai_ops/.ai_ops/workflows/work.md
+      - ai_ops/00_Admin/configs/context_routing.yaml
+      read_on_demand:
+      - ai_ops/00_Admin/specs/spec_work_mode_direct.md
+      - ai_ops/00_Admin/specs/spec_work_mode_governed.md
+      - ai_ops/00_Admin/specs/spec_work_focus_recenter.md
+      skip_unless_referenced:
+      - ai_ops/00_Admin/guides/ai_operations/guide_multi_agent_coordination.md
+      - ai_ops/00_Admin/guides/ai_operations/guide_parallel_execution.md
+    mode_overrides:
+      direct:
+        must_read:
+        - ai_ops/00_Admin/specs/spec_work_mode_direct.md
+      governed:
+        must_read:
+        - ai_ops/00_Admin/specs/spec_work_mode_governed.md
+      standalone:
+        must_read: []
+  bootstrap:
+    family: setup
+    guard_profile:
+      mode: orientation
+      allow_artifact_writes: true
+      allowed_artifact_types:
+      - bootstrap_report
+    always_read:
+    - ai_ops/AGENTS.md
+    read_on_demand:
+    - ai_ops/00_Admin/guides/architecture/guide_bootstrap_algorithm.md
+  health:
+    family: report
+    guard_profile:
+      mode: report
+      allow_artifact_writes: true
+      allowed_artifact_types:
+      - health_report
+      enforce_work_handoff_for_remediation: true
+    always_read:
+    - ai_ops/AGENTS.md
+    - ai_ops/.ai_ops/workflows/health.md
+    - ai_ops/00_Admin/runbooks/rb_repo_health_review.md
+    read_on_demand:
+    - ai_ops/00_Admin/guides/ai_operations/guide_ai_operations_stack.md
+    - ai_ops/00_Admin/guides/authoring/guide_workbooks.md
+    skip_unless_referenced: []
+  crosscheck:
+    family: review
+    guard_profile:
+      mode: review
+      allow_artifact_writes: true
+      allowed_artifact_types:
+      - review_notes
+      - review_file
+      enforce_work_handoff_for_remediation: true
+    always_read:
+    - ai_ops/AGENTS.md
+    - ai_ops/.ai_ops/workflows/crosscheck.md
+    - ai_ops/01_Resources/templates/workflows/peer_review_template.md
+    read_on_demand:
+    - ai_ops/00_Admin/guides/authoring/guide_workbooks.md
+  closeout:
+    family: action
+    guard_profile:
+      mode: action
+      require_work_handoff_for_canonical_edits: true
+    always_read:
+    - ai_ops/AGENTS.md
+    - ai_ops/.ai_ops/workflows/closeout.md
+  work_status:
+    family: status
+    guard_profile:
+      mode: status
+      allow_artifact_writes: false
+    always_read:
+    - ai_ops/AGENTS.md
+    - ai_ops/.ai_ops/workflows/work_status.md
+  work_savepoint:
+    family: checkpoint
+    guard_profile:
+      mode: checkpoint
+      allow_artifact_writes: true
+      allowed_artifact_types:
+      - checkpoint_note
+    always_read:
+    - ai_ops/AGENTS.md
+    - ai_ops/.ai_ops/workflows/work_savepoint.md
+  scratchpad:
+    family: action
+    guard_profile:
+      mode: action
+      require_work_handoff_for_canonical_edits: true
+      allow_artifact_writes: true
+      allowed_artifact_types:
+      - scratchpad
+    always_read:
+    - ai_ops/AGENTS.md
+    - ai_ops/.ai_ops/workflows/scratchpad.md
+    - ai_ops/01_Resources/templates/workflows/scratchpad_template.md
+  harvest:
+    family: action
+    guard_profile:
+      mode: action
+      require_work_handoff_for_canonical_edits: true
+    always_read:
+    - ai_ops/AGENTS.md
+    - ai_ops/.ai_ops/workflows/harvest.md
+    - ai_ops/01_Resources/templates/documents/harvest_report_template.md
+  customize:
+    family: action
+    guard_profile:
+      mode: action
+      require_work_handoff_for_canonical_edits: true
+    always_read:
+    - ai_ops/AGENTS.md
+    - ai_ops/.ai_ops/workflows/customize.md
+  lint:
+    family: report
+    guard_profile:
+      mode: report
+      allow_artifact_writes: false
+      require_work_handoff_for_canonical_edits: true
+    always_read:
+    - ai_ops/AGENTS.md
+    - ai_ops/.ai_ops/workflows/lint.md
+  profiles:
+    family: action
+    guard_profile:
+      mode: action
+      require_work_handoff_for_canonical_edits: true
+    always_read:
+    - ai_ops/AGENTS.md
+    - ai_ops/.ai_ops/workflows/profiles.md
+    read_on_demand:
+    - ai_ops/00_Admin/specs/spec_slider_manifest.md
+    - ai_ops/00_Admin/specs/spec_subagent_file.md
+  ai_ops_setup:
+    family: setup
+    guard_profile:
+      mode: setup
+      require_work_handoff_for_canonical_edits: true
+    always_read:
+    - ai_ops/AGENTS.md
+    - ai_ops/.ai_ops/workflows/ai_ops_setup.md
+skills:
+  work:
+    inherits_command: work
+  health:
+    inherits_command: health
+  crosscheck:
+    inherits_command: crosscheck
+  closeout:
+    inherits_command: closeout
+  work_status:
+    inherits_command: work_status
+  work_savepoint:
+    inherits_command: work_savepoint
+  bootstrap:
+    inherits_command: bootstrap
+  scratchpad:
+    inherits_command: scratchpad
+  harvest:
+    inherits_command: harvest
+  customize:
+    inherits_command: customize
+  lint:
+    inherits_command: lint
+  profiles:
+    inherits_command: profiles
+  ai_ops_setup:
+    inherits_command: ai_ops_setup
+hook_points:
+  work:
+  - intake_after_bootstrap
+  - mode_selected
+  - governed_first_entry
+  - recenter_on_drift
+  bootstrap:
+  - post_manifest_read
+  health:
+  - scope_confirmed
+  crosscheck:
+  - targets_confirmed
+  lint:
+  - scope_confirmed
+  profiles:
+  - profile_source_resolved
+  ai_ops_setup:
+  - modality_confirmed
+policy:
+  max_required_ref_depth: 2
+  related_refs_classification:
+    required_labels:
+    - must_read
+    - may_consult
+  seed_id_in_canonical_docs: forbidden
+  co_promotion_requirements:
+    work_mode_routing:
+    - ai_ops/00_Admin/specs/spec_work_mode_direct.md
+    - ai_ops/00_Admin/specs/spec_work_mode_governed.md
+    - ai_ops/00_Admin/specs/spec_work_focus_recenter.md
+  implicit_invocation_policy:
+    default: true
+    explicit_false_commands:
+      lint: report lane requires explicit target scope; avoid silent broad execution.
+      profiles: profile edits/regeneration are high-impact and should be explicit.
+  workflow_routing_drift_contract:
+    enforce: true
+    required_workflow_contract_line: Use context_routing.yaml as canonical onboarding contract.
+    required_sections:
+    - Context Routing Hook
+    - Steps
+    required_step_contracts:
+    - bootstrap_required_guard
+    - command_lane_handoff_to_work_for_canonical_remediation
+  global_execution_gates:
+    bootstrap_manifest_agents_required: true
+    reset_context_on_command_switch: true
+    require_scope_echo: true
+    require_work_handoff_for_canonical_edits_when_not_work: true
+    bootstrap_required_guard:
+      id: BRG-01
+      canonical_wording: >
+        If bootstrap requirements are missing or unverifiable, apply
+        fresh_bootstrap tier (read AGENTS.md) before lane steps.
+      workflow_requirement: reference_or_use_this_wording
+    canonical_edit_condition:
+      path_classification_source: ai_ops/AGENTS.md
+      canonical_path_prefixes:
+      - ai_ops/00_Admin/
+      - ai_ops/.ai_ops/workflows/
+      - ai_ops/AGENTS.md
+      - ai_ops/CONTRIBUTING.md
+      write_actions:
+      - create
+      - update
+      - delete
+      - move
+      - rename
+      decision_rule:
+      - if_write_action_targets_canonical_path_then_canonical_edit
+      - if_target_path_missing_or_ambiguous_then_treat_as_canonical_edit
+    remediation_action_set:
+    - apply_fix
+    - patch_now
+    - implement_change
+    - edit_files
+    read_only_commands:
+    - work_status
+    report_only_commands:
+    - health
+    review_commands:
+    - crosscheck
+    checkpoint_commands:
+    - work_savepoint
+    bootstrap_required_reads_if_missing:
+    - ai_ops/AGENTS.md
+    bootstrap_read_policy:
+      strategy: once_per_session_or_recenter
+      resume_same_scope_fast_path:
+        enabled: true
+        conditions:
+        - same_target_repo
+        - mode_unchanged
+        - no_reread_trigger_fired
+        fallback_on_unknown_state: fresh_bootstrap
+      reread_triggers:
+      - explicit_rebootstrap
+      - mode_or_target_repo_change
+      - agents_md_updated
+      trigger_detection_contract:
+        explicit_rebootstrap: session_flags.explicit_rebootstrap == true
+        mode_or_target_repo_change: session_state.mode_or_target_repo_changed == true
+        agents_md_updated: file_state_hash_changed(ai_ops/AGENTS.md) == true
+    bootstrap_missing_condition:
+      definition:
+      - required_bootstrap_read_not_in_session_state
+      - session_state_unavailable_or_unverifiable
+      - reread_trigger_fired
+      required_session_state_fields:
+      - loaded_reads
+      - active_target_repo
+      - mode
+      evaluation_order:
+      - check_reread_triggers
+      - check_required_reads_presence
+      - if_state_unknown_treat_as_missing
+      unknown_state_policy: treat_as_missing

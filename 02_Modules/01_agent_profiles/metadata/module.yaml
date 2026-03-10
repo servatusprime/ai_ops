@@ -1,0 +1,21 @@
+id: 01_agent_profiles
+name: Agent Profiles
+version: 0.1.0
+status: active
+owner: ai_ops
+description: >
+  Rider/crew profile contracts and generated adapter context artifacts used by
+  /profiles.
+inputs:
+  - 02_Modules/01_agent_profiles/base/default_crew.yaml
+  - 02_Modules/01_agent_profiles/base/model_tuning_manifest.yaml
+  - .ai_ops/local/profiles/active_crew.yaml
+outputs:
+  - plugins/ai-ops-governance/agents/*.md
+  - 02_Modules/01_agent_profiles/generated/*.md
+dependencies: []
+specs:
+  - 02_Modules/01_agent_profiles/schemas/profile_source_schema.yaml
+  - 02_Modules/01_agent_profiles/schemas/model_tuning_manifest_schema.yaml
+prompts: []
+tests: []

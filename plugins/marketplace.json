@@ -1,0 +1,10 @@
+{
+  "plugins": [
+    {
+      "name": "ai-ops-governance",
+      "path": "ai-ops-governance",
+      "description": "ai_ops governance plugin commands, skills, and agents.",
+      "version": "0.1.0"
+    }
+  ]
+}

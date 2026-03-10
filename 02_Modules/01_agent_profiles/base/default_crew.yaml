@@ -1,0 +1,36 @@
+# ai_ops active crew profile (factory default)
+# Managed by /profiles command. Do not edit generated derivatives manually.
+# Run /profiles to modify and regenerate derivative files.
+
+schema_version: "0.1.0"
+generated_at: "2026-02-20T12:00:00Z"
+
+crew_preset: "default"
+
+lead_agent:
+  rider: null
+  overrides: {}
+
+subagents:
+  ai-ops-planner:
+    rider: "logike"
+    overrides: {}
+  ai-ops-executor:
+    rider: "forge"
+    overrides: {}
+  ai-ops-reviewer:
+    rider: "anchor"
+    overrides: {}
+  ai-ops-researcher:
+    rider: "scout"
+    overrides: {}
+  ai-ops-closer:
+    rider: "forge"
+    overrides:
+      conservatism: 80
+      initiative: 20
+  ai-ops-linter:
+    rider: "anchor"
+    overrides:
+      autonomy: 70
+      communication_depth: 25

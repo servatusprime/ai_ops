@@ -1,0 +1,71 @@
+---
+# Full valid aiops.yaml for testing
+# Historical aiops.yaml fixture with full optional fields.
+
+version: 1.0.0
+manifest_version: 1.0.0
+data_version: 1.0.0
+
+bootstrap:
+  bootstrap_guide: 00_Admin/guides/architecture/guide_bootstrap_algorithm.md
+  bootstrap_guide_min_version: 0.1.0
+  read_order:
+    - AGENTS.md
+    - README.md
+    - 00_Admin/policies/policy_authority_model.md
+    - 00_Admin/guides/ai_operations/guide_workflows.md
+  fallback_rules:
+    missing_manifest: use_agents_md
+    conflict: aiops_wins
+
+work_context:
+  active_artifacts:
+    - path: 90_Sandbox/ai_workbooks/work_program_test_program_01
+      type: workprogram
+      repo: ai_ops
+    - path: 90_Sandbox/ai_workbooks/wp_test_packet_01_2026-01-24/wb_test_packet_01.md
+      type: workbook
+      repo: ai_ops
+  updated_at: "2026-01-24T10:05:00Z"
+  checkpoints:
+    - id: checkpoint_01
+      artifact_path: 90_Sandbox/ai_workbooks/wp_test_packet_01_2026-01-24/wb_test_packet_01.md
+      artifact_type: workbook
+      repo: ai_ops
+      phase: Phase A
+      timestamp: "2026-01-24T10:00:00Z"
+      completed: true
+
+customizations:
+  clarification_limits:
+    max_followups: 3
+    max_rounds: 2
+  session_limits:
+    max_size_kb: 15
+    compacted_context_max_chars: 750
+  bootstrap_preferences:
+    max_read_depth: 3
+    allow_deepening_on_mismatch: true
+
+resource_resolution:
+  resolution_strategy: local_first
+  external_repos:
+    - name: test_external_repo
+      local_path: ../test_repo
+      fallback_url: https://example.com/test_repo.git
+      clone_if_missing: true
+      required: false
+
+workspace:
+  workspace_root: c:/Users/test/workspace
+  ops_stack_root: c:/Users/test/workspace/ai_ops_stack
+  setup_mode: direct
+  work_repos:
+    - path: project1
+      sandbox_dir: 90_Sandbox
+  resource_repos:
+    - path: resources
+      read_only: true
+  directory_overrides:
+    sandbox_dir_name: 90_Sandbox
+    trash_dir_name: 99_Trash

@@ -1,0 +1,19 @@
+id: 00_operator_config
+name: Operator Config
+version: 0.1.0
+status: active
+owner: ai_ops
+description: >
+  Operator customization contracts and templates used by /customize.
+inputs:
+
+  - 02_Modules/00_operator_config/templates/aiops_config.template.yaml
+outputs:
+  - .ai_ops/local/config.yaml
+dependencies: []
+specs:
+  - 02_Modules/00_operator_config/docs/spec_customization_schemas.md
+  - 02_Modules/00_operator_config/docs/spec_customization_ux.md
+  - 02_Modules/00_operator_config/docs/spec_customization_interview.md
+prompts: []
+tests: []

@@ -1,0 +1,11 @@
+---
+# Minimal valid aiops.yaml for testing
+# Historical aiops.yaml fixture with minimal fields.
+
+version: 0.1.0
+manifest_version: 0.1.0
+data_version: 0.1.0
+
+bootstrap:
+  read_order:
+    - AGENTS.md

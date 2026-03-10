@@ -1,0 +1,11 @@
+{
+  "default": true,
+  "MD025": { "level": 1, "front_matter_title": null },
+  "MD041": { "front_matter_title": "title" },
+  "MD003": { "style": "atx" },
+  "MD013": { "line_length": 120, "code_blocks": true, "code_fence": false, "tables": false },
+  "MD029": false,
+  "MD033": false,
+  "MD050": { "style": "asterisk" },
+  "ignores": ["99_Trash/**/*.md", "LICENSE"]
+}

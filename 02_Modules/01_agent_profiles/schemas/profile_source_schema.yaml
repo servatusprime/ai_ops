@@ -1,0 +1,75 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: profile_source
+version: 0.1.0
+type: object
+required:
+  - schema_version
+  - generated_at
+  - crew_preset
+  - lead_agent
+  - subagents
+properties:
+  schema_version:
+    type: string
+    pattern: "^\\d+\\.\\d+\\.\\d+$"
+  generated_at:
+    type: string
+  crew_preset:
+    type: string
+  lead_agent:
+    type: object
+    required:
+      - rider
+      - overrides
+    properties:
+      rider:
+        type:
+          - "string"
+          - "null"
+      overrides:
+        type: object
+        additionalProperties:
+          type: integer
+          minimum: 0
+          maximum: 100
+    additionalProperties: false
+  subagents:
+    type: object
+    required:
+      - ai-ops-planner
+      - ai-ops-executor
+      - ai-ops-reviewer
+      - ai-ops-researcher
+      - ai-ops-closer
+      - ai-ops-linter
+    properties:
+      ai-ops-planner:
+        $ref: "#/definitions/subagent_slot"
+      ai-ops-executor:
+        $ref: "#/definitions/subagent_slot"
+      ai-ops-reviewer:
+        $ref: "#/definitions/subagent_slot"
+      ai-ops-researcher:
+        $ref: "#/definitions/subagent_slot"
+      ai-ops-closer:
+        $ref: "#/definitions/subagent_slot"
+      ai-ops-linter:
+        $ref: "#/definitions/subagent_slot"
+    additionalProperties: false
+definitions:
+  subagent_slot:
+    type: object
+    required:
+      - rider
+      - overrides
+    properties:
+      rider:
+        type: string
+      overrides:
+        type: object
+        additionalProperties:
+          type: integer
+          minimum: 0
+          maximum: 100
+    additionalProperties: false
+additionalProperties: false

@@ -1,0 +1,21 @@
+---
+# Valid YAML syntax, but invalid against current manifest/session schemas.
+# Uses deprecated work_context keys that are hard-cutover invalid.
+
+version: 1.0.0
+manifest_version: 1.0.0
+data_version: 1.0.0
+
+bootstrap:
+  read_order:
+    - AGENTS.md
+
+work_context:
+  active_work_programs:
+    - 90_Sandbox/ai_workbooks/work_program_example_01
+  checkpoints:
+    - id: checkpoint_01
+      packet_id: wp_example_01_2026-02-18
+      phase: Phase A
+      timestamp: "2026-02-18T10:00:00Z"
+      completed: false

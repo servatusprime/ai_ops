@@ -1,0 +1,15 @@
+extends: default
+ignore: |
+  00_Admin/tests/fixtures/manifests/invalid_syntax.yaml
+  ai_ops/00_Admin/tests/fixtures/manifests/invalid_syntax.yaml
+  99_Trash/**
+  ai_ops/99_Trash/**
+rules:
+  line-length:
+    max: 120
+    level: warning
+  truthy:
+    allowed-values: ['true', 'false', 'on', 'off', 'yes', 'no']
+  document-start: disable
+  indentation:
+    indent-sequences: consistent

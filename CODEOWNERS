@@ -1,0 +1,5 @@
+# CODEOWNERS — defines default reviewers for pull requests.
+# All files in the repository default to the primary maintainer.
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+* @servatusprime

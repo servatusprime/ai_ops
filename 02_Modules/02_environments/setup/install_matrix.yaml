@@ -1,0 +1,33 @@
+schema_version: 0.1.0
+status: active
+owner: ai_ops
+updated: 2026-02-25
+surfaces:
+  codex_cli:
+    skills:
+      primary:
+        - .agents/skills/
+      optional_compat:
+        - .codex/skills/
+  claude_code:
+    skills:
+      primary:
+        - .claude/skills/
+    commands:
+      compatibility:
+        - .claude/commands/
+  cursor:
+    commands:
+      primary:
+        - .cursor/commands/
+  gemini_cli:
+    commands:
+      primary:
+        - .gemini/commands/
+local_state_paths:
+  config: .ai_ops/local/config.yaml
+  active_profile: .ai_ops/local/profiles/active_crew.yaml
+  setup_receipt: .ai_ops/local/setup/state.yaml
+legacy_compatibility_paths:
+  - .ai_ops/config.yaml
+  - .ai_ops/profiles/active_crew.yaml

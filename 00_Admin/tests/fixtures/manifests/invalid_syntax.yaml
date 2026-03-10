@@ -1,0 +1,18 @@
+---
+# Invalid aiops.yaml for testing - YAML syntax error
+# This file intentionally has invalid YAML syntax
+
+bootstrap:
+  entry_point: AGENTS.md
+  required_reading:
+    - AGENTS.md
+    - README.md
+  # Invalid: missing closing bracket and malformed list
+  scan_paths: [
+    00_Admin/guides/
+
+authority_model:
+  source: AGENTS.md
+  # Invalid: incorrect indentation
+ levels:
+    - 0: Universal read

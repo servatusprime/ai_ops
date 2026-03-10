@@ -1,0 +1,370 @@
+version: 0.1.0
+validator_id: validator_v1
+description: Minimal validator config for machine-checkable repo requirements.
+inputs:
+  repo_root: .
+  include_paths:
+    - 00_Admin/policies
+    - 00_Admin/specs
+    - 00_Admin/guides
+    - 00_Admin/runbooks
+    - 90_Sandbox/ai_workbooks
+    - 02_Modules
+rules:
+  - id: VS001
+    enabled: true
+    paths:
+      - 00_Admin/policies/**/*.md
+      - 00_Admin/guides/**/*.md
+      - 02_Modules/**/docs/specs/spec_*.md
+      - 02_Modules/**/docs/requirements_matrix_*.md
+      - 02_Modules/**/docs/prompts/prompt_*.md
+      - 00_Admin/backlog/plan_*.md
+      - 00_Admin/runbooks/rb_*.md
+      - 90_Sandbox/ai_workbooks/**/wb_*.md
+    params:
+      require_front_matter: true
+      front_matter_first_line: '---'
+  - id: VS002
+    enabled: true
+    paths:
+      - 00_Admin/policies/**/*.md
+      - 00_Admin/guides/**/*.md
+      - 02_Modules/**/docs/specs/spec_*.md
+      - 02_Modules/**/docs/requirements_matrix_*.md
+      - 02_Modules/**/docs/prompts/prompt_*.md
+      - 00_Admin/backlog/plan_*.md
+      - 00_Admin/runbooks/rb_*.md
+      - 90_Sandbox/ai_workbooks/**/wb_*.md
+    params:
+      h1_required: true
+      h1_max: 1
+  - id: VS003
+    enabled: true
+    paths:
+      - 00_Admin/**/README.md
+      - 00_Admin/policies/**/*.md
+      - 00_Admin/specs/**/*.md
+      - 00_Admin/guides/**/*.md
+      - 90_Sandbox/ai_workbooks/**/*.md
+    params:
+      allowed_status:
+        - planned
+        - stub
+        - active
+        - completed
+        - deprecated
+  - id: VS004
+    enabled: true
+    paths:
+      - 00_Admin/guides/**/*.md
+    params:
+      required_fields:
+        - title
+        - version
+        - status
+        - last_updated
+        - owner
+  - id: VS005
+    enabled: true
+    paths:
+      - 00_Admin/specs/spec_*.md
+    params:
+      required_fields:
+        - title
+        - id
+        - module
+        - status
+        - version
+        - created
+        - owner
+        - ai_generated
+  - id: VS006
+    enabled: true
+    paths:
+      - 90_Sandbox/ai_workbooks/**/wb_*.md
+    params:
+      required_fields:
+        - title
+        - id
+        - status
+        - version
+        - created
+        - ai_role
+        - description
+  - id: VS007
+    enabled: true
+    paths:
+      - 00_Admin/runbooks
+    params:
+      required_prefix: rb_
+  - id: VS008
+    enabled: true
+    paths:
+      - 90_Sandbox/ai_workbooks
+    params:
+      required_prefix: wb_
+  - id: VS009
+    enabled: true
+    paths:
+      - 02_Modules/**/metadata/module.yaml
+    params:
+      id_matches_folder: true
+  - id: VS010
+    enabled: true
+    paths:
+      - 02_Modules/**/metadata/module.yaml
+    params:
+      allowed_status:
+        - planned
+        - stub
+        - active
+        - deprecated
+  - id: VS011
+    enabled: true
+    paths:
+      - 00_Admin/policies/README.md
+      - 00_Admin/specs/README.md
+      - 00_Admin/guides/README.md
+      - 00_Admin/runbooks/README.md
+    params:
+      must_exist: true
+  - id: VS012
+    enabled: true
+    paths:
+      - 00_Admin/backlog/future_work_registry.yaml
+    params:
+      required_fields:
+        - source_workbook
+        - scope
+        - priority
+        - created
+      forbid_completed: true
+  - id: VS013
+    enabled: true
+    paths:
+      - repo_structure.txt
+    params:
+      must_exist: true
+  - id: VS014
+    enabled: true
+    paths:
+      - 00_Admin/**/README.md
+      - 00_Admin/guides/**/*.md
+    params:
+      related_paths_must_be_repo_relative: true
+  - id: VS015
+    enabled: true
+    paths:
+      - README.md
+      - CONTRIBUTING.md
+      - AGENTS.md
+      - 00_Admin/**/*.md
+      - 90_Sandbox/ai_workbooks/**/*.md
+      - 02_Modules/**/docs/**/*.md
+    params:
+      command: markdownlint
+  - id: VS016
+    enabled: true
+    paths:
+      - repo_structure.txt
+    params:
+      must_match_generated_tree: true
+  - id: VS017
+    enabled: true
+    paths:
+      - AGENTS.md
+      - HUMANS.md
+      - CONTRIBUTING.md
+      - 00_Admin/guides/**/*.md
+      - .ai_ops/workflows/*.md
+    params:
+      forbidden_terms:
+        - "\\bmanual\\b"
+        - "\\bmanually\\b"
+        - "\\bhuman review\\b"
+        - "\\bsign-?off\\b"
+        - "\\bcli-only\\b"
+        - "\\bmanual review\\b"
+        - "\\bwizard\\b"
+  - id: VS018
+    enabled: true
+    paths:
+      - ../<work_repo>/01_Resources/<domain_core>/ai_workbook_index.yaml
+      - ../<work_repo>/01_Resources/<domain_core>/ai_core_index.yaml
+    params:
+      path_keys:
+        - path
+  - id: VS019
+    enabled: true
+    paths:
+      - 90_Sandbox/ai_workbooks
+      - 00_Admin/runbooks
+      - 02_Modules/**/docs/runbooks
+    params:
+      workprogram_glob: 90_Sandbox/ai_workbooks/work_program_*
+      runprogram_globs:
+        - 00_Admin/runbooks/run_program_*
+        - 02_Modules/**/docs/runbooks/run_program_*
+      required_workprogram_files:
+        - README.md
+        - execution_spine.md
+        - plan_*.md
+        - spec_*.md
+        - workbooks_registry.md
+      required_runprogram_files:
+        - README.md
+        - execution_spine.md
+        - spec_*.md
+        - runbooks_registry.md
+  - id: VS020
+    enabled: true
+    paths:
+      - 00_Admin/guides/README.md
+      - 00_Admin/guides/**/guide_*.md
+    params:
+      guide_index: 00_Admin/guides/README.md
+      guide_glob: 00_Admin/guides/**/guide_*.md
+  - id: VS021
+    enabled: true
+    paths:
+      - 00_Admin/logs/log_workbook_run.md
+    params:
+      required_marker: "Self-Review Smoke Pass"
+  - id: VS022
+    enabled: true
+    paths:
+      - AGENTS.md
+      - HUMANS.md
+      - CONTRIBUTING.md
+      - README.md
+      - 00_Admin/policies/**/*.md
+      - 00_Admin/specs/**/*.md
+      - 00_Admin/guides/**/*.md
+      - 00_Admin/runbooks/**/*.md
+      - 00_Admin/logs/**/*.md
+      - 01_Resources/templates/**/*.md
+    params:
+      severity: warning
+  - id: VS023
+    enabled: true
+    paths:
+      - 00_Admin/guides/**/*.md
+      - 00_Admin/runbooks/**/*.md
+      - 90_Sandbox/ai_workbooks/**/*.md
+    params:
+      severity: warning
+      check_markdown_links: true
+      check_related_lists: true
+  - id: VS024
+    enabled: true
+    paths:
+      - 90_Sandbox/ai_workbooks/**/wb_*.md
+    params:
+      required_sections:
+        - "## Cold-Start Execution Contract"
+        - "## Pre-Execution Readiness Gate"
+        - "## Ordered Execution Queue"
+        - "## Verification Checklist"
+        - "## Selfcheck Results"
+  - id: VS027
+    enabled: true
+    paths:
+      - 90_Sandbox/ai_workbooks/**/work_summary.md
+    params:
+      required_sections:
+        - "## Scope Completed"
+        - "## Files Touched"
+        - "## Validation Results"
+        - "## Follow-Ups"
+        - "## Log References"
+  - id: VS025
+    enabled: true
+    paths:
+      - 00_Admin/guides/**/guide_*.md
+      - 00_Admin/runbooks/rb_*.md
+      - 01_Resources/templates/**/*.md
+    params:
+      severity: warning
+      new_only: true
+      reference_paths:
+        - README.md
+        - AGENTS.md
+        - .ai_ops/workflows/*.md
+        - 00_Admin/**/*.md
+        - 01_Resources/templates/**/*.md
+        - 90_Sandbox/ai_workbooks/**/*.md
+      exclude_globs:
+        - 99_Trash/**
+  - id: VS026
+    enabled: true
+    paths:
+      - 90_Sandbox/ai_workbooks/**/*.md
+    params:
+      severity: warning
+  - id: VS028
+    enabled: true
+    paths:
+      - README.md
+      - AGENTS.md
+      - CONTRIBUTING.md
+      - HUMANS.md
+      - .ai_ops/workflows/*.md
+      - 00_Admin/**/*.md
+      - 00_Admin/**/*.yaml
+      - 00_Admin/**/*.yml
+      - 00_Admin/**/*.py
+      - 01_Resources/templates/**/*.md
+      - 00_Admin/scripts/*.ps1
+    params:
+      severity: error
+      allow_repo_names:
+        - ai_ops
+      forbidden_patterns:
+        - "\\.\\./(?!<work_repo>|<governed_repo>|ai_ops\\b)[A-Za-z0-9._-]+"
+        - "\\.\\.\\\\(?!<work_repo>|<governed_repo>|ai_ops\\b)[A-Za-z0-9._-]+"
+        - "C:/RE_Projects/(?!ai_ops\\b)[A-Za-z0-9._-]+"
+        - "C:\\\\RE_Projects\\\\(?!ai_ops\\b)[A-Za-z0-9._-]+"
+# Cross-Repo Validation Baseline (ROADMAP - not yet implemented)
+# These rules are planned for future cross-repo validation support.
+# The validator script does not currently parse this section.
+# See: 00_Admin/backlog/future_work_registry.yaml for implementation tracking.
+#
+# cross_repo_baseline:
+#   enabled: false
+#   description: Baseline rules for validating governed work repos
+#   work_repo_pattern: "../*"
+#   rules:
+#     - id: XR001
+#       description: Work repo must have AGENTS.md with ai_ops governance reference
+#       check: agents_md_exists
+#       severity: error
+#     - id: XR002
+#       description: Work repo workbooks must have valid front matter
+#       paths:
+#         - 90_Sandbox/ai_workbooks/**/*.md
+#       params:
+#         require_front_matter: true
+#     - id: XR003
+#       description: Work repo module metadata must exist
+#       paths:
+#         - 02_Modules/**/metadata/module.yaml
+#       params:
+#         must_exist_if_module: true
+#     - id: XR004
+#       description: Markdown lint applies to work repo docs
+#       paths:
+#         - "**/*.md"
+#       params:
+#         command: markdownlint
+#         severity: warning
+#     - id: XR005
+#       description: No absolute paths in Python scripts
+#       paths:
+#         - "**/*.py"
+#       params:
+#         forbidden_patterns:
+#           - "C:\\\\Users\\\\"
+#           - "/Users/"
+#           - "/home/"
+#         severity: error

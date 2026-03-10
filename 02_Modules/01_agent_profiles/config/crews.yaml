@@ -1,0 +1,10 @@
+version: 0.1.0
+crews:
+  - id: crew_default
+    name: Default Crew
+    status: active
+    description: General-purpose crew mapping for ai_ops tasks.
+    roles:
+      coordinator: rider_safe_default
+      executor: rider_fast_iterate
+      reviewer: rider_safe_default

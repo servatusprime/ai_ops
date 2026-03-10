@@ -1,0 +1,402 @@
+---
+title: future_work_registry
+version: 0.2.0
+status: active
+owner: ai_ops
+created: 2026-01-07
+updated: '2026-02-28'
+migration_note: >-
+  Most items were moved to wb_governance_hardening_02; selected deferred items
+  remain here.
+prune_note_2026_02_24: >-
+  Pruned non-actionable entries after plugin architecture closeout:
+  fw_20260125_10 (superseded rider/crew stub), fw_20260125_05 and
+  fw_20260125_06 (scope absorbed by WB-03 revised reference docs), and
+  fw_20260124_04 (insufficient provenance to execute).
+scorecard_sync:
+  required: true
+  scorecard_file: 00_Admin/backlog/future_work_scorecard.md
+  generator: 00_Admin/scripts/generate_future_work_scorecard.py
+  command: python ai_ops/00_Admin/scripts/generate_future_work_scorecard.py
+  policy_ref: 00_Admin/policies/policy_future_work_registry.md
+scorecard_schema:
+  purpose: Lightweight benefit-effort-risk triage for future work sorting.
+  domain_values:
+    - governance
+    - tooling
+    - validation
+    - documentation
+    - integration
+    - operations
+  target_repo_values:
+    - ai_ops
+    - governed_repo
+    - both
+  benefit_scale:
+    high: Major unblock or risk reduction.
+    medium: Useful improvement, not usually blocking.
+    low: Nice-to-have.
+  effort_scale:
+    xs: <=0.5 day
+    s: 1 day
+    m: 2-3 days
+    l: 4-5 days
+    xl: 1+ week
+  readiness_values:
+    - ready
+    - partial
+    - blocked
+    - deferred
+  risk_if_deferred_values:
+    - high
+    - medium
+    - low
+entries:
+  - id: fw_20260228_01
+    title: Standalone ai_ops root bootstrap artifacts for repo split
+    domain: operations
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wp_aiops_yaml_retirement_01_2026-02-28/wb_aiops_yaml_migration_01.md
+    proposed_workbook: >-
+      90_Sandbox/ai_workbooks/wb_aiops_split_root_bootstrap_01.md
+    scope: >-
+      Define and implement the canonical root file set for standalone ai_ops:
+      `.pre-commit-config.yaml`, `.vscode/extensions.json`,
+      `repo_structure.txt`, and `.yamllint`; update docs and setup guidance so
+      the files are generated or synced from ai_ops-owned scripts instead of
+      ad-hoc manual copy.
+    priority: high
+    benefit: high
+    effort: m
+    readiness: ready
+    risk_if_deferred: high
+    activation_trigger: >-
+      Execute before splitting ai_ops into its own git repository.
+    next_review: 2026-03-07
+    status: planned
+    owner: ai_ops
+    created: 2026-02-28
+    compacted_context:
+      source: requestor direction during yaml retirement follow-up
+      note: >-
+        Root config ownership must be explicit and reproducible for new users
+        in split-repo mode.
+    notes: >-
+      Must include migration notes from monorepo paths to standalone paths.
+
+  - id: fw_20260228_02
+    title: Split-aware setup wiring for root config refresh and repo map trigger
+    domain: tooling
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wp_aiops_yaml_retirement_01_2026-02-28/wb_aiops_yaml_deletion_01.md
+    proposed_workbook: >-
+      90_Sandbox/ai_workbooks/wb_aiops_split_setup_wiring_01.md
+    scope: >-
+      Add setup/install wiring that can provision and maintain standalone root
+      artifacts, including pre-commit hook wiring for repo-structure refresh
+      and validator path normalization. Ensure scripts work in both current
+      monorepo and future split-repo layouts.
+    priority: high
+    benefit: high
+    effort: m
+    readiness: partial
+    risk_if_deferred: high
+    activation_trigger: >-
+      Trigger when split implementation branch is opened or immediately after
+      split to avoid drift.
+    next_review: 2026-03-07
+    status: planned
+    owner: ai_ops
+    created: 2026-02-28
+    compacted_context:
+      source: requestor directive to automate root file maintenance
+      note: >-
+        Existing generators/validators now support both layouts; setup lane
+        still needs explicit split-era provisioning behavior.
+    notes: >-
+      Keep non-destructive defaults; support `--force` only with explicit user
+      confirmation.
+
+  - id: fw_20260216_01
+    title: Protected-path authority evidence enforcement for workflow edits
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      99_Trash/wp_command_routing_isolation_01_2026-02-17/wb_command_routing_seed_actualization_02_2026-02-17.md
+    proposed_workbook: >-
+      90_Sandbox/ai_workbooks/wp_command_routing_isolation_01_2026-02-17/wb_authority_guardrail_enforcement_01.md
+    scope: >-
+      Add machine-checkable protected-path authority controls for
+      `.ai_ops/workflows/**` edits, including approval-evidence markers and
+      validator enforcement gates.
+    priority: medium
+    benefit: high
+    effort: m
+    readiness: partial
+    risk_if_deferred: medium
+    activation_trigger: >-
+      Requestor approves expansion from workflow guardrails to policy/config +
+      validator-backed enforcement.
+    next_review: 2026-03-01
+    status: planned
+    owner: ai_ops
+    created: 2026-02-16
+    compacted_context:
+      source: wb_health_followup_seed_actualization_01.md
+      note: >-
+        Seed actualization implemented workflow-level guardrails; machine-level
+        enforcement remains pending by design.
+    notes: Split-scope follow-on from health follow-up seed actualization lane.
+
+  - id: fw_20260125_01
+    title: Audit event schemas for Emergency Autonomy
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wp_ai_ops_stack_cli_01_2026-01-21/wb_ai_ops_stack_cli_01_03_governance_and_validation.md
+    proposed_workbook: >-
+      90_Sandbox/ai_workbooks/wb_emergency_autonomy_audit_schemas_01.md
+    scope: >-
+      Define audit_event_emergency_autonomy.yaml and audit_event_setup.yaml
+      schemas for logging emergency actions.
+    priority: low
+    benefit: low
+    effort: s
+    readiness: deferred
+    risk_if_deferred: low
+    activation_trigger: >-
+      Emergency Autonomy Protocol is adopted and logging contract is finalized.
+    next_review: 2026-03-01
+    status: planned
+    owner: ai_ops
+    created: 2026-01-25
+    compacted_context:
+      source: wb_ai_ops_stack_cli_01_03_governance_and_validation.md
+      note: Deferred from WB-03 deliverable manifest.
+    notes: Deferred pending protocol activation.
+
+  - id: fw_20260227_01
+    title: Set actual GitHub repository URL in plugin.json
+    domain: operations
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wp_oss_readiness_01_2026-02-26/wb_oss_readiness_01.md
+    proposed_workbook: null
+    scope: >-
+      Replace `[YOUR_ORG]` placeholder in
+      `plugins/ai-ops-governance/.claude-plugin/plugin.json` `repository` field
+      with actual GitHub URL (https://github.com/servatusprime/ai-ops-governance
+      or equivalent) once the repository is created and the URL is confirmed.
+    priority: high
+    benefit: high
+    effort: xs
+    readiness: blocked
+    risk_if_deferred: high
+    activation_trigger: >-
+      GitHub repository created and URL confirmed; update plugin.json before
+      or at initial public release commit.
+    next_review: 2026-03-01
+    status: planned
+    owner: ai_ops
+    created: 2026-02-27
+    compacted_context:
+      source: wb_oss_readiness_01.md task H3 (decision D2)
+      note: >-
+        H3 inserts placeholder; this item tracks the final value once the
+        GitHub repo is created. Release blocker.
+    notes: >-
+      Release blocker. Do not merge initial public commit without resolving.
+      Placeholder repository URL set to
+      https://github.com/servatusprime/ai-ops-governance in plugin.json on
+      2026-02-27.
+
+  - id: fw_20260227_02
+    title: Rename work_pause to work_savepoint with commit/push default
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wp_oss_readiness_01_2026-02-26/_scratchpad_claude_2026-02-26.md
+    proposed_workbook: >-
+      90_Sandbox/ai_workbooks/wb_work_savepoint_01.md
+    scope: >-
+      Rename `work_pause` to `work_savepoint`. Default behavior: commit+push
+      with `savepoint:` prefix message, workbook status remains in_progress.
+      Add `--no-commit` flag to preserve old pause-without-commit behavior.
+      Change surface: `.ai_ops/workflows/work_pause.md` (rename+update),
+      setup scripts, RE_Projects root skill wrappers, any docs referencing work_pause.
+    priority: medium
+    benefit: medium
+    effort: s
+    readiness: ready
+    risk_if_deferred: low
+    activation_trigger: >-
+      Requestor approves Level 4 scope; straightforward to execute as
+      standalone workbook.
+    next_review: 2026-03-01
+    status: actualized
+    owner: ai_ops
+    created: 2026-02-27
+    actualized: 2026-02-27
+    actualized_by: >-
+      Direct execution during wp_oss_readiness_01 session on requestor direction.
+      work_savepoint.md created; work_pause.md and all work-pause plugin artifacts
+      deleted; 19-file reference sweep complete; workspace wrappers regenerated.
+    compacted_context:
+      source: Requestor request 2026-02-27 during wp_oss_readiness_01 session
+      note: >-
+        Requestor wants mid-execution commit/push without full closeout.
+        Decided: rename work_pause → work_savepoint, commit+push is default,
+        --no-commit flag covers old pause behavior. work_status kept as-is.
+        Level 4 (workflow rename). Deferred from OSS readiness workbundle.
+    notes: >-
+      Actualized 2026-02-27. No redirect stub — requestor confirmed work_pause
+      was unused. Level 4 reference sweep complete.
+
+  - id: fw_20260227_03
+    title: Add examples/ directory with sample artifacts
+    domain: documentation
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wp_oss_readiness_01_2026-02-26/wb_oss_pre_commit_completions_01.md
+    proposed_workbook: null
+    scope: >-
+      Create an `examples/` directory containing sample workbooks, workbundles,
+      or runbooks that demonstrate typical ai_ops usage patterns. Scope and
+      structure to be determined based on initial community feedback post-release.
+    priority: low
+    benefit: medium
+    effort: m
+    readiness: deferred
+    risk_if_deferred: low
+    activation_trigger: >-
+      Post-release; first external contributor or usage question signals
+      what examples are most needed.
+    next_review: 2026-04-01
+    status: planned
+    owner: ai_ops
+    created: 2026-02-27
+    compacted_context:
+      source: wb_oss_pre_commit_completions_01.md seed S8
+      note: Deferred from WB4 pre-commit completions pass. Post-release scope.
+    notes: Post-release. Defer until community feedback indicates which examples are most useful.
+
+  - id: fw_20260227_04
+    title: Bash equivalents for critical PowerShell setup scripts
+    domain: operations
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wp_oss_readiness_01_2026-02-26/wb_oss_pre_commit_completions_01.md
+    proposed_workbook: null
+    scope: >-
+      Write bash equivalents for the setup scripts currently implemented only
+      in PowerShell (.ps1), enabling non-Windows contributors to run setup
+      without modification. Priority order: setup_claude.ps1, setup_codex.ps1,
+      then others.
+    priority: medium
+    benefit: medium
+    effort: l
+    readiness: deferred
+    risk_if_deferred: medium
+    activation_trigger: >-
+      First non-Windows contributor files a setup issue or pull request.
+    next_review: 2026-04-01
+    status: planned
+    owner: ai_ops
+    created: 2026-02-27
+    compacted_context:
+      source: wb_oss_pre_commit_completions_01.md seed S11
+      note: Deferred from WB4 pre-commit completions pass. Post-release scope.
+    notes: >-
+      Partial readiness — .sh scripts already exist for most setup paths.
+      Identify which .ps1 scripts have no .sh equivalent before scoping.
+
+  - id: fw_20260227_05
+    title: Remediation-lite workbook template variant
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wp_oss_readiness_01_2026-02-26/_scratchpad_claude_2026-02-26.md
+    proposed_workbook: null
+    scope: >-
+      Create a lighter workbook template variant optimized for bounded
+      remediation work driven by an external review or audit document.
+      Assumes the scope authority lives in the review doc, reducing template
+      boilerplate to: objective, scope reference, execution queue, selfcheck.
+    priority: low
+    benefit: low
+    effort: s
+    readiness: deferred
+    risk_if_deferred: low
+    activation_trigger: >-
+      Next template maintenance pass or when a remediation workbook is authored
+      and the scaffolding overhead is flagged again.
+    next_review: 2026-05-01
+    status: planned
+    owner: ai_ops
+    created: 2026-02-27
+    compacted_context:
+      source: wb_oss_pre_commit_completions_01.md seed S13
+      note: >-
+        Deferred from WB4 pre-commit completions pass. Internal improvement.
+    notes: >-
+      Post-release. Friction observed during OSS readiness session —
+      remediation scope is well-defined externally, templates add overhead.
+
+  - id: fw_20260227_06
+    title: Add HUMANS.md authority level to AGENTS.md path guard table
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wp_oss_readiness_01_2026-02-26/wb_oss_pre_commit_completions_01.md
+    proposed_workbook: null
+    scope: >-
+      Add `HUMANS.md` to the path-based authority guard table in AGENTS.md
+      to clarify its authority level for edits (expected: Level 3, guide-equivalent).
+      Requires Level 4 approval per AGENTS.md path guard rules.
+    priority: low
+    benefit: low
+    effort: xs
+    readiness: ready
+    risk_if_deferred: low
+    activation_trigger: >-
+      Next AGENTS.md gate or closeout pass for wp_oss_readiness_01.
+    next_review: 2026-03-01
+    status: planned
+    owner: ai_ops
+    created: 2026-02-27
+    compacted_context:
+      source: wb_oss_pre_commit_completions_01.md seed S14
+      note: Excluded from WB4 (Level 3 scope) because AGENTS.md edits are Level 4 path.
+    notes: Level 4 path. Handle at wp_oss_readiness_01 closeout or next AGENTS.md workbook.
+
+  - id: fw_20260227_07
+    title: Review /work numeric scoring contract
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wp_oss_readiness_01_2026-02-26/_scratchpad_claude_2026-02-26.md
+    proposed_workbook: null
+    scope: >-
+      Review whether the numeric scoring contract in the Workbundle Relevance
+      Gate (spec_workbundle_placement_suggestion.md) adds value or is
+      aspirational overhead. The spec defines a formula but no tooling computes
+      it — agents score intuitively. Decide: keep spec as-is, simplify to
+      intent-level gate only, or build tooling.
+    priority: low
+    benefit: low
+    effort: s
+    readiness: deferred
+    risk_if_deferred: low
+    activation_trigger: >-
+      Next governance review cycle or when /work intent-level scoring is
+      observed to produce inconsistent placement decisions.
+    next_review: 2026-06-01
+    status: planned
+    owner: ai_ops
+    created: 2026-02-27
+    compacted_context:
+      source: wb_oss_pre_commit_completions_01.md seed S15
+      note: Policy discussion, not a build task. Deferred from WB4 scope.
+    notes: Not a build task. Requires requestor decision on scoring contract value.

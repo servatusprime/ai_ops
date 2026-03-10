@@ -1,0 +1,2 @@
+file,line,level,heading,file_type,placement_verdict,placement_rationale,order_verdict,order_rationale,cluster_id,canonical_target,axis_verdict,dedup_action,nuance_items_retained,nuance_loss_risk,nuance_retention_status
+<repo>/<path>.md,<line>,<h_level>,<heading>,<file_type>,keep,Section matches file role.,keep,Section order is acceptable.,<cluster_or_none>,<path#section_or_none>,<governance_upstream|context_downstream|not_applicable>,<merge|pointer|keep_split|none>,<int>,<none|low|medium|high>,<pass|warning|fail|not_applicable>

@@ -1,0 +1,25 @@
+# Model-family calibration registry for /profiles regeneration.
+# Keep entries evidence-backed and portable-first.
+
+schema_version: "0.1.0"
+default_model_family: "neutral"
+
+model_families:
+  neutral:
+    status: "active"
+    notes: "Baseline portable prose with no model-specific addendum."
+    lead_profile_addendum: ""
+  claude:
+    status: "planned"
+    notes: "Pending empirical validation."
+    lead_profile_addendum: ""
+  gpt5:
+    status: "planned"
+    notes: "Pending empirical validation."
+    lead_profile_addendum: ""
+  gemini:
+    status: "planned"
+    notes: "Pending empirical validation."
+    lead_profile_addendum: ""
+
+evidence_log: []

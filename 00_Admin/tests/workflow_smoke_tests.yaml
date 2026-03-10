@@ -1,0 +1,179 @@
+title: Workflow Smoke Tests
+version: 0.2.0
+status: active
+created: 2026-01-29
+updated: 2026-02-28
+owner: ai_ops
+description: >
+  Minimal smoke tests for ai_ops slash command workflows.
+  Use these to validate workflows produce expected outputs after changes.
+
+test_protocol:
+  execution: manual  # Agent reads and verifies; no automation yet
+  scope: Basic input/output validation per workflow
+  pass_criteria: All required outputs present; no errors in execution
+
+tests:
+  - id: smoke_bootstrap
+    workflow: /bootstrap
+    description: Initialize agent context from repo manifest
+    preconditions:
+      - AGENTS.md exists at repo root
+    inputs:
+      - None required (reads manifest automatically)
+    expected_outputs:
+      - Agent confirms bootstrap complete
+      - Agent identifies current mode (Direct/Governed/Standalone)
+      - Agent can state active work context (if any)
+    failure_indicators:
+      - Agent scans filesystem before reading manifest
+      - Agent cannot identify repo type
+      - Agent proceeds without reading AGENTS.md
+
+  - id: smoke_work
+    workflow: /work
+    description: Start or resume work session
+    preconditions:
+      - Bootstrap complete (AGENTS.md read)
+    inputs:
+      - Optional: specific workbundle or task
+    expected_outputs:
+      - Agent confirms work context established
+      - Agent identifies active artifacts (if any)
+      - Agent offers relevant next actions
+    failure_indicators:
+      - Agent creates files without approval
+      - Agent ignores active_artifacts in work_state.yaml
+      - Agent assumes scope without confirmation
+
+  - id: smoke_work_status
+    workflow: /work_status
+    description: Show active context and blockers
+    preconditions:
+      - Bootstrap complete
+    inputs:
+      - None required
+    expected_outputs:
+      - Summary of active work context
+      - List of blockers (if any)
+      - Pointer to active workbundle/workbook (if any)
+    failure_indicators:
+      - Agent modifies files (should be read-only)
+      - Agent creates new artifacts
+
+  - id: smoke_health
+    workflow: /health
+    description: Repo health check
+    preconditions:
+      - Bootstrap complete (AGENTS.md read)
+    inputs:
+      - Optional: scope limitation
+    expected_outputs:
+      - Health report with severity levels
+      - Self-consistency check results
+      - Cruft detection results
+      - Recommended fixes (if issues found)
+    failure_indicators:
+      - Agent modifies files (should be read-only)
+      - Agent applies fixes without approval
+      - Agent uses ai_ops rules in Standalone mode
+
+  - id: smoke_crosscheck
+    workflow: /crosscheck
+    description: Structured peer review
+    preconditions:
+      - Target artifact(s) identified
+    inputs:
+      - Review target (workbook, file, or scope)
+      - Review format preference (inline or file)
+    expected_outputs:
+      - Review document or inline notes
+      - Findings ordered by severity
+      - All checklist items verified (pass/fail with evidence)
+    failure_indicators:
+      - Checklist items left unverified
+      - Agent expands scope without approval
+      - Agent makes changes (reviewer role is read-only)
+
+  - id: smoke_closeout
+    workflow: /closeout
+    description: Lint/commit/push with cleanup
+    preconditions:
+      - Work scope approved
+      - Changes ready for commit
+    inputs:
+      - Commit scope confirmation
+    expected_outputs:
+      - Validation/lint results
+      - Change summary
+      - Commit (after approval)
+      - Run log entry
+    failure_indicators:
+      - Agent commits without approval
+      - Agent skips validation steps
+      - Agent pushes without explicit request
+
+  - id: smoke_harvest
+    workflow: /harvest
+    description: Consolidate and prune artifacts
+    preconditions:
+      - Target scope identified
+    inputs:
+      - Harvest target (workbundle, scratchpads, etc.)
+    expected_outputs:
+      - Harvested items summary
+      - Future work items identified
+      - Pruning recommendations
+    failure_indicators:
+      - Agent deletes without approval
+      - Agent moves files without confirmation
+
+  - id: smoke_work_savepoint
+    workflow: /work_savepoint
+    description: Checkpoint for later resumption
+    preconditions:
+      - Active work context exists
+    inputs:
+      - Optional: checkpoint notes
+    expected_outputs:
+      - Checkpoint confirmation
+      - Compacted context updated (if applicable)
+      - Resume instructions provided
+    failure_indicators:
+      - Agent continues working after pause
+      - Agent loses context state
+
+  - id: smoke_customize
+    workflow: /customize
+    description: Configure agent preferences
+    preconditions:
+      - Bootstrap complete
+    inputs:
+      - Customization preferences
+    expected_outputs:
+      - Preview of changes before write
+      - Config written to override path (.ai_ops/local/config.yaml)
+      - Confirmation of applied settings
+    failure_indicators:
+      - Agent modifies versioned committed config files
+      - Agent skips preview/confirmation
+
+  - id: smoke_scratchpad
+    workflow: /scratchpad
+    description: Create session notes
+    preconditions:
+      - Target location identified
+    inputs:
+      - Scratchpad purpose/topic
+    expected_outputs:
+      - New scratchpad file created
+      - Proper naming convention applied
+    failure_indicators:
+      - Agent overwrites existing scratchpad
+      - Agent creates without asking purpose
+
+execution_notes:
+  - Run smoke tests after modifying any workflow file
+  - Run full suite before major releases
+  - Document any test failures in crosscheck findings
+  - Update tests when workflow behavior changes

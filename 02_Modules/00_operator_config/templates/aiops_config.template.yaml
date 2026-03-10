@@ -1,0 +1,82 @@
+version: 0.2.0
+# Machine-local config template. Copy to .ai_ops/local/config.yaml and fill in.
+# This file is committed as a template. The populated copy is gitignored.
+# Populated by /ai_ops_setup; can also be edited manually.
+#
+# VALIDATION: Validate customization configs with 00_Admin/scripts/op_validate_config.py.
+
+# --- Personal / machine-specific settings ---
+
+modality:
+  # AI surface this machine uses. Set by /ai_ops_setup.
+  active_surface: null  # codex_cli | claude_code | cursor | gemini_cli | other
+  installation_target: none  # skills | commands | both | none
+  confirmed_at: null  # ISO 8601 timestamp
+
+workspace:
+  # Repos this machine writes to. Path is relative to workspace_root.
+  # sandbox_dir defaults to "90_Sandbox" if omitted.
+  # Example:
+  # work_repos:
+  #   - path: my_project/
+  #     sandbox_dir: 90_Sandbox
+  work_repos: []
+  resource_repos: []
+
+# --- Shared behavioral settings ---
+
+customizations:
+  session_limits:
+    max_size_kb: null        # null = no advisory limit; set to a number (KB) to enable
+    compacted_context_max_chars: 750  # chars for agent-written ## Compacted Context blocks
+  bootstrap_preferences:
+    max_read_depth: 2
+    allow_deepening_on_mismatch: true
+  profile_layering:
+    # Example: C:/Users/you/.ai_ops/profiles/default.yaml
+    global_profile_path: null
+    # Example: .ai_ops/local/config.yaml
+    repo_overrides_path: .ai_ops/local/config.yaml
+  model_capabilities:
+    declaration_source: user_declared  # user_declared | imported
+    # Example: claude-sonnet-4.5
+    default_model: null
+    # Use one entry per model/surface pair available to the user.
+    # reasoning_level examples: low | medium | high
+    available_models: []
+  external_context:
+    # Example: 90_Sandbox/ai_external_context/manifest.yaml
+    manifest_path: 90_Sandbox/ai_external_context/manifest.yaml
+    # Example: 90_Sandbox/ai_external_context
+    bundle_root: 90_Sandbox/ai_external_context
+    scope: export
+    # Example include: ["**/*.md", "**/*.yaml"]
+    include_patterns: []
+    # Example exclude: ["**/drafts/**"]
+    exclude_patterns: []
+  validation_policy:
+    # Governs which validators/linters apply in governed external repos.
+    # ai_ops: prefer ai_ops validators/linters/tools when available.
+    # repo_native: use the target repo's configured validators/linters.
+    governed_mode: ai_ops  # ai_ops | repo_native
+  delegation_preferences:
+    # Optional. Controls how sub-agent roles are delegated and what model tier each uses.
+    # Per-workbook `role_assignments` frontmatter overrides these machine-level defaults.
+    enhanced_crosscheck:
+      # When enabled, /crosscheck spawns a sub-agent at `tier` rather than the current
+      # session model. Useful for quality-critical review with a higher-capability model.
+      # "Enhanced Crosscheck Mode" — not escalated (no urgency implied), not accelerated
+      # (not about speed). It means a more capable reviewer for the crosscheck phase.
+      enabled: false       # true | false
+      tier: high           # low | medium | high
+    default_role_assignments:
+      # Machine-level defaults used when a workbook does not declare role_assignments.
+      # Values: low (haiku-class) | medium (sonnet-class) | high (opus-class)
+      coordinator: medium  # orchestrates; plans and manages handoffs
+      executor: medium     # executes current workbook steps
+      validator: medium    # evaluates outputs; raise to high to enable Enhanced Crosscheck
+      builder: low         # writes/edits tools and configs; usually lightweight
+  notes:
+    # Free-form notes for non-operational preferences or context.
+    # Do not treat this section as requirements or executable settings.
+    free_form: ""

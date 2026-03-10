@@ -1,0 +1,57 @@
+schema_version: 0.1.0
+title: Execution State Schema
+status: stub
+required:
+  - version
+  - timestamp
+  - workbook_id
+  - phase
+  - outputs
+  - next_actions
+fields:
+  version:
+    type: string
+    notes: semver
+  timestamp:
+    type: string
+    notes: iso_8601
+  workbook_id:
+    type: string
+  phase:
+    type: string
+    enum:
+      - draft
+      - ready
+      - executing
+      - completed
+      - failed
+      - archived
+  outputs:
+    type: list
+    item:
+      required:
+        - path
+        - type
+      fields:
+        path:
+          type: string
+        type:
+          type: string
+        contract:
+          type: string
+          optional: true
+  next_actions:
+    type: list
+    item:
+      required:
+        - type
+        - target
+      fields:
+        type:
+          type: string
+          enum:
+            - human_review
+            - execute_runbook
+            - spawn_workbook
+        target:
+          type: string

@@ -1,0 +1,324 @@
+---
+title: AI Workbook Lite Template: <short_title>
+id: wb_<topic>_<scope>_lite
+status: planned
+license: Apache-2.0
+version: 0.4.1
+created: YYYY-MM-DD
+last_updated: 2026-03-06
+owner: ai_ops
+ai_role: executor
+model_profile: "<model_a>:<reasoning_level> | <model_b>:<reasoning_level>"
+authority_level: 3
+execution_mode: sequential
+depends_on: []
+affects:
+  artifacts: []
+  workbooks: []
+execution_root: .
+path_basis: workspace_root  # Anchor for path claims: workspace_root | repo_root | relative
+description: >
+  Lightweight workbook for bounded single-run Level 3 execution lanes with
+  known behavior.
+related_refs:
+  - 00_Admin/guides/authoring/guide_workbooks.md
+  - 01_Resources/templates/workflows/wb_template_generic.md
+  - 00_Admin/specs/spec_workbundle_dependency_tracking.md
+  - 00_Admin/specs/spec_workbundle_placement_suggestion.md
+  - 00_Admin/specs/spec_infrastructure_change_validation_gate.md
+---
+
+# AI Workbook Lite Template: <short_title>
+
+## Template Intention
+
+- Use for bounded single-run execution work where behavior is known and
+  coordination overhead is low.
+- Authority fit: Level 3 only.
+- If Level 4 scope appears, escalate to generic template plus approved
+  work proposal.
+
+## Upstream Governance Pointer
+
+- Placement, approval, and handoff governance remain upstream in:
+  - `00_Admin/guides/ai_operations/guide_workflows.md`
+  - `00_Admin/guides/ai_operations/guide_ai_operations_stack.md`
+- This template captures workbook-profile checks only.
+
+---
+
+## Status Checklist
+
+- [ ] **Ph 0: Cold-Start and Pre-flight** -- readiness gate passed, no ambiguity
+- [ ] **Ph 0a: Initial Draft Selfcheck** -- for newly created workbook: required
+  sections verified and markdownlint evidence recorded in Selfcheck iteration 0
+- [ ] **Ph 1: <phase_name>** -- brief status note
+- [ ] **Ph N: Completion Finalization** -- checkboxes swept, README updated, frontmatter bumped
+- [ ] **Ph N+1: Selfcheck** -- selfcheck loop complete, evidence recorded
+- [ ] **Ph N+2: Crosscheck** -- crosscheck executed, findings resolved
+
+---
+
+## Approvals and Decisions
+
+**Resolve all open items in Phase 0 before proceeding to Phase 1.**
+
+<!-- Fill in Pre-Authorized items during workbook origination or Phase 0.
+     Any item not yet authorized becomes an Open Item to resolve in Phase 0. -->
+
+### Pre-Authorized
+
+- [ ] Workbook scope: [echo the scope in one sentence] -- authorized by requestor [date]
+
+<!-- Add one line per pre-authorized decision or approval -->
+
+### Open Items (resolve in Phase 0)
+
+- [ ] [Open question or decision needing requestor input before execution begins]
+
+<!-- If none, write: "- None -- all scope confirmed before execution" -->
+
+### Locked Design Decisions
+
+<!-- Record any design choices locked before execution. These should not change
+     mid-execution without a new approval entry above. -->
+
+- **[Decision label]:** [Decision and rationale]
+
+---
+
+## Ordered Execution Queue
+
+### Phase 0: Cold-Start and Pre-flight (Agent -- Level 0)
+
+- [ ] 0.0 Initial Draft Selfcheck Gate (new workbook only): verify required
+      sections and record iteration 0 evidence in Selfcheck Results **[Agent]**
+- [ ] 0.1 Verify model profile meets authority level declared in frontmatter **[Agent]**
+- [ ] 0.2 Read this workbook fully **[Agent]**
+- [ ] 0.3 Read workbundle README (or execution spine if present) **[Agent]**
+- [ ] 0.4 Run Pre-Execution Readiness Gate -- confirm all checklist items pass **[Agent]**
+- [ ] 0.5 **Ambiguity Stop Gate** -- if any instruction is unclear, stop and ask requestor;
+  do not proceed **[Agent/Requestor]**
+
+**-> Ph 0 complete when:** All readiness checks passed; no ambiguity flagged.
+
+### Phase 1: <phase_name> (Agent)
+
+- [ ] 1.1 <task> **[Agent]**
+- [ ] 1.2 <task> **[Agent]**
+
+**-> Ph 1 complete when:** <gate condition>
+
+### Phase N: Completion Finalization (Agent)
+
+- [ ] N.1 Sweep this workbook; update all checkboxes to reflect actual completion state **[Agent]**
+- [ ] N.2 Update workbundle README status row for this workbook **[Agent]**
+- [ ] N.3 Update execution spine artifact status entry (if spine is present) **[Agent]**
+- [ ] N.4 Bump `version`, `last_updated`, and `status` in YAML frontmatter **[Agent]**
+
+### Phase N+1: Selfcheck
+
+- [ ] N+1.1 Run selfcheck loop per AGENTS.md standard (max 3 iterations) **[Agent]**
+- [ ] N+1.2 Record evidence in Selfcheck Results section **[Agent]**
+
+### Phase N+2: Crosscheck
+
+- [ ] N+2.1 Execute `/crosscheck` on this workbook's scope **[Requestor or Agent]**
+- [ ] N+2.2 Record findings in Crosscheck Stop Marker **[Agent]**
+- [ ] N+2.3 Resolve any blocking findings **[Agent/Requestor]**
+
+---
+
+## Cold-Start Execution Contract
+
+1. Read this workbook in full.
+2. Confirm scope/authority and target files.
+3. Confirm execution queue and expected evidence.
+4. Execute tasks in order; record deviations with rationale.
+
+---
+
+## Pre-Execution Readiness Gate
+
+- [ ] Scope is still bounded and unchanged
+- [ ] Inputs and dependencies are available
+- [ ] Executor role confirmed and appropriate for task authority level
+- [ ] If multi-agent: role assignments and handoff conditions are explicit
+- [ ] Placement decision record is captured when this workbook/bundle is newly created
+- [ ] `depends_on` and `affects` fields are populated when shared surfaces are touched
+- [ ] Validation commands are identified for touched scope
+- [ ] Section applicability contract is complete
+- [ ] Rollback or safe-stop condition is documented
+- [ ] If workbook is newly created in this lane, Selfcheck iteration 0 evidence
+      exists (required sections + markdownlint pass)
+
+---
+
+## Placement Decision Record (Required for new workbook/bundle)
+
+Record:
+
+- `requested_scope_echo`
+- `candidate_workbundle_echo`
+- `relevance_result`
+- `placement_decision_echo`
+
+Reference: `00_Admin/specs/spec_workbundle_placement_suggestion.md`
+
+---
+
+## Profile Eligibility Gate (Required)
+
+- [ ] Level 3 scope confirmed (no Level 4 touching changes)
+- [ ] Known lane behavior for this scope/environment
+- [ ] Single-phase or low coordination complexity
+- [ ] No expected hotfix loop
+- [ ] Baseline evidence exists from prior similar execution
+
+If any checkbox fails, stop and switch template:
+
+- use `wb_template_first_run.md` for unknown/high-uncertainty execution,
+- use `wb_template_generic.md` for higher complexity or Level 4 touching scope.
+
+## Section Applicability Contract (Required)
+
+Mark optional sections before execution starts.
+
+| Section ID | Applicability (`execute`/`skip`/`not_applicable`) | Rationale | Evidence / Trigger |
+| --- | --- | --- | --- |
+| `Placement Decision Record` | `<state>` | `<why>` | `<new workbook/bundle condition>` |
+| `Dependency Impact Contract` | `<state>` | `<why>` | `<shared-surface condition>` |
+| `Infrastructure Change Validation Gate` | `<state>` | `<why>` | `<infrastructure touch condition>` |
+| `Operator Snapshot (Optional)` | `<state>` | `<why>` | `<audit/reconstruction condition>` |
+| `Execution Friction Log (Optional)` | `<state>` | `<why>` | `<friction capture condition>` |
+
+---
+
+## Scope and Authority
+
+- In-scope paths:
+- Out-of-scope paths:
+- Approval gates required:
+
+---
+
+## Inputs and Preconditions
+
+- Required inputs:
+- Preconditions:
+- Blockers:
+
+---
+
+## Dependency Impact Contract (Conditional)
+
+When touching shared or infrastructure surfaces, declare:
+
+- `depends_on`
+- `affects.artifacts`
+- `affects.workbooks`
+
+Reference: `00_Admin/specs/spec_workbundle_dependency_tracking.md`
+
+---
+
+## Outputs and Target Files
+
+- `<path>`
+- `<path>`
+
+---
+
+## Model Selection Guidance
+
+| Task Type | Recommended Tier |
+| --- | --- |
+| Research / read-only | low (haiku-class) |
+| Implementation / writes | medium (sonnet-class) |
+| High-stakes decisions | high (opus-class) |
+
+---
+
+## Infrastructure Change Validation Gate (Conditional)
+
+If touched scope includes `.ai_ops/workflows/**`, `00_Admin/scripts/**`,
+`00_Admin/configs/**`, or validator schemas, record:
+
+- affected surface inventory
+- baseline validation results
+- post-change validation results
+- rollback action
+
+Reference: `00_Admin/specs/spec_infrastructure_change_validation_gate.md`
+
+---
+
+## Validation Commands
+
+```powershell
+python 00_Admin/scripts/validate_repo_rules.py --config 00_Admin/configs/validator/validator_config.yaml
+markdownlint <changed_paths>
+```
+
+---
+
+## Verification Checklist
+
+- [ ] Intended files changed only
+- [ ] Required validations passed
+- [ ] No authority violations
+- [ ] Evidence recorded
+- [ ] Selfcheck completed before status update
+- [ ] Crosscheck readiness confirmed (if requested)
+
+---
+
+## Execution Notes
+
+### Operator Snapshot (Optional)
+
+Use when operator pre-execution context is needed for post-execution reconstruction or audit:
+
+- **Branch**: current git branch
+- **Commit**: HEAD commit hash (short)
+- **Staged artifacts**: uncommitted changes summary
+- **Active work context**: current active artifacts from `.ai_ops/local/work_state.yaml`
+- **Environment notes**: runtime dependencies, tooling versions if relevant
+
+### Execution Friction Log (Optional)
+
+| Step | Friction | Root Cause | Suggested Fix |
+| --- | --- | --- | --- |
+| `<step_id>` | `<what slowed or blocked work>` | `<why it happened>` | `<contract/template/validator improvement>` |
+
+---
+
+## Selfcheck Results
+
+Evidence schema: each entry requires **path:line** or **command + key output** --
+narrative-only evidence is not acceptable.
+
+| Iteration | Check | Status | Evidence | Environment |
+| --- | --- | --- | --- | --- |
+| 0 | Initial Draft Selfcheck Gate | pending | `<required sections + markdownlint evidence>` | `<env_name>` |
+| 1 | End-to-end task verification | pending | `<path:line or command:key_output>` | `<env_name>` |
+
+---
+
+## Crosscheck Stop Marker
+
+Do not run `/closeout` until all of the following are true:
+
+- [ ] `/crosscheck` has been executed for this workbook scope.
+- [ ] Crosscheck status is not `Blocking issues`.
+- [ ] Blocking findings are either fixed or explicitly deferred with requestor approval.
+- [ ] Workbook selfcheck and review artifacts are synchronized.
+
+If any item is unchecked, stop and keep workbook status non-complete.
+
+---
+
+## Requestor Review Gate
+
+- [ ] Concise change summary provided.
+- [ ] Explicit requestor approval obtained.

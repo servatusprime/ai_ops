@@ -1,0 +1,109 @@
+$schema: 'http://json-schema.org/draft-07/schema#'
+title: aiops_session
+type: object
+required:
+  - version
+  - session_id
+  - created
+  - last_updated
+  - agent_role
+  - work_context
+  - compacted_context
+  - blockers
+  - secrets_allowed
+properties:
+  version:
+    type: string
+    pattern: "^\\d+\\.\\d+\\.\\d+$"
+  session_id:
+    type: string
+  created:
+    type: string
+  last_updated:
+    type: string
+  agent_role:
+    type: string
+  work_context:
+    type: object
+    additionalProperties: false
+    properties:
+      active_artifacts:
+        type: array
+        items:
+          $ref: '#/definitions/active_artifact'
+      updated_at:
+        type: string
+        format: date-time
+      checkpoints:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required:
+            - id
+            - artifact_path
+            - phase
+            - timestamp
+            - completed
+          properties:
+            id:
+              type: string
+            artifact_path:
+              type: string
+            artifact_type:
+              type: string
+              enum: [workbundle, workprogram, workbook, runbundle, runprogram, runbook]
+            repo:
+              type: string
+            phase:
+              type: string
+            timestamp:
+              type: string
+              format: date-time
+            completed:
+              type: boolean
+  compacted_context:
+    type: object
+    additionalProperties: true
+  blockers:
+    type: array
+    items:
+      type: object
+      required:
+        - id
+        - description
+        - created
+        - resolved
+      properties:
+        id:
+          type: string
+        description:
+          type: string
+        created:
+          type: string
+          format: date-time
+        resolved:
+          type: boolean
+        resolution:
+          type: string
+  max_size_kb:
+    type: [number, "null"]  # null = no advisory limit
+  secrets_allowed:
+    type: boolean
+    const: false
+definitions:
+  active_artifact:
+    type: object
+    additionalProperties: false
+    required:
+      - path
+      - type
+    properties:
+      path:
+        type: string
+      type:
+        type: string
+        enum: [workbundle, workprogram, workbook, runbundle, runprogram, runbook]
+      repo:
+        type: string
+additionalProperties: true

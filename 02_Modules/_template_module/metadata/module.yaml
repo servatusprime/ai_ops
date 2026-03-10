@@ -1,0 +1,14 @@
+id: _template_module
+name: Template Module
+version: 0.1.0
+status: stub
+owner: ai_ops
+description: >
+  Template for new modules; clone and update fields to match module purpose.
+inputs: []
+outputs: []
+dependencies: []
+specs: []
+prompts: []
+tests:
+  - tests/test_smoke.py

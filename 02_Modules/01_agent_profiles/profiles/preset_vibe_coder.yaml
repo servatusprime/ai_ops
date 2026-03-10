@@ -1,0 +1,15 @@
+version: 0.1.0
+id: preset_vibe_coder
+name: Vibe Coder
+status: active
+description: Preset for low-friction onboarding with safe defaults.
+crew_id: crew_default
+rider_overrides:
+  coordinator:
+    prompts:
+      max_followups: 2
+  executor:
+    safety:
+      max_scope_level: 2
+notes:
+  - Use for first-time users who prefer guided setup.

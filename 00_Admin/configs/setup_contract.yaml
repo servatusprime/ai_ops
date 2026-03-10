@@ -1,0 +1,47 @@
+---
+# Setup Contract
+# Defines the baseline setup version requirement and local path conventions
+# used by /ai_ops_setup and setup-gated commands.
+#
+# Previously part of aiops.yaml. Migrated 2026-02-28 (wp_aiops_yaml_retirement_01).
+#
+# This file is committed and shared. Machine-local setup state lives at
+# .ai_ops/local/setup/state.yaml (gitignored, written by /ai_ops_setup).
+
+version: 1.0.0
+status: active
+updated: 2026-02-28
+owner: ai_ops
+
+setup_contract:
+  # Baseline setup contract version required before setup-gated commands run.
+  required_version: "1.0.0"
+  # Machine-local receipt path written by /ai_ops_setup.
+  receipt_path: .ai_ops/local/setup/state.yaml
+  local_paths:
+    config: .ai_ops/local/config.yaml
+    active_profile: .ai_ops/local/profiles/active_crew.yaml
+    setup_state: .ai_ops/local/setup/state.yaml
+  compatibility:
+    legacy_paths:
+      config: .ai_ops/config.yaml
+      active_profile: .ai_ops/profiles/active_crew.yaml
+    sunset_status: active
+
+customizations:
+  # Pointer to the machine-local config template.
+  # Copy this template to .ai_ops/local/config.yaml to declare surface and work repos.
+  config_template: 02_Modules/00_operator_config/templates/aiops_config.template.yaml
+  clarification_limits:
+    max_followups: 2
+    max_rounds: 2
+  session_limits:
+    max_size_kb: 10
+  profile_layering:
+    global_profile_path: null
+    repo_overrides_path: .ai_ops/local/config.yaml
+    legacy_repo_overrides_path: .ai_ops/config.yaml
+
+resource_resolution:
+  resolution_strategy: local_first
+  external_repos: []

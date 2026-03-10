@@ -1,0 +1,34 @@
+# ai_ops local and tool state
+.ai_ops/local/
+.agents/
+.claude/
+.codex/
+
+# Sandbox and trash
+90_Sandbox/
+99_Trash/
+05_Backups/
+
+# Build and lint caches
+.cache/
+.ruff_cache/
+.lint_repo_validator.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*.log
+
+# Secrets (keep README)
+00_Admin/configs/secrets/*
+!00_Admin/configs/secrets/README.md

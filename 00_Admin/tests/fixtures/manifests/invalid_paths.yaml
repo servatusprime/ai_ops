@@ -1,0 +1,28 @@
+---
+# Invalid aiops.yaml for testing - references non-existent paths
+# Valid YAML and schema, but paths don't exist
+
+repo_summary: |
+  Test repository - this manifest references files that don't exist.
+
+bootstrap:
+  entry_point: AGENTS.md
+  required_reading:
+    - AGENTS.md
+    - NONEXISTENT_FILE.md
+    - path/that/does/not/exist/doc.md
+  scan_paths:
+    - invalid_directory/
+    - another/missing/path/
+
+authority_model:
+  source: AGENTS.md
+
+customization:
+  profile_path: profiles/this_profile_does_not_exist.yaml
+
+tools:
+  validation:
+    - scripts/missing_script.py
+  operations:
+    - another/missing/script.sh

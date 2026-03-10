@@ -1,0 +1,59 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: model_tuning_manifest
+version: 0.1.0
+type: object
+required:
+  - schema_version
+  - default_model_family
+  - model_families
+  - evidence_log
+properties:
+  schema_version:
+    type: string
+    pattern: "^\\d+\\.\\d+\\.\\d+$"
+  default_model_family:
+    type: string
+  model_families:
+    type: object
+    minProperties: 1
+    additionalProperties:
+      type: object
+      required:
+        - status
+        - notes
+        - lead_profile_addendum
+      properties:
+        status:
+          type: string
+          enum:
+            - planned
+            - active
+            - deprecated
+        notes:
+          type: string
+        lead_profile_addendum:
+          type: string
+      additionalProperties: false
+      if:
+        properties:
+          status:
+            const: planned
+      then:
+        properties:
+          lead_profile_addendum:
+            maxLength: 0
+  evidence_log:
+    type: array
+    items:
+      type: object
+      properties:
+        date:
+          type: string
+        model_family:
+          type: string
+        artifact:
+          type: string
+        notes:
+          type: string
+      additionalProperties: true
+additionalProperties: false

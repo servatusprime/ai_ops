@@ -1,0 +1,124 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: workflow_frontmatter
+type: object
+additionalProperties: false
+required:
+  - name
+  - description
+  - kind
+  - version
+  - status
+  - owner
+  - license
+  - claude
+  - codex
+  - exports
+properties:
+  name:
+    type: string
+    minLength: 1
+  description:
+    type: string
+    minLength: 1
+  kind:
+    type: string
+    const: workflow
+  version:
+    type: string
+    pattern: "^\\d+\\.\\d+\\.\\d+$"
+  status:
+    type: string
+    enum: [planned, stub, active, completed, deprecated]
+  owner:
+    type: string
+    const: ai_ops
+  license:
+    type: string
+    const: Apache-2.0
+  claude:
+    type: object
+    additionalProperties: false
+    required:
+      - argument-hint
+      - disable-model-invocation
+      - user-invocable
+      - allowed-tools
+      - model
+      - context
+      - agent
+    properties:
+      argument-hint:
+        type: [string, "null"]
+      disable-model-invocation:
+        type: boolean
+      user-invocable:
+        type: boolean
+      allowed-tools:
+        type: [string, "null"]
+      model:
+        type: [string, "null"]
+      context:
+        type: [string, "null"]
+      agent:
+        type: [string, "null"]
+  codex:
+    type: object
+    additionalProperties: false
+    required:
+      - metadata
+      - interface
+      - policy
+    properties:
+      metadata:
+        type: object
+        additionalProperties: false
+        required: [short-description]
+        properties:
+          short-description:
+            type: string
+            minLength: 1
+      interface:
+        type: object
+        additionalProperties: false
+        required: [display_name, short_description]
+        properties:
+          display_name:
+            type: string
+            minLength: 1
+          short_description:
+            type: string
+            minLength: 1
+      policy:
+        type: object
+        additionalProperties: false
+        required: [allow_implicit_invocation]
+        properties:
+          allow_implicit_invocation:
+            type: boolean
+  exports:
+    type: object
+    additionalProperties: false
+    required:
+      - claude_plugin
+      - codex
+      - claude_project
+    properties:
+      claude_plugin:
+        $ref: "#/definitions/export_target"
+      codex:
+        $ref: "#/definitions/export_target"
+      claude_project:
+        $ref: "#/definitions/export_target"
+definitions:
+  export_target:
+    type: object
+    additionalProperties: false
+    required:
+      - enabled
+      - skill_name
+    properties:
+      enabled:
+        type: boolean
+      skill_name:
+        type: string
+        minLength: 1

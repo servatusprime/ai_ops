@@ -1,0 +1,166 @@
+generated_at: '2026-03-10T01:32:40Z'
+generator: 00_Admin/scripts/generate_workflow_exports.py
+source_root: .ai_ops/workflows
+scope: repo
+workflow_pointer_basis: .ai_ops/workflows
+naming_policies:
+  source_workflows: snake_case filenames (authoritative)
+  plugin_skills:
+    naming: kebab-case directory/name
+    reason: Claude skills contract requires lowercase letters, numbers, and hyphens.
+  plugin_commands: snake_case passthrough from workflow filename
+  claude_project_skills: snake_case passthrough from workflow filename
+  codex_skills: snake_case passthrough from workflow filename
+targets:
+- plugin
+generation_targets:
+- plugin
+workflow_count: 13
+output_count: 26
+manifest_output_count: 26
+workflows:
+- workflow: ai_ops_setup
+  source: .ai_ops/workflows/ai_ops_setup.md
+  source_sha256_12: 5da24e59a7ea
+  description: Run ai_ops setup scripts for skills/commands
+  outputs:
+  - path: plugins/ai-ops-governance/commands/ai_ops_setup.md
+    kind: plugin_command
+    sha256_12: bc243ad523eb
+  - path: plugins/ai-ops-governance/skills/ai-ops-setup/SKILL.md
+    kind: plugin_skill
+    sha256_12: 5fd1e8afdf1c
+- workflow: bootstrap
+  source: .ai_ops/workflows/bootstrap.md
+  source_sha256_12: 1f9580893217
+  description: Initialize agent context by reading repo entry point and instructions.
+  outputs:
+  - path: plugins/ai-ops-governance/commands/bootstrap.md
+    kind: plugin_command
+    sha256_12: 5ee2d3118a94
+  - path: plugins/ai-ops-governance/skills/bootstrap/SKILL.md
+    kind: plugin_skill
+    sha256_12: 5e3e551d96b0
+- workflow: closeout
+  source: .ai_ops/workflows/closeout.md
+  source_sha256_12: 1f7cca0084e8
+  description: Finalize a work session with cleanup, lint, commit, and push.
+  outputs:
+  - path: plugins/ai-ops-governance/commands/closeout.md
+    kind: plugin_command
+    sha256_12: c079d1ca1e3e
+  - path: plugins/ai-ops-governance/skills/closeout/SKILL.md
+    kind: plugin_skill
+    sha256_12: bbb22cf94532
+- workflow: crosscheck
+  source: .ai_ops/workflows/crosscheck.md
+  source_sha256_12: 74e12c8d56b0
+  description: Conduct a structured peer review of work.
+  outputs:
+  - path: plugins/ai-ops-governance/commands/crosscheck.md
+    kind: plugin_command
+    sha256_12: 67cde2906b7c
+  - path: plugins/ai-ops-governance/skills/crosscheck/SKILL.md
+    kind: plugin_skill
+    sha256_12: 703bf46927f6
+- workflow: customize
+  source: .ai_ops/workflows/customize.md
+  source_sha256_12: 9fac33e075de
+  description: Configure agent preferences and customization options.
+  outputs:
+  - path: plugins/ai-ops-governance/commands/customize.md
+    kind: plugin_command
+    sha256_12: fe097a255aee
+  - path: plugins/ai-ops-governance/skills/customize/SKILL.md
+    kind: plugin_skill
+    sha256_12: 9da93b5fad68
+- workflow: harvest
+  source: .ai_ops/workflows/harvest.md
+  source_sha256_12: c7a4ab18d9ad
+  description: Harvest, prune, and summarize work artifacts across one or more targets.
+  outputs:
+  - path: plugins/ai-ops-governance/commands/harvest.md
+    kind: plugin_command
+    sha256_12: 09621b26da93
+  - path: plugins/ai-ops-governance/skills/harvest/SKILL.md
+    kind: plugin_skill
+    sha256_12: 01266cb5fbf2
+- workflow: health
+  source: .ai_ops/workflows/health.md
+  source_sha256_12: cd1652df2fc1
+  description: "Run a repo health check\u2014verify the repo is consistent and clean."
+  outputs:
+  - path: plugins/ai-ops-governance/commands/health.md
+    kind: plugin_command
+    sha256_12: f0386efdb872
+  - path: plugins/ai-ops-governance/skills/health/SKILL.md
+    kind: plugin_skill
+    sha256_12: 0a7174678693
+- workflow: lint
+  source: .ai_ops/workflows/lint.md
+  source_sha256_12: b9d666f7527d
+  description: Run configured validators and linters against a target scope and report
+    findings without modifying files.
+  outputs:
+  - path: plugins/ai-ops-governance/commands/lint.md
+    kind: plugin_command
+    sha256_12: a3871956f137
+  - path: plugins/ai-ops-governance/skills/lint/SKILL.md
+    kind: plugin_skill
+    sha256_12: 5c9050ad6aef
+- workflow: profiles
+  source: .ai_ops/workflows/profiles.md
+  source_sha256_12: 16ea7a910a19
+  description: Manage rider/crew profile source data and regenerate deterministic
+    derivative behavior files.
+  outputs:
+  - path: plugins/ai-ops-governance/commands/profiles.md
+    kind: plugin_command
+    sha256_12: eb63c917576b
+  - path: plugins/ai-ops-governance/skills/profiles/SKILL.md
+    kind: plugin_skill
+    sha256_12: 69af9edc528f
+- workflow: scratchpad
+  source: .ai_ops/workflows/scratchpad.md
+  source_sha256_12: 26728a5147e4
+  description: Create a scratchpad for session notes and observations.
+  outputs:
+  - path: plugins/ai-ops-governance/commands/scratchpad.md
+    kind: plugin_command
+    sha256_12: 71ba1ed107fc
+  - path: plugins/ai-ops-governance/skills/scratchpad/SKILL.md
+    kind: plugin_skill
+    sha256_12: dcd9fad693c0
+- workflow: work
+  source: .ai_ops/workflows/work.md
+  source_sha256_12: 63ec226cd0bf
+  description: Signal that repo rules apply and establish work/run context.
+  outputs:
+  - path: plugins/ai-ops-governance/commands/work.md
+    kind: plugin_command
+    sha256_12: e489aac45ab7
+  - path: plugins/ai-ops-governance/skills/work/SKILL.md
+    kind: plugin_skill
+    sha256_12: 79ffc08c02fc
+- workflow: work_savepoint
+  source: .ai_ops/workflows/work_savepoint.md
+  source_sha256_12: 68352a637fb9
+  description: Commit and push active work as a savepoint, then end the ai_ops session.
+  outputs:
+  - path: plugins/ai-ops-governance/commands/work_savepoint.md
+    kind: plugin_command
+    sha256_12: ec6396cebcbe
+  - path: plugins/ai-ops-governance/skills/work-savepoint/SKILL.md
+    kind: plugin_skill
+    sha256_12: d34c7c6f6217
+- workflow: work_status
+  source: .ai_ops/workflows/work_status.md
+  source_sha256_12: 9dec10904794
+  description: Summarize active work context and blockers.
+  outputs:
+  - path: plugins/ai-ops-governance/commands/work_status.md
+    kind: plugin_command
+    sha256_12: 39ef6ff5008b
+  - path: plugins/ai-ops-governance/skills/work-status/SKILL.md
+    kind: plugin_skill
+    sha256_12: 42763d1c9254
