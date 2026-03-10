@@ -1,0 +1,478 @@
+.
+|-- .ai_ops/
+|   |-- exports/
+|   |   +-- manifest.yaml
+|   |-- local/
+|   |   |-- config.yaml
+|   |   |-- profiles/
+|   |   |   +-- active_crew.yaml
+|   |   |-- setup/
+|   |   |   +-- state.yaml
+|   |   +-- work_state.yaml
+|   |-- setup/
+|   |   |-- README.md
+|   |   |-- setup_antigravity.md
+|   |   |-- setup_claude.bat
+|   |   |-- setup_claude.sh
+|   |   |-- setup_claude_skills.bat
+|   |   |-- setup_claude_skills.sh
+|   |   |-- setup_codex_skills.bat
+|   |   |-- setup_codex_skills.sh
+|   |   |-- setup_cursor.bat
+|   |   |-- setup_cursor.sh
+|   |   |-- setup_gemini.bat
+|   |   +-- setup_gemini.sh
+|   +-- workflows/
+|       |-- ai_ops_setup.md
+|       |-- bootstrap.md
+|       |-- closeout.md
+|       |-- crosscheck.md
+|       |-- customize.md
+|       |-- harvest.md
+|       |-- health.md
+|       |-- lint.md
+|       |-- profiles.md
+|       |-- scratchpad.md
+|       |-- work.md
+|       |-- work_savepoint.md
+|       +-- work_status.md
+|-- .cache/
+|   |-- ai_ops/
+|   |   |-- pre-commit/
+|   |   +-- ruff/
+|   |       |-- .gitignore
+|   |       |-- 0.14.14/
+|   |       |   |-- 10593179324478314933
+|   |       |   |-- 11739632275347945949
+|   |       |   |-- 12670860125344905375
+|   |       |   |-- 13918288169918536149
+|   |       |   |-- 14114236527105407974
+|   |       |   |-- 1416266381194115419
+|   |       |   |-- 14712570016922425051
+|   |       |   |-- 15605661642034116615
+|   |       |   |-- 16713265101395532102
+|   |       |   |-- 16846992866058309981
+|   |       |   |-- 17372560738207530820
+|   |       |   |-- 17774897220355050796
+|   |       |   |-- 18302915123780154648
+|   |       |   |-- 2112720494343425100
+|   |       |   |-- 2859684381422199563
+|   |       |   |-- 4523646625181636909
+|   |       |   |-- 6427943565849998528
+|   |       |   |-- 8090298764222978637
+|   |       |   |-- 8198553713612653989
+|   |       |   |-- 8656486778550152215
+|   |       |   |-- 9041280090719957892
+|   |       |   |-- 9473340452583123791
+|   |       |   +-- 9910678709129430506
+|   |       +-- CACHEDIR.TAG
+|   +-- npm/
+|       |-- _logs/
+|       |   |-- 2026-03-04T17_02_21_434Z-debug-0.log
+|       |   +-- 2026-03-04T17_05_40_547Z-debug-0.log
+|       +-- _update-notifier-last-checked
+|-- .editorconfig
+|-- .github/
+|   |-- ISSUE_TEMPLATE/
+|   |   |-- bug_report.md
+|   |   +-- feature_request.md
+|   |-- PULL_REQUEST_TEMPLATE.md
+|   +-- workflows/
+|       +-- lint.yml
+|-- .gitignore
+|-- .lint_repo_validator.log
+|-- .markdownlint.json
+|-- .markdownlintignore
+|-- .pre-commit-config.yaml
+|-- .prettierrc
+|-- .yamllint
+|-- 00_Admin/
+|   |-- README.md
+|   |-- backlog/
+|   |   |-- feedback_intake.md
+|   |   |-- future_work_registry.yaml
+|   |   +-- future_work_scorecard.md
+|   |-- configs/
+|   |   |-- README.md
+|   |   |-- context_routing.yaml
+|   |   |-- secrets/
+|   |   |   |-- .gitkeep
+|   |   |   +-- README.md
+|   |   |-- setup_contract.yaml
+|   |   +-- validator/
+|   |       |-- schema_aiops_session.yaml
+|   |       |-- schema_execution_state.yaml
+|   |       |-- schema_workflow_frontmatter.yaml
+|   |       +-- validator_config.yaml
+|   |-- decisions/
+|   |   +-- decision_ledger.md
+|   |-- guides/
+|   |   |-- README.md
+|   |   |-- ai_operations/
+|   |   |   |-- README.md
+|   |   |   |-- guide_ai_compatibility_matrix.md
+|   |   |   |-- guide_ai_facing_protocol.md
+|   |   |   |-- guide_ai_operations_stack.md
+|   |   |   |-- guide_ai_ops_vocabulary.md
+|   |   |   |-- guide_alignment_notes.md
+|   |   |   |-- guide_authority_decision_tree.md
+|   |   |   |-- guide_bootstrap_self_repair.md
+|   |   |   |-- guide_bootstrap_verification_checklist.md
+|   |   |   |-- guide_capability_certification.md
+|   |   |   |-- guide_command_workflows.md
+|   |   |   |-- guide_contracts.md
+|   |   |   |-- guide_design_tests.md
+|   |   |   |-- guide_execution_orchestration.md
+|   |   |   |-- guide_execution_spines.md
+|   |   |   |-- guide_feedback_intake.md
+|   |   |   |-- guide_multi_agent_coordination.md
+|   |   |   |-- guide_native_command_comparison.md
+|   |   |   |-- guide_parallel_execution.md
+|   |   |   |-- guide_repository_indices.md
+|   |   |   |-- guide_run_programs.md
+|   |   |   |-- guide_scratchpad_usage.md
+|   |   |   |-- guide_skills_commands_classification.md
+|   |   |   |-- guide_work_programs.md
+|   |   |   |-- guide_work_proposals.md
+|   |   |   |-- guide_workflow_registries.md
+|   |   |   +-- guide_workflows.md
+|   |   |-- architecture/
+|   |   |   |-- guide_aiops_agent_endpoint.md
+|   |   |   |-- guide_bootstrap_algorithm.md
+|   |   |   |-- guide_design_and_philosophy.md
+|   |   |   |-- guide_environment_and_mode_selection.md
+|   |   |   |-- guide_file_placement.md
+|   |   |   |-- guide_naming_architecture.md
+|   |   |   |-- guide_naming_conventions.md
+|   |   |   +-- guide_repository_structure.md
+|   |   |-- authoring/
+|   |   |   |-- guide_ai_assistants.md
+|   |   |   |-- guide_changelog_conventions.md
+|   |   |   |-- guide_json_authoring.md
+|   |   |   |-- guide_markdown_authoring.md
+|   |   |   |-- guide_prompt_authoring.md
+|   |   |   |-- guide_python_authoring.md
+|   |   |   |-- guide_readme_authoring.md
+|   |   |   |-- guide_requirements_matrix.md
+|   |   |   |-- guide_runbooks.md
+|   |   |   |-- guide_spec.md
+|   |   |   |-- guide_sql_authoring.md
+|   |   |   |-- guide_workbooks.md
+|   |   |   +-- guide_yaml_authoring.md
+|   |   |-- guide_ide_config.md
+|   |   |-- guide_ide_extensions.md
+|   |   |-- runbooks/
+|   |   |   +-- README.md
+|   |   +-- tooling/
+|   |       |-- guide_environment_setup.md
+|   |       +-- guide_markdownlint_handling.md
+|   |-- logs/
+|   |   |-- .gitkeep
+|   |   |-- README.md
+|   |   |-- log_emergency_autonomy.md
+|   |   |-- log_guide_updates.md
+|   |   |-- log_runbook_run.md
+|   |   |-- log_schema_changes.md
+|   |   |-- log_setup_audit.md
+|   |   +-- log_workbook_run.md
+|   |-- policies/
+|   |   |-- .gitkeep
+|   |   |-- README.md
+|   |   |-- policy_core_doc_structure.md
+|   |   |-- policy_future_work_registry.md
+|   |   |-- policy_git_workflow_conventions.md
+|   |   |-- policy_module_metadata_standards.md
+|   |   |-- policy_naming_conventions.md
+|   |   |-- policy_requirements_management.md
+|   |   +-- policy_status_values.md
+|   |-- prompts/
+|   |   +-- README.md
+|   |-- reports/
+|   |   +-- health/
+|   |       |-- README.md
+|   |       |-- audit_ai_ops_section_placement_2026-03-03.md
+|   |       |-- audit_ai_ops_section_placement_2026-03-04.md
+|   |       |-- audit_ai_ops_section_placement_inventory_2026-03-03.csv
+|   |       |-- audit_ai_ops_section_placement_inventory_2026-03-04.csv
+|   |       |-- audit_ai_ops_section_reorder_map_2026-03-03.md
+|   |       |-- audit_ai_ops_section_reorder_map_2026-03-04.md
+|   |       |-- health_ai_ops_option1_quick_2026-03-03.md
+|   |       |-- health_ai_ops_option1_quick_2026-03-04.md
+|   |       |-- health_ai_ops_option2_comprehensive_2026-03-03.md
+|   |       |-- health_ai_ops_option2_comprehensive_2026-03-04.md
+|   |       |-- health_aiops_wb_oss_readiness_2026-02-27.md
+|   |       +-- health_work_skill_context_signal_2026-03-04.md
+|   |-- runbooks/
+|   |   |-- README.md
+|   |   |-- rb_bootstrap.md
+|   |   |-- rb_codex_compat_mirror_01.md
+|   |   |-- rb_commit_push_streamlining_01.md
+|   |   |-- rb_packet_relocation_01.md
+|   |   |-- rb_release_quality_gate_01.md
+|   |   |-- rb_repo_health_review.md
+|   |   |-- rb_repo_validator_01.md
+|   |   |-- rb_setup_smoke_matrix_01.md
+|   |   +-- rb_workflow_frontmatter_validation_01.md
+|   |-- scripts/
+|   |   |-- check_workflow_exports_drift.py
+|   |   |-- cleanup_sandbox.ps1
+|   |   |-- cleanup_trash.ps1
+|   |   |-- diagnose_file_locks.ps1
+|   |   |-- generate_future_work_scorecard.py
+|   |   |-- generate_repo_structure.ps1
+|   |   |-- generate_repo_structure.py
+|   |   |-- generate_workflow_exports.py
+|   |   |-- lint.ps1
+|   |   |-- op_load_profile.py
+|   |   |-- op_validate_config.py
+|   |   |-- regenerate_profiles.py
+|   |   |-- run_markdownlint.ps1
+|   |   |-- run_release_quality_gate.py
+|   |   |-- sync_validator_baseline.py
+|   |   |-- validate_ide_extensions.ps1
+|   |   |-- validate_metadata.py
+|   |   |-- validate_repo_precommit.ps1
+|   |   |-- validate_repo_rules.py
+|   |   |-- validate_workbook_cli_contracts.py
+|   |   +-- validate_workflow_frontmatter.py
+|   |-- specs/
+|   |   |-- README.md
+|   |   |-- spec_execution_orchestration.md
+|   |   |-- spec_governance_enforcement.md
+|   |   |-- spec_infrastructure_change_validation_gate.md
+|   |   |-- spec_repo_metadata_standard.md
+|   |   |-- spec_repository_indices.md
+|   |   |-- spec_runbook_structure.md
+|   |   |-- spec_slider_manifest.md
+|   |   |-- spec_subagent_file.md
+|   |   |-- spec_work_focus_recenter.md
+|   |   |-- spec_work_mode_direct.md
+|   |   |-- spec_work_mode_governed.md
+|   |   |-- spec_workbook_structure.md
+|   |   |-- spec_workbundle_dependency_tracking.md
+|   |   |-- spec_workbundle_placement_suggestion.md
+|   |   +-- spec_workflow_structure.md
+|   |-- tests/
+|   |   |-- fixtures/
+|   |   |   +-- manifests/
+|   |   |       |-- README.md
+|   |   |       |-- invalid_legacy_work_context_keys.yaml
+|   |   |       |-- invalid_paths.yaml
+|   |   |       |-- invalid_schema.yaml
+|   |   |       |-- invalid_syntax.yaml
+|   |   |       |-- valid_full.yaml
+|   |   |       +-- valid_minimal.yaml
+|   |   +-- workflow_smoke_tests.yaml
+|   +-- tooling/
+|       |-- README.md
+|       +-- extensions.md
+|-- 01_Resources/
+|   |-- .gitkeep
+|   |-- README.md
+|   |-- guides/
+|   |   +-- README.md
+|   |-- images/
+|   |   +-- branding/
+|   |       +-- ai_ops-banner.png
+|   |-- licenses_disclaimers/
+|   |   |-- .gitkeep
+|   |   +-- README.md
+|   |-- prompts/
+|   |   |-- .gitkeep
+|   |   +-- README.md
+|   +-- templates/
+|       |-- documents/
+|       |   |-- env_vars_template.md
+|       |   |-- harvest_report_template.md
+|       |   |-- health/
+|       |   |   |-- section_placement_audit_template.md
+|       |   |   |-- section_placement_inventory_template.csv
+|       |   |   +-- section_reorder_map_template.md
+|       |   |-- project_directory_template.md
+|       |   |-- prompt_spec_template.md
+|       |   |-- requirements_matrix_template.md
+|       |   +-- spec-template.md
+|       |-- metadata/
+|       |   +-- README.md
+|       |-- scripts/
+|       |   +-- script_template_python.py
+|       +-- workflows/
+|           |-- command_wrapper_template.md
+|           |-- execution_spine_template.md
+|           |-- governed_repo_bootstrap.md
+|           |-- peer_review_template.md
+|           |-- rb_template_generic.md
+|           |-- runbundle_pipeline_template.md
+|           |-- runbundle_readme_template.md
+|           |-- runprogram_pipeline_template.md
+|           |-- runprogram_readme_template.md
+|           |-- scratchpad_template.md
+|           |-- wb_template_first_run.md
+|           |-- wb_template_generic.md
+|           |-- wb_template_lite.md
+|           |-- work_proposal_template.md
+|           |-- work_summary_template.md
+|           |-- workbundle_pipeline_template.md
+|           |-- workbundle_readme_template.md
+|           |-- workprogram_pipeline_template.md
+|           +-- workprogram_readme_template.md
+|-- 02_Modules/
+|   |-- .gitkeep
+|   |-- 00_operator_config/
+|   |   |-- README.md
+|   |   |-- docs/
+|   |   |   |-- spec_customization_interview.md
+|   |   |   |-- spec_customization_schemas.md
+|   |   |   +-- spec_customization_ux.md
+|   |   |-- metadata/
+|   |   |   +-- module.yaml
+|   |   |-- operations/
+|   |   |   +-- op_sync_external_context.py
+|   |   +-- templates/
+|   |       |-- aiops_config.template.yaml
+|   |       +-- aiops_config.user.yaml
+|   |-- 01_agent_profiles/
+|   |   |-- README.md
+|   |   |-- base/
+|   |   |   |-- default_crew.yaml
+|   |   |   +-- model_tuning_manifest.yaml
+|   |   |-- config/
+|   |   |   |-- crews.yaml
+|   |   |   +-- rider_archetypes.yaml
+|   |   |-- generated/
+|   |   |   |-- lead_agent_profile_context.md
+|   |   |   |-- model_tuning_summary.md
+|   |   |   +-- single_agent_profile_map.md
+|   |   |-- guide_prose_generation.md
+|   |   |-- guide_rider_archetype_library.md
+|   |   |-- metadata/
+|   |   |   +-- module.yaml
+|   |   |-- profiles/
+|   |   |   +-- preset_vibe_coder.yaml
+|   |   +-- schemas/
+|   |       |-- model_tuning_manifest_schema.yaml
+|   |       |-- profile_source_schema.yaml
+|   |       +-- schema_rider_settings.yaml
+|   |-- 02_environments/
+|   |   |-- README.md
+|   |   |-- docs/
+|   |   |-- metadata/
+|   |   |   +-- module.yaml
+|   |   +-- setup/
+|   |       +-- install_matrix.yaml
+|   +-- _template_module/
+|       |-- .gitignore
+|       |-- .gitkeep
+|       |-- docs/
+|       |   |-- .gitkeep
+|       |   +-- specs/
+|       |       +-- .gitkeep
+|       |-- examples/
+|       |   +-- .gitkeep
+|       |-- exports/
+|       |-- metadata/
+|       |   +-- module.yaml
+|       |-- src/
+|       |   +-- .gitkeep
+|       |-- templates/
+|       |   +-- .gitkeep
+|       +-- tests/
+|           |-- .gitkeep
+|           +-- test_template_module_smoke.py
+|-- 90_Sandbox/
+|   |-- .gitkeep
+|   |-- README.md
+|   |-- _artifacts/
+|   |   +-- reviews/
+|   |-- ai_external_context/
+|   |   +-- files/
+|   |       +-- repo_structure_reference.txt
+|   +-- ai_workbooks/
+|       |-- README.md
+|       |-- ai_ops_oss_review_2026-03-06.md
+|       |-- ai_ops_reddit_and_ops_guide.md
+|       +-- wb_repo_split_preparation_01_2026-03-06/
+|           |-- README.md
+|           |-- _scratchpad_codex_2026-03-06.md
+|           |-- decisions_questions_assumptions.md
+|           |-- evidence_wb4_hardening_and_skill_dry_run_2026-03-10.md
+|           |-- review_wb2_completion_2026-03-09.md
+|           |-- review_wb2_mid_execution_2026-03-09.md
+|           |-- review_wb3_completion_2026-03-10.md
+|           |-- review_wb3_completion_opus_2026-03-10.md
+|           |-- review_wb4_completion_2026-03-10.md
+|           |-- review_wb4_completion_opus_2026-03-10.md
+|           |-- review_wp_repo_split_preparation_design_2026-03-06.md
+|           |-- wb_ai_ops_oss_hardening_01.md
+|           |-- wb_repo_split_execution_01.md
+|           |-- wb_repo_split_preparation_01.md
+|           |-- wb_repo_split_seed_actualization_01.md
+|           +-- work_proposal_repo_split_preparation_01.md
+|-- 99_Trash/
+|-- AGENTS.md
+|-- CHANGELOG.md
+|-- CODEOWNERS
+|-- CODE_OF_CONDUCT.md
+|-- CONTRIBUTING.md
+|-- HUMANS.md
+|-- LICENSE
+|-- README.md
+|-- SECURITY.md
+|-- plugins/
+|   |-- ai-ops-governance/
+|   |   |-- .claude-plugin/
+|   |   |   +-- plugin.json
+|   |   |-- LICENSE
+|   |   |-- README.md
+|   |   |-- agents/
+|   |   |   |-- README.md
+|   |   |   |-- ai-ops-closer.md
+|   |   |   |-- ai-ops-executor.md
+|   |   |   |-- ai-ops-linter.md
+|   |   |   |-- ai-ops-planner.md
+|   |   |   |-- ai-ops-researcher.md
+|   |   |   +-- ai-ops-reviewer.md
+|   |   |-- commands/
+|   |   |   |-- ai_ops_setup.md
+|   |   |   |-- bootstrap.md
+|   |   |   |-- closeout.md
+|   |   |   |-- crosscheck.md
+|   |   |   |-- customize.md
+|   |   |   |-- harvest.md
+|   |   |   |-- health.md
+|   |   |   |-- lint.md
+|   |   |   |-- profiles.md
+|   |   |   |-- scratchpad.md
+|   |   |   |-- work.md
+|   |   |   |-- work_savepoint.md
+|   |   |   +-- work_status.md
+|   |   +-- skills/
+|   |       |-- ai-ops-setup/
+|   |       |   +-- SKILL.md
+|   |       |-- bootstrap/
+|   |       |   +-- SKILL.md
+|   |       |-- closeout/
+|   |       |   +-- SKILL.md
+|   |       |-- crosscheck/
+|   |       |   +-- SKILL.md
+|   |       |-- customize/
+|   |       |   +-- SKILL.md
+|   |       |-- harvest/
+|   |       |   +-- SKILL.md
+|   |       |-- health/
+|   |       |   +-- SKILL.md
+|   |       |-- lint/
+|   |       |   +-- SKILL.md
+|   |       |-- profiles/
+|   |       |   +-- SKILL.md
+|   |       |-- scratchpad/
+|   |       |   +-- SKILL.md
+|   |       |-- work/
+|   |       |   +-- SKILL.md
+|   |       |-- work-savepoint/
+|   |       |   +-- SKILL.md
+|   |       +-- work-status/
+|   |           +-- SKILL.md
+|   +-- marketplace.json
+|-- repo_structure.txt
++-- ruff.toml

@@ -9,6 +9,10 @@ Semantic Versioning.
 
 ### Added
 
+- Standalone private repository on GitHub (`servatusprime/ai_ops`), split
+  from monorepo with fresh git history.
+- Per-repo `.pre-commit-config.yaml` with repo-relative tool paths.
+- Per-repo `repo_structure.txt` generation via pre-commit hook.
 - Repo split preparation workbundle with three-workbook execution sequence
   (strategy, hygiene/staging, execution).
 - `MD050` strong-style rule pinned to asterisk in `.markdownlint.json`.
@@ -16,6 +20,13 @@ Semantic Versioning.
 
 ### Changed
 
+- `.gitignore` expanded: env/secrets exclusions, `.ai_ops/config.yaml`,
+  `.aiops_session`, active crew profile.
+- `plugin.json` homepage and repository URLs updated to `servatusprime/ai_ops`.
+- `tools/` directory consolidated to `00_Admin/scripts/` (12+ reference
+  sites updated).
+- Cross-repo reference policy enforced: ai_ops must not reference external
+  repos by name, path, or example (VS028).
 - Sandbox `ai_workbooks/README.md` updated: stale entries removed, template
   path corrected.
 - `work_state.yaml` reconciled: stale entries for retired workbundles removed.

@@ -41,7 +41,7 @@ core_doc_exempt: false
 - Markdown Mermaid (`bierner.markdown-mermaid`) — sequence/flow diagrams
 - Regex Previewer (`chrmarti.regex`) — faster text wrangling
 - Spell Checker (`streetsidesoftware.code-spell-checker`) — prose quality
-- XML Tools (`dotjoshjohnson.xml`) — QGIS templates
+- XML Tools (`dotjoshjohnson.xml`) — GIS template assets
 - TODO Tree (`gruntfuggly.todo-tree`) — index TODO/FIXME markers
 
 ### Optional (situational)
@@ -52,7 +52,7 @@ core_doc_exempt: false
   - `google.geminicodeassist`
   - `openai.chatgpt`
 - GitHub Copilot (`github.copilot`), Copilot Chat (`github.copilot-chat`) — licensed AI assist
-- Remote SSH (`ms-vscode-remote.remote-ssh`) — remote PostGIS/QGIS hosts
+- Remote SSH (`ms-vscode-remote.remote-ssh`) — remote GIS hosts
 - Dev Containers (`ms-vscode-remote.remote-containers`) — containerized stacks
 
 ## How we audit & install

@@ -131,7 +131,7 @@ Examples:
 
 - GIS layer naming: `../<work_repo>/02_Modules/gis_workflow/docs/guides/`
 - Module scenario guidance: `../<work_repo>/02_Modules/<module>/docs/guides/`
-- PyQGIS authoring: `../<work_repo>/02_Modules/gis_workflow/docs/guides/guide_pyqgis_authoring.md`
+- Desktop GIS authoring: `../<work_repo>/02_Modules/gis_workflow/docs/guides/guide_gis_desktop_authoring.md`
 
 ## See Also
 

@@ -233,7 +233,7 @@ Work-family containers:
 <work_repo>/Projects/<project>/
   admin/run_logs/
   docs/
-  inputs/{data,qgis,resources/{connections,layouts,styles}}
+  inputs/{data,gis_project,resources/{connections,layouts,styles}}
   outputs/exports/{pdf,shp,points,reports}
 ```
 
@@ -405,7 +405,7 @@ criteria, planning checklist) embedded in workbooks/runbooks.
 - Exploratory analysis
 - Vendor evaluations
 - Background investigation
-- Example: `research/prophetic/`
+- Example: `research/vendor_case_a/`
 
 **Reports**: `00_Admin/reports/`
 

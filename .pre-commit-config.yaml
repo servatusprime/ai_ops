@@ -1,0 +1,50 @@
+repos:
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.41.0
+    hooks:
+      - id: markdownlint
+        args: ['--config', '.markdownlint.json', '--fix']
+        exclude: '^99_Trash/'
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: ['-c', '.yamllint']
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.4
+    hooks:
+      - id: ruff
+        args: ['--config', 'ruff.toml', '--fix']
+  - repo: local
+    hooks:
+      - id: ai-ops-repo-structure-map
+        name: ai_ops repo structure map refresh
+        entry: python 00_Admin/scripts/generate_repo_structure.py
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: ai-ops-validator
+        name: ai_ops validator (manual)
+        entry: >-
+          python 00_Admin/scripts/validate_repo_rules.py
+          --repo-root .
+          --config 00_Admin/configs/validator/validator_config.yaml
+        language: system
+        pass_filenames: false
+        stages: [manual]
+      - id: ai-ops-export-drift
+        name: ai_ops export drift check
+        entry: >-
+          python 00_Admin/scripts/check_workflow_exports_drift.py
+          --strict --require-manifest
+        language: system
+        pass_filenames: false
+        files: ^\.ai_ops/workflows/.*\.md$
+        stages: [pre-commit]
+      - id: ai-ops-pending-check
+        name: ai_ops pending-vs-ready drift (manual)
+        entry: >-
+          python 00_Admin/scripts/run_release_quality_gate.py --dry-run
+        language: system
+        pass_filenames: false
+        stages: [manual]

@@ -48,7 +48,7 @@ of truth and update this guide/tooling notes.
 - Mermaid preview: `bierner.markdown-mermaid`
 - Spell check: `streetsidesoftware.code-spell-checker`
 - GIS quick viewers: `jumpinjackie.vscode-map-preview`, `randomfractalsinc.geo-data-viewer`
-- XML tools (QGIS templates): `dotjoshjohnson.xml`
+- XML tools (GIS templates): `dotjoshjohnson.xml`
 - Regex helper: `chrmarti.regex`
 - TODO index: `gruntfuggly.todo-tree`
 

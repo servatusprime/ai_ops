@@ -1,6 +1,6 @@
 ---
 title: Guide: AI Workbooks
-version: 1.8.2
+version: 1.8.3
 status: active
 license: Apache-2.0
 last_updated: 2026-03-06
@@ -32,6 +32,7 @@ Related specs and template:
 - `01_Resources/templates/workflows/runbundle_readme_template.md` (runbundle README)
 - `01_Resources/templates/workflows/runbundle_pipeline_template.md` (runbundle pipeline)
 - `01_Resources/templates/workflows/runprogram_pipeline_template.md` (runprogram pipeline)
+- `01_Resources/templates/workflows/governed_repo_bootstrap.md` (governed-repo bootstrap starter)
 
 Note: The spec defines mandatory requirements; this guide provides practical authoring guidance. If there is a
 conflict, the spec wins.
@@ -501,6 +502,23 @@ Workbook complexity thresholds:
 These are guidelines, not hard rules. A workbook with 20 simple tasks may not need phases, while one with
 12 complex tasks may benefit from phasing.
 
+## 3.5) Workspace-Root Shared Artifact Classification
+
+Treat these as workspace-root shared artifacts when touched:
+
+- `.agents/`
+- `.claude/`
+- `.codex/`
+
+Rules:
+
+- Do not classify these as repo-canonical by default.
+- Prefer patching canonical source/generator surfaces first.
+- If direct workspace edits are required, record sync intent and owner in the
+  active workbook.
+- For governed repos, keep ai_ops governance references repo-relative
+  (`../ai_ops/...`) and avoid machine-local absolute paths.
+
 ## 4) Authoring in Chat
 
 - Emit one fenced block per file with a language hint (e.g., ```markdown).
@@ -699,6 +717,23 @@ Approval details MUST be recorded in both the Work Proposal and the execution wo
 Reference: `00_Admin/guides/ai_operations/guide_work_proposals.md`.
 
 Terminology guardrail: use **work proposal** (not "implementation plan") for Level 4 governance changes.
+
+### Proposal Necessity Threshold
+
+Use this threshold before creating a work proposal:
+
+- **Required**:
+  - Level 4 scope touching canonical governance surfaces
+    (`00_Admin/policies/**`, `00_Admin/specs/**`, `.ai_ops/workflows/**`,
+    `00_Admin/configs/**`, `AGENTS.md`, `CONTRIBUTING.md`).
+- **Usually not required**:
+  - Level 3 workbook/template/guidance updates already approved inside an
+    active workbook lane.
+- **Not required**:
+  - sandbox-only evidence artifacts and transient notes.
+
+If uncertain, record a `proposal_seed` disposition and request requestor
+confirmation before execution.
 
 ## 15) Pre-Review for New Artifact Types
 

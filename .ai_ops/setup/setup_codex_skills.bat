@@ -64,14 +64,29 @@ goto usage_error
 
 :args_done
 set "REPO_ROOT="
-if exist "%CD%\ai_ops\.ai_ops\workflows\" (
+set "SCRIPT_DIR="
+for %%I in ("%~f0") do set "SCRIPT_DIR=%%~dpI"
+if defined SCRIPT_DIR (
+  set "AIOPS_DOT="
+  for %%I in ("!SCRIPT_DIR!..") do set "AIOPS_DOT=%%~fI"
+  if defined AIOPS_DOT if exist "!AIOPS_DOT!\workflows\" (
+    for %%I in ("!AIOPS_DOT!\..") do set "REPO_ROOT=%%~fI"
+  )
+)
+if not defined REPO_ROOT if exist "%CD%\ai_ops\.ai_ops\workflows\" (
   set "REPO_ROOT=%CD%\ai_ops"
+)
+if not defined REPO_ROOT if exist "%CD%\..\ai_ops\.ai_ops\workflows\" (
+  set "REPO_ROOT=%CD%\..\ai_ops"
 )
 if not defined REPO_ROOT if exist "%CD%\.ai_ops\workflows\" (
   set "REPO_ROOT=%CD%"
 )
 if not defined REPO_ROOT (
-  for %%I in ("%~dp0..\..") do set "REPO_ROOT=%%~fI"
+  echo Could not resolve ai_ops repo root from script or current directory.
+  echo Script directory: !SCRIPT_DIR!
+  echo Current directory: !CD!
+  exit /b 1
 )
 set "WORKFLOW_DIR=%REPO_ROOT%\.ai_ops\workflows"
 
@@ -125,7 +140,7 @@ if "!dry_run!"=="1" (
   if not exist "!WORK_STATE_FILE!" (
     if not exist "%REPO_ROOT%\.ai_ops\local" mkdir "%REPO_ROOT%\.ai_ops\local"
     (
-      echo # ai_ops work state — machine-local, gitignored.
+      echo # ai_ops work state ? machine-local, gitignored.
       echo # Written by /work and /closeout. Never commit.
       echo schema_version: "1.0.0"
       echo work_context:

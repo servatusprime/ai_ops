@@ -24,8 +24,8 @@ Python is used for ETL, automation, and validation across modules.
 Use this starter when creating new Python scripts:
 
 - `01_Resources/templates/scripts/script_template_python.py`
-- `<work_repo>/01_Resources/templates/scripts/script_template_pyqgis.py`
-  (domain-overlay PyQGIS template; canonical in the governed repo)
+- `<work_repo>/01_Resources/templates/scripts/script_template_gis_desktop.py`
+  (domain-overlay desktop GIS template; canonical in the governed repo)
 
 The template includes a standard pattern for:
 
@@ -269,7 +269,7 @@ CONTRACT = {
     "outputs": ["map_output_manifest.yaml"],
     "crs": "EPSG:2264",
     "idempotent": True,
-    "qgis_required": False,
+    "desktop_gis_required": False,
 }
 ```
 
@@ -279,7 +279,7 @@ Benefits:
   docstrings.
 - Pipeline orchestrators can chain scripts by matching outputs to inputs.
 - The `idempotent` flag signals whether re-runs are safe.
-- The `qgis_required` flag helps agents choose the right execution
+- The `desktop_gis_required` flag helps agents choose the right execution
   environment.
 
 When using CONTRACT, keep the `id` field aligned with the authoritative

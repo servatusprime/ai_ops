@@ -56,7 +56,7 @@ Canonical behavior contract:
 | Governance and workflow execution | Agent lane (`/work`, `/crosscheck`, `/closeout`) | Applies authority, tracking, and QA gates consistently |
 | Repo edits and artifact generation | IDE/CLI agent runtime (Codex or Claude) | Full repo context and deterministic file operations |
 | Validation and linting | Local shell from agent runtime | Reproducible command evidence |
-| Heavy data processing or domain runtimes | External runtime (for example Conda/QGIS/toolchain-specific env) | Correct dependencies and scale outside chat sandbox |
+| Heavy data processing or domain runtimes | External runtime (for example Conda/GIS-toolchain-specific env) | Correct dependencies and scale outside chat sandbox |
 | Read-only audits | `/crosscheck` or `/health` | Structured evidence and verdict output |
 
 ## Tool Surface Selection

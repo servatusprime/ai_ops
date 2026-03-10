@@ -22,7 +22,7 @@ CONTRACT = {
     "outputs": ["<output_dir_or_file>"],
     "crs": "",
     "idempotent": True,
-    "qgis_required": False,
+    "desktop_gis_required": False,
 }
 
 

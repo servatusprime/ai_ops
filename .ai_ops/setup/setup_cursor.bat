@@ -42,7 +42,7 @@ REM Create .ai_ops\local\work_state.yaml if it doesn't already exist (idempotent
 if not exist ".ai_ops\local\work_state.yaml" (
   if not exist ".ai_ops\local" mkdir ".ai_ops\local"
   (
-    echo # ai_ops work state — machine-local, gitignored.
+    echo # ai_ops work state ? machine-local, gitignored.
     echo # Written by /work and /closeout. Never commit.
     echo schema_version: "1.0.0"
     echo work_context:

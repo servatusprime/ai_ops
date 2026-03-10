@@ -164,7 +164,7 @@ if ($env:SKIP_RE_QC -eq "1") {
             Write-Host "No staged GIS/metadata files detected for validation." -ForegroundColor DarkGray
         } else {
             $targetExts = @(".gpkg", ".geojson", ".shp", ".tif", ".tiff", ".vrt", ".gdb", ".fgb", ".zip", ".yml", ".yaml", ".json")
-            $targetDirs = @("02_Modules/$gisModuleName/", "01_Resources/qgis/")
+            $targetDirs = @("02_Modules/$gisModuleName/", "01_Resources/gis/")
 
             $targets = @()
             foreach ($p in $changedPaths) {

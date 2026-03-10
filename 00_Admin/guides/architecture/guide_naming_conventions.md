@@ -58,8 +58,8 @@ note: 'Do not edit directly; update canonical source and re-copy.'
 | Runbook             | `rb_`                       | `rb_postgis_backup.md`        |
 | Convention          | `guide_`                    | `guide_naming_conventions.md` |
 | Project Log         | `project_log_YYYY-MM-DD.md` | `project_log_2025-11-10.md`   |
-| Style (QGIS)        | `style_`                    | `style_zoning_base.qml`       |
-| Layout (QGIS)       | `layout_`                   | `layout_env_constraints.qpt`  |
+| Style (GIS)         | `style_`                    | `style_zoning_base.qml`       |
+| Layout (GIS)        | `layout_`                   | `layout_env_constraints.qpt`  |
 | SQL                 | `sql_` (optional)           | `sql_01_schemas.sql`          |
 | Script (PowerShell) | `ps_`                       | `ps_backup_postgis.ps1`       |
 | Script (Python)     | `py_` (optional)            | `py_refresh_aoi.py`           |
@@ -211,8 +211,8 @@ Operation prefixes are intent-based and not domain-specific. Use the shortest ve
 - **SQL files:** `03_SQL/01_schemas.sql`, `03_SQL/02_meta_tables.sql`, `03_SQL/03_roles_grants.sql`,
   `03_SQL/04_audit_triggers.sql`.
 - **Scripts:** `04_Scripts/refresh_aoi.py`, `04_Scripts/backup_postgis.ps1`.
-- **QGIS Project:** `<work_repo>/02_Modules/gis_workflow/templates/project_template.qgz`.
-- **QGIS Styles:** `<work_repo>/02_Modules/gis_workflow/styles/style_<topic>.qml`.
+- **GIS project file:** `<work_repo>/02_Modules/gis_workflow/templates/project_template.qgz`.
+- **GIS styles:** `<work_repo>/02_Modules/gis_workflow/styles/style_<topic>.qml`.
 - **Layouts:** `<work_repo>/02_Modules/gis_workflow/templates/layouts/layout_<topic>.qpt`.
 
 #### Canonical Layer IDs (for manifests)

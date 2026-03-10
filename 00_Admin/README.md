@@ -13,7 +13,7 @@ core_doc_exempt: false
 
 - Role: canonical governance/context for the repo (policies, guides, specs, configs, logs, runbooks, context/sentinels).
 - Key roots:
-- `configs/`: only config root (env, qgis, vscode, etc.).
+- `configs/`: only config root (env, gis, vscode, etc.).
 - `logs/`: persistent audit logs and reports.
 - `context/`: sentinels, audit trace/reflection/intent/migration, decision_ledger.
 - `runbooks/`: reusable execution workflows (prefixed `rb_`) for operations.

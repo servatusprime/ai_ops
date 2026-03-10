@@ -13,7 +13,7 @@ related:
 - ./guide_yaml_authoring.md
 - ./guide_json_authoring.md
 - ./guide_python_authoring.md
-- ../<work_repo>/02_Modules/gis_workflow/docs/guides/guide_pyqgis_authoring.md
+- ../<work_repo>/02_Modules/gis_workflow/docs/guides/guide_gis_python_authoring.md
 - ./guide_sql_authoring.md
 ---
 
@@ -79,8 +79,9 @@ Use a sandbox workbook to package instructions and draft artifacts before applyi
 - Python (see `guide_python_authoring.md`)
 - Follow repo Python conventions; keep imports sorted/grouped; add docstrings where needed.
 - Use type hints when practical; prefer readable, small functions.
-- PyQGIS (see `../<work_repo>/02_Modules/gis_workflow/docs/guides/guide_pyqgis_authoring.md`)
-- Align with QGIS scripting patterns and the project's version expectations.
+- GIS Python authoring (see project-local GIS authoring guidance under
+  `../<work_repo>/02_Modules/gis_workflow/docs/guides/`)
+- Align with GIS scripting patterns and the project's version expectations.
 - SQL (see `guide_sql_authoring.md`)
 - Use uppercase for keywords; format for readability; avoid vendor-specific syntax unless required.
 

@@ -358,8 +358,8 @@ Example: generic Python script
 Copy-Item "01_Resources/templates/scripts/script_template_python.py" `
   "02_Modules/<module>/src/<script_name>.py"
 
-Example: PyQGIS script (domain overlay template in target governed repo)
-Copy-Item "<work_repo>/01_Resources/templates/scripts/script_template_pyqgis.py" `
+Example: desktop GIS script (domain overlay template in target governed repo)
+Copy-Item "<work_repo>/01_Resources/templates/scripts/script_template_gis_desktop.py" `
   "<work_repo>/02_Modules/<module>/src/<script_name>.py"
 ```
 

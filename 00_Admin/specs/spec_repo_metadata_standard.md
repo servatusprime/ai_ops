@@ -78,7 +78,7 @@ Each entry must have:
 - `url` - full endpoint/template
 - `category` - one of `local_gov`, `state`, `federal`, `imagery`, `environmental`, `utility`, `other`
 - `notes` - 1-2 line description and caveats
-- `source` - e.g., `qgis_export_YYYY-MM-DD`, `user_added_YYYY-MM-DD`
+- `source` - e.g., `gis_export_YYYY-MM-DD`, `user_added_YYYY-MM-DD`
 
 Optional:
 
@@ -91,7 +91,7 @@ Optional:
 
 - `created`: date the file was first created (do not auto-update on edits).
 - `last_updated`: date of the most recent edit (preferred key for guides).
-- `source` (catalogs): date of the real-world artifact (e.g., QGIS export).
+- `source` (catalogs): date of the real-world artifact (e.g., GIS export).
 - Track changes via `version`, changelogs, and Git history.
 
 ---

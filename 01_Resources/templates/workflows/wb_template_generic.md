@@ -3,7 +3,7 @@ title: AI Workbook Template: <short_title>
 id: wb_<topic>_<scope>
 status: planned
 license: Apache-2.0 # keep by default; inherit repo license unless repo policy says otherwise
-version: 0.9.1
+version: 0.9.2
 created: YYYY-MM-DD
 last_updated: 2026-03-06
 owner: ai_ops
@@ -269,6 +269,36 @@ Reference: `00_Admin/specs/spec_workbundle_placement_suggestion.md`
 - **Supersedes (if any):**
   - `wb_old_workbook_id_01`
   - `wb_old_workbook_id_02`
+
+### Rewrite Lineage (Required for full rewrites)
+
+When replacing most of an existing workbook, record lineage explicitly.
+
+- `rewrite_mode`: `none` | `partial` | `full`
+- if `full`, include:
+  - prior workbook id/path,
+  - replacement rationale,
+  - reference-retention decision (`kept`, `redirected`, `retired`).
+
+Template:
+
+| Rewrite Mode | Prior Artifact | Rationale | Reference Retention |
+| --- | --- | --- | --- |
+| `<none|partial|full>` | `<path_or_id>` | `<why>` | `<kept|redirected|retired>` |
+
+### Workspace-Root Artifact Classification (Conditional)
+
+When scope touches workspace-root shared artifacts, classify them explicitly:
+
+- `.agents/`
+- `.claude/`
+- `.codex/`
+
+Rules:
+
+- treat as shared workspace surfaces, not repo-canonical content by default;
+- patch canonical generator/source surfaces first when available;
+- if direct edits are required, log sync intent and downstream update owner.
 
 ### Scope Boundaries and Deferred Work (Required)
 
@@ -544,6 +574,10 @@ explicitly classified.
 python 00_Admin/scripts/validate_repo_rules.py --config 00_Admin/configs/validator/validator_config.yaml
 markdownlint <changed_paths>
 yamllint <changed_yaml_paths>
+
+# Governed path contract checks (when cross-repo references are in scope)
+rg -n "C:/RE_Projects|C:\\\\RE_Projects|C:/Users|C:\\\\Users|/Users/|/home/" <changed_paths>
+rg -n -P "(?<!\\.\\./)ai_ops/" <governed_repo_changed_paths>
 ```
 
 ### Self-Review Smoke Pass Checklist
@@ -578,6 +612,7 @@ Smoke-pass command quick reference (run as applicable for touched scope):
 - [ ] Evidence recorded
 - [ ] Selfcheck completed before status update
 - [ ] Crosscheck readiness confirmed
+- [ ] Governed-reference contract verified (ai_ops generic-only; governed repos use `../ai_ops/...`)
 
 ### Pre-Completion Checks (Required)
 
@@ -852,7 +887,7 @@ Bundles MUST satisfy the following before delivery:
 
 1. **No project-file patching while authoring tool has the file open** --
    close the authoring tool before any automated edits to its project file
-   (e.g., no `.qgz` patching while QGIS is open; no `.xlsx` patching
+   (e.g., no `.qgz` patching while a GIS authoring tool is open; no `.xlsx` patching
    while Excel is open).
 2. **Relative datasource paths** -- all internal references use relative
    paths; no absolute or user-specific paths in committed bundle artifacts.
