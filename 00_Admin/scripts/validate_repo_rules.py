@@ -67,7 +67,14 @@ def split_front_matter(text: str) -> Tuple[Dict[str, str], str]:
 
 
 def count_h1(text: str) -> int:
-    return sum(1 for line in text.splitlines() if line.startswith("# "))
+    count = 0
+    in_fence = False
+    for line in text.splitlines():
+        if line.startswith("```"):
+            in_fence = not in_fence
+        elif not in_fence and line.startswith("# "):
+            count += 1
+    return count
 
 
 def expand_patterns(repo_root: str, patterns: List[str]) -> List[str]:
@@ -468,7 +475,8 @@ def parse_config(path: str) -> Dict[str, Any]:
             current_param_key = None
             continue
         if in_params and raw.strip().startswith("- ") and current_param_key:
-            current_rule["params"].setdefault(current_param_key, []).append(raw.strip()[2:].strip())
+            item = raw.strip()[2:].strip().strip("'").strip('"')
+            current_rule["params"].setdefault(current_param_key, []).append(item)
             continue
         if in_params and ":" in raw:
             key, val = raw.strip().split(":", 1)

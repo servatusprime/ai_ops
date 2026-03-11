@@ -284,7 +284,7 @@ Template:
 
 | Rewrite Mode | Prior Artifact | Rationale | Reference Retention |
 | --- | --- | --- | --- |
-| `<none|partial|full>` | `<path_or_id>` | `<why>` | `<kept|redirected|retired>` |
+| `<none\|partial\|full>` | `<path_or_id>` | `<why>` | `<kept\|redirected\|retired>` |
 
 ### Workspace-Root Artifact Classification (Conditional)
 

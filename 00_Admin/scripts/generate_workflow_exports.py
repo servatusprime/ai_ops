@@ -34,7 +34,7 @@ EXPORT_MANIFEST_PRIMARY_REL = Path(".ai_ops/exports/manifest.yaml")
 
 # Canonical pointer basis per install scope.
 # repo: wrappers installed inside the repo root (e.g. ai_ops/.claude/skills/)
-# workspace: wrappers installed at workspace root (e.g. C:/RE_Projects/.claude/skills/)
+# workspace: wrappers installed at workspace root (e.g. <workspace_root>/.claude/skills/)
 SCOPE_WORKFLOW_RELS: Dict[str, str] = {
     "repo": ".ai_ops/workflows",
     "workspace": "ai_ops/.ai_ops/workflows",
