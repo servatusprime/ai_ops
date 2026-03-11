@@ -239,25 +239,26 @@ def resolve_repo_structure_paths(repo_root: str, configured_paths: List[str]) ->
     """Resolve repo map paths for monorepo and split-repo modes.
 
     Canonical target is <repo_root>/repo_structure.txt.
-    Compatibility target (monorepo ai_ops layout) is <repo_root>/../repo_structure.txt.
+    Compatibility target (legacy monorepo layout) is <repo_root>/../repo_structure.txt.
+    When canonical exists, prefer it exclusively to avoid validating stale fallback maps.
     """
-    candidates: List[str] = []
+    resolved: List[str] = []
+    seen: set[str] = set()
     base_paths = configured_paths or ["repo_structure.txt"]
 
     for rel in base_paths:
         joined = os.path.normpath(os.path.join(repo_root, rel))
-        candidates.append(joined)
+        candidates = [joined]
 
         if os.path.basename(rel) == "repo_structure.txt":
-            candidates.append(os.path.normpath(os.path.join(repo_root, "repo_structure.txt")))
-            candidates.append(os.path.normpath(os.path.join(repo_root, "..", "repo_structure.txt")))
+            canonical = os.path.normpath(os.path.join(repo_root, "repo_structure.txt"))
+            fallback = os.path.normpath(os.path.join(repo_root, "..", "repo_structure.txt"))
+            candidates = [canonical] if os.path.exists(canonical) else [canonical, fallback]
 
-    resolved: List[str] = []
-    seen: set[str] = set()
-    for path in candidates:
-        if path not in seen:
-            resolved.append(path)
-            seen.add(path)
+        for path in candidates:
+            if path not in seen:
+                resolved.append(path)
+                seen.add(path)
     return resolved
 
 

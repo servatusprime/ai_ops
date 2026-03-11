@@ -9,22 +9,29 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Install lint dependencies
         run: |
           pip install pyyaml yamllint ruff
           npm install -g markdownlint-cli
+
+      - name: Verify repo structure maps are current
+        run: |
+          python 00_Admin/scripts/generate_repo_structure.py --repo-root .
+          git diff --exit-code -- repo_structure.txt 90_Sandbox/ai_external_context/files/repo_structure_reference.txt
 
       - name: Run canonical release-quality gate
         run: python 00_Admin/scripts/run_release_quality_gate.py
