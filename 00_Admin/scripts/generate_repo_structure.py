@@ -12,6 +12,7 @@ import argparse
 import os
 import subprocess
 from pathlib import Path
+from typing import Dict, List
 
 EXCLUDES = {
     ".git",
@@ -21,6 +22,7 @@ EXCLUDES = {
     ".idea",
     ".vscode",
     "node_modules",
+    "99_Trash",
 }
 
 
@@ -42,7 +44,69 @@ def resolve_git_root(script_dir: Path) -> Path:
     return script_dir.parents[1]
 
 
-def build_tree(root: Path) -> str:
+def list_tracked_files(root: Path) -> List[str]:
+    result = subprocess.run(
+        ["git", "-c", "core.quotepath=false", "-C", str(root), "ls-files"],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+    if result.returncode != 0:
+        return []
+    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+
+def _should_exclude(parts: List[str]) -> bool:
+    return any(part in EXCLUDES for part in parts)
+
+
+def build_tree_from_paths(paths: List[str]) -> str:
+    lines = ["."]
+    root: Dict[str, object] = {"dirs": {}, "files": set()}
+
+    for rel_path in paths:
+        normalized = rel_path.replace("\\", "/").strip("/")
+        if not normalized:
+            continue
+        parts = normalized.split("/")
+        if _should_exclude(parts):
+            continue
+
+        node = root
+        for part in parts[:-1]:
+            dirs = node["dirs"]  # type: ignore[index]
+            if part not in dirs:
+                dirs[part] = {"dirs": {}, "files": set()}  # type: ignore[index]
+            node = dirs[part]  # type: ignore[index]
+        node["files"].add(parts[-1])  # type: ignore[index]
+
+    def walk(node: Dict[str, object], prefix: str = "") -> None:
+        dirs = node["dirs"]  # type: ignore[index]
+        files = node["files"]  # type: ignore[index]
+        entries: List[tuple[str, bool, Dict[str, object] | None]] = []
+
+        for name in dirs:
+            entries.append((name, True, dirs[name]))  # type: ignore[index]
+        for name in files:
+            entries.append((name, False, None))
+
+        entries.sort(key=lambda item: item[0])
+        count = len(entries)
+        for idx, (name, is_dir, child) in enumerate(entries):
+            last = idx == count - 1
+            connector = "+-- " if last else "|-- "
+            lines.append(f"{prefix}{connector}{name}{'/' if is_dir else ''}")
+            if is_dir and child is not None:
+                extension = "    " if last else "|   "
+                walk(child, prefix + extension)
+
+    walk(root)
+    return "\n".join(lines)
+
+
+def build_tree_from_filesystem(root: Path) -> str:
     lines = ["."]
 
     def walk(path: Path, prefix: str = "") -> None:
@@ -57,12 +121,19 @@ def build_tree(root: Path) -> str:
             last = idx == count - 1
             connector = "+-- " if last else "|-- "
             lines.append(f"{prefix}{connector}{name}{'/' if is_dir else ''}")
-            if is_dir and name != "99_Trash":
+            if is_dir:
                 extension = "    " if last else "|   "
                 walk(path / name, prefix + extension)
 
     walk(root)
     return "\n".join(lines)
+
+
+def build_tree(root: Path) -> str:
+    tracked = list_tracked_files(root)
+    if tracked:
+        return build_tree_from_paths(tracked)
+    return build_tree_from_filesystem(root)
 
 
 def write_text(path: Path, content: str) -> None:

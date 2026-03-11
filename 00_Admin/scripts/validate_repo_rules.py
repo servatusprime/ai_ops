@@ -79,7 +79,21 @@ def expand_patterns(repo_root: str, patterns: List[str]) -> List[str]:
     return sorted(set(results))
 
 
-def build_repo_tree(root: str) -> str:
+def list_tracked_files(root: str) -> List[str]:
+    result = subprocess.run(
+        ["git", "-c", "core.quotepath=false", "-C", root, "ls-files"],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+    if result.returncode != 0:
+        return []
+    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+
+def _should_exclude_repo_path(parts: List[str]) -> bool:
     excludes = {
         ".git",
         ".ruff_cache",
@@ -88,6 +102,66 @@ def build_repo_tree(root: str) -> str:
         ".idea",
         ".vscode",
         "node_modules",
+        "99_Trash",
+    }
+    return any(part in excludes for part in parts)
+
+
+def build_repo_tree_from_paths(paths: List[str]) -> str:
+    lines = ["."]
+    root: Dict[str, Any] = {"dirs": {}, "files": set()}
+
+    for rel_path in paths:
+        normalized = rel_path.replace("\\", "/").strip("/")
+        if not normalized:
+            continue
+        parts = normalized.split("/")
+        if _should_exclude_repo_path(parts):
+            continue
+
+        node = root
+        for part in parts[:-1]:
+            dirs = node["dirs"]
+            if part not in dirs:
+                dirs[part] = {"dirs": {}, "files": set()}
+            node = dirs[part]
+        node["files"].add(parts[-1])
+
+    def walk(node: Dict[str, Any], prefix: str = "") -> None:
+        entries: List[Tuple[str, bool, Dict[str, Any] | None]] = []
+        for name, child in node["dirs"].items():
+            entries.append((name, True, child))
+        for name in node["files"]:
+            entries.append((name, False, None))
+
+        entries.sort(key=lambda item: item[0])
+        count = len(entries)
+        for idx, (name, is_dir, child) in enumerate(entries):
+            last = idx == count - 1
+            connector = "+-- " if last else "|-- "
+            lines.append(f"{prefix}{connector}{name}{'/' if is_dir else ''}")
+            if is_dir and child is not None:
+                extension = "    " if last else "|   "
+                walk(child, prefix + extension)
+
+    walk(root)
+    return "\n".join(lines)
+
+
+def build_repo_tree(root: str) -> str:
+    tracked = list_tracked_files(root)
+    if tracked:
+        return build_repo_tree_from_paths(tracked)
+
+    excludes = {
+        ".git",
+        ".ruff_cache",
+        "__pycache__",
+        ".mypy_cache",
+        ".idea",
+        ".vscode",
+        "node_modules",
+        "99_Trash",
     }
     lines = ["."]
 
@@ -103,7 +177,7 @@ def build_repo_tree(root: str) -> str:
             last = idx == count - 1
             connector = "+-- " if last else "|-- "
             lines.append(f"{prefix}{connector}{name}{'/' if is_dir else ''}")
-            if is_dir and name != "99_Trash":
+            if is_dir:
                 extension = "    " if last else "|   "
                 walk(os.path.join(path, name), prefix + extension)
 
