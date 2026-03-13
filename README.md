@@ -1,9 +1,9 @@
 ---
 title: ai_ops
-version: 0.2.0
+version: 0.3.0
 status: active
 license: Apache-2.0
-last_updated: 2026-03-12
+last_updated: 2026-03-13
 owner: ai_ops
 description: AI-first governance layer for structured human-agent execution.
 related:
@@ -29,13 +29,13 @@ traceability when work is not structured.
 
 ## The solution
 
-ai_ops provides an execution structure that helps teams work with AI agents
-without losing control. In practice, it serves as an AI workflow operating
-system across governed repositories:
+ai_ops is an AI workflow operating system that governs how agents work across
+your repos — structured execution without losing control:
 
 - authority-aware execution gates across any repo it governs
 - durable, artifact-based context that survives session and agent handoffs
 - built-in verification and review loops
+- structured agent behavior — roles and model tiering calibrated to task scope
 
 ## Deployment model
 
@@ -80,6 +80,8 @@ ai_ops **is not**:
    - Selfcheck loops, crosschecks, and validator/runbook patterns reduce drift.
    - Eight named design tests must pass before any new artifact type or process
      is adopted. See [Design Tests](HUMANS.md#design-tests).
+   - Every artifact is evaluated against four quality axes: Clarity, Thrift,
+     Context, and Governance. See [HUMANS.md](HUMANS.md#axes-at-a-glance).
 6. **Structures agent behavior through roles and profiles**
    - Four roles — Coordinator, Executor, Builder, Validator — cycle through
      every work session, single agent or multi-agent.
@@ -89,9 +91,6 @@ ai_ops **is not**:
      when scope is uncertain.
    - Rider archetypes tune working style independently of task; profiles are
      opt-in. See [HUMANS.md](HUMANS.md#agent-profiles-and-customization).
-
-Every artifact is evaluated against four quality axes: Clarity, Thrift,
-Context, and Governance. See [HUMANS.md](HUMANS.md#axes-at-a-glance).
 
 ## Supported Platforms
 
@@ -105,8 +104,11 @@ install:
 - GitHub Copilot
 
 Setup scripts for Claude Code, Codex, Cursor, and Gemini CLI are in
-`.ai_ops/setup/`. GitHub Copilot works via natural language invocation or
-`.github/copilot-instructions.md` — no setup script needed. See
+`.ai_ops/setup/`. GitHub Copilot uses `.github/copilot-instructions.md` for
+repo instructions and, on supported surfaces, can also read project skills from
+`.claude/skills/` or `.github/skills/`. ai_ops does not currently ship a
+Copilot-specific installer; `setup_claude_skills.*` generates compatible
+`SKILL.md` wrappers in `.claude/skills/`. See
 [HUMANS.md](HUMANS.md#first-session-5-minutes) for platform-specific
 installation.
 

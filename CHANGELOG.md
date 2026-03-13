@@ -13,6 +13,8 @@ Semantic Versioning.
 
 - `.github/dependabot.yml`: weekly Dependabot version updates for GitHub
   Actions, automating SHA pin refresh when action authors release new versions.
+- `.github/copilot-instructions.md`: lightweight GitHub Copilot bootstrap
+  surface for tools that honor repository instruction files.
 - `00_Admin/backlog/future_work_registry.yaml`: entry `fw_20260312_01` tracking
   recurring GitHub Actions SHA pin maintenance.
 - Standalone private repository on GitHub (`servatusprime/ai_ops`), split
@@ -32,20 +34,27 @@ Semantic Versioning.
 - `README.md`: enriched with Agent Configuration, Supported Platforms, artifact
   model one-liner, quality axes, and design tests references; dangling sentence
   fixed; Quick References section removed; version aligned to release scheme.
-  Supported Platforms section clarifies Copilot uses natural language invocation,
-  not a setup script.
+  Supported Platforms section clarifies Copilot uses repo instructions plus
+  optional project skills on supported surfaces, with no dedicated
+  Copilot-specific installer.
 - `CONTRIBUTING.md`: replaced stale "Monorepo Config Resolution" section with
   "Workspace Layout" reflecting standalone repo deployment model.
 - `AGENTS.md`: removed aspirational auto-clean timeframes from folder structure
   table; replaced with "(manually purged)"; updated `last_updated`.
-- `HUMANS.md`: updated `last_updated` to 2026-03-12.
+- `HUMANS.md`: updated onboarding and install notes for the standalone/external
+  repo model; clarified Copilot uses repo instructions plus optional project
+  skills on supported surfaces.
 - `.gitignore` expanded: env/secrets exclusions, `.ai_ops/config.yaml`,
   `.aiops_session`, active crew profile.
 - `plugin.json` homepage and repository URLs updated to `servatusprime/ai_ops`.
 - `tools/` directory consolidated to `00_Admin/scripts/` (12+ reference
   sites updated).
+- `guide_ai_compatibility_matrix.md` and `guide_command_workflows.md`: aligned
+  GitHub Copilot guidance to the real repo bootstrap surface.
 - Cross-repo reference policy enforced: ai_ops must not reference external
   repos by name, path, or example (VS028).
+- `rb_repo_health_review.md` and `guide_file_placement.md`: routed direct-mode
+  health/audit outputs to `90_Sandbox/health_reports/` as run-scoped artifacts.
 - Sandbox `ai_workbooks/README.md` updated: stale entries removed, template
   path corrected.
 - `work_state.yaml` reconciled: stale entries for retired workbundles removed.

@@ -1,6 +1,7 @@
 #!/bin/sh
-# Setup script for Claude Code skill installation.
-# Creates shallow wrapper skills in .claude/skills that point to workflow sources.
+# Setup script for Claude Code skills.
+# Also generates GitHub Copilot-compatible project skills in .claude/skills on
+# supported Copilot surfaces.
 
 set -e
 
@@ -61,7 +62,8 @@ fi
 
 WORKFLOW_DIR="$REPO_ROOT/.ai_ops/workflows"
 
-echo "Setting up ai_ops skills for Claude Code..."
+echo "Setting up ai_ops skills in .claude/skills..."
+echo "Compatible surfaces: Claude Code, and GitHub Copilot where .claude/skills is supported."
 echo "Scope:           $scope"
 echo "Workflow source: $WORKFLOW_DIR"
 echo "Install target:  $INSTALL_TARGET"

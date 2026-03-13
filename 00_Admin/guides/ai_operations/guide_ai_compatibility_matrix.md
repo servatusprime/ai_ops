@@ -4,8 +4,8 @@ version: 0.2.0
 status: active
 license: Apache-2.0
 created: 2026-01-25
-updated: 2026-03-04
-last_updated: 2026-03-04
+updated: 2026-03-13
+last_updated: 2026-03-13
 owner: ai_ops
 ---
 
@@ -24,7 +24,7 @@ available in tools that support skill/command folders.
 | --- | --- | --- |
 | Claude Code | Direct (wrapper files) | Install to workspace-root `.claude/skills/` (recommended) or `.claude/commands/` (legacy), then invoke `/work` |
 | Codex CLI | Direct (wrapper files) | Install to `.agents/skills/` (recommended) with optional `.codex/skills/` compatibility mirror, then invoke `/work` |
-| GitHub Copilot Chat | Instruction-based | Install `.github/agents/copilot-instructions.md` and use command phrases |
+| GitHub Copilot Chat | Instructions + optional skills | Use `.github/copilot-instructions.md` or `AGENTS.md` for repo guidance; supported surfaces can also read project skills from `.claude/skills/` or `.github/skills/` |
 | Cursor | Direct (command wrappers) | Install to `.cursor/commands/` then invoke `/work` |
 | Gemini CLI | Direct (TOML command wrappers) | Install to `.gemini/commands/` then invoke `/work` |
 | Antigravity | Direct (native) | Uses `.ai_ops/workflows` as command source |

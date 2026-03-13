@@ -3,7 +3,7 @@ title: rb_repo_health_review
 version: 0.5.2
 status: active
 license: Apache-2.0
-last_updated: 2026-02-28
+last_updated: 2026-03-13
 owner: ai_ops
 related:
   - .ai_ops/workflows/health.md
@@ -56,7 +56,8 @@ Ask requestor: "Option 1 (Quick), Option 2 (Comprehensive), or Option 3 (Section
 - [ ] 00_Admin/guides/ (all subdirs: ai_operations, architecture, authoring)
 - [ ] 00_Admin/runbooks/ (all files)
 - [ ] 00_Admin/configs/ (validator, other)
-- [ ] 00_Admin/logs/, reports/, research/, tests/, tooling/
+- [ ] 00_Admin/logs/, research/, tests/, tooling/
+- [ ] 90_Sandbox/health_reports/ (run-scoped health report output)
 - [ ] Optional: 01_Agents/ (README, metadata) when repo uses the pattern
 - [ ] 01_Resources/templates/ (all templates)
 - [ ] 02_Modules/ (module metadata, docs)
@@ -73,7 +74,7 @@ Resolve output path in this order:
 
 1. Requestor-provided output path.
 2. Active workbundle/workbook for target repo.
-3. Direct mode (`ai_ops`): `00_Admin/reports/health/`.
+3. Direct mode (`ai_ops`): `90_Sandbox/health_reports/`.
 4. Governed/external mode with requestor-confirmed location: use that location
    (reports folder, sandbox, or inline-only).
 5. Governed/external mode without requestor confirmation: do not write

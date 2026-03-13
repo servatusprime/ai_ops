@@ -4,7 +4,7 @@ version: 0.1.1
 status: active
 owner: ai_ops
 created: 2026-01-08
-updated: 2026-01-24
+updated: 2026-03-13
 ai_generated: true
 ---
 
@@ -18,6 +18,21 @@ ai_generated: true
 # Log: Workbook Runs
 
 ## Entries
+
+- 2026-03-13 | wb_ai_ops_oss_pub_prep_01 | Completed WB5 pre-public OSS
+  preparation and final endpoint uplift for `ai_ops`; aligned README,
+  CONTRIBUTING, CHANGELOG, HUMANS, Copilot setup surfaces, protected
+  `ai_ops_setup` workflow/exports, and direct-mode health report routing.
+  Source:
+  `90_Sandbox/ai_workbooks/wb_repo_split_preparation_01_2026-03-06/wb_ai_ops_oss_pub_prep_01.md`.
+  Self-Review Smoke Pass: yes.
+  Validation: `python 00_Admin/scripts/validate_repo_rules.py --config 00_Admin/configs/validator/validator_config.yaml`
+  pass with pre-existing `VS008`/`VS022` warnings only;
+  `python 00_Admin/scripts/validate_workflow_frontmatter.py` pass;
+  `python 00_Admin/scripts/run_release_quality_gate.py --dry-run` pass;
+  `python 00_Admin/scripts/run_release_quality_gate.py` pass;
+  `markdownlint README.md HUMANS.md CONTRIBUTING.md CHANGELOG.md .ai_ops/workflows/ai_ops_setup.md .ai_ops/setup/README.md .github/copilot-instructions.md 00_Admin/guides/ai_operations/guide_ai_compatibility_matrix.md 00_Admin/guides/ai_operations/guide_command_workflows.md 00_Admin/guides/architecture/guide_file_placement.md 00_Admin/runbooks/rb_repo_health_review.md plugins/ai-ops-governance/commands/ai_ops_setup.md plugins/ai-ops-governance/skills/ai-ops-setup/SKILL.md`
+  pass; `cmd /c ".ai_ops\\setup\\setup_claude_skills.bat --help"` pass.
 
 ## Entry Template (Required Fields)
 
@@ -112,6 +127,23 @@ ai_generated: true
   `99_Trash/wp_git_workflow_policy_revision_01_2026-01-15/wb_git_workflow_policy_revision_01.md`.
 
 ## Commit/Push Entries
+
+- 2026-03-13 | commit pending | Requestor approved closeout + commit/push in
+  current session ("approved, proceed."). Fixes: finalized WB5 OSS prep and
+  Copilot setup alignment, updated `ai_ops_setup` workflow and generated
+  exports, removed tracked transient health reports from
+  `00_Admin/reports/health/`, refreshed `repo_structure.txt`, and corrected
+  HUMANS install-scope wording so `--user` is not presented as a generic
+  Copilot/Claude option. Validation:
+  `python 00_Admin/scripts/validate_repo_rules.py --config 00_Admin/configs/validator/validator_config.yaml`
+  pass with pre-existing warnings only;
+  `python 00_Admin/scripts/validate_workflow_frontmatter.py` pass;
+  `python 00_Admin/scripts/run_release_quality_gate.py --dry-run` pass;
+  `python 00_Admin/scripts/run_release_quality_gate.py` pass;
+  `markdownlint` scoped pass; `cmd /c ".ai_ops\\setup\\setup_claude_skills.bat --help"`
+  pass. Commit message:
+  `WB5: finalize OSS prep and Copilot setup alignment`. Bundle status: WB5
+  complete; WB4 remains active, so the workbundle is not archived.
 
 - 2026-01-08 | commit d6020bc | Pre-commit hooks ran (markdownlint, yamllint); no failures. Scope: sandbox cleanup,
   manifest/report updates, approved deletions. Risks: verify downstream references to trashed sandbox workbooks or

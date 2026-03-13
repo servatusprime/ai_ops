@@ -1,6 +1,7 @@
 @echo off
-REM Setup script for Claude Code skill installation.
-REM Creates shallow wrapper skills in .claude\skills that point to workflow sources.
+REM Setup script for Claude Code skills.
+REM Also generates GitHub Copilot-compatible project skills in .claude\skills
+REM on supported Copilot surfaces.
 
 setlocal enableextensions enabledelayedexpansion
 
@@ -99,7 +100,8 @@ if /I "!scope!"=="workspace" (
   set "WORKFLOW_REL=.ai_ops/workflows"
 )
 
-echo Setting up ai_ops skills for Claude Code...
+echo Setting up ai_ops skills in .claude\skills...
+echo Compatible surfaces: Claude Code, and GitHub Copilot where .claude\skills is supported.
 echo Scope:           !scope!
 echo Workflow source: !WORKFLOW_DIR!
 echo Install target:  !INSTALL_TARGET!

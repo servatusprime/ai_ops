@@ -3,7 +3,7 @@ title: Contributing
 version: 1.0.0
 status: active
 license: Apache-2.0
-last_updated: 2026-03-04
+last_updated: 2026-03-12
 owner: ai_ops
 description: Contribution guidelines for humans and maintainers.
 related:

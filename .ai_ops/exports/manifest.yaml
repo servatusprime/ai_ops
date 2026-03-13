@@ -1,4 +1,4 @@
-generated_at: '2026-03-10T01:32:40Z'
+generated_at: '2026-03-13T17:57:37Z'
 generator: 00_Admin/scripts/generate_workflow_exports.py
 source_root: .ai_ops/workflows
 scope: repo
@@ -21,15 +21,16 @@ manifest_output_count: 26
 workflows:
 - workflow: ai_ops_setup
   source: .ai_ops/workflows/ai_ops_setup.md
-  source_sha256_12: 5da24e59a7ea
-  description: Run ai_ops setup scripts for skills/commands
+  source_sha256_12: 31f8e655bbb7
+  description: Run ai_ops setup scripts for skills, commands, and supported instruction
+    surfaces
   outputs:
   - path: plugins/ai-ops-governance/commands/ai_ops_setup.md
     kind: plugin_command
-    sha256_12: bc243ad523eb
+    sha256_12: 4cab6d4fa770
   - path: plugins/ai-ops-governance/skills/ai-ops-setup/SKILL.md
     kind: plugin_skill
-    sha256_12: 5fd1e8afdf1c
+    sha256_12: f78743d574d0
 - workflow: bootstrap
   source: .ai_ops/workflows/bootstrap.md
   source_sha256_12: 1f9580893217

@@ -4,8 +4,8 @@ version: 0.7.0
 status: active
 license: Apache-2.0
 created: 2026-01-25
-updated: 2026-03-04
-last_updated: 2026-03-04
+updated: 2026-03-13
+last_updated: 2026-03-13
 owner: ai_ops
 description: Guidance for ai_ops command workflows.
 ---
@@ -62,10 +62,14 @@ Direct support targets (setup scripts available):
 | Codex CLI | `.agents/skills/` (recommended), `.codex/skills/` (compat mirror) | Markdown wrappers |
 | Cursor | `.cursor/commands/` | Markdown |
 | Gemini CLI | `.gemini/commands/` | TOML |
-| GitHub Copilot | `.github/agents/` | Markdown (instruction-based) |
+| GitHub Copilot | `.github/copilot-instructions.md`, `.claude/skills/`, `.github/skills/` | Instructions + SKILL.md skills |
 | Antigravity | `.ai_ops/workflows/` | Native (no install) |
 
 All other tools use manual invocation by referencing `.ai_ops/workflows/*.md`.
+
+GitHub Copilot has no Copilot-specific ai_ops installer today. On supported
+Copilot surfaces, the existing `setup_claude_skills.*` lane generates
+compatible `SKILL.md` wrappers in `.claude/skills/`.
 
 ## Install Safety Rules
 

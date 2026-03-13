@@ -1,8 +1,8 @@
 ---
 name: ai_ops_setup
-description: Run ai_ops setup scripts for skills/commands
+description: Run ai_ops setup scripts for skills, commands, and supported instruction surfaces
 kind: workflow
-version: 0.1.2
+version: 0.1.3
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -16,7 +16,7 @@ claude:
   agent: null
 codex:
   metadata:
-    short-description: Run ai_ops setup scripts for skills and command wrappers.
+    short-description: Run ai_ops setup scripts for supported skills, commands, and instruction surfaces.
   interface:
     display_name: ai_ops_setup
     short_description: Install or verify ai_ops setup wrappers.
@@ -40,7 +40,8 @@ exports:
 
 ## Intent
 
-Run the appropriate ai_ops setup scripts for the user's tool(s).
+Run the appropriate ai_ops setup scripts for the user's tool(s), or confirm the
+instructions-only lane when that is the correct surface behavior.
 
 ## Setup Contract (Mandatory)
 
@@ -57,12 +58,12 @@ Run the appropriate ai_ops setup scripts for the user's tool(s).
 
 Before any setup actions, capture explicit confirmation:
 
-| Field                 | Values                                                              | Required |
-| --------------------- | ------------------------------------------------------------------- | -------- |
-| `active_surface`      | `codex_cli` \| `claude_code` \| `cursor` \| `gemini_cli` \| `other` | Yes      |
-| `installation_target` | `skills` \| `commands` \| `both` \| `none`                          | Yes      |
-| `install_scope`       | `workspace` \| `repo` \| `user`                                     | Yes      |
-| `governed_validation_policy` | `ai_ops` \| `repo_native`                                     | Yes      |
+| Field | Values | Required |
+| --- | --- | --- |
+| `active_surface` | `codex_cli` \| `claude_code` \| `github_copilot` \| `cursor` \| `gemini_cli` \| `other` | Yes |
+| `installation_target` | `skills` \| `commands` \| `both` \| `none` | Yes |
+| `install_scope` | `workspace` \| `repo` \| `user` | Yes |
+| `governed_validation_policy` | `ai_ops` \| `repo_native` | Yes |
 
 **Rules:**
 
@@ -72,20 +73,37 @@ Before any setup actions, capture explicit confirmation:
 4. If `installation_target` is `none`, skip all install scripts and confirm no action taken.
 5. If `install_scope` is not specified, default to `workspace` and confirm with user.
 6. If `governed_validation_policy` is not specified, default to `ai_ops` and confirm with user.
+7. If `active_surface` is `github_copilot`, `commands` is not a valid ai_ops
+   install lane. Use instructions-only (`none`) or project skills (`skills`).
+8. If `active_surface` is `github_copilot`, interpret `skills` as project
+   skills in `.claude/skills/` via `setup_claude_skills.*`, plus tracked repo
+   instructions in `.github/copilot-instructions.md`.
+9. If the selected script lane does not support the requested `install_scope`,
+   stop and ask for a supported scope before writing anything.
 
 **Install scope behavior:**
 
-| Scope       | Install Root                                            | Workflow Pointer            | Script Flag   |
-| ----------- | ------------------------------------------------------- | --------------------------- | ------------- |
-| `workspace` | `<workspace_root>/.agents/skills/` or `.claude/skills/` | `ai_ops/.ai_ops/workflows/` | `--workspace` |
-| `repo`      | `ai_ops/.agents/skills/` or `ai_ops/.claude/skills/`    | `.ai_ops/workflows/`        | (default)     |
-| `user`      | `$HOME/.agents/skills/` or `$HOME/.claude/skills/`      | `ai_ops/.ai_ops/workflows/` | `--user`      |
+| Scope | Install Root | Workflow Pointer | Script Flag |
+| --- | --- | --- | --- |
+| `workspace` | `<workspace_root>/.agents/skills/`, `.claude/skills/`, or surface-native command folders | `ai_ops/.ai_ops/workflows/` | `--workspace` when supported |
+| `repo` | `ai_ops/.agents/skills/`, `ai_ops/.claude/skills/`, or repo-local command folders | `.ai_ops/workflows/` | surface default |
+| `user` | `$HOME/.agents/skills/` or another surface-native user folder when supported | `ai_ops/.ai_ops/workflows/` | `--user` when supported |
 
-Workspace scope is recommended for multi-repo workspaces where agents run from workspace root, not repo root.
+Workspace scope is recommended for multi-repo workspaces where agents run from
+workspace root, not repo root.
+
+Current ai_ops support notes:
+
+- Codex skills support `workspace`, `repo`, and `user`.
+- Claude skills support `workspace` and `repo`.
+- GitHub Copilot skills follow the current Claude skill lane
+  (`setup_claude_skills.*`) and therefore support `workspace` and `repo`.
+- GitHub Copilot repo instructions (`.github/copilot-instructions.md`) are
+  tracked project files, not install-script outputs.
 
 ## Inputs
 
-- Target tool(s): Claude, Codex, Cursor, Gemini
+- Target tool(s): Claude, Codex, GitHub Copilot, Cursor, Gemini
 - OS: Windows or Mac/Linux
 - Desired installs: skills, commands, or both (must be explicitly confirmed)
 
@@ -131,8 +149,12 @@ contract.
    - If wrappers already exist at the target scope root, report "already installed" and offer `--force` overwrite or
      stop.
 6. Run the matching script(s) from `.ai_ops/setup/` with the resolved scope flag:
-   - Claude skills: `setup_claude_skills.bat|.sh [--workspace|--user]`
-   - Codex skills: `setup_codex_skills.bat|.sh [--workspace|-w]`
+   - Claude skills: `setup_claude_skills.bat|.sh [--workspace|--repo]`
+   - Codex skills: `setup_codex_skills.bat|.sh [--workspace|--repo|--user]`
+   - GitHub Copilot skills: reuse `setup_claude_skills.bat|.sh [--workspace|--repo]`
+     on surfaces that support project skills from `.claude/skills/`
+   - GitHub Copilot instructions: no install script; verify
+     `.github/copilot-instructions.md` exists and confirm instructions-only lane
    - Commands: `setup_claude.bat|.sh`, `setup_cursor.bat|.sh`, `setup_gemini.bat|.sh`
    - Echo resolved install root and workflow pointer before executing.
 7. For Claude installs, ensure plugin skeleton folders exist:
@@ -174,6 +196,7 @@ directly (for example: `ai_ops/.ai_ops/workflows/work.md`).
 ## Outputs
 
 - Skills/commands installed for the requested tools.
+- Or instructions-only path confirmed when install scripts are not required.
 - Short confirmation of install targets.
 - Post-setup recommendation to declare model capabilities in `/customize`.
 - Confirmation of governed validation policy written to `.ai_ops/local/config.yaml`.
@@ -199,6 +222,9 @@ process behavior.
 
 - `/ai_ops_setup` is setup-only; do not use it for general remediation edits.
 - Do not assume install target or scope; capture modality confirmation first.
+- GitHub Copilot currently has no Copilot-specific ai_ops installer; use the
+  tracked instructions file and, when desired, the Claude skill lane for
+  `.claude/skills/` compatibility.
 - Do not write setup receipts outside `.ai_ops/local/**`.
 - Do not assume command folders exist; if missing, read
   `.ai_ops/workflows/ai_ops_setup.md` manually.

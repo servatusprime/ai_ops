@@ -3,7 +3,7 @@ title: Guide: File Placement (ai_ops)
 version: 0.2.3
 status: active
 license: Apache-2.0
-last_updated: 2026-03-04
+last_updated: 2026-03-13
 owner: ai_ops
 ---
 
@@ -295,7 +295,7 @@ Work-family containers:
 
 ### Ephemeral (Temporary, Disposable)
 
-**Location**: `00_Admin/logs/`, `00_Admin/reports/audit/`, `90_Sandbox/`
+**Location**: `00_Admin/logs/`, `90_Sandbox/health_reports/`, `90_Sandbox/`
 
 **Characteristics**:
 
@@ -407,12 +407,16 @@ criteria, planning checklist) embedded in workbooks/runbooks.
 - Background investigation
 - Example: `research/vendor_case_a/`
 
-**Reports**: `00_Admin/reports/`
+**Reports (persistent)**: `00_Admin/reports/`
 
-- Health reports
-- Audit findings
-- Sweep summaries
-- Subfolder: `reports/audit/` for audit artifacts
+- Permanent sweep summaries
+- Long-lived governance reports
+
+**Reports (run-scoped)**: `90_Sandbox/health_reports/`
+
+- Health check outputs (`/health`)
+- On-demand audit runs
+- Ephemeral; manually purged
 
 ### Decisions vs Audit
 
@@ -423,7 +427,7 @@ criteria, planning checklist) embedded in workbooks/runbooks.
 - Promoted from workbooks
 - Example: `decision_ledger.md`, `<work_repo>/00_Admin/decisions/intent_structure_map.yaml`
 
-**Audit**: `00_Admin/reports/audit/`
+**Audit (run-scoped)**: `90_Sandbox/health_reports/`
 
 - Temporary audit artifacts
 - Traces, sentinels, reflections
@@ -454,8 +458,9 @@ What type of artifact?
     TEMPLATE  -> 01_Resources/templates/
     LOG       -> 00_Admin/logs/
     DECISION  -> 00_Admin/decisions/
-    AUDIT     -> 00_Admin/reports/audit/
-    REPORT    -> 00_Admin/reports/
+    AUDIT     -> 90_Sandbox/health_reports/
+    REPORT (persistent) -> 00_Admin/reports/
+    REPORT (run-scoped) -> 90_Sandbox/health_reports/
     RESEARCH  -> 00_Admin/research/
     PROMPT    -> [See Special Cases above]
 ```
