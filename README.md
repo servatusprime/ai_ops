@@ -80,26 +80,18 @@ ai_ops **is not**:
    - Selfcheck loops, crosschecks, and validator/runbook patterns reduce drift.
    - Eight named design tests must pass before any new artifact type or process
      is adopted. See [Design Tests](HUMANS.md#design-tests).
+6. **Structures agent behavior through roles and profiles**
+   - Four roles — Coordinator, Executor, Builder, Validator — cycle through
+     every work session, single agent or multi-agent.
+   - The authority and role framework guides agents to self-select the right
+     model and approach per step: simpler models for bounded execution,
+     higher-capability models for governance and crosschecks, escalation
+     when scope is uncertain.
+   - Rider archetypes tune working style independently of task; profiles are
+     opt-in. See [HUMANS.md](HUMANS.md#agent-profiles-and-customization).
 
 Every artifact is evaluated against four quality axes: Clarity, Thrift,
 Context, and Governance. See [HUMANS.md](HUMANS.md#axes-at-a-glance).
-
-## Agent Configuration
-
-ai_ops agents operate through four functional roles — Coordinator, Executor,
-Builder, and Validator — that cycle during a work session. A single agent
-switches roles automatically, or a primary agent can orchestrate dedicated
-subagents in multi-agent mode.
-
-Agent behavior is tunable through **rider archetypes** (logike, forge, anchor,
-scout) that define working style independently of the task. Profiles wire
-riders to roles with configurable parameters for autonomy, conservatism,
-initiative, and deference.
-
-Default behavior works without configuration. Profiles are opt-in.
-
-See [HUMANS.md](HUMANS.md#agent-profiles-and-customization) for the full
-profile catalog and rider reference.
 
 ## Supported Platforms
 

@@ -232,6 +232,7 @@
 |   |   +-- README.md
 |   |-- images/
 |   |   +-- branding/
+|   |       |-- ai_ops-banner-humans.png
 |   |       +-- ai_ops-banner.png
 |   |-- licenses_disclaimers/
 |   |   |-- .gitkeep

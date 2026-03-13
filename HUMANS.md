@@ -14,6 +14,8 @@ related:
 
 <!-- markdownlint-disable MD013 MD025 -->
 
+![ai_ops humans banner](01_Resources/images/branding/ai_ops-banner-humans.png)
+
 # HUMANS - Start Here
 
 ai_ops helps you work with AI agents safely and efficiently, without needing to
