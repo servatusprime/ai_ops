@@ -3,7 +3,7 @@ title: HUMANS - Start Here
 version: 1.1.0
 status: active
 license: Apache-2.0
-last_updated: 2026-03-03
+last_updated: 2026-03-12
 owner: ai_ops
 description: Human-oriented onboarding and command reference for ai_ops.
 related:

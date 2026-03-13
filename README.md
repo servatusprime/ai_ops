@@ -1,9 +1,9 @@
 ---
 title: ai_ops
-version: 2.6.0
+version: 0.2.0
 status: active
 license: Apache-2.0
-last_updated: 2026-03-03
+last_updated: 2026-03-12
 owner: ai_ops
 description: AI-first governance layer for structured human-agent execution.
 related:
@@ -30,10 +30,8 @@ traceability when work is not structured.
 ## The solution
 
 ai_ops provides an execution structure that helps teams work with AI agents
-without losing control:
-
-In practice, ai_ops serves as an AI workflow operating system across governed
-repositories.
+without losing control. In practice, it serves as an AI workflow operating
+system across governed repositories:
 
 - authority-aware execution gates across any repo it governs
 - durable, artifact-based context that survives session and agent handoffs
@@ -68,6 +66,8 @@ ai_ops **is not**:
    - Authority, scope, and verification gates apply consistently across all governed repos.
 2. **Preserves work context across sessions and agents**
    - Work state is stored in repository artifacts, not chat memory.
+   - *Work state belongs in the repository, not in the conversation. If it
+     matters tomorrow, it must exist as a file today.*
 3. **Gates actions by authority and scope**
    - Atomic work can be fast.
    - Multi-step and governance work requires explicit structure and approvals.
@@ -78,6 +78,43 @@ ai_ops **is not**:
    - Program artifacts are pipeline-level orchestration files over book/bundle artifacts.
 5. **Builds verification into the workflow**
    - Selfcheck loops, crosschecks, and validator/runbook patterns reduce drift.
+   - Eight named design tests must pass before any new artifact type or process
+     is adopted. See [Design Tests](HUMANS.md#design-tests).
+
+Every artifact is evaluated against four quality axes: Clarity, Thrift,
+Context, and Governance. See [HUMANS.md](HUMANS.md#axes-at-a-glance).
+
+## Agent Configuration
+
+ai_ops agents operate through four functional roles — Coordinator, Executor,
+Builder, and Validator — that cycle during a work session. A single agent
+switches roles automatically, or a primary agent can orchestrate dedicated
+subagents in multi-agent mode.
+
+Agent behavior is tunable through **rider archetypes** (logike, forge, anchor,
+scout) that define working style independently of the task. Profiles wire
+riders to roles with configurable parameters for autonomy, conservatism,
+initiative, and deference.
+
+Default behavior works without configuration. Profiles are opt-in.
+
+See [HUMANS.md](HUMANS.md#agent-profiles-and-customization) for the full
+profile catalog and rider reference.
+
+## Supported Platforms
+
+ai_ops provides governance across multiple AI agent platforms from a single
+install:
+
+- Claude Code
+- Codex
+- Cursor
+- Gemini CLI
+- GitHub Copilot
+
+Setup scripts for each platform are in `.ai_ops/setup/`. See
+[HUMANS.md](HUMANS.md#first-session-5-minutes) for platform-specific
+installation.
 
 ## Start Here
 
@@ -91,6 +128,8 @@ Setup and operator onboarding are documented in
 `HUMANS.md` and `.ai_ops/setup/README.md`.
 
 ## Folder Structure
+
+Numbered prefixes provide deterministic scan order for AI agents.
 
 | Folder | Purpose |
 | --- | --- |
@@ -129,10 +168,3 @@ and default reasoning preference, then `/profiles` for model-family behavior tun
 
 If wrappers are unavailable, invoke `.ai_ops/workflows/<command>.md` when
 available.
-
-## Quick References
-
-- Guides: [00_Admin/guides/README.md](00_Admin/guides/README.md)
-- Policies: [00_Admin/policies/README.md](00_Admin/policies/README.md)
-- Vocabulary: [guide_ai_ops_vocabulary.md](00_Admin/guides/ai_operations/guide_ai_ops_vocabulary.md)
-- Design tests: [HUMANS.md](HUMANS.md)

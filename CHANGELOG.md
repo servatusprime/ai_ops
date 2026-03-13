@@ -7,6 +7,8 @@ Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-03-12
+
 ### Added
 
 - `.github/dependabot.yml`: weekly Dependabot version updates for GitHub
@@ -27,6 +29,10 @@ Semantic Versioning.
 - `lint.yml`: pinned all three actions (`actions/checkout`, `actions/setup-python`,
   `actions/setup-node`) to full commit SHAs for supply chain security; added
   top-level `permissions: contents: read` to scope workflow to minimum access.
+- `README.md`: enriched with Agent Configuration, Supported Platforms, artifact
+  model one-liner, quality axes, and design tests references; dangling sentence
+  fixed; Quick References section removed; version aligned to release scheme.
+- `HUMANS.md`: updated `last_updated` to 2026-03-12.
 - `.gitignore` expanded: env/secrets exclusions, `.ai_ops/config.yaml`,
   `.aiops_session`, active crew profile.
 - `plugin.json` homepage and repository URLs updated to `servatusprime/ai_ops`.
