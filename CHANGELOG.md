@@ -9,6 +9,10 @@ Semantic Versioning.
 
 ### Added
 
+- `.github/dependabot.yml`: weekly Dependabot version updates for GitHub
+  Actions, automating SHA pin refresh when action authors release new versions.
+- `00_Admin/backlog/future_work_registry.yaml`: entry `fw_20260312_01` tracking
+  recurring GitHub Actions SHA pin maintenance.
 - Standalone private repository on GitHub (`servatusprime/ai_ops`), split
   from monorepo with fresh git history.
 - Per-repo `.pre-commit-config.yaml` with repo-relative tool paths.
@@ -20,6 +24,9 @@ Semantic Versioning.
 
 ### Changed
 
+- `lint.yml`: pinned all three actions (`actions/checkout`, `actions/setup-python`,
+  `actions/setup-node`) to full commit SHAs for supply chain security; added
+  top-level `permissions: contents: read` to scope workflow to minimum access.
 - `.gitignore` expanded: env/secrets exclusions, `.ai_ops/config.yaml`,
   `.aiops_session`, active crew profile.
 - `plugin.json` homepage and repository URLs updated to `servatusprime/ai_ops`.
