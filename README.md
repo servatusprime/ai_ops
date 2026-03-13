@@ -112,7 +112,9 @@ install:
 - Gemini CLI
 - GitHub Copilot
 
-Setup scripts for each platform are in `.ai_ops/setup/`. See
+Setup scripts for Claude Code, Codex, Cursor, and Gemini CLI are in
+`.ai_ops/setup/`. GitHub Copilot works via natural language invocation or
+`.github/copilot-instructions.md` — no setup script needed. See
 [HUMANS.md](HUMANS.md#first-session-5-minutes) for platform-specific
 installation.
 

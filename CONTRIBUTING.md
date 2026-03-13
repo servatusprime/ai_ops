@@ -47,15 +47,21 @@ ai_ops governance files.
 - [ ] Pre-commit hooks pass
 - [ ] If adding or renaming workflow files, regenerate wrappers: `python 00_Admin/scripts/generate_workflow_exports.py`
 
-### Monorepo Config Resolution
+### Workspace Layout
 
-This repo currently operates inside a workspace-level monorepo.
+ai_ops is a standalone repository designed to be installed once and govern
+multiple project repositories. In a typical workspace, ai_ops sits alongside
+the repos it governs:
 
-- Repo-local config takes priority when present.
-- If missing locally, tools may inherit from workspace root (for example
-  `.gitignore`, `.pre-commit-config.yaml`).
-- If this repo is split to standalone later, copy required root configs into
-  the repo before enforcing standalone CI.
+```text
+workspace/
+  ai_ops/        <- this repo
+  my_project/    <- a governed work repo
+```
+
+All config files (`.markdownlint.json`, `.pre-commit-config.yaml`, etc.) are
+self-contained within ai_ops. Contributions should not assume or require
+workspace-level config to be present.
 
 ---
 

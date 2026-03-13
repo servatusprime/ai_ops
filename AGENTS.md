@@ -3,7 +3,7 @@ title: Agents Start Here
 version: 3.5.0
 status: active
 license: Apache-2.0
-last_updated: 2026-03-04
+last_updated: 2026-03-12
 owner: ai_ops
 description: Bootstrap and authority contract for AI agents operating in ai_ops.
 related:
@@ -701,8 +701,8 @@ defaults above. Agents MUST NOT halt on missing local config.
 | `00_Admin/` | Governance, policies, guides, specs, runbooks, logs |
 | `01_Resources/` | Shared templates, prompts, and reference data |
 | `02_Modules/` | Reusable capabilities (code, docs, tests) |
-| `90_Sandbox/` | Temporary workbundles and experiments (~14d auto-clean) |
-| `99_Trash/` | Staged deletions and deprecated files (~30d purge) |
+| `90_Sandbox/` | Temporary workbundles and experiments (manually purged) |
+| `99_Trash/` | Staged deletions and deprecated files (manually purged) |
 
 Detailed structure: [guide_repository_structure.md](00_Admin/guides/architecture/guide_repository_structure.md)
 

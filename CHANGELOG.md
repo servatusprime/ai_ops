@@ -7,7 +7,7 @@ Semantic Versioning.
 
 ## [Unreleased]
 
-## [0.2.0] - 2026-03-12
+## [0.3.0] - 2026-03-12
 
 ### Added
 
@@ -32,6 +32,12 @@ Semantic Versioning.
 - `README.md`: enriched with Agent Configuration, Supported Platforms, artifact
   model one-liner, quality axes, and design tests references; dangling sentence
   fixed; Quick References section removed; version aligned to release scheme.
+  Supported Platforms section clarifies Copilot uses natural language invocation,
+  not a setup script.
+- `CONTRIBUTING.md`: replaced stale "Monorepo Config Resolution" section with
+  "Workspace Layout" reflecting standalone repo deployment model.
+- `AGENTS.md`: removed aspirational auto-clean timeframes from folder structure
+  table; replaced with "(manually purged)"; updated `last_updated`.
 - `HUMANS.md`: updated `last_updated` to 2026-03-12.
 - `.gitignore` expanded: env/secrets exclusions, `.ai_ops/config.yaml`,
   `.aiops_session`, active crew profile.
