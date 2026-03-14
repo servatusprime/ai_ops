@@ -1,8 +1,8 @@
 ---
 title: Git Workflow (monorepo)
-version: 0.1.0
+version: 0.1.1
 status: active
-updated: 2026-02-24
+updated: 2026-03-14
 owner: ai_ops
 license: Apache-2.0
 ---
@@ -37,6 +37,10 @@ link here rather than restating steps.
    - Fix issues instead of disabling rules.
    - If `pre-commit` is environment-blocked (for example sqlite readonly/disk I/O), run equivalent direct checks
      (`markdownlint`, `yamllint`, `ruff`) and log the blocker + fallback in the commit/push log.
+   - If the closeout scope includes local work artifacts under ignored
+     `90_Sandbox/**` or `99_Trash/**` paths, run equivalent direct lint for
+     those artifacts via temp-copy, stdin, or explicit ignore override; record
+     the strategy and results in the workbook or commit/push log.
 2a. **ACL/ACE Recovery (Conditional)**
    - Trigger only when git writes fail with lock/permission symptoms (for example:
      `Unable to create '.git/index.lock': Permission denied`).
@@ -58,6 +62,8 @@ link here rather than restating steps.
    - Before staging, move any executed workbooks, workbundles, and companion artifacts from `90_Sandbox/` to
      `99_Trash/` as required by `00_Admin/guides/authoring/guide_workbooks.md`.
    - Skip this step if no executed workbooks/workbundles were produced in the current change set.
+   - After relocation, repair or document stale references in touched
+     docs/indexes before staging.
 5. **Update Repo Structure Maps**
    - Before running the generator, compare `<git_root>/repo_structure.txt` and
      `90_Sandbox/ai_external_context/files/repo_structure_reference.txt` against the current repo tree.
@@ -75,9 +81,15 @@ link here rather than restating steps.
 
 ## Commit/Push Log (Required)
 
-After a successful commit and push, record a short entry in the rolling log:
+Maintain a short entry in the rolling log:
 
 - Log: `00_Admin/logs/log_workbook_run.md`
+- For Level 3+ or approval-gated work, write or update the entry before commit
+  so approval evidence, validation results, and final archived paths land in
+  the shipped commit.
+- After push, report shipped commit/branch details in chat. Add a second
+  in-repo log update only when post-push metadata is required by repo policy or
+  is materially useful.
 - Include: skipped steps, lint failures encountered, fixes applied, and any remaining risks.
 - Add **recommended fixes** that can be addressed now or logged as Future Work.
 - If no workbook was executed, still log the commit/push entry in the same log.

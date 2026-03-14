@@ -1,4 +1,4 @@
-generated_at: '2026-03-13T17:57:37Z'
+generated_at: '2026-03-14T13:37:32Z'
 generator: 00_Admin/scripts/generate_workflow_exports.py
 source_root: .ai_ops/workflows
 scope: repo
@@ -44,7 +44,7 @@ workflows:
     sha256_12: 5e3e551d96b0
 - workflow: closeout
   source: .ai_ops/workflows/closeout.md
-  source_sha256_12: 1f7cca0084e8
+  source_sha256_12: c705cc51687b
   description: Finalize a work session with cleanup, lint, commit, and push.
   outputs:
   - path: plugins/ai-ops-governance/commands/closeout.md

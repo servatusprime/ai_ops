@@ -1,10 +1,10 @@
 ---
 title: Runbook: Commit/Push Streamlining
-version: 0.1.0
+version: 0.1.1
 status: active
 license: Apache-2.0
 created: 2026-01-24
-updated: 2026-01-26
+updated: 2026-03-14
 owner: ai_ops
 ---
 
@@ -49,15 +49,25 @@ The marker only applies to the current scope. Any scope expansion requires a new
 
 1. Confirm scope and authority level.
 2. Run the combined Self-Review Smoke Pass and fix issues found.
-3. Run validation/lint commands.
+3. Run validation/lint commands, including alternate direct lint handling when
+   ignored `90_Sandbox/**` or `99_Trash/**` artifacts are part of the scope.
 4. Provide a change summary in the chat.
-5. If the turbo marker is present, proceed to commit/push. Otherwise, pause for approval.
-6. Log the run in `00_Admin/logs/log_workbook_run.md`.
+5. If the turbo marker is present, treat the current-scope commit/push approval
+   gate as satisfied. Otherwise, pause for approval.
+6. Record approval evidence in the workbook/work proposal (when applicable) and
+   in `00_Admin/logs/log_workbook_run.md` before commit.
+7. If executed workbooks/workbundles are in scope, archive them and repair
+   stale references before staging.
+8. Stage, commit, and push.
+9. Report shipped commit/branch details in chat; add a second in-repo log
+   update only when repo policy explicitly requires post-push metadata.
 
 ## Postconditions
 
 - Commit and push completed (or approval requested).
 - Run log entry includes validation results and the approval marker used.
+- Local work artifacts were linted even when normal repo lint config ignores
+  their paths.
 
 ## Notes
 

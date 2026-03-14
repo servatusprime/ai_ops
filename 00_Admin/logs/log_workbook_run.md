@@ -263,3 +263,20 @@ ai_generated: true
   `99_Trash/wb_doc_axis_alignment_cleanup_01_2026-03-13`. Source:
   `99_Trash/wb_doc_axis_alignment_cleanup_01_2026-03-13/wb_doc_axis_alignment_cleanup_01.md`.
   Requestor approval for closeout + commit/push recorded in current session.
+
+- 2026-03-14 | wb_closeout_gitworkflow_patch_01 | Completed closeout/git
+  workflow process patch lane. Reordered `/closeout` so archive and
+  stale-reference repair occur before stage/commit/push; added alternate lint
+  handling for ignored `90_Sandbox/**` and `99_Trash/**` artifacts; aligned
+  commit/push streamlining with pre-commit approval evidence and post-push
+  shipment reporting; synced `.ai_ops/exports/manifest.yaml` after workflow
+  source drift. Validation: canonical `markdownlint` pass; temp-copy
+  `markdownlint` pass for archived bundle artifacts;
+  `python 00_Admin/scripts/validate_workflow_frontmatter.py` pass;
+  `python 00_Admin/scripts/check_workflow_exports_drift.py --strict --require-manifest`
+  pass; `python 00_Admin/scripts/run_release_quality_gate.py` pass;
+  `python 00_Admin/scripts/validate_repo_rules.py --config 00_Admin/configs/validator/validator_config.yaml`
+  pass with pre-existing `VS008`/`VS022` warnings only. Archived bundle:
+  `99_Trash/wb_closeout_gitworkflow_patch_01_2026-03-14`. Source:
+  `99_Trash/wb_closeout_gitworkflow_patch_01_2026-03-14/wb_closeout_gitworkflow_patch_01.md`.
+  Requestor approval for closeout + commit/push recorded in current session.

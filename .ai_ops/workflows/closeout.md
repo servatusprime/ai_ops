@@ -2,7 +2,7 @@
 description: Finalize a work session with cleanup, lint, commit, and push.
 name: closeout
 kind: workflow
-version: 0.1.1
+version: 0.1.2
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -103,17 +103,16 @@ contract.
 8. Run configured validation checks in this order:
    - repo-defined validators/checks from the active closeout contract,
    - then configured linters (markdownlint, yamllint, ruff, pre-commit) if present.
+   - when local work artifacts under ignored `90_Sandbox/**` or `99_Trash/**`
+     paths are in scope, run equivalent direct lint via temp copy, stdin, or
+     explicit ignore override and record the strategy in closeout evidence
 9. Evaluate commit gate explicitly:
    - If required configured checks exist, all must pass before commit.
    - If no checks are configured, require explicit user confirmation before
      commit.
    - If any required check fails, stop closeout and transition to `/work` for
      remediation.
-10. Stage changes and generate commit message summary.
-11. Commit with turbo authorization only when the commit gate passed and no
-    explicit user hold was given.
-12. Push to remote.
-13. **Container completion check (Workbundle/Workprogram):**
+10. **Container completion check (Workbundle/Workprogram):**
     - **If inside a Workbundle:**
       - Check if all workbooks in the workbundle are `completed`.
       - If yes, prompt: "All workbooks in this workbundle are complete. Archive the entire workbundle to 99_Trash?"
@@ -121,14 +120,21 @@ contract.
     - **If inside a Workprogram:**
       - Check if all child workbundles/workbooks are `completed` or `archived`.
       - If yes, prompt: "All items in this workprogram are complete. Archive the entire workprogram to 99_Trash?"
-14. Archive completed work artifacts to `99_Trash/`:
+11. Archive completed work artifacts to `99_Trash/`:
     - Completed solitary workbook → move to Trash
     - Completed workbundle (all workbooks complete, user confirmed) → move workbundle folder to Trash
     - Completed workprogram (all workbundles complete) → move workprogram folder to Trash
     - Partially complete artifacts → leave in place
-15. After relocation/archive actions, run stale-reference checks on touched
-    docs/indexes and fix or report broken references before finishing.
-16. Confirm closeout complete with summary of changes shipped.
+12. After relocation/archive actions, run stale-reference checks on touched
+    docs/indexes and fix or report broken references before staging.
+13. Update approval/validation log evidence required by policy or the active
+    workbook so the shipped commit contains the final archive paths and review
+    gate traceability.
+14. Stage changes and generate commit message summary.
+15. Commit with turbo authorization only when the commit gate passed and no
+    explicit user hold was given.
+16. Push to remote.
+17. Confirm closeout complete with summary of changes shipped.
 
 ### External Repo (User)
 
