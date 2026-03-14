@@ -1,6 +1,6 @@
 ---
 title: HUMANS - Start Here
-version: 1.1.0
+version: 1.1.1
 status: active
 license: Apache-2.0
 last_updated: 2026-03-13
@@ -177,8 +177,9 @@ flowchart LR
 
 ### Conditional Work Artifacts
 
-- **Threshold Check -> Work Proposal -> Workprogram**: Activates when scope exceeds threshold.
-  A proposal must be approved before a workprogram is created.
+- **Threshold Check -> Work Proposal -> downstream execution lane**: Activates
+  when scope exceeds threshold or touches Level 4 governance surfaces. The
+  proposal must be approved before downstream execution artifacts are created.
 - **Execution Spine** (optional): Attaches at bundle level when sequential tracking is needed across books.
 
 ## Run Family Artifact Hierarchy
@@ -478,8 +479,10 @@ You have three valid setup paths:
 
 - **A. Ask the agent (recommended):** "Run `/ai_ops_setup`."
   - The setup flow should confirm:
-    - active surface (`codex_cli`, `claude_code`, `cursor`, `gemini_cli`, `other`)
+    - active surface (`codex_cli`, `claude_code`, `github_copilot`, `cursor`, `gemini_cli`, `other`)
     - installation target (`skills`, `commands`, `both`, `none`)
+    - for `github_copilot`, use repo instructions plus `skills` or `none`;
+      `commands` is not a valid ai_ops install target on that surface
 - **B. Manual setup:** run the appropriate setup script from `ai_ops/.ai_ops/setup/`
   and use `ai_ops/.ai_ops/setup/README.md` for tool-specific instructions.
 - **C. No install:** skip setup and invoke workflows directly (example:

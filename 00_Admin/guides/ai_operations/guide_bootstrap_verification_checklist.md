@@ -1,9 +1,9 @@
 ---
 title: Guide: Bootstrap Verification Checklist
-version: 0.1.0
+version: 0.1.2
 status: active
 license: Apache-2.0
-last_updated: 2026-01-21
+last_updated: 2026-03-13
 owner: ai_ops
 related:
   - 00_Admin/guides/ai_operations/guide_ai_operations_stack.md
@@ -44,11 +44,12 @@ documentation before proceeding.
   - Level 2: 2-5 related changes (confirm first)
   - Level 3: 6+ changes, multi-layer work (workbook required)
   - Level 4: Governance changes (human approval required)
-- [ ] **I can use the decision tree** in CONTRIBUTING.md to determine the correct authority level
+- [ ] **I can use the decision tree** in AGENTS.md to determine the correct
+  authority level
 - [ ] **I know when to create a workbook** vs when to act directly (Level 3+ requires workbook)
 - [ ] **I understand Level 4 restrictions**: policies, specs, and architecture require human approval
 
-**Reference:** `CONTRIBUTING.md` sections "Agent Action Authority Levels" and "Agent Decision Tree"
+**Reference:** `AGENTS.md` sections "Authority Quick Reference" and "Agent Decision Tree"
 
 ### Canonical Vocabulary
 
@@ -83,7 +84,8 @@ documentation before proceeding.
 
 ### Workflow Patterns
 
-- [ ] **I understand the Intent/Commitment/Execution pattern** for work proposals
+- [ ] **I understand that Work Proposals are Meta governance artifacts** and
+  that approved execution work happens in downstream workbooks
 - [ ] **I know when to use Work Proposals** (Level 4 governance changes requiring approval)
 - [ ] **I can distinguish** between workbooks (single-run) and runbooks (reusable)
 - [ ] **I understand execution spines** and how they provide audit trails

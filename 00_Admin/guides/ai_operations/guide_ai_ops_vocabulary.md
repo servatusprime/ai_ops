@@ -1,9 +1,9 @@
 ---
 title: Guide: AI Ops Vocabulary
-version: 1.0.3
+version: 1.0.4
 status: active
 license: Apache-2.0
-last_updated: 2026-03-04
+last_updated: 2026-03-13
 owner: ai_ops
 related:
 - ./guide_ai_operations_stack.md
@@ -91,8 +91,9 @@ Canonical terms, accepted aliases, and explicit exclusions.
 | **Tool** | Execution | Reference | Script, CLI, Model | Contract (guarantee) |
 | **Validator** | Verification | Reference | Linter, Checker | Tool (work executor) |
 | **Logs** | Verification | Ephemeral | Audit log, Run log | Workbook (plan) |
-| **Scratchpad** | Verification | Ephemeral | Scratch notes, Companion notes | Workbook (plan) |
-| **Session Artifact** | Verification | Ephemeral | Scratch, Session File | Canonical doc |
+| **Scratchpad** | Meta | Ephemeral | Scratch notes, Companion notes | Workbook (plan) |
+| **Compacted Context** | Meta | Ephemeral | Handoff payload, Shared run state | Chat transcript |
+| **Session Artifact** | Meta | Ephemeral | Scratch, Session File | Canonical doc |
 | **Module** | Execution | Reference | Capability group (description only) | Domain (strict boundary) |
 | **Parallel Execution** | Execution | Reference | Concurrent execution | Sequential-only execution |
 
@@ -125,6 +126,15 @@ Program/book/bundle nuance:
 Scratchpads are append-only companion notes stored inside workbundles. They capture observations, friction points,
 and decisions during execution. Use `_scratchpad_<agent>_<date>.md` naming. They are transient and archived with
 the workbundle unless explicitly promoted.
+
+Scratchpads are Meta artifacts: they preserve working notes, ideas, and local
+context, but they do not prove correctness.
+
+Compacted Context is a shared run-state artifact stored in a workbook body or
+bundle/program README. It captures transparent history, intent, goals, current
+state, outcomes, blockers, and next steps for agents and humans. Its primary
+axis is Meta because it provides shared context infrastructure rather than
+execution logic or verification proof.
 
 Session Artifacts are temporary by default. Store them inside the active workbundle, keep them out of canonical
 paths, and delete or archive them when the workbundle closes unless explicitly promoted.
@@ -266,7 +276,7 @@ until `/work_savepoint` ends the session.
 | Engine | Named domain logic component or service boundary within that roadmap | Domain specs and module contracts |
 | Module metadata | `module.yaml` describing module ID/deps | `02_Modules/*/metadata/module.yaml` |
 | Operation / Tool | Executable following `op_*` or script pattern | `02_Modules/*/operations/` or `00_Admin/scripts/` |
-| Compacted Context | Handoff payload (YAML) pointing to artifacts | This guide + `guide_ai_operations_stack.md` |
+| Compacted Context | Shared run-state and handoff payload (YAML) pointing to artifacts | This guide + `guide_ai_operations_stack.md` |
 | Reference Pack | Pointer YAML to large supporting materials | `packs/pack_*.yaml` stubs |
 
 ### Industry Alignment (Informative)

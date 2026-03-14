@@ -1,11 +1,34 @@
 # Changelog
 
+<!-- markdownlint-disable MD024 -->
+
 All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to
 Semantic Versioning.
 
 ## [Unreleased]
+
+## [0.3.1] - 2026-03-13
+
+### Changed
+
+- `guide_ai_ops_vocabulary.md` and `guide_ai_operations_stack.md`: aligned
+  artifact-axis guidance so `Work Proposal`, `Scratchpad`, and `Compacted
+  Context` are consistently treated as Meta artifacts; clarified that
+  Compacted Context is shared context infrastructure used during handoff,
+  execution, and review.
+- `AGENTS.md`: aligned the standard artifact inventory with the canonical axis
+  guidance, broadened Meta-axis wording to include shared context artifacts,
+  and added `HUMANS.md` to the Level 4 path-based authority guard.
+- `HUMANS.md`: added `github_copilot` to the setup-surface list and clarified
+  that Copilot uses repo instructions plus `skills` or `none`, not ai_ops
+  command installs.
+- `README.md`: replaced "AI workflow operating system" wording with
+  governance-layer wording for consistency with the canonical design docs.
+- `guide_bootstrap_verification_checklist.md`: corrected bootstrap guidance so
+  Work Proposals are described as Meta governance artifacts and fixed stale
+  references to authority material now consolidated in `AGENTS.md`.
 
 ## [0.3.0] - 2026-03-12
 

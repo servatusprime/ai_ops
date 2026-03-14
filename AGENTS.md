@@ -1,9 +1,9 @@
 ---
 title: Agents Start Here
-version: 3.5.0
+version: 3.5.1
 status: active
 license: Apache-2.0
-last_updated: 2026-03-12
+last_updated: 2026-03-13
 owner: ai_ops
 description: Bootstrap and authority contract for AI agents operating in ai_ops.
 related:
@@ -68,7 +68,7 @@ Before any file write, classify the target path against this guard:
 
 | Path Pattern | Minimum Authority | Required Behavior |
 | --- | --- | --- |
-| `00_Admin/{policies,specs}/**`, `AGENTS.md`, `CONTRIBUTING.md` | Level 4 | Stop; require explicit human approval. |
+| `00_Admin/{policies,specs}/**`, `AGENTS.md`, `CONTRIBUTING.md`, `HUMANS.md` | Level 4 | Stop; require explicit human approval. |
 | `.ai_ops/workflows/**` | Level 4 | Stop; require explicit approval evidence before edits. |
 | `00_Admin/configs/**` | Level 4 | Stop; require explicit human approval. |
 | `00_Admin/guides/**` | Level 3 | Use approved workbook scope; do not direct-edit outside scope. |
@@ -264,7 +264,7 @@ cross-cutting governance above the flow. All artifacts map to exactly one primar
 | Commitment | Freeze approved scope for execution | Workbooks, Execution Spines, Workprograms | Locked plan with specific parameters |
 | Execution | Define how work is carried out | Runbooks, Pipelines, Tools, Modules | Reusable implementations |
 | Verification | Define correctness and safety gates | Contracts, Validators, Logs | Binary pass/fail checks and audit trails |
-| Meta | Explain and govern the system | Policies, Guides, Specs, Vocabulary, Catalogs | Cross-cutting rules and reference data |
+| Meta | Explain, govern, or carry shared context | Policies, Guides, Specs, Vocabulary, Catalogs | Cross-cutting rules, reference data, and shared context artifacts |
 
 ### ai_ops Standard Artifact Inventory
 
@@ -273,7 +273,7 @@ Use this table to classify an artifact before writing or classifying a path.
 | Artifact | Primary Axis | Durability | Scope Tier |
 | --- | --- | --- | --- |
 | Workflow | Intent | persistent | program |
-| Work Proposal | Intent | run-scoped | program |
+| Work Proposal | Meta | run-scoped | program |
 | Workprogram | Commitment | run-scoped | program |
 | Workbundle | Commitment | run-scoped | bundle |
 | Workbook | Commitment | run-scoped | book |
@@ -542,10 +542,12 @@ Each profile assigns a rider archetype and sets behavioral parameters (0-100 sca
 
 ## Context Management
 
-Compacted Context is the single shared run state for all participants. It lives as a repo
-artifact -- in the workbundle README or workbook body -- not in any agent's memory. Every
-participant reads from and writes to the same artifact, ensuring full transparency,
-enabling cold-start resumption and post-execution review without requiring chat history.
+Compacted Context is the single shared run state for all participants. It is a
+Meta artifact: shared context infrastructure used during execution, handoff,
+and review. It lives as a repo artifact -- in the workbundle README or
+workbook body -- not in any agent's memory. Every participant reads from and
+writes to the same artifact, ensuring full transparency, enabling cold-start
+resumption and post-execution review without requiring chat history.
 
 ### Shared Access
 

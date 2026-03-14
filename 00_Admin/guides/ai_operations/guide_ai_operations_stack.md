@@ -1,9 +1,9 @@
 ---
 title: "Guide: ai_ops"
-version: 2.3.4
+version: 2.3.5
 status: active
 license: Apache-2.0
-last_updated: 2026-03-04
+last_updated: 2026-03-13
 owner: ai_ops
 related:
   - ./guide_ai_ops_vocabulary.md
@@ -38,7 +38,7 @@ All work artifacts MUST map to exactly one primary axis:
 | **Commitment** | Freeze approved scope for a run | Workbooks, Execution Spines |
 | **Execution** | Define how work is carried out | Runbooks, Pipelines, Tools |
 | **Verification** | Define correctness and safety | Contracts, Validators, Logs |
-| **Meta** | Explain or govern the system | Policies, Guides, Specs |
+| **Meta** | Explain, govern, or carry shared context | Policies, Guides, Specs, Compacted Context |
 
 Cross-references are allowed. Mixed responsibility is not.
 
@@ -122,11 +122,15 @@ exclusions, see `guide_ai_ops_vocabulary.md` Section 3.
 
 | Axis | Key Artifacts |
 | ---- | ------------- |
-| Meta | Policy, Guide, Spec, Work Proposal, Vocabulary, Catalog, Manifest |
+| Meta | Policy, Guide, Spec, Work Proposal, Compacted Context, Scratchpad, Vocabulary, Catalog, Manifest |
 | Intent | Workflow |
 | Commitment | Workbook, Execution Spine, Workprogram |
 | Execution | Runbook, Runbundle, Runprogram, Pipeline, Module, Tool |
 | Verification | Contract, Validator, Logs |
+
+Compacted Context and Scratchpad are Meta artifacts because they provide
+cross-cutting shared context and working notes rather than execution logic or
+verification proof.
 
 ---
 
@@ -206,6 +210,9 @@ To keep stack governance upstream and runtime context downstream:
 ## Context Handoff (Compacted Context)
 
 Context handoff = making work resumable from repository artifacts, not chat history.
+
+Compacted Context is a Meta artifact: shared context infrastructure used during
+handoff, execution, and review.
 
 ### Principles
 

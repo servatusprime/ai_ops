@@ -1,6 +1,6 @@
 ---
 title: ai_ops
-version: 0.3.0
+version: 0.3.1
 status: active
 license: Apache-2.0
 last_updated: 2026-03-13
@@ -29,8 +29,8 @@ traceability when work is not structured.
 
 ## The solution
 
-ai_ops is an AI workflow operating system that governs how agents work across
-your repos — structured execution without losing control:
+ai_ops provides a governance layer for agents working across your
+repos, enabling structured execution without losing control:
 
 - authority-aware execution gates across any repo it governs
 - durable, artifact-based context that survives session and agent handoffs

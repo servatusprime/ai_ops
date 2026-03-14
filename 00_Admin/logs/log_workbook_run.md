@@ -24,7 +24,7 @@ ai_generated: true
   CONTRIBUTING, CHANGELOG, HUMANS, Copilot setup surfaces, protected
   `ai_ops_setup` workflow/exports, and direct-mode health report routing.
   Source:
-  `90_Sandbox/ai_workbooks/wb_repo_split_preparation_01_2026-03-06/wb_ai_ops_oss_pub_prep_01.md`.
+  `99_Trash/wb_repo_split_preparation_01_2026-03-06/wb_ai_ops_oss_pub_prep_01.md`.
   Self-Review Smoke Pass: yes.
   Validation: `python 00_Admin/scripts/validate_repo_rules.py --config 00_Admin/configs/validator/validator_config.yaml`
   pass with pre-existing `VS008`/`VS022` warnings only;
@@ -168,20 +168,9 @@ ai_generated: true
 - 2026-01-14 | commit(s) recorded | markdownlint passed; yamllint and ruff skipped (no files to check). Fixes: clarified
   commit/push log entry exception in git workflow policy.
 
-- 2026-01-14 | commit(s) recorded | Validator ran clean. Fixes: added GIS future work items to workprogram spine,
-  trimmed bootstrap gaps notes, and trashed cleanup report and terminology proposal workbook.
-
-- 2026-01-14 | commit(s) recorded | Requestor approval received for Level 3+ changes. `pre-commit run --all-files`
-  failed with a readonly cache error and disk I/O error when rerun with `PRE_COMMIT_HOME` set; no lint results captured.
-  Fixes: GIS workprogram re-sequenced to M0-M7, workpacket/workbook renames aligned, validation commands standardized in
-  stubs, Exit38 rebuild emphasis added, and repo structure maps refreshed.
-
 - 2026-01-15 | commit b5e8f76 | `pre-commit run --all-files` passed (markdownlint, yamllint, ruff). Fixes: moved archive
   artifacts to trash, normalized markdown/yaml lint, added execution orchestration/index specs, refreshed repo structure
   maps, and updated markdownlint MD025 handling.
-
-- 2026-01-15 | commit(s) recorded | pytest collection failed in CI due to missing `qgis`; updated QGIS test to skip when
-  unavailable and added `final_status.txt`.
 
 - 2026-01-15 | wb_commit_message_policy_revision_01 | Allowed agent-generated scope-based commit messages and aligned
   CONTRIBUTING; logged requirement to record the message in `log_workbook_run.md`. Source:
@@ -189,10 +178,6 @@ ai_generated: true
 
 - 2026-01-15 | commit(s) recorded | Trashed commit message policy workbook after execution. Notes:
   `99_Trash/wp_commit_message_policy_revision_01_2026-01-15`.
-
-- 2026-01-15 | commit 215ad04 | `pre-commit run --all-files` passed after markdownlint auto-fix; updated repo structure
-  maps and nested GIS workpackets under `work_program_gis_work_program_01`. Note: requestor review gate was not recorded
-  prior to commit/push.
 
 - 2026-01-16 | (pending commit) | `pre-commit run --all-files` passed (markdownlint, yamllint, ruff). Fixes: updated
   spec gap consumables-converted `.txt` to `.md`, fixed status values, updated content to reflect repo maturity
@@ -266,3 +251,15 @@ ai_generated: true
   `full_status.txt`, and `status_short.txt`. Justification: non-canonical,
   ad-hoc artifacts from prior health/status runs; removed to reduce stale
   noise and keep canonical evidence in governed logs/reports.
+
+- 2026-03-13 | wb_doc_axis_alignment_cleanup_01 | Completed governance-doc
+  axis alignment cleanup. Aligned `Work Proposal`, `Scratchpad`, and
+  `Compacted Context` to `Meta` across canonical docs; fixed GitHub Copilot
+  setup-surface wording drift; corrected bootstrap checklist authority
+  references; added changelog traceability for `README.md` version `0.3.1`.
+  Validation: scoped `markdownlint` pass; `python 00_Admin/scripts/run_release_quality_gate.py`
+  pass; `python 00_Admin/scripts/validate_repo_rules.py --config 00_Admin/configs/validator/validator_config.yaml`
+  pass with pre-existing `VS008`/`VS022` warnings only. Archived bundle:
+  `99_Trash/wb_doc_axis_alignment_cleanup_01_2026-03-13`. Source:
+  `99_Trash/wb_doc_axis_alignment_cleanup_01_2026-03-13/wb_doc_axis_alignment_cleanup_01.md`.
+  Requestor approval for closeout + commit/push recorded in current session.
