@@ -14,7 +14,6 @@ import argparse
 import hashlib
 import re
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -40,9 +39,6 @@ SCOPE_WORKFLOW_RELS: Dict[str, str] = {
     "workspace": "ai_ops/.ai_ops/workflows",
 }
 
-
-def now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def ensure_yaml() -> None:
@@ -183,7 +179,6 @@ def main() -> int:
         print(f"[FAIL] No workflow files found under {workflow_dir}")
         return 1
 
-    generated_at = now_iso()
     generation_targets = set(args.targets)
     # Manifest targets define which outputs are required by drift checks.
     # Default to plugin-only so user-specific surfaces (e.g. repo-root .claude)
@@ -307,7 +302,6 @@ def main() -> int:
 
     manifest_output_count = sum(len(item.get("outputs", [])) for item in manifest_items)
     manifest = {
-        "generated_at": generated_at,
         "generator": "00_Admin/scripts/generate_workflow_exports.py",
         "source_root": workflow_dir.relative_to(repo_root).as_posix(),
         "scope": args.scope,
