@@ -3,7 +3,7 @@ title: AI Workbook Template: <short_title>
 id: wb_<topic>_<scope>
 status: planned
 license: Apache-2.0 # keep by default; inherit repo license unless repo policy says otherwise
-version: 0.9.2
+version: 0.9.3
 created: YYYY-MM-DD
 last_updated: 2026-03-06
 owner: ai_ops
@@ -114,6 +114,8 @@ Use an explicit ordered queue. If reprioritized, log who requested the change an
 - [ ] 0.4 Run Pre-Execution Readiness Gate -- confirm all checklist items pass **[Agent]**
 - [ ] 0.5 **Ambiguity Stop Gate** -- if any instruction is unclear, stop and ask requestor;
   do not proceed **[Agent/Requestor]**
+- [ ] 0.6 If a governing work proposal exists: update its approval status and execution note
+  to reflect that execution has begun. **[Agent]**
 
 **-> Ph 0 complete when:** All readiness checks passed; no ambiguity flagged.
 
@@ -137,6 +139,8 @@ Use an explicit ordered queue. If reprioritized, log who requested the change an
 - [ ] N.2 Update workbundle README status row for this workbook **[Agent]**
 - [ ] N.3 Update execution spine artifact status entry (if spine is present) **[Agent]**
 - [ ] N.4 Bump `version`, `last_updated`, and `status` in YAML frontmatter **[Agent]**
+- [ ] N.5 If a governing work proposal exists: update its status, scope summary, and execution
+  note to reflect completion. **[Agent]**
 
 ### Phase N+1: Selfcheck
 

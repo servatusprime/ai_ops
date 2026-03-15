@@ -121,8 +121,6 @@
 |   |   |   +-- guide_yaml_authoring.md
 |   |   |-- guide_ide_config.md
 |   |   |-- guide_ide_extensions.md
-|   |   |-- runbooks/
-|   |   |   +-- README.md
 |   |   +-- tooling/
 |   |       |-- guide_environment_setup.md
 |   |       +-- guide_markdownlint_handling.md
@@ -145,8 +143,6 @@
 |   |   |-- policy_naming_conventions.md
 |   |   |-- policy_requirements_management.md
 |   |   +-- policy_status_values.md
-|   |-- prompts/
-|   |   +-- README.md
 |   |-- runbooks/
 |   |   |-- README.md
 |   |   |-- rb_bootstrap.md
@@ -182,6 +178,7 @@
 |   |   +-- validate_workflow_frontmatter.py
 |   |-- specs/
 |   |   |-- README.md
+|   |   |-- spec_context_routing_runtime.md
 |   |   |-- spec_execution_orchestration.md
 |   |   |-- spec_governance_enforcement.md
 |   |   |-- spec_infrastructure_change_validation_gate.md
@@ -214,8 +211,6 @@
 |-- 01_Resources/
 |   |-- .gitkeep
 |   |-- README.md
-|   |-- guides/
-|   |   +-- README.md
 |   |-- images/
 |   |   +-- branding/
 |   |       |-- ai_ops-banner-humans.png
@@ -227,6 +222,7 @@
 |   |   |-- .gitkeep
 |   |   +-- README.md
 |   +-- templates/
+|       |-- README.md
 |       |-- documents/
 |       |   |-- env_vars_template.md
 |       |   |-- harvest_report_template.md
@@ -238,8 +234,6 @@
 |       |   |-- prompt_spec_template.md
 |       |   |-- requirements_matrix_template.md
 |       |   +-- spec-template.md
-|       |-- metadata/
-|       |   +-- README.md
 |       |-- scripts/
 |       |   +-- script_template_python.py
 |       +-- workflows/

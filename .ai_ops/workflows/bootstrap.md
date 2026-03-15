@@ -2,7 +2,7 @@
 description: Initialize agent context by reading repo entry point and instructions.
 name: bootstrap
 kind: workflow
-version: 0.1.2
+version: 0.1.3
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -195,6 +195,18 @@ If any check fails, stop and self-repair before proceeding:
 - restate mode and target repo to requestor;
 - if ambiguity remains, pause and ask.
 
+## Decision Matrix Self-Check
+
+After completing bootstrap, verify you followed the correct path:
+
+- [ ] I identified the correct mode (Direct/Governed/Standalone) before proceeding
+- [ ] I read `AGENTS.md` before scanning the filesystem
+- [ ] I did not infer repo purpose from file names or structure
+- [ ] I checked `.ai_ops/local/work_state.yaml` `work_context.active_artifacts` for existing work (if Direct/Governed)
+- [ ] I confirmed the target repo before reading its files (if Governed/Standalone)
+
+If any item fails, pause and correct before continuing.
+
 ## Outputs
 
 - Context summary and readiness confirmation.
@@ -209,18 +221,6 @@ If any check fails, stop and self-repair before proceeding:
 ## Roles
 
 Default role: Coordinator (orientation and readiness).
-
-## Decision Matrix Self-Check
-
-After completing bootstrap, verify you followed the correct path:
-
-- [ ] I identified the correct mode (Direct/Governed/Standalone) before proceeding
-- [ ] I read `AGENTS.md` before scanning the filesystem
-- [ ] I did not infer repo purpose from file names or structure
-- [ ] I checked `.ai_ops/local/work_state.yaml` `work_context.active_artifacts` for existing work (if Direct/Governed)
-- [ ] I confirmed the target repo before reading its files (if Governed/Standalone)
-
-If any item fails, pause and correct before continuing.
 
 ## Risks and Limits
 

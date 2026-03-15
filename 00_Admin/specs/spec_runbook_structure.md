@@ -4,8 +4,9 @@ id: spec_runbook_structure
 module: admin
 status: active
 license: Apache-2.0
-version: 0.1.0
+version: 0.1.1
 created: 2026-01-31
+last_updated: 2026-03-14
 owner: ai_ops
 ai_generated: true
 ---
@@ -74,6 +75,12 @@ When runbooks are frequently executed together, group them in a runbundle:
 - Use semantic versions (0.1.0, 0.1.1, ...).
 - Required front matter fields follow `spec_repo_metadata_standard.md`.
 - Status values: `planned`, `stub`, `active`, `completed`, `deprecated` (no `draft`).
+- `model_profile`: declares the AI model tier for runbook execution.
+  - In **templates**: use tier-only descriptors (e.g., `"high"`,
+    `"reasoning:high | standard:medium"`). Templates are provider-agnostic.
+  - In **active runbooks**: provider-specific names are allowed
+    (e.g., `"claude-sonnet-4.6:high"`).
+  - See `00_Admin/guides/authoring/guide_runbooks.md` for authoring guidance.
 
 ## 8. Related References
 

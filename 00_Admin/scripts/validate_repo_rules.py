@@ -532,6 +532,71 @@ def check_required_fields(files: List[str], required: List[str], errors: List[st
                 errors.append(f"{rule_id}: {path} missing front matter key '{key}'")
 
 
+def check_required_fields_warn(
+    files: List[str],
+    required: List[str],
+    warnings: List[str],
+    rule_id: str,
+    new_only: bool = False,
+    repo_root: str = "",
+) -> None:
+    """Check required frontmatter fields; emit warnings (not errors). Supports new_only mode."""
+    candidates = list(files)
+    if new_only and repo_root:
+        new_paths = set(_list_new_git_paths(repo_root))
+        candidates = [p for p in candidates if p in new_paths]
+    for path in candidates:
+        text = read_text(path)
+        fm, _ = split_front_matter(text)
+        for key in required:
+            if key not in fm:
+                warnings.append(f"{rule_id}: {path} missing front matter key '{key}'")
+
+
+def check_status_field_values(
+    files: List[str],
+    allowed: set,
+    errors: List[str],
+    rule_id: str,
+) -> None:
+    """VS030: Check that status field value is in the allowed set. Emit error if invalid."""
+    allowed_sorted = sorted(allowed)
+    for path in files:
+        text = read_text(path)
+        fm, _ = split_front_matter(text)
+        status = fm.get("status")
+        if status is None:
+            continue  # Missing status is caught by VS006/VS003; not this rule's concern
+        if status not in allowed:
+            errors.append(
+                f"{rule_id}: {path} has invalid status '{status}'."
+                f" Allowed values: {allowed_sorted}"
+            )
+
+
+def check_workflow_routing_contract(
+    files: List[str],
+    errors: List[str],
+    warnings: List[str],
+    severity: str,
+    rule_id: str,
+    required_sections: List[str],
+    required_content: List[str],
+) -> None:
+    """VS031: Check that workflow files contain required routing contract section and wording."""
+    all_required = required_sections + required_content
+    for path in files:
+        text = read_text(path)
+        for item in all_required:
+            if item not in text:
+                record_issue(
+                    errors,
+                    warnings,
+                    severity,
+                    f"{rule_id}: {path} missing required routing contract string: '{item}'",
+                )
+
+
 def check_prefix_in_dir(dir_path: str, prefix: str, warnings: List[str], rule_id: str) -> None:
     if not os.path.isdir(dir_path):
         warnings.append(f"{rule_id}: directory missing {dir_path}")
@@ -1199,6 +1264,24 @@ def main() -> int:
             params = rule.get("params", {})
             severity = params.get("severity", "warning")
             check_workbook_command_path_base_consistency(paths, errors, warnings, severity)
+        elif rule_id == "VS029":
+            params = rule.get("params", {})
+            new_only = str(params.get("new_only", "true")).lower() == "true"
+            required_fields = params.get("required_fields", [])
+            if required_fields:
+                check_required_fields_warn(paths, required_fields, warnings, rule_id, new_only, repo_root)
+        elif rule_id == "VS030":
+            params = rule.get("params", {})
+            allowed = set(params.get("allowed_status", list(ALLOWED_STATUS)))
+            check_status_field_values(paths, allowed, errors, rule_id)
+        elif rule_id == "VS031":
+            params = rule.get("params", {})
+            severity = params.get("severity", "error")
+            req_sections = params.get("required_sections", [])
+            req_content = params.get("required_content", [])
+            check_workflow_routing_contract(
+                paths, errors, warnings, severity, rule_id, req_sections, req_content
+            )
         elif rule_id == "VS028":
             params = rule.get("params", {})
             severity = params.get("severity", "error")

@@ -2,7 +2,7 @@
 name: profiles
 description: Manage rider/crew profile source data and regenerate deterministic derivative behavior files.
 kind: workflow
-version: 0.1.1
+version: 0.1.2
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -167,6 +167,26 @@ contract.
 | Primary write target | `.ai_ops/local/config.yaml`                        | `.ai_ops/local/profiles/active_crew.yaml` and generated derivative files |
 | Typical trigger      | Setup and preference tuning                        | Behavior contract changes                                                |
 
+## Surface Adapter Notes
+
+When `lead_agent_profile_context.md` is regenerated, load it as secondary
+behavior context on supported surfaces:
+
+- Codex: load as secondary context artifact (do not modify root `AGENTS.md`).
+- Claude: load as secondary context artifact (do not modify root `CLAUDE.md`).
+- Gemini: load as secondary context artifact (do not modify root `GEMINI.md`).
+
+## Working with Native Commands
+
+Use native assistant commands for session-scoped mechanics (model selection, output formatting, local IDE helpers) when
+available.
+
+Use ai_ops workflow commands for governed execution contracts, authority gates, artifact handling, and
+validation/reporting behavior.
+
+If overlap exists, native commands handle session mechanics while this workflow remains the source of truth for governed
+process behavior.
+
 ## Outputs
 
 - Updated profile source YAML (when confirmed).
@@ -176,15 +196,6 @@ contract.
   - primary-agent adapter context (`lead_agent_profile_context.md`)
   - model tuning summary (`model_tuning_summary.md`)
 - Structured regeneration summary and warnings.
-
-## Surface Adapter Notes
-
-When `lead_agent_profile_context.md` is regenerated, load it as secondary
-behavior context on supported surfaces:
-
-- Codex: load as secondary context artifact (do not modify root `AGENTS.md`).
-- Claude: load as secondary context artifact (do not modify root `CLAUDE.md`).
-- Gemini: load as secondary context artifact (do not modify root `GEMINI.md`).
 
 ## Roles
 
@@ -198,17 +209,6 @@ Default role: Coordinator -> Executor (profile edits and script invocation).
 - Primary-agent profile behavior is delivered through adapter-managed context
   files, not by modifying root `AGENTS.md`/`GEMINI.md`.
 - Do not assume command folders exist; if missing, read `.ai_ops/workflows/profiles.md` manually.
-
-## Working with Native Commands
-
-Use native assistant commands for session-scoped mechanics (model selection, output formatting, local IDE helpers) when
-available.
-
-Use ai_ops workflow commands for governed execution contracts, authority gates, artifact handling, and
-validation/reporting behavior.
-
-If overlap exists, native commands handle session mechanics while this workflow remains the source of truth for governed
-process behavior.
 
 ## Resources
 

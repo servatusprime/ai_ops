@@ -4,9 +4,9 @@ id: spec_workbook_structure
 module: admin
 status: active
 license: Apache-2.0
-version: 0.2.2
+version: 0.2.3
 created: 2026-01-31
-updated: 2026-03-04
+updated: 2026-03-14
 owner: ai_ops
 ai_generated: true
 ---
@@ -93,6 +93,13 @@ When a workbundle is closed, a `work_summary.md` MUST be added to the workbundle
 - Required front matter fields follow `spec_repo_metadata_standard.md`.
 - Status values follow `policy_status_values.md` (use `completed` for finished work; reserve `deprecated` for
   superseded).
+- `model_profile`: declares the AI model tier for workbook execution.
+  - In **templates**: use tier-only descriptors (e.g., `"high"`,
+    `"reasoning:high | standard:medium"`). Templates are provider-agnostic.
+  - In **active workbooks and runbooks**: provider-specific names are allowed
+    (e.g., `"claude-sonnet-4.6:high"`).
+  - In **specs and guides**: document both levels; abstract tiers for templates,
+    concrete names allowed in artifact examples.
 
 ## 8. Related References
 

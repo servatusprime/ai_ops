@@ -1,4 +1,4 @@
-generated_at: '2026-03-14T13:37:32Z'
+generated_at: '2026-03-15T01:51:44Z'
 generator: 00_Admin/scripts/generate_workflow_exports.py
 source_root: .ai_ops/workflows
 scope: repo
@@ -21,7 +21,7 @@ manifest_output_count: 26
 workflows:
 - workflow: ai_ops_setup
   source: .ai_ops/workflows/ai_ops_setup.md
-  source_sha256_12: 31f8e655bbb7
+  source_sha256_12: 028c4e5357ba
   description: Run ai_ops setup scripts for skills, commands, and supported instruction
     surfaces
   outputs:
@@ -33,7 +33,7 @@ workflows:
     sha256_12: f78743d574d0
 - workflow: bootstrap
   source: .ai_ops/workflows/bootstrap.md
-  source_sha256_12: 1f9580893217
+  source_sha256_12: 93501a330238
   description: Initialize agent context by reading repo entry point and instructions.
   outputs:
   - path: plugins/ai-ops-governance/commands/bootstrap.md
@@ -88,7 +88,7 @@ workflows:
     sha256_12: 01266cb5fbf2
 - workflow: health
   source: .ai_ops/workflows/health.md
-  source_sha256_12: cd1652df2fc1
+  source_sha256_12: e0876f544381
   description: "Run a repo health check\u2014verify the repo is consistent and clean."
   outputs:
   - path: plugins/ai-ops-governance/commands/health.md
@@ -99,7 +99,7 @@ workflows:
     sha256_12: 0a7174678693
 - workflow: lint
   source: .ai_ops/workflows/lint.md
-  source_sha256_12: b9d666f7527d
+  source_sha256_12: e626072313fb
   description: Run configured validators and linters against a target scope and report
     findings without modifying files.
   outputs:
@@ -111,7 +111,7 @@ workflows:
     sha256_12: 5c9050ad6aef
 - workflow: profiles
   source: .ai_ops/workflows/profiles.md
-  source_sha256_12: 16ea7a910a19
+  source_sha256_12: f67e7b1f916c
   description: Manage rider/crew profile source data and regenerate deterministic
     derivative behavior files.
   outputs:
@@ -134,7 +134,7 @@ workflows:
     sha256_12: dcd9fad693c0
 - workflow: work
   source: .ai_ops/workflows/work.md
-  source_sha256_12: 63ec226cd0bf
+  source_sha256_12: 47e3f81e9b81
   description: Signal that repo rules apply and establish work/run context.
   outputs:
   - path: plugins/ai-ops-governance/commands/work.md
@@ -145,7 +145,7 @@ workflows:
     sha256_12: 79ffc08c02fc
 - workflow: work_savepoint
   source: .ai_ops/workflows/work_savepoint.md
-  source_sha256_12: 68352a637fb9
+  source_sha256_12: 01f3186bf920
   description: Commit and push active work as a savepoint, then end the ai_ops session.
   outputs:
   - path: plugins/ai-ops-governance/commands/work_savepoint.md

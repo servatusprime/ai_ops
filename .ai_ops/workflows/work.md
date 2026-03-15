@@ -2,7 +2,7 @@
 description: Signal that repo rules apply and establish work/run context.
 name: work
 kind: workflow
-version: 0.2.0
+version: 0.2.1
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -199,6 +199,8 @@ Required workbook sections:
 - `## Ordered Execution Queue`
 - `## Verification Checklist`
 - `## Selfcheck Results`
+
+Read both `model_profile` (overall tier) and `role_assignments` (per-role overrides) from workbook frontmatter.
 
 If missing, patch workbook structure before execution and record evidence.
 

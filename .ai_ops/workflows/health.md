@@ -2,7 +2,7 @@
 description: "Run a repo health check\u2014verify the repo is consistent and clean."
 name: health
 kind: workflow
-version: 0.1.2
+version: 0.1.3
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -160,18 +160,6 @@ This workflow is a **summary**. The detailed procedure is in `00_Admin/runbooks/
 5. Return findings and recommended fixes, including lock-preflight status for
    any blocked cleanup/archive actions.
 
-## Outputs
-
-- Structured health report with recommended fixes.
-- Summary of findings and proposed next steps.
-- Include an explicit target-repo confirmation line in report header.
-- Produce outputs/artifacts for the selected scope and write to the resolved
-  output location per runbook guidance.
-- If external output location is unconfirmed, return inline findings only and
-  ask for location confirmation before artifact writes.
-- Follow report contract/metrics formatting from
-  `00_Admin/runbooks/rb_repo_health_review.md`.
-
 ## Entropy Reduction Pass (Comprehensive Scope)
 
 When scope is Option 2 (Comprehensive), run and report:
@@ -190,6 +178,18 @@ When scope is Option 2 (Comprehensive), run and report:
    - seeds_created (period)
    - seeds_actualized (period)
    - velocity_ratio (`actualized / created`)
+
+## Outputs
+
+- Structured health report with recommended fixes.
+- Summary of findings and proposed next steps.
+- Include an explicit target-repo confirmation line in report header.
+- Produce outputs/artifacts for the selected scope and write to the resolved
+  output location per runbook guidance.
+- If external output location is unconfirmed, return inline findings only and
+  ask for location confirmation before artifact writes.
+- Follow report contract/metrics formatting from
+  `00_Admin/runbooks/rb_repo_health_review.md`.
 
 ## Roles
 
@@ -223,19 +223,7 @@ After presenting the health report, offer to help address issues:
 The health check itself is read-only; remediation is a separate step requiring
 user approval and `/work` lane transition before canonical edits.
 
-## Health Check Categories
-
-| Category              | What It Checks                                                        |
-| --------------------- | --------------------------------------------------------------------- |
-| Self-consistency      | README vs actual structure, stated vs actual conventions              |
-| Documentation         | Dependencies, configs, .gitignore coverage                            |
-| Cruft                 | Dead files, orphaned references, stale branches, deprecated artifacts |
-| Metadata              | Required fields in config/manifest files                              |
-| Deprecation integrity | Files with `status: deprecated` have `archived_to` or `superseded_by` |
-
-Dead-chain note: depth 1 findings are candidate signals; only escalate when
-confirmed at depth 2, by explicit reference-only dead-chain strength findings,
-or with direct operational impact.
+Health check categories and scoring criteria are defined in `00_Admin/runbooks/rb_repo_health_review.md`.
 
 ## Conversation Hygiene (Repo-Anchored)
 

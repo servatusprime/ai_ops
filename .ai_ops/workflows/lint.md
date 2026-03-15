@@ -3,7 +3,7 @@ name: lint
 description: Run configured validators and linters against a target scope and report
   findings without modifying files.
 kind: workflow
-version: 0.1.1
+version: 0.1.2
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -150,6 +150,17 @@ contract.
 4. Run available checks per validation policy and report findings without applying fixes.
 5. If fixes are requested, switch to a work lane for edits.
 
+## Working with Native Commands
+
+Use native assistant commands for session-scoped mechanics (model selection,
+output formatting, local IDE helpers) when available.
+
+Use ai_ops workflow commands for governed execution contracts, authority gates,
+artifact handling, and validation/reporting behavior.
+
+If overlap exists, native commands handle session mechanics while this workflow
+remains the source of truth for governed process behavior.
+
 ## Outputs
 
 - Structured lint report with validator outcomes, findings, and blocking verdict.
@@ -166,17 +177,6 @@ Default role: Validator (read-only report lane).
 - Do not mark repo as ready when required validators were not run.
 - Do not mutate files from this lane.
 - Do not assume command folders exist; if missing, read `.ai_ops/workflows/lint.md` manually.
-
-## Working with Native Commands
-
-Use native assistant commands for session-scoped mechanics (model selection,
-output formatting, local IDE helpers) when available.
-
-Use ai_ops workflow commands for governed execution contracts, authority gates,
-artifact handling, and validation/reporting behavior.
-
-If overlap exists, native commands handle session mechanics while this workflow
-remains the source of truth for governed process behavior.
 
 ## Resources
 

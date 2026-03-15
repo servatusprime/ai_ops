@@ -1,10 +1,10 @@
 ---
 title: Runbook: Repo Validator
-version: 1.2.0
+version: 1.2.2
 status: active
 license: Apache-2.0
 created: 2026-01-13
-updated: 2026-03-09
+updated: 2026-03-14
 owner: ai_ops
 related:
   - 00_Admin/configs/validator/validator_config.yaml
@@ -137,6 +137,39 @@ The helper syncs:
 - `00_Admin/scripts/run_markdownlint.ps1`
 - `00_Admin/configs/validator/validator_config.yaml`
 - `00_Admin/runbooks/rb_repo_validator_01.md`
+
+## VS029: model_profile Field Check (Warning)
+
+VS029 is a warning-only, new-artifact-only rule. It checks that new workbook
+and runbook files (including templates) include a `model_profile` frontmatter
+field. Existing files are not flagged. This rule does not cause a hard error.
+
+## VS030: status Field Value Check (Error)
+
+VS030 is an error-level rule. It checks that workbooks (`wb_*.md` in
+`90_Sandbox/ai_workbooks/**`) and runbooks (`rb_*.md` in `00_Admin/runbooks/`)
+have a `status` field value from the canonical allowed set:
+`planned`, `stub`, `active`, `completed`, `deprecated`.
+Any other value (e.g., `executing`, `draft`, `wip`) is flagged as an error.
+Files missing `status` entirely are not flagged by VS030 (caught by VS003/VS006).
+
+## VS031: Workflow Routing Contract Check (Error)
+
+VS031 is an error-level rule. It enforces the `workflow_routing_drift_contract`
+declared in `00_Admin/configs/context_routing.yaml`. It checks that all workflow
+files (`.ai_ops/workflows/*.md`) contain:
+
+1. The `## Context Routing Hook` section heading.
+2. The canonical contract substring:
+   `` `context_routing.yaml` as the canonical onboarding ``
+
+The substring matches the actual wording present in all workflow files:
+`` Use `00_Admin/configs/context_routing.yaml` as the canonical onboarding ``
+(the sentence continues on a second line; the check matches within the first line).
+
+Any workflow file missing either the section or the canonical substring is flagged
+as an error. This rule makes the routing contract machine-verifiable rather
+than prose-only.
 
 ## Outputs
 

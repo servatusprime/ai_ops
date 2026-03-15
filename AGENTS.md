@@ -1,9 +1,9 @@
 ---
 title: Agents Start Here
-version: 3.5.1
+version: 3.5.4
 status: active
 license: Apache-2.0
-last_updated: 2026-03-13
+last_updated: 2026-03-14
 owner: ai_ops
 description: Bootstrap and authority contract for AI agents operating in ai_ops.
 related:
@@ -477,6 +477,8 @@ Use this table to select an AI model level for each role assignment.
 - Default to Level 2 when unsure. Upgrade to Level 3 only for architectural decisions or Elevated Crosscheck.
 - Level 1 is appropriate only for fully bounded, deterministic tasks with no judgment required.
 - Model level is set per role in the workbook `role_assignments` frontmatter field.
+- When loading a workbook for cold-start execution, read both `model_profile` (overall tier) and
+  `role_assignments` (per-role overrides) from frontmatter to determine the correct execution tier.
 
 ---
 
@@ -708,18 +710,29 @@ defaults above. Agents MUST NOT halt on missing local config.
 
 Detailed structure: [guide_repository_structure.md](00_Admin/guides/architecture/guide_repository_structure.md)
 
-## Quick References
+## Key References
 
-- Guides: [00_Admin/guides/README.md](00_Admin/guides/README.md)
-- Policies: [00_Admin/policies/README.md](00_Admin/policies/README.md)
-- Vocabulary: [guide_ai_ops_vocabulary.md](00_Admin/guides/ai_operations/guide_ai_ops_vocabulary.md)
-- Structure: `<git_root>/repo_structure.txt` (use when task needs navigation)
+### Guides
 
----
+- [AI Operations](00_Admin/guides/ai_operations/) — commands, workflows, vocabulary, multi-agent patterns; start here for any operational question
+- [Architecture](00_Admin/guides/architecture/) — repo structure, naming, file placement, agent endpoint contract
+- [Authoring](00_Admin/guides/authoring/) — workbooks, runbooks, markdown/YAML/JSON formatting, changelog conventions
+- [Tooling](00_Admin/guides/tooling/) — environment setup, markdownlint handling
 
-## Canonical References
+### Governance
 
-- Terminology: `00_Admin/guides/ai_operations/guide_ai_ops_vocabulary.md`
-- Contributor policy: `CONTRIBUTING.md`
-- Workflows: `00_Admin/guides/ai_operations/guide_workflows.md`
-- Bootstrap algorithm: `00_Admin/guides/architecture/guide_bootstrap_algorithm.md`
+- [Specs](00_Admin/specs/README.md) — formal requirements and validation schemas
+- [Policies](00_Admin/policies/README.md) — hard rules and constraints
+- [Runbooks](00_Admin/runbooks/README.md) — operational procedures
+- [CONTRIBUTING.md](CONTRIBUTING.md) — contributor and PR policy
+- `00_Admin/configs/context_routing.yaml` — command-specific always_read lists, guard profiles, and routing fallback policy
+
+### Resources
+
+- [Templates](01_Resources/templates/README.md) — workbooks, runbooks, proposals, and documents
+- `<git_root>/repo_structure.txt` — full file tree; use when a task requires repo-wide navigation
+
+### Local Config
+
+- `.ai_ops/local/work_state.yaml` — active artifact registry (gitignored; absence = no active work)
+- `.ai_ops/local/config.yaml` — session overrides e.g. validation policy (gitignored; absent on fresh clone)

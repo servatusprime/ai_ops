@@ -1,9 +1,9 @@
 ---
 title: Guide: Repository Structure (ai_ops)
-version: 0.2.1
+version: 0.2.2
 status: active
 license: Apache-2.0
-last_updated: 2026-03-04
+last_updated: 2026-03-14
 owner: ai_ops
 ---
 
@@ -57,6 +57,23 @@ Section 3.0.1.
 
 The following patterns are **optional** for governed external repos and are not
 present in the ai_ops core distribution.
+
+#### Placeholder Directory Policy
+
+Do **not** pre-create empty directories as placeholders. Directories are created
+on first real governed asset. The following subdirectories are examples of
+optional patterns that follow this rule:
+
+- `00_Admin/prompts/` — admin-level governance prompts. Create when the first
+  real prompt artifact is placed there.
+- `01_Resources/guides/` — cross-cutting resource guidance. Create when the
+  first real guide artifact is placed there.
+- `01_Resources/templates/metadata/` — template metadata sidecars and schemas.
+  Create when a template requires a machine-readable metadata file.
+
+A README.md placeholder in an otherwise empty directory provides no governance
+value and creates index noise. If a directory's purpose needs documentation,
+add a note in the parent README instead.
 
 | Pattern | Purpose | Notes |
 | --- | --- | --- |

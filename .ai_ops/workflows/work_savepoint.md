@@ -2,7 +2,7 @@
 description: Commit and push active work as a savepoint, then end the ai_ops session.
 name: work_savepoint
 kind: workflow
-version: 1.0.2
+version: 1.0.3
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -101,6 +101,13 @@ contract.
 2. If `--no-commit` is not passed, commit + push with `savepoint:` prefix.
 3. End the session and note how to resume.
 
+## State Behavior
+
+- `work_context.active_artifacts` in `.ai_ops/local/work_state.yaml` persists after
+  savepoint (like leaving work on your desk).
+- The session ends, but artifacts remain available for the next `/work` invocation.
+- No automatic cleanup or state clearing occurs.
+
 ## Outputs
 
 - Savepoint confirmation; include commit hash, branch, and push status.
@@ -116,13 +123,6 @@ contract.
 ## Roles
 
 Default role: Executor (savepoint writer).
-
-## State Behavior
-
-- `work_context.active_artifacts` in `.ai_ops/local/work_state.yaml` persists after
-  savepoint (like leaving work on your desk).
-- The session ends, but artifacts remain available for the next `/work` invocation.
-- No automatic cleanup or state clearing occurs.
 
 ## Risks and Limits
 

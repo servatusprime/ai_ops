@@ -1,27 +1,19 @@
 # Agent Pragmatic Guidance
-# This config is both a current enforcement surface and a target-state
-# specification. Some keys describe contracts that require runtime
-# session-state tracking (`trigger_detection_contract`,
-# `bootstrap_missing_condition`). Current LLM agents in stateless chat
-# interfaces cannot fully evaluate these.
+# This config is the current active routing contract for ai_ops commands.
+# Target-state runtime behavior (session-state tracking, fast-path evaluation,
+# hook points) is documented in 00_Admin/specs/spec_context_routing_runtime.md.
 #
-# Agent rule:
-# 1) Apply all `guard_profile`, `always_read`, and `require_*` keys literally.
-# 2) For keys that reference `session_flags`, `session_state`, or
-#    `file_state_hash_changed`: if you cannot evaluate the condition, apply
-#    `unknown_state_policy` (`treat_as_missing`) and proceed.
-# 3) Do not ignore target-state sections; do not fabricate unverifiable state.
-# 4) When runtime session-state tracking becomes available, evaluate
-#    `trigger_detection_contract` symbols directly instead of fallback.
+# Agent rules:
+# 1) Apply all guard_profile, always_read, and require_* keys literally.
+# 2) Unknown bootstrap state: apply fresh_bootstrap (read AGENTS.md) and proceed.
+# 3) Do not fabricate session state or claim unverifiable evaluation.
 #
 # Quick-read contract:
-# - Tier 1 (always read): usage, fallback, reporting, commands, skills.
-# - Tier 2 (when needed): hook_points.
-# - Tier 3 (policy engine): policy/global_execution_gates semantics.
+# - Tier 1 (always read): usage, fallback, reporting, commands, skills, policy.
 
 version: 0.5.0
 status: active
-updated: 2026-03-04
+updated: 2026-03-14
 owner: ai_ops
 usage:
   resolution_order:
@@ -95,12 +87,8 @@ commands:
         bootstrap_path: resume_same_scope
         required_reads:
         - ai_ops/AGENTS.md
-        required_session_contract:
-        - same_target_repo
-        - no_recenter_trigger
-        - bootstrap_reads_still_valid
-        fast_path_allows:
-        - skip_heavy_role_profile_topology_gate
+        # Session-state fast-path conditions: see spec_context_routing_runtime.md
+        # Fallback if state unverifiable: apply fresh_bootstrap.
       recenter:
         description: Explicit recenter trigger requires bootstrap refresh.
         bootstrap_path: recenter
@@ -329,24 +317,7 @@ skills:
     inherits_command: profiles
   ai_ops_setup:
     inherits_command: ai_ops_setup
-hook_points:
-  work:
-  - intake_after_bootstrap
-  - mode_selected
-  - governed_first_entry
-  - recenter_on_drift
-  bootstrap:
-  - post_manifest_read
-  health:
-  - scope_confirmed
-  crosscheck:
-  - targets_confirmed
-  lint:
-  - scope_confirmed
-  profiles:
-  - profile_source_resolved
-  ai_ops_setup:
-  - modality_confirmed
+# hook_points moved to spec_context_routing_runtime.md (no current implementation).
 policy:
   max_required_ref_depth: 2
   related_refs_classification:
@@ -365,8 +336,9 @@ policy:
       lint: report lane requires explicit target scope; avoid silent broad execution.
       profiles: profile edits/regeneration are high-impact and should be explicit.
   workflow_routing_drift_contract:
-    enforce: true
-    required_workflow_contract_line: Use context_routing.yaml as canonical onboarding contract.
+    enforce: true  # Enforced by VS031 in validator_config.yaml
+    required_workflow_contract_line: >
+      Use `00_Admin/configs/context_routing.yaml` as the canonical onboarding contract.
     required_sections:
     - Context Routing Hook
     - Steps
@@ -419,30 +391,13 @@ policy:
       strategy: once_per_session_or_recenter
       resume_same_scope_fast_path:
         enabled: true
-        conditions:
-        - same_target_repo
-        - mode_unchanged
-        - no_reread_trigger_fired
+        # Evaluation conditions require session state; see spec_context_routing_runtime.md
         fallback_on_unknown_state: fresh_bootstrap
       reread_triggers:
       - explicit_rebootstrap
       - mode_or_target_repo_change
       - agents_md_updated
-      trigger_detection_contract:
-        explicit_rebootstrap: session_flags.explicit_rebootstrap == true
-        mode_or_target_repo_change: session_state.mode_or_target_repo_changed == true
-        agents_md_updated: file_state_hash_changed(ai_ops/AGENTS.md) == true
+      # trigger_detection_contract and bootstrap_missing_condition formal
+    # definitions moved to spec_context_routing_runtime.md (session-state-dependent).
     bootstrap_missing_condition:
-      definition:
-      - required_bootstrap_read_not_in_session_state
-      - session_state_unavailable_or_unverifiable
-      - reread_trigger_fired
-      required_session_state_fields:
-      - loaded_reads
-      - active_target_repo
-      - mode
-      evaluation_order:
-      - check_reread_triggers
-      - check_required_reads_presence
-      - if_state_unknown_treat_as_missing
       unknown_state_policy: treat_as_missing

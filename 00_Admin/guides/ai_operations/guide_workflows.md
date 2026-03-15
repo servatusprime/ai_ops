@@ -1,9 +1,9 @@
 ---
 title: Guide: Workflows
-version: 1.0.4
+version: 1.1.0
 status: active
 license: Apache-2.0
-last_updated: 2026-02-26
+last_updated: 2026-03-14
 owner: ai_ops
 related:
 - ./guide_ai_operations_stack.md
@@ -363,11 +363,21 @@ When requestor input is an early-stage idea:
 
 ## Governance Rules
 
+> **Warning — Strict Frontmatter Schema:** Workflow files in `.ai_ops/workflows/` use
+> `additionalProperties: false` in `schema_workflow_frontmatter.yaml`. Only the declared
+> fields (`name`, `description`, `kind`, `version`, `status`, `owner`, `license`, `claude`,
+> `codex`, `exports`) are allowed. Adding any other field (including `last_updated`, `updated`,
+> `tags`, etc.) will fail `validate_workflow_frontmatter.py`. Use `version` to signal changes;
+> do not add date fields.
+
 - Execution MUST follow current ai_ops authority and command contracts.
 - Every Workbook SHOULD originate from a runbook/workflow lane.
 - Level 4 changes MUST begin from an approved Work Proposal.
 - Workbundle compacted context MUST stay synchronized at handoff checkpoints.
 - Command wrappers MUST defer to `.ai_ops/workflows/*.md` as single source.
+- After editing any `.ai_ops/workflows/*.md` file, run
+  `python 00_Admin/scripts/generate_workflow_exports.py` before committing.
+  The pre-commit export-drift check will block the commit if exports are stale.
 - Verification failures keep artifact `status: active` until corrected.
 
 Downstream enforcement surfaces (do not duplicate full procedural detail here):

@@ -2,7 +2,7 @@
 name: ai_ops_setup
 description: Run ai_ops setup scripts for skills, commands, and supported instruction surfaces
 kind: workflow
-version: 0.1.3
+version: 0.1.4
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -193,14 +193,6 @@ contract.
 If wrappers are not installed (or user selects `none`), commands remain usable by invoking workflow source files
 directly (for example: `ai_ops/.ai_ops/workflows/work.md`).
 
-## Outputs
-
-- Skills/commands installed for the requested tools.
-- Or instructions-only path confirmed when install scripts are not required.
-- Short confirmation of install targets.
-- Post-setup recommendation to declare model capabilities in `/customize`.
-- Confirmation of governed validation policy written to `.ai_ops/local/config.yaml`.
-
 ## Setup Maintenance Hooks
 
 - **Platform discovery:** `active_surface` is required input and maps to `.ai_ops/local/config.yaml` `modality` semantics.
@@ -217,6 +209,14 @@ validation/reporting behavior.
 
 If overlap exists, native commands handle session mechanics while this workflow remains the source of truth for governed
 process behavior.
+
+## Outputs
+
+- Skills/commands installed for the requested tools.
+- Or instructions-only path confirmed when install scripts are not required.
+- Short confirmation of install targets.
+- Post-setup recommendation to declare model capabilities in `/customize`.
+- Confirmation of governed validation policy written to `.ai_ops/local/config.yaml`.
 
 ## Risks and Limits
 

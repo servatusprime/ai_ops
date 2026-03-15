@@ -3,7 +3,7 @@ title: AI Workbook Lite Template: <short_title>
 id: wb_<topic>_<scope>_lite
 status: planned
 license: Apache-2.0
-version: 0.4.1
+version: 0.4.2
 created: YYYY-MM-DD
 last_updated: 2026-03-06
 owner: ai_ops
@@ -99,6 +99,8 @@ related_refs:
 - [ ] 0.4 Run Pre-Execution Readiness Gate -- confirm all checklist items pass **[Agent]**
 - [ ] 0.5 **Ambiguity Stop Gate** -- if any instruction is unclear, stop and ask requestor;
   do not proceed **[Agent/Requestor]**
+- [ ] 0.6 If a governing work proposal exists: update its approval status and execution note
+  to reflect that execution has begun. **[Agent]**
 
 **-> Ph 0 complete when:** All readiness checks passed; no ambiguity flagged.
 
@@ -115,6 +117,8 @@ related_refs:
 - [ ] N.2 Update workbundle README status row for this workbook **[Agent]**
 - [ ] N.3 Update execution spine artifact status entry (if spine is present) **[Agent]**
 - [ ] N.4 Bump `version`, `last_updated`, and `status` in YAML frontmatter **[Agent]**
+- [ ] N.5 If a governing work proposal exists: update its status, scope summary, and execution
+  note to reflect completion. **[Agent]**
 
 ### Phase N+1: Selfcheck
 

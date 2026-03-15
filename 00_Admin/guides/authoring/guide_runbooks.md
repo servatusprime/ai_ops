@@ -1,9 +1,9 @@
 ---
 title: Guide: Runbooks
-version: 1.0.5
+version: 1.0.6
 status: active
 license: Apache-2.0
-last_updated: 2026-02-18
+last_updated: 2026-03-14
 owner: ai_ops
 related:
 - ./guide_markdown_authoring.md
@@ -214,6 +214,14 @@ Parallel work metadata (front matter):
 
 Use these fields to express preference and coordination guidance, not hard enforcement unless a validator rule is
 enabled.
+
+`model_profile` usage:
+
+- In **runbook templates**: use tier-only descriptors (e.g., `"high"`,
+  `"reasoning:high | standard:medium"`). Templates are provider-agnostic.
+- In **active runbooks**: provider-specific names are allowed
+  (e.g., `"claude-sonnet-4.6:high"`).
+- See `00_Admin/specs/spec_runbook_structure.md` §7 for the normative rule.
 
 ## 5) Minimal scaffold (lint-safe)
 

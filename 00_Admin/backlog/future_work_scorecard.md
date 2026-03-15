@@ -2,7 +2,7 @@
 title: Future Work Scorecard
 version: 0.1.0
 status: active
-updated: '2026-03-12'
+updated: '2026-03-15'
 source_registry: ai_ops/00_Admin/backlog/future_work_registry.yaml
 generated_by: 00_Admin/scripts/generate_future_work_scorecard.py
 ---
@@ -27,6 +27,7 @@ generated_by: 00_Admin/scripts/generate_future_work_scorecard.py
 | fw_20260227_03 | Add examples/ directory with sample artifacts | documentation | ai_ops | low | medium | m | deferred | low | 2026-04-01 |
 | fw_20260227_05 | Remediation-lite workbook template variant | governance | ai_ops | low | low | s | deferred | low | 2026-05-01 |
 | fw_20260227_07 | Review /work numeric scoring contract | governance | ai_ops | low | low | s | deferred | low | 2026-06-01 |
+| fw_20260315_01 | Session-state infrastructure for context routing fast-path evaluation | integration | ai_ops | low | medium | xl | deferred | low | 2026-06-01 |
 <!-- markdownlint-enable MD013 -->
 
 ## Notes

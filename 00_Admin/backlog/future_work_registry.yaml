@@ -4,7 +4,7 @@ version: 0.2.0
 status: active
 owner: ai_ops
 created: 2026-01-07
-updated: '2026-03-12'
+updated: '2026-03-15'
 migration_note: >-
   Most items were moved to wb_governance_hardening_02; selected deferred items
   remain here.
@@ -52,6 +52,61 @@ scorecard_schema:
     - medium
     - low
 entries:
+  - id: fw_20260315_01
+    title: Session-state infrastructure for context routing fast-path evaluation
+    domain: integration
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wb_context_routing_agents_order_01_2026-03-14/wb_context_routing_agents_order_01.md
+    proposed_workbook: null
+    scope: >-
+      Activate the fast-path conditions and trigger detection contract defined
+      in `00_Admin/specs/spec_context_routing_runtime.md` once session-state
+      tracking is reliable enough to evaluate them. Compacted context
+      (Claude Code built-in conversation summarization) already partially fills
+      this role: it carries forward reads_applied, active mode, and target repo
+      across the context compression boundary. Remaining gaps: compacted context
+      is not machine-queryable (no session_flags API), file hash change
+      detection is absent, and resume_same_scope fast-path cannot be evaluated
+      without verifiable field presence. When the gap is closed (via compacted
+      context improvements, a Claude Code hook, or an MCP server): activate
+      fast-path conditions (same_target_repo, mode_unchanged,
+      no_reread_trigger_fired), enable trigger detection expressions, wire
+      hook_points to an event bus, and migrate activated spec content back into
+      context_routing.yaml per the implementation roadmap in
+      spec_context_routing_runtime.md. Concrete file changes at that time:
+      context_routing.yaml (restore trimmed sections as enforced active config),
+      AGENTS.md (conditional bootstrap tier selection), rb_bootstrap.md
+      (updated Step 2), validate_repo_rules.py and validator_config.yaml (new
+      VS rule for session-state injection), and spec_context_routing_runtime.md
+      (retire to 99_Trash once fully migrated).
+    priority: low
+    benefit: medium
+    effort: xl
+    readiness: deferred
+    risk_if_deferred: low
+    activation_trigger: >-
+      A stateful session context mechanism becomes available (e.g., Claude Code
+      adds native session memory, an MCP server for ai_ops state tracking is
+      built, or equivalent tooling enables cross-turn state evaluation).
+    next_review: 2026-06-01
+    status: planned
+    owner: ai_ops
+    created: 2026-03-15
+    compacted_context:
+      source: >-
+        wb_context_routing_agents_order_01 Phase 3 audit; requestor question
+        2026-03-15 about session-state infrastructure
+      note: >-
+        context_routing.yaml was split from spec_context_routing_runtime.md
+        to separate active contract from target-state design. The spec holds
+        the session-state-dependent content that will be reactivated when this
+        infrastructure exists. Current fallback: always apply fresh_bootstrap.
+    notes: >-
+      No urgency — current fallback (fresh_bootstrap every session) works
+      correctly, just with extra read overhead. The spec preserves the design
+      intent so it is not reconstructed from scratch when infrastructure arrives.
+
   - id: fw_20260312_01
     title: Refresh GitHub Actions SHA pins in lint.yml
     domain: operations

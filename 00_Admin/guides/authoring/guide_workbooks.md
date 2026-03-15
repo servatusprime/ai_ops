@@ -1,9 +1,9 @@
 ---
 title: Guide: AI Workbooks
-version: 1.8.3
+version: 1.8.6
 status: active
 license: Apache-2.0
-last_updated: 2026-03-06
+last_updated: 2026-03-14
 owner: ai_ops
 related:
 - ./guide_markdown_authoring.md
@@ -154,7 +154,8 @@ NOT proceed to Phase 1. The Phase 0 Ambiguity Stop Gate (task 0.5) enforces this
 
 **Placement:** Between `## Status Checklist` (Sec.2) and `## Ordered Execution Queue` (Sec.4).
 See templates: `01_Resources/templates/workflows/wb_template_lite.md`,
-`wb_template_generic.md`, `wb_template_first_run.md`.
+`01_Resources/templates/workflows/wb_template_generic.md`,
+`01_Resources/templates/workflows/wb_template_first_run.md`.
 
 ## 2.1 Capability-Gated Execution
 
@@ -428,6 +429,21 @@ the crosscheck phase.
 | Field | Type | Description |
 | --- | --- | --- |
 | `role_assignments` | optional object | Per-role model tier overrides (`low`/`medium`/`high`) for sub-agent delegation |
+
+### `model_profile` Usage
+
+`model_profile` declares the AI model tier for the workbook or runbook.
+
+- **In templates**: use tier-only descriptors (e.g., `"high"`,
+  `"reasoning:high | standard:medium"`). Templates are provider-agnostic.
+- **In active workbooks and runbooks**: provider-specific names are allowed
+  (e.g., `"claude-sonnet-4.6:high"`).
+- **In specs and guides**: document both levels; abstract tiers for templates,
+  concrete names for artifact examples.
+
+When loading a workbook for cold-start execution, read both `model_profile`
+(tier) and `role_assignments` (per-role overrides) from frontmatter to
+determine the correct execution tier for each role.
 
 ### Execution Role Semantics (CSCC Lanes)
 
@@ -713,6 +729,11 @@ Level 4 changes MUST start with a Work Proposal and execution workbooks MUST ref
 `work_proposal_*.md` naming and keep proposals inside the workbundle or workprogram folder.
 
 Approval details MUST be recorded in both the Work Proposal and the execution workbook.
+
+Work Proposal sync rule: The governing work proposal MUST be kept in sync with execution
+state. Update the proposal when approval is granted, when execution begins (record execution
+start and executing agent), and when execution completes (record final status and scope
+summary). A proposal that diverges from actual execution state is a governance gap.
 
 Reference: `00_Admin/guides/ai_operations/guide_work_proposals.md`.
 

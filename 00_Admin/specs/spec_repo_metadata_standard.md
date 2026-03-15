@@ -4,9 +4,9 @@ id: spec_repo_metadata_standard
 module: admin
 status: active
 license: Apache-2.0
-version: 0.1.3
+version: 0.1.4
 created: 2025-12-02
-updated: 2026-02-24
+updated: 2026-03-14
 owner: ai_ops
 ai_generated: true
 ---
@@ -55,9 +55,24 @@ Quoting and brackets are not required for simple scalar owner values.
 
 - Location: `90_Sandbox/ai_workbooks/wb_*.md`
 - Required fields: `title`, `id`, `status`, `version`, `created`, `ai_role`, `description`
-- Optional: `replaces` (list of workbook IDs superseded)
+- Optional: `replaces` (list of workbook IDs superseded), `role_assignments` (per-role
+  model/tier overrides), `execution_mode` (e.g., `sequential`), `model_profile`
+  (overall model tier or provider-specific name — see note below)
 
-### 3.4 Workflow Contracts
+> **`model_profile` format:** Templates use generic tier descriptors only
+> (e.g., `"high"`, `"reasoning:high | standard:medium"`). Active workbooks and
+> runbooks may use provider-specific names (e.g., `"claude-sonnet-4.6:high"`).
+> Validator rule VS029 warns when `model_profile` is absent from new
+> `wb_*.md`/`rb_*.md` artifacts.
+
+### 3.4 Runbooks
+
+- Location: `00_Admin/runbooks/rb_*.md`
+- Required fields: `title`, `id`, `status`, `version`, `created`, `owner`
+- Optional: `model_profile` (reusable execution tier guidance), `execution_mode`,
+  `role_assignments`
+
+### 3.5 Workflow Contracts
 
 - Location: `.ai_ops/workflows/*.md`
 - Required fields: `name`, `description`, `kind`, `version`, `status`, `owner`,

@@ -34,6 +34,7 @@ Read specs in this order:
 1. `spec_workbundle_dependency_tracking.md` - Workbook dependency and impact declarations
 1. `spec_workbundle_placement_suggestion.md` - Placement scoring and decision-echo contract
 1. `spec_infrastructure_change_validation_gate.md` - Infrastructure-touching validation gate
+1. `spec_context_routing_runtime.md` - Target-state runtime design for context_routing.yaml
 
 ## Deprecated Specs (Archived to 99_Trash)
 

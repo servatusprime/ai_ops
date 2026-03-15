@@ -1,9 +1,9 @@
 ---
 title: Guide: File Placement (ai_ops)
-version: 0.2.3
+version: 0.2.4
 status: active
 license: Apache-2.0
-last_updated: 2026-03-13
+last_updated: 2026-03-14
 owner: ai_ops
 ---
 
@@ -493,9 +493,18 @@ Modules MAY define additional naming conventions:
 
 ### Do not: Create directories without clear purpose
 
-**Example**: Empty `/templates/` folder with no README or intent
+**Example**: Empty `templates/metadata/` folder containing only a README.md placeholder
 
-**Do instead**: Add README explaining future use, or remove until needed
+**Do instead**: Do not pre-create directories as empty placeholders. Create the
+directory only when the first real governed artifact is placed there. Document
+optional directory patterns in the parent README or in
+`guide_repository_structure.md §3.0.1` instead of using placeholder READMEs.
+
+The following are known optional directories that follow creation-on-first-real-asset policy:
+
+- `00_Admin/prompts/` — create when first admin-level prompt artifact is placed
+- `01_Resources/guides/` — create when first cross-cutting resource guide is placed
+- `01_Resources/templates/metadata/` — create when first template metadata sidecar is placed
 
 ## Examples
 
