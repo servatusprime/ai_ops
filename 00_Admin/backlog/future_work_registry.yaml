@@ -290,19 +290,23 @@ entries:
       GitHub repository created and URL confirmed; update plugin.json before
       or at initial public release commit.
     next_review: 2026-03-01
-    status: planned
+    status: actualized
     owner: ai_ops
     created: 2026-02-27
+    actualized: 2026-03-16
+    actualized_by: >-
+      URL updated to https://github.com/servatusprime/ai_ops in plugin.json
+      during 0.3.0 work. Confirmed resolved at OSS launch (repo made public
+      2026-03-16, v0.3.1 tagged).
     compacted_context:
       source: wb_oss_readiness_01.md task H3 (decision D2)
       note: >-
         H3 inserts placeholder; this item tracks the final value once the
         GitHub repo is created. Release blocker.
     notes: >-
-      Release blocker. Do not merge initial public commit without resolving.
-      Placeholder repository URL set to
-      https://github.com/servatusprime/ai-ops-governance in plugin.json on
-      2026-02-27.
+      Resolved in 0.3.0 — URL updated from ai-ops-governance placeholder to
+      https://github.com/servatusprime/ai_ops. Closed out at OSS public
+      launch 2026-03-16.
 
   - id: fw_20260227_02
     title: Rename work_pause to work_savepoint with commit/push default
