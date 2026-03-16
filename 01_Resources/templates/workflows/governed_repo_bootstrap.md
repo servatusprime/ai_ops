@@ -65,7 +65,7 @@ Test-Path ../ai_ops/AGENTS.md
 Test-Path ../ai_ops/CONTRIBUTING.md
 
 # No machine-local absolute governance paths
-rg -n "C:/RE_Projects|C:\\\\RE_Projects|C:/Users|C:\\\\Users|/Users/|/home/" AGENTS.md CONTRIBUTING.md aiops.yaml
+rg -n "C:/Users|C:\\\\Users|/Users/|/home/" AGENTS.md CONTRIBUTING.md aiops.yaml
 
 # ai_ops governance references are repo-relative
 rg -n -P "(?<!\\.\\./)ai_ops/" AGENTS.md CONTRIBUTING.md aiops.yaml

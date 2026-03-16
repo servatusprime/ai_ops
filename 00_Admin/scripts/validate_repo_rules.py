@@ -1287,6 +1287,12 @@ def main() -> int:
             severity = params.get("severity", "error")
             patterns = list(params.get("forbidden_patterns", []))
             allow_repo_names = set(params.get("allow_repo_names", ["ai_ops"]))
+            # Compute workspace root dynamically so absolute-path patterns work
+            # for any user's machine, not just the repo author's workspace.
+            _ws_norm = os.path.normpath(os.path.dirname(os.path.normpath(repo_root)))
+            _ws_fwd = _ws_norm.replace("\\", "/")
+            _ws_fwd_esc = re.escape(_ws_fwd)
+            _ws_bwd_esc = re.escape(_ws_norm)  # normpath uses os.sep; re.escape handles backslashes
             for repo_name in read_local_work_repo_names(repo_root):
                 if repo_name in allow_repo_names:
                     continue
@@ -1296,8 +1302,8 @@ def main() -> int:
                         rf"\b{escaped}\b",
                         rf"\.\./{escaped}\b",
                         rf"\.\.\\{escaped}\b",
-                        rf"C:/RE_Projects/{escaped}\b",
-                        rf"C:\\RE_Projects\\{escaped}\b",
+                        rf"{_ws_fwd_esc}/{escaped}\b",
+                        rf"{_ws_bwd_esc}{re.escape(os.sep)}{escaped}\b",
                     ]
                 )
             patterns = list(dict.fromkeys(patterns))

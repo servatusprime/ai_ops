@@ -317,7 +317,7 @@ entries:
       with `savepoint:` prefix message, workbook status remains in_progress.
       Add `--no-commit` flag to preserve old pause-without-commit behavior.
       Change surface: `.ai_ops/workflows/work_pause.md` (rename+update),
-      setup scripts, RE_Projects root skill wrappers, any docs referencing work_pause.
+      setup scripts, installed skill wrappers, any docs referencing work_pause.
     priority: medium
     benefit: medium
     effort: s

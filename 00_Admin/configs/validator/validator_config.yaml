@@ -323,8 +323,9 @@ rules:
       forbidden_patterns:
         - "\\.\\./(?!<work_repo>|<governed_repo>|ai_ops\\b)[A-Za-z0-9._-]+"
         - "\\.\\.\\\\(?!<work_repo>|<governed_repo>|ai_ops\\b)[A-Za-z0-9._-]+"
-        - "C:/RE_Projects/(?!ai_ops\\b)[A-Za-z0-9._-]+"
-        - "C:\\\\RE_Projects\\\\(?!ai_ops\\b)[A-Za-z0-9._-]+"
+        # Workspace-root absolute path patterns are generated dynamically by the
+        # validator script at runtime using the actual workspace root directory,
+        # so no machine-specific paths are hardcoded here.
   - id: VS029
     enabled: true
     paths:

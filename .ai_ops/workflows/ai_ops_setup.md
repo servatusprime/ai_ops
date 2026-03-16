@@ -145,7 +145,37 @@ contract.
 4. If `.ai_ops/local/config.yaml` exists, update `customizations.validation_policy.governed_mode` with the confirmed
    `governed_validation_policy`. If it does not exist, create it from the template and apply the value after
    confirmation.
-5. Check existing installation state for the selected surface and scope:
+5. **Configure target/external repos** (governed workflow prerequisite):
+   - Ask: "Do you have external repos you want ai_ops to govern (for `/work_savepoint`, `/closeout`, and `/lint` in
+     Governed or External mode)?"
+   - If yes: for each target repo, add an entry to `workspace.work_repos` in `.ai_ops/local/config.yaml`:
+     - `path:` — relative to the workspace root (parent directory of the ai_ops repo), e.g. `my_project/`.
+       Absolute paths are also accepted for repos outside the workspace. At runtime,
+       relative paths are joined with the workspace root before comparing to the resolved
+       `<target_repo>`; absolute paths are compared directly.
+     - `sandbox_dir:` — subdirectory used for work artifacts (default: `90_Sandbox`).
+     - `savepoint_validation.minimum_commands:` — validator commands to run before savepoint. Default `[]`; populate
+       when repo-native validators are identified via `/customize` or manual edit.
+   - Example entry for a target repo alongside ai_ops in the same workspace:
+
+     ```yaml
+     workspace:
+       work_repos:
+         - path: ai_ops/
+           sandbox_dir: 90_Sandbox
+           savepoint_validation:
+             minimum_commands: []
+         - path: my_project/
+           sandbox_dir: 90_Sandbox
+           savepoint_validation:
+             minimum_commands: []
+     ```
+
+   - If no external repos are known at setup time, skip and add entries manually later,
+     or re-invoke `/ai_ops_setup` at any time to add new repos to `work_repos`.
+   - If `governed_validation_policy` is `repo_native`, `work_repos` entries are still used for repo-root resolution
+     at runtime; `minimum_commands` is ignored (validators are auto-detected from the repo's native tooling).
+6. Check existing installation state for the selected surface and scope:
    - If wrappers already exist at the target scope root, report "already installed" and offer `--force` overwrite or
      stop.
 6. Run the matching script(s) from `.ai_ops/setup/` with the resolved scope flag:

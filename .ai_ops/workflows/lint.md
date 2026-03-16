@@ -3,7 +3,7 @@ name: lint
 description: Run configured validators and linters against a target scope and report
   findings without modifying files.
 kind: workflow
-version: 0.1.2
+version: 0.2.0
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -75,8 +75,19 @@ contract.
 ### Decision Matrix - Governed (External Repo with ai_ops)
 
 - Read `customizations.validation_policy.governed_mode` from `.ai_ops/local/config.yaml`.
-- If `governed_mode: ai_ops`, run ai_ops validators/linters against the target scope when available.
-- If `governed_mode: repo_native`, use the target repo's configured validators/linters.
+- If `governed_mode: ai_ops`, read `governed_repo_validation` from `context_routing.yaml`
+  and run the `minimum_commands` list for the target scope. Also read per-repo override
+  from `.ai_ops/local/config.yaml`: find the entry in `workspace.work_repos` whose
+  `path`, when resolved relative to the workspace root (parent directory of the ai_ops
+  repo), matches the normalized `<target_repo>`. Absolute `path` values are compared
+  directly; relative values (e.g. `my_project/`) are joined with the workspace root
+  before comparing. Read the matched entry's `savepoint_validation` key.
+  If no matching entry exists, record `validation_commands_run: []` and report.
+  Do NOT claim the governed repo is lint-ready until at least one validator is confirmed
+  discovered and run.
+- If `governed_mode: repo_native`, detect and run the repo's configured validators/linters
+  (`.markdownlint.json`, `.yamllint`, `ruff.toml`, `.pre-commit-config.yaml`).
+  Require explicit confirmation that validator discovery succeeded before reporting pass.
 - If policy is missing, ask and default to `ai_ops` only with confirmation.
 
 ### Decision Matrix - External (User)
@@ -144,11 +155,19 @@ contract.
 
 ### External Repo (User)
 
-1. Confirm target scope.
-2. Read `customizations.validation_policy.governed_mode` from `.ai_ops/local/config.yaml` if governed mode applies.
-3. Detect repo-native validation tools.
-4. Run available checks per validation policy and report findings without applying fixes.
-5. If fixes are requested, switch to a work lane for edits.
+1. **Repo-Root Resolution**: Resolve the target repository root before any lint operations.
+   - Resolve `target_repo` from: explicit user scope → active artifact `repo` field → `.ai_ops/local/config.yaml` `workspace.work_repos` list.
+   - **Explicit user scope**: an absolute path or workspace-relative path. Normalize to absolute path.
+   - **Unregistered repos**: require explicit user-provided path if not resolvable. Stop and ask if none given.
+   - **Windows**: normalize to forward-slash absolute path.
+   - Run `git -C <target_repo> rev-parse --show-toplevel` to confirm repo access and establish `repo_root`.
+     If it fails with `dubious ownership`, run `git config --global --add safe.directory <target_repo>` and
+     re-run. Record `safe_directory_applied: true/false`.
+2. Confirm target scope.
+3. Read `customizations.validation_policy.governed_mode` from `.ai_ops/local/config.yaml` if governed mode applies.
+4. Detect repo-native validation tools.
+5. Run available checks per validation policy and report findings without applying fixes.
+6. If fixes are requested, switch to a work lane for edits.
 
 ## Working with Native Commands
 

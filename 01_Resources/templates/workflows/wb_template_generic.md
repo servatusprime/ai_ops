@@ -580,7 +580,7 @@ markdownlint <changed_paths>
 yamllint <changed_yaml_paths>
 
 # Governed path contract checks (when cross-repo references are in scope)
-rg -n "C:/RE_Projects|C:\\\\RE_Projects|C:/Users|C:\\\\Users|/Users/|/home/" <changed_paths>
+rg -n "C:/Users|C:\\\\Users|/Users/|/home/" <changed_paths>
 rg -n -P "(?<!\\.\\./)ai_ops/" <governed_repo_changed_paths>
 ```
 

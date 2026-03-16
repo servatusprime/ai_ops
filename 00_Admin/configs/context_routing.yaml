@@ -11,9 +11,9 @@
 # Quick-read contract:
 # - Tier 1 (always read): usage, fallback, reporting, commands, skills, policy.
 
-version: 0.5.0
+version: 0.6.0
 status: active
-updated: 2026-03-14
+updated: 2026-03-15
 owner: ai_ops
 usage:
   resolution_order:
@@ -317,6 +317,15 @@ skills:
     inherits_command: profiles
   ai_ops_setup:
     inherits_command: ai_ops_setup
+governed_repo_validation:
+  # Shared contract for governed-repo workflow lanes (work_savepoint, closeout, lint).
+  # minimum_commands is empty by default; populate per-repo via the list entry in
+  # .ai_ops/local/config.yaml workspace.work_repos[].savepoint_validation.
+  minimum_commands: []
+  network_sensitive_commands: []
+  allow_partial_on_network_failure: true
+  require_repo_root_resolution: true
+  require_safe_directory_preflight: true
 # hook_points moved to spec_context_routing_runtime.md (no current implementation).
 policy:
   max_required_ref_depth: 2

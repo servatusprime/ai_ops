@@ -2,7 +2,7 @@
 description: Finalize a work session with cleanup, lint, commit, and push.
 name: closeout
 kind: workflow
-version: 0.1.2
+version: 0.2.0
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -34,6 +34,7 @@ exports:
     skill_name: closeout
 ---
 
+<!-- markdownlint-disable MD013 -->
 # /closeout
 
 ## Purpose
@@ -139,16 +140,41 @@ contract.
 ### External Repo (User)
 
 1. Apply bootstrap guard BRG-01 before lane steps.
-2. If there are no changes, report there is nothing to close out and stop.
-3. Update any work tracking artifacts (notes, checkpoints) if requested.
-4. Read `customizations.validation_policy.governed_mode` from `.ai_ops/local/config.yaml`.
-5. If `governed_mode: ai_ops`, run ai_ops validators/linters against the target scope when available.
-6. If `governed_mode: repo_native`, run the repo's configured linters
-   (check for .markdownlint.json, .yamllint, pre-commit hooks).
-7. If no linters configured, offer to run common linters.
-8. Stage changes and generate commit message summary.
-9. Confirm before commit.
-10. Confirm before push.
+2. **Repo-Root Resolution**: Resolve the target repository root before any git operations.
+   - Resolve `target_repo` from: explicit user scope → active artifact `repo` field → `.ai_ops/local/config.yaml` `workspace.work_repos` list.
+   - **Explicit user scope**: an absolute path or workspace-relative path. Normalize to absolute path before passing to `git -C`.
+   - **Unregistered repos**: if `target_repo` cannot be resolved, require explicit user-provided path. Stop and ask if none given.
+   - **Windows**: normalize to forward-slash absolute path for all `git -C` calls.
+   - Run `git -C <target_repo> rev-parse --show-toplevel` to confirm repo access and establish `repo_root`.
+     - If it fails with `dubious ownership`: run `git config --global --add safe.directory <target_repo>` and
+       re-run. Record `safe_directory_applied: true`. If the re-run also fails, stop and report.
+     - On success: capture output as `repo_root`. Record `safe_directory_applied: false`.
+   - All subsequent git commands MUST use `-C <repo_root>` or run from `<repo_root>`.
+3. **Git Preflight**: Verify repo state using confirmed `repo_root` from Step 2.
+   - Run `git -C <repo_root> rev-parse --abbrev-ref HEAD`. If output is `HEAD`: emit `push_preflight: detached_head` — stop; a branch must be checked out before committing.
+   - Run `git -C <repo_root> rev-parse --is-shallow-repository`. If `true`: emit `push_preflight: shallow_clone`. Record warning and proceed.
+   - Run `git -C <repo_root> config --get commit.gpgsign`. If `true`: emit `signed_commits_required: true` and verify a signing key is available.
+4. If there are no changes, report there is nothing to close out and stop.
+5. Update any work tracking artifacts (notes, checkpoints) if requested.
+6. **Validator Contract**: Read `customizations.validation_policy.governed_mode` from `.ai_ops/local/config.yaml`.
+   Read `governed_repo_validation` from `context_routing.yaml`.
+   - Read per-repo override: find the entry in `workspace.work_repos` whose `path`, when resolved relative
+     to the workspace root, matches `<target_repo>`, and read its `savepoint_validation.minimum_commands`.
+     If no matching entry exists, use `governed_repo_validation.minimum_commands` only.
+   - If `governed_mode: ai_ops`: run each command in `minimum_commands` sequentially against `<repo_root>`.
+     For commands in `network_sensitive_commands`: retry once on network/sandbox error; if still failing,
+     record `validation_skipped_reason` and skip if `allow_partial_on_network_failure: true`.
+     Record `validation_escalated: true` if any command was skipped.
+   - If `governed_mode: repo_native`: detect repo-native linters (`.markdownlint.json`, `.yamllint`,
+     pre-commit hooks) and run them. If none configured, offer to run common linters.
+   - Record `validation_commands_run` in output.
+7. Stage changes and generate commit message summary.
+8. **Push Preflight** (if push is planned): verify `push_preflight_result` from Step 3 is `clean` or `shallow_clone`. If `detached_head`, stop before commit.
+9. Commit.
+10. **Push and failure handling**: Push to remote.
+    - If push fails with `protected branch` or `remote rejected`: emit `push_escalation: pr_required` — create a PR against `<default_branch>` instead.
+    - If push fails with authentication error: emit `push_escalation: auth_failure` — stop and report.
+    - If push fails for any other reason: record exit code and stderr as `push_escalation: unknown` — stop and report.
 11. Summarize changes shipped.
 12. If the target repo implements a future-work registry + scorecard pattern,
     run that repo's generator only when the target registry changed in approved scope.

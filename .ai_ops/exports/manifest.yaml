@@ -20,7 +20,7 @@ manifest_output_count: 26
 workflows:
 - workflow: ai_ops_setup
   source: .ai_ops/workflows/ai_ops_setup.md
-  source_sha256_12: 028c4e5357ba
+  source_sha256_12: a562b5ecf9c9
   description: Run ai_ops setup scripts for skills, commands, and supported instruction
     surfaces
   outputs:
@@ -43,7 +43,7 @@ workflows:
     sha256_12: 5e3e551d96b0
 - workflow: closeout
   source: .ai_ops/workflows/closeout.md
-  source_sha256_12: c705cc51687b
+  source_sha256_12: 7c1bc2055c98
   description: Finalize a work session with cleanup, lint, commit, and push.
   outputs:
   - path: plugins/ai-ops-governance/commands/closeout.md
@@ -98,7 +98,7 @@ workflows:
     sha256_12: 0a7174678693
 - workflow: lint
   source: .ai_ops/workflows/lint.md
-  source_sha256_12: e626072313fb
+  source_sha256_12: 4813c8583bc9
   description: Run configured validators and linters against a target scope and report
     findings without modifying files.
   outputs:
@@ -144,7 +144,7 @@ workflows:
     sha256_12: 79ffc08c02fc
 - workflow: work_savepoint
   source: .ai_ops/workflows/work_savepoint.md
-  source_sha256_12: 01f3186bf920
+  source_sha256_12: 5af541906706
   description: Commit and push active work as a savepoint, then end the ai_ops session.
   outputs:
   - path: plugins/ai-ops-governance/commands/work_savepoint.md
