@@ -1,15 +1,16 @@
 ---
 title: Guide: Bootstrap Self-Repair Protocol
-version: 0.2.0
+version: 0.2.1
 status: stub
 license: Apache-2.0
 created: 2026-01-24
-last_updated: 2026-02-28
+last_updated: 2026-03-24
 owner: ai_ops
 ai_agent_applicability: conditional
 related:
   - ../../runbooks/rb_bootstrap.md
   - ./guide_workflows.md
+  - ../architecture/guide_bootstrap_algorithm.md
 ---
 
 # Guide: Bootstrap Self-Repair Protocol
@@ -88,38 +89,8 @@ Current capability: Can answer questions, read specific files on request
 
 ## Guided Recovery Workflows
 
-### Workflow 1: Missing AGENTS.md
-
-**Failure**: Bootstrap entry point not found
-
-**Recovery steps**:
-
-1. Check README.md for alternate bootstrap instructions
-2. Look for .ai_ops/AGENTS.md or docs/AGENTS.md
-3. If found: Use alternate, log non-standard location
-4. If not found: Safe-mode, request user provide bootstrap path
-
-### Workflow 2: Corrupted Session File
-
-**Failure**: .aiops_session/*.yaml unreadable
-
-**Recovery steps**:
-
-1. Create backup: `[file].corrupted.YYYYMMDD_HHMMSS`
-2. Remove corrupted file
-3. Continue bootstrap with fresh session
-4. Log: "Session file corrupted, starting fresh session"
-
-### Workflow 3: Permission Errors
-
-**Failure**: Cannot read required files due to permissions
-
-**Recovery steps**:
-
-1. Report specific files with permission issues
-2. Safe-mode active
-3. Suggest: Check file permissions, run from correct directory
-4. Do NOT attempt to modify permissions autonomously
+Operational step-by-step recovery workflows for Missing AGENTS.md, Corrupted Session File,
+and Permission Errors are in `00_Admin/runbooks/rb_bootstrap.md` §Bootstrap Failure Recovery.
 
 ## Automatic Repair Operations
 

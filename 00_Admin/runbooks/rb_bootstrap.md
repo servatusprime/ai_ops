@@ -1,10 +1,10 @@
 ---
 title: Runbook: Agent Bootstrap
-version: 0.3.1
+version: 0.3.2
 status: active
 license: Apache-2.0
 created: 2026-01-24
-updated: 2026-03-04
+updated: 2026-03-24
 owner: ai_ops
 ai_agent_applicability: recommended
 ---
@@ -67,11 +67,32 @@ verify the directory exists and is readable.
 
 Verify bootstrap succeeded:
 
-- Can answer authority level questions (L1)
-- Can locate key repo directories (L2)
-- Understand workbook/workbundle patterns (L3)
+- **L1 Bootstrap Awareness** (required): authority level model (0-4) and AGENTS.md location
+- **L2 Repository Navigation** (required): `00_Admin/policies/`, `00_Admin/specs/`, guides
+- **L3 Operational Patterns** (recommended): workbook/workbundle structure and patterns
+
+Certification workflow:
+
+1. Complete Steps 1-2 above.
+2. Internally verify knowledge against L1/L2/L3 questions.
+3. Output certification status:
+
+```text
+[BOOTSTRAP CERTIFIED]
+- Level 1 (Bootstrap Awareness): PASS (3/3)
+- Level 2 (Repository Navigation): PASS (3/3)
+- Level 3 (Operational Patterns): PASS (2/3)
+
+Status: Fully certified for autonomous operations
+Bootstrap source: AGENTS.md
+Files read: 6 (AGENTS.md, CONTRIBUTING.md, 4 policies/guides)
+```
+
+4. If L1 or L2 fail: safe-mode active, await user guidance.
+   If L3 fails: proceed with warning "operational pattern knowledge incomplete".
 
 See: [guide_capability_certification.md](../guides/ai_operations/guide_capability_certification.md)
+for full certification level questions, failure modes, and anti-patterns.
 
 ## Bootstrap Failure
 
@@ -88,9 +109,43 @@ If bootstrap fails (parse errors, missing files, permissions):
 
 1. Enter safe-mode (read-only operations)
 2. Report failure clearly to user
-3. Provide recovery options
+3. Attempt recovery per workflow below
+
+### Workflow 1: Missing AGENTS.md
+
+**Failure**: Bootstrap entry point not found
+
+**Recovery steps**:
+
+1. Check README.md for alternate bootstrap instructions
+2. Look for .ai_ops/AGENTS.md or docs/AGENTS.md
+3. If found: use alternate, log non-standard location
+4. If not found: safe-mode, request user provide bootstrap path
+
+### Workflow 2: Corrupted Session File
+
+**Failure**: .aiops_session/*.yaml unreadable
+
+**Recovery steps**:
+
+1. Create backup: `[file].corrupted.YYYYMMDD_HHMMSS`
+2. Remove corrupted file
+3. Continue bootstrap with fresh session
+4. Log: "Session file corrupted, starting fresh session"
+
+### Workflow 3: Permission Errors
+
+**Failure**: Cannot read required files due to permissions
+
+**Recovery steps**:
+
+1. Report specific files with permission issues
+2. Safe-mode active
+3. Suggest: check file permissions, run from correct directory
+4. Do NOT attempt to modify permissions autonomously
 
 See: [guide_bootstrap_self_repair.md](../guides/ai_operations/guide_bootstrap_self_repair.md)
+for safe-mode message template, auto-repair criteria, and fallback sequence.
 
 ## Verification
 

@@ -98,7 +98,7 @@ workflows:
     sha256_12: 0a7174678693
 - workflow: lint
   source: .ai_ops/workflows/lint.md
-  source_sha256_12: 660029dc5566
+  source_sha256_12: 24e9647947f4
   description: Run configured validators and linters against a target scope and report
     findings without modifying files.
   outputs:

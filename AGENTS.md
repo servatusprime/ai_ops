@@ -1,9 +1,9 @@
 ---
 title: Agents Start Here
-version: 3.5.5
+version: 3.5.6
 status: active
 license: Apache-2.0
-last_updated: 2026-03-19
+last_updated: 2026-03-24
 owner: ai_ops
 description: Bootstrap and authority contract for AI agents operating in ai_ops.
 related:
@@ -144,6 +144,53 @@ Before proposing actions, verify:
 - [ ] If Level 4, I documented rationale and am waiting for explicit approval.
 - [ ] I am not presenting multi-step implementation as ad-hoc "quick wins".
 - [ ] I am not prescribing command sequences for workbook-sized work.
+
+## Response Thrift
+
+Keep outputs efficient without sacrificing correctness:
+
+- Be concise by default; expand when complex or requested
+- Prefer pointers to canonical docs over recreating content
+- Optimize for clarity and actionability
+- Do not increase internal cycle burden in touched docs without explicit
+  justification and landing-zone mapping
+
+## Thriftiness Pass
+
+If `customizations.review_preferences.thrift_pass` is enabled in
+`.ai_ops/local/config.yaml`:
+
+- `local`: limit to files touched in current execution
+- `meta`: broad refactors; log in workbundle scratchpad before proposing a
+  dedicated workbook
+
+## Selfcheck Loop (Completion Gate)
+
+Before reporting "done" on any workbook or multi-step task, run a selfcheck loop:
+
+```text
+LOOP until (clean OR blocked OR iterations >= 3):
+  1. Re-read all tasks from beginning
+  2. For each task, verify: completed? outputs exist? no regressions?
+  3. Run thrift/streamlining pass on touched docs:
+     - no unnecessary duplication
+     - no dead references
+     - no avoidable cross-document hop increases
+  4. If gaps found -> fix and increment iteration
+  5. If blocked -> record blocker and exit loop
+  6. If clean -> exit loop
+END LOOP
+```
+
+**Exit conditions:**
+
+- **Clean:** All tasks verified, no gaps. Report completion.
+- **Blocked:** Issue cannot be resolved without user input. Report blocker.
+- **Max iterations (3):** Persistent issues remain. Report partial completion with remaining gaps.
+
+**Never report "done" after a single pass.** The first pass often misses edge cases.
+
+---
 
 ## Approval Scope Rule
 
@@ -398,30 +445,6 @@ Before executing Level 3+ work, confirm:
 - [ ] I know canonical vocabulary (workbook vs workbundle vs workprogram)
 - [ ] I can navigate the decision tree
 - [ ] I understand 90_Sandbox (experimental) vs 00_Admin (canonical)
-
----
-
-## Workflow Source Contracts
-
-Workflow source contracts live in `.ai_ops/workflows/`. Each command has one
-workflow file.
-
-| Command | Default lane | Purpose |
-| --------------- | ------------------------ | ------------------------------------------ |
-| /work | Coordinator -> Executor | Establish work context, execute tasks |
-| /work_status | Coordinator | Summarize active work and blockers |
-| /work_savepoint | Executor | Commit + push savepoint, then end session |
-| /harvest | Coordinator -> Executor | Harvest/prune artifacts |
-| /crosscheck | Reviewer | Review and report only |
-| /health | Reviewer | Report-only repo health check |
-| /closeout | Executor | Finalize and archive work |
-| /lint | Linter | Run configured validators and linters |
-| /bootstrap | Coordinator | Orientation and readiness |
-| /scratchpad | Executor | Create session notes |
-| /customize | Coordinator -> Executor | Configure preferences |
-| /profiles | Coordinator -> Executor | Manage rider/crew profile contracts |
-
-If command folders are not installed for your tool, read `.ai_ops/workflows/<command>.md` directly.
 
 ---
 
@@ -764,53 +787,6 @@ Update compacted context at every:
 
 ---
 
-## Response Thrift
-
-Keep outputs efficient without sacrificing correctness:
-
-- Be concise by default; expand when complex or requested
-- Prefer pointers to canonical docs over recreating content
-- Optimize for clarity and actionability
-- Do not increase internal cycle burden in touched docs without explicit
-  justification and landing-zone mapping
-
-## Thriftiness Pass
-
-If `customizations.review_preferences.thrift_pass` is enabled in
-`.ai_ops/local/config.yaml`:
-
-- `local`: limit to files touched in current execution
-- `meta`: broad refactors; log in workbundle scratchpad before proposing a
-  dedicated workbook
-
-## Selfcheck Loop (Completion Gate)
-
-Before reporting "done" on any workbook or multi-step task, run a selfcheck loop:
-
-```text
-LOOP until (clean OR blocked OR iterations >= 3):
-  1. Re-read all tasks from beginning
-  2. For each task, verify: completed? outputs exist? no regressions?
-  3. Run thrift/streamlining pass on touched docs:
-     - no unnecessary duplication
-     - no dead references
-     - no avoidable cross-document hop increases
-  4. If gaps found -> fix and increment iteration
-  5. If blocked -> record blocker and exit loop
-  6. If clean -> exit loop
-END LOOP
-```
-
-**Exit conditions:**
-
-- **Clean:** All tasks verified, no gaps. Report completion.
-- **Blocked:** Issue cannot be resolved without user input. Report blocker.
-- **Max iterations (3):** Persistent issues remain. Report partial completion with remaining gaps.
-
-**Never report "done" after a single pass.** The first pass often misses edge cases.
-
----
-
 ## Workspace Topology
 
 Machine-readable workspace defaults. Per-machine overrides (modality, work_repos)
@@ -844,6 +820,30 @@ defaults above. Agents MUST NOT halt on missing local config.
 | `99_Trash/` | Staged deletions and deprecated files (manually purged) |
 
 Detailed structure: [guide_repository_structure.md](00_Admin/guides/architecture/guide_repository_structure.md)
+
+## Workflow Source Contracts
+
+Workflow source contracts live in `.ai_ops/workflows/`. Each command has one
+workflow file.
+
+| Command | Default lane | Purpose |
+| --------------- | ------------------------ | ------------------------------------------ |
+| /work | Coordinator -> Executor | Establish work context, execute tasks |
+| /work_status | Coordinator | Summarize active work and blockers |
+| /work_savepoint | Executor | Commit + push savepoint, then end session |
+| /harvest | Coordinator -> Executor | Harvest/prune artifacts |
+| /crosscheck | Reviewer | Review and report only |
+| /health | Reviewer | Report-only repo health check |
+| /closeout | Executor | Finalize and archive work |
+| /lint | Linter | Run configured validators and linters |
+| /bootstrap | Coordinator | Orientation and readiness |
+| /scratchpad | Executor | Create session notes |
+| /customize | Coordinator -> Executor | Configure preferences |
+| /profiles | Coordinator -> Executor | Manage rider/crew profile contracts |
+
+If command folders are not installed for your tool, read `.ai_ops/workflows/<command>.md` directly.
+
+---
 
 ## Key References
 

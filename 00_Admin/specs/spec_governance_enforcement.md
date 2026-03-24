@@ -4,9 +4,9 @@ id: spec_governance_enforcement
 module: admin
 status: active
 license: Apache-2.0
-version: 0.1.0
+version: 0.2.0
 created: 2026-02-14
-updated: 2026-02-14
+updated: 2026-03-24
 owner: ai_ops
 ai_generated: true
 ---
@@ -14,8 +14,17 @@ ai_generated: true
 <!-- markdownlint-disable-next-line MD025 -->
 # Governance Enforcement Mechanism Spec
 
-Governance sections without enforcement teeth should be formalized with
-validators/checkers or cut to reduce maintenance burden.
+## Purpose
+
+Define the audit criteria and promotion priority for governance mechanisms in ai_ops.
+Governance rules without enforcement teeth should be formalized with validators or
+removed to reduce maintenance burden.
+
+## Scope
+
+Applies to all governance mechanisms in ai_ops: validators, template gates, pre-commit
+hooks, CI checks, and normative rules in specs/policies/guides. Use this spec when
+evaluating whether a rule has sufficient enforcement backing.
 
 ## Audit Criteria for Governance Mechanisms
 

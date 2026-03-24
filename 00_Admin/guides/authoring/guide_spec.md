@@ -1,9 +1,9 @@
 ---
 title: Guide: Spec Authoring
-version: 1.0.1
+version: 1.0.2
 status: active
 license: Apache-2.0
-last_updated: 2026-01-12
+last_updated: 2026-03-24
 owner: ai_ops
 related:
 - 01_Resources/templates/documents/spec-template.md
@@ -15,14 +15,7 @@ related:
 - 00_Admin/specs/spec_repo_metadata_standard.md
 ---
 
---- title: Guide: Spec Authoring version: 1.0.1 status: active last_updated: 2026-01-15 owner: ai_ops related:
-
-- 01_Resources/templates/documents/spec-template.md
-- 01_Resources/templates/documents/requirements_matrix_template.md
-- 00_Admin/guides/authoring/guide_markdown_authoring.md
-- 00_Admin/guides/architecture/guide_naming_conventions.md
-- 00_Admin/policies/policy_requirements_management.md
-- 00_Admin/policies/policy_status_values.md --- <!-- markdownlint-disable MD025 -->
+<!-- markdownlint-disable MD025 -->
 
 # Guide: Spec Authoring
 

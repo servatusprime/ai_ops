@@ -3,7 +3,7 @@ name: lint
 description: Run configured validators and linters against a target scope and report
   findings without modifying files.
 kind: workflow
-version: 0.2.1
+version: 0.2.2
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -181,15 +181,6 @@ lint-specific branching.
 
 Default lane: Linter (read-only report lane).
 
-## Risks and Limits
-
-- `/lint` is report-only; it does not fix findings.
-- Do not assume ai_ops validator scripts exist in external repos unless
-  `customizations.validation_policy.governed_mode` is `ai_ops`.
-- Do not mark repo as ready when required validators were not run.
-- Do not mutate files from this lane.
-- Do not assume command folders exist; if missing, read `.ai_ops/workflows/lint.md` manually.
-
 ## Resources
 
 - `00_Admin/scripts/lint.ps1`
@@ -206,3 +197,12 @@ artifact handling, and validation/reporting behavior.
 
 If overlap exists, native commands handle session mechanics while this workflow
 remains the source of truth for governed process behavior.
+
+## Risks and Limits
+
+- `/lint` is report-only; it does not fix findings.
+- Do not assume ai_ops validator scripts exist in external repos unless
+  `customizations.validation_policy.governed_mode` is `ai_ops`.
+- Do not mark repo as ready when required validators were not run.
+- Do not mutate files from this lane.
+- Do not assume command folders exist; if missing, read `.ai_ops/workflows/lint.md` manually.

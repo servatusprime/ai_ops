@@ -1,10 +1,13 @@
 ---
 title: Guide: Naming Architecture (ai_ops)
-version: 0.3.0
+version: 0.3.1
 status: active
 license: Apache-2.0
-last_updated: 2026-03-04
+last_updated: 2026-03-24
 owner: ai_ops
+related:
+  - ../../policies/policy_naming_conventions.md
+  - ./guide_naming_conventions.md
 ---
 
 # Guide: Naming Architecture

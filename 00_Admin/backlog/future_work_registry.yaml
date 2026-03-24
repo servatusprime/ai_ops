@@ -4,7 +4,7 @@ version: 0.4.0
 status: active
 owner: ai_ops
 created: 2026-01-07
-updated: '2026-03-23'
+updated: '2026-03-24'
 migration_note: >-
   Most items were moved to wb_governance_hardening_02; selected deferred items
   remain here.
@@ -129,8 +129,8 @@ entries:
     activation_trigger: >-
       Operator installs ai_ops with a non-default model set, or model-agnostic
       spec gaps are flagged during onboarding or a governed-repo setup.
-    next_review: 2026-06-01
-    status: planned
+    next_review: null
+    status: complete
     owner: ai_ops
     created: 2026-03-23
     compacted_context:
@@ -140,6 +140,10 @@ entries:
       note: >-
         EA-07 updated workbook templates to use level-based model_profile
         references (high/standard/fast) instead of hard-coded model IDs.
+        Confirmed complete 2026-03-24 in wb_health_and_remediation_01:
+        model_level_map implemented in aiops_config.template.yaml, AGENTS.md
+        §AI Model Level Reference, customize.md Step 4, and
+        spec_customization_interview.md Q9.
         The operator binding layer (model ID to level) was explicitly noted
         as a future /customize enhancement and not implemented in EA-07.
         Current level references are sufficient for standard Anthropic model
@@ -565,8 +569,8 @@ entries:
     activation_trigger: >-
       Next governance review cycle, or when a same-output-path collision
       is observed during a multi-lane workbook execution.
-    next_review: 2026-06-01
-    status: planned
+    next_review: null
+    status: complete
     owner: ai_ops
     created: 2026-03-23
     compacted_context:
@@ -574,6 +578,8 @@ entries:
         wb_native_subagent_runtime_delivery_01 Accumulated Seeds —
         ai_ops Process Seeds (2026-03-19)
       note: >-
+        Actualized 2026-03-24 in wb_health_and_remediation_01: added
+        §Sequential Execution Guard to guide_multi_agent_coordination.md.
         Surfaced during WB-D execution planning. The sequential-only
         constraint for same-output-path writes is well understood but
         undocumented. Small effort to document; optional lint check adds
@@ -697,3 +703,127 @@ entries:
         No design committed; scope is a targeted git-status approach for
         narrow lane work.
     notes: Low urgency. Quality-of-life improvement; not a blocking issue.
+
+  - id: fw_20260324_01
+    title: Option 3 subagent execution context dimension
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wb_health_and_remediation_01_2026-03-23/wb_health_and_remediation_01.md
+    proposed_workbook: null
+    scope: >-
+      Option 3 (Section Placement Audit) applies the axes rule
+      (governance upstream, execution downstream) as a purely topological
+      evaluation without considering whether the content's consumers are
+      AI subagents operating at execution time with narrow context. For
+      templates and runbooks consumed directly by subagents, moving
+      guidance content to a guide requires a follow-on read that may not
+      occur — increasing brittleness rather than improving structure.
+      Deliverables: (1) Add a "subagent execution context" evaluation
+      question to rb_repo_health_review.md §3.7 Option 3 protocol:
+      "Is this content needed by a subagent at fill-out/execution time
+      without a separate guide lookup? If yes, annotate as
+      move_reliability_cost: high before recommending downstream move."
+      (2) Refine placement verdict taxonomy: distinguish tutorial/teaching
+      content (safe to move downstream) from operational reminders and
+      normative safety rules (subagent-local value — keep or annotate).
+      (3) Update audit CSV schema with optional consumer_context field
+      (agent | human | both) and move_reliability_cost (low | medium | high).
+    priority: high
+    benefit: high
+    effort: s
+    readiness: ready
+    risk_if_deferred: medium
+    activation_trigger: >-
+      Next Option 3 run or template/runbook editing session. The design
+      is fully established from wb_health_and_remediation_01 Phase 4
+      analysis (2026-03-24). Ready to execute immediately.
+    next_review: 2026-06-01
+    status: planned
+    owner: ai_ops
+    created: 2026-03-24
+    compacted_context:
+      source: >-
+        wb_health_and_remediation_01 Phase 4 gate assessment (2026-03-24)
+      note: >-
+        Surfaced when evaluating Lane B (template scaffold purge) scope.
+        The axes rule treats all downstream moves as structurally
+        equivalent, but AI subagents have a different cost profile for
+        content indirection than human authors. Tutorial content is safe
+        to move; normative reminders and operational guards at
+        execution-time are not. This distinction needs to be a first-class
+        evaluation dimension in Option 3.
+    notes: >-
+      High priority. Affects every future Option 3 run and all template
+      editing decisions. Design is settled; only implementation remains.
+
+  - id: fw_20260324_02
+    title: Validator rule for frontmatter status miss pattern
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wb_health_and_remediation_01_2026-03-23/wb_health_and_remediation_01.md
+    proposed_workbook: null
+    scope: >-
+      Add a VS lint rule that flags files with status: active where required
+      sections (e.g., Purpose, Scope) are absent. The health check process
+      revealed that files transition to active without meeting the structural
+      requirements of their artifact type. A validator rule would catch this
+      at commit time.
+    priority: medium
+    benefit: medium
+    effort: s
+    readiness: ready
+    risk_if_deferred: low
+    activation_trigger: Next validator hardening cycle.
+    next_review: 2026-06-01
+    status: planned
+    owner: ai_ops
+    created: 2026-03-24
+
+  - id: fw_20260324_03
+    title: Export drift check in wb_template_generic pre-execution gate
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wb_health_and_remediation_01_2026-03-23/wb_health_and_remediation_01.md
+    proposed_workbook: null
+    scope: >-
+      Add an explicit Pre-Execution Readiness Gate checklist item to
+      wb_template_generic.md: "Export drift check declared when
+      .ai_ops/workflows/ files are in scope." Currently the export drift
+      requirement lives only in AGENTS.md and guide_workflows.md. Adding it
+      to the template gate makes it visible at workbook fill-out time.
+    priority: low
+    benefit: low
+    effort: xs
+    readiness: ready
+    risk_if_deferred: low
+    activation_trigger: Next template maintenance cycle.
+    next_review: 2026-06-01
+    status: planned
+    owner: ai_ops
+    created: 2026-03-24
+
+  - id: fw_20260324_04
+    title: sign_off_date field proposal seed for Requestor Review Gate
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wb_health_and_remediation_01_2026-03-23/wb_health_and_remediation_01.md
+    proposed_workbook: null
+    scope: >-
+      Add a structured sign_off_date and sign_off_by field to the Requestor
+      Review Gate section in workbook templates and/or the log_workbook_run.md
+      entry format. Currently approval is recorded as prose only. Structured
+      fields would enable automated querying of approval evidence.
+    priority: low
+    benefit: low
+    effort: xs
+    readiness: ready
+    risk_if_deferred: low
+    activation_trigger: Next template maintenance or audit tooling cycle.
+    next_review: 2026-06-01
+    status: planned
+    owner: ai_ops
+    created: 2026-03-24

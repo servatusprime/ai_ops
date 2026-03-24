@@ -4,11 +4,14 @@ id: spec_workbook_structure
 module: admin
 status: active
 license: Apache-2.0
-version: 0.2.3
+version: 0.2.4
 created: 2026-01-31
-updated: 2026-03-14
+updated: 2026-03-24
 owner: ai_ops
 ai_generated: true
+related:
+  - ../guides/authoring/guide_workbooks.md
+  - ../../01_Resources/templates/workflows/wb_template_generic.md
 ---
 
 <!-- markdownlint-disable-next-line MD025 MD041 -->

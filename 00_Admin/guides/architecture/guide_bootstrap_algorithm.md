@@ -1,13 +1,15 @@
 ---
 title: Guide: Bootstrap Algorithm
-version: 0.2.0
+version: 0.2.1
 status: active
 license: Apache-2.0
-last_updated: 2026-02-28
+last_updated: 2026-03-24
 owner: ai_ops
 related:
   - ../ai_operations/guide_workflows.md
   - ../ai_operations/guide_ai_ops_vocabulary.md
+  - ../ai_operations/guide_bootstrap_self_repair.md
+  - ../../runbooks/rb_bootstrap.md
 ---
 
 # Guide: Bootstrap Algorithm

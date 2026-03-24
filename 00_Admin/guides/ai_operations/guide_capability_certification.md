@@ -1,10 +1,10 @@
 ---
 title: Guide: Capability Certification
-version: 0.2.0
+version: 0.2.1
 status: stub
 license: Apache-2.0
 created: 2026-01-24
-last_updated: 2026-02-28
+last_updated: 2026-03-24
 owner: ai_ops
 ai_agent_applicability: required_for_level_3_plus
 related:
@@ -89,43 +89,15 @@ Agent can answer:
 
 ## Certification Workflow
 
-### Step 1: Bootstrap Sequence
+The 4-step operational workflow (bootstrap sequence → self-check → certification report →
+conditional proceed, including the `[BOOTSTRAP CERTIFIED]` output format) is defined in
+`00_Admin/runbooks/rb_bootstrap.md` §Step 3, which is the authoritative execution source.
 
-Agent completes standard bootstrap:
+Summary of gate conditions:
 
-1. Read AGENTS.md
-2. Read authority model
-3. Read required policies/specs
-4. Scan guides for context
-
-### Step 2: Self-Certification Check
-
-Agent internally verifies knowledge:
-
-- Can I answer Level 1 questions? (required)
-- Can I answer Level 2 questions? (required)
-- Can I answer Level 3 questions? (recommended)
-
-### Step 3: Certification Report
-
-Agent outputs certification status:
-
-```text
-[BOOTSTRAP CERTIFIED]
-- Level 1 (Bootstrap Awareness): PASS (3/3)
-- Level 2 (Repository Navigation): PASS (3/3)
-- Level 3 (Operational Patterns): PASS (2/3)
-
-Status: Fully certified for autonomous operations
-Bootstrap source: AGENTS.md
-Files read: 6 (AGENTS.md, CONTRIBUTING.md, 4 policies/guides)
-```
-
-### Step 4: Conditional Proceed
-
-- **Level 1 + Level 2 pass**: Agent may proceed with autonomous operations
-- **Level 1 or Level 2 fail**: Safe-mode active, await user guidance
-- **Level 3 fail**: Agent may proceed but warns "operational pattern knowledge incomplete"
+- L1 + L2 pass: agent may proceed with autonomous operations
+- L1 or L2 fail: safe-mode active, await user guidance
+- L3 fail: proceed with warning "operational pattern knowledge incomplete"
 
 ## Certification Failures
 

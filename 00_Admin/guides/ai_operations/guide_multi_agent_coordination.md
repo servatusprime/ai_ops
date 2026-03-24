@@ -1,10 +1,10 @@
 ---
 title: Guide: Multi-Agent Coordination
-version: 0.1.1
+version: 0.1.2
 status: stub
 license: Apache-2.0
 created: 2026-01-24
-last_updated: 2026-03-04
+last_updated: 2026-03-24
 owner: ai_ops
 ai_agent_applicability: conditional
 related:
@@ -142,6 +142,25 @@ depends_on:
 ```
 
 Agent MUST verify dependencies complete before starting.
+
+## Sequential Execution Guard
+
+Mutating stages that write to the same output path MUST be sequential. Parallel
+subagent lanes MUST NOT be assigned the same output path.
+
+Rules:
+
+- Identify all output paths at the start of parallel execution planning.
+- If two tasks write the same output file, assign them to the same lane in sequence.
+- If parallel assignment is unavoidable, add an explicit merge gate: one lane writes,
+  then hands off to the other.
+- Do not rely on filesystem atomic writes to prevent corruption — enforce sequencing
+  at the workflow level.
+
+Declare this constraint in the `do_not_delegate_when` block of the
+`execution_topology_contract` in workbooks with parallel lanes.
+
+Reference: `fw_20260319_04` governance seed.
 
 ## Lock Cleanup
 

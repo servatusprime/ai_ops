@@ -1,9 +1,9 @@
 ---
 title: rb_repo_health_review
-version: 0.5.2
+version: 0.5.3
 status: active
 license: Apache-2.0
-last_updated: 2026-03-13
+last_updated: 2026-03-24
 owner: ai_ops
 related:
   - .ai_ops/workflows/health.md
@@ -305,6 +305,11 @@ lists ai_ops governance in `AGENTS.md` workspace topology).
 ### 3.7 Option 3 Section Placement and Dedup Lane
 
 When Option 3 is selected:
+
+**Full-read requirement (normative):** Each file in scope MUST be read in full before
+headings are inventoried. Partial reads and heading-only scans are not permitted. Section
+placement and order decisions depend on understanding full file content, not just
+section titles.
 
 1. Inventory all headings in each target file (line + section level).
 2. For each section, evaluate placement:

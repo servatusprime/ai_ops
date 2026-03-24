@@ -1,9 +1,12 @@
 ---
 title: Naming Conventions Policy
-version: 0.1.0
-updated: 2025-12-02
+version: 0.1.1
+updated: 2026-03-24
 status: active
 license: Apache-2.0
+related:
+- ../guides/architecture/guide_naming_conventions.md
+- ../guides/architecture/guide_naming_architecture.md
 ---
 <!-- markdownlint-disable MD025 -->
 

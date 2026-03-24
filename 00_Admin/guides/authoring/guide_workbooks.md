@@ -1,14 +1,15 @@
 ---
 title: Guide: AI Workbooks
-version: 1.8.8
+version: 1.8.9
 status: active
 license: Apache-2.0
-last_updated: 2026-03-19
+last_updated: 2026-03-24
 owner: ai_ops
 related:
 - ./guide_markdown_authoring.md
 - ../architecture/guide_repository_structure.md
 - 00_Admin/specs/spec_repo_metadata_standard.md
+- ../../specs/spec_workbook_structure.md
 ---
 
 <!-- markdownlint-disable MD013 -->

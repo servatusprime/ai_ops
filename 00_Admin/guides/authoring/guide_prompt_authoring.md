@@ -1,9 +1,9 @@
 ---
 title: Guide: Prompt Authoring
-version: 1.1.0
+version: 1.1.1
 status: active
 license: Apache-2.0
-last_updated: 2026-02-07
+last_updated: 2026-03-24
 owner: ai_ops
 related:
 - 01_Resources/templates/documents/PROMPT_SPEC_TEMPLATE.md
@@ -14,14 +14,7 @@ related:
 - 00_Admin/specs/spec_repo_metadata_standard.md
 ---
 
---- title: Guide: Prompt Authoring version: 1.0.0 status: active last_updated: 2026-01-12 owner: ai_ops
-related:
-
-- 01_Resources/templates/documents/PROMPT_SPEC_TEMPLATE.md
-- 00_Admin/guides/authoring/guide_markdown_authoring.md
-- 00_Admin/guides/authoring/guide_ai_assistants.md
-- 00_Admin/guides/architecture/guide_naming_conventions.md
-- 00_Admin/policies/policy_core_doc_structure.md --- <!-- markdownlint-disable MD025 -->
+<!-- markdownlint-disable MD025 -->
 
 # Guide: Prompt Authoring
 
