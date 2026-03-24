@@ -113,16 +113,19 @@ def _render_markdown(registry_path: Path, rows: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
 def main() -> int:
     parser = ArgumentParser(description="Generate future work scorecard markdown.")
     parser.add_argument(
         "--registry",
-        default="ai_ops/00_Admin/backlog/future_work_registry.yaml",
+        default=str(_REPO_ROOT / "00_Admin" / "backlog" / "future_work_registry.yaml"),
         help="Path to future work registry YAML.",
     )
     parser.add_argument(
         "--output",
-        default="ai_ops/00_Admin/backlog/future_work_scorecard.md",
+        default=str(_REPO_ROOT / "00_Admin" / "backlog" / "future_work_scorecard.md"),
         help="Path to generated markdown scorecard.",
     )
     args = parser.parse_args()

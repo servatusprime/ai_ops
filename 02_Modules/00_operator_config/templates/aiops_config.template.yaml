@@ -1,4 +1,4 @@
-version: 0.2.0
+version: 0.2.1
 # Machine-local config template. Copy to .ai_ops/local/config.yaml and fill in.
 # This file is committed as a template. The populated copy is gitignored.
 # Populated by /ai_ops_setup; can also be edited manually.
@@ -9,8 +9,12 @@ version: 0.2.0
 
 modality:
   # AI surface this machine uses. Set by /ai_ops_setup.
-  active_surface: null  # codex_cli | claude_code | cursor | gemini_cli | other
+  active_surface: null  # codex_cli | claude_code | claude_app | remote_control | github_copilot | cursor | gemini_cli | other
+  # remote_control: claude_code session reachable from multiple devices; treated as claude_code for install purposes.
   installation_target: none  # skills | commands | both | none
+  # claude_app is instructions-only; keep installation_target as none.
+  # claude_app also implies artifact-driven execution guidance rather than
+  # installed skill discovery or runtime-enforced delegation controls.
   confirmed_at: null  # ISO 8601 timestamp
 
 workspace:
@@ -39,11 +43,21 @@ customizations:
     repo_overrides_path: .ai_ops/local/config.yaml
   model_capabilities:
     declaration_source: user_declared  # user_declared | imported
-    # Example: claude-sonnet-4.5
+    # Example: claude-sonnet-4-6
     default_model: null
     # Use one entry per model/surface pair available to the user.
-    # reasoning_level examples: low | medium | high
+    # reasoning_level: low | medium | high | maximum  (see AGENTS.md §AI Model Level Reference)
     available_models: []
+    # Operator model-to-level binding. Maps a concrete model ID to an ai_ops reasoning level
+    # (1=low, 2=medium, 3=high, 4=maximum). Used by /customize and referenced at runtime to
+    # resolve workbook model_profile level-based references (high/standard/fast) to model IDs.
+    # See AGENTS.md §AI Model Level Reference for level definitions.
+    # Example:
+    # model_level_map:
+    #   claude-opus-4-6: 4        # Level 4 — maximum reasoning
+    #   claude-sonnet-4-6: 2      # Level 2 — medium (standard workbook default)
+    #   claude-haiku-4-5: 1       # Level 1 — low (fast/linter tasks)
+    model_level_map: {}
   external_context:
     # Example: 90_Sandbox/ai_external_context/manifest.yaml
     manifest_path: 90_Sandbox/ai_external_context/manifest.yaml
@@ -60,22 +74,14 @@ customizations:
     # repo_native: use the target repo's configured validators/linters.
     governed_mode: ai_ops  # ai_ops | repo_native
   delegation_preferences:
-    # Optional. Controls how sub-agent roles are delegated and what model tier each uses.
-    # Per-workbook `role_assignments` frontmatter overrides these machine-level defaults.
+    # Optional. Controls subagent delegation behavior.
     enhanced_crosscheck:
       # When enabled, /crosscheck spawns a sub-agent at `tier` rather than the current
       # session model. Useful for quality-critical review with a higher-capability model.
       # "Enhanced Crosscheck Mode" — not escalated (no urgency implied), not accelerated
       # (not about speed). It means a more capable reviewer for the crosscheck phase.
       enabled: false       # true | false
-      tier: high           # low | medium | high
-    default_role_assignments:
-      # Machine-level defaults used when a workbook does not declare role_assignments.
-      # Values: low (haiku-class) | medium (sonnet-class) | high (opus-class)
-      coordinator: medium  # orchestrates; plans and manages handoffs
-      executor: medium     # executes current workbook steps
-      validator: medium    # evaluates outputs; raise to high to enable Enhanced Crosscheck
-      builder: low         # writes/edits tools and configs; usually lightweight
+      tier: high           # low | medium | high | maximum
   notes:
     # Free-form notes for non-operational preferences or context.
     # Do not treat this section as requirements or executable settings.

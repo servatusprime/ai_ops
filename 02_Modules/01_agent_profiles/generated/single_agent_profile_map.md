@@ -2,10 +2,10 @@
 title: Single-Agent Profile Map
 version: 0.1.0
 status: active
-last_updated: 2026-02-25
+last_updated: 2026-03-23
 owner: ai_ops
-generated_at: 2026-02-23T16:22:36Z
-source_hash: 701a4e1bd4db
+generated_at: 2026-03-23T18:23:26Z
+source_hash: 24265bdb323f
 ---
 
 <!-- markdownlint-disable MD013 MD025 -->
@@ -18,15 +18,16 @@ subagent delegation is not available.
 ## Source Summary
 
 - crew_preset: `default`
-- generated_at: `2026-02-23T16:22:36Z`
-- source_hash: `701a4e1bd4db`
+- generated_at: `2026-03-23T18:23:26Z`
+- source_hash: `24265bdb323f`
 
-## Functional Role Mapping
+## Canonical Lane Mapping
 
-| Role | Rider | Autonomy | Conservatism | Initiative | Deference | maxTurns | permissionMode |
+| Profile Slot | Rider | Autonomy | Conservatism | Initiative | Deference | maxTurns | permissionMode |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `ai-ops-planner` | `logike` | 55 | 75 | 30 | 60 | 20 | `plan` |
 | `ai-ops-executor` | `forge` | 75 | 45 | 45 | 45 | 30 | `default` |
+| `ai-ops-builder` | `forge` | 75 | 60 | 35 | 45 | 30 | `default` |
 | `ai-ops-reviewer` | `anchor` | 25 | 90 | 20 | 80 | 10 | `plan` |
 | `ai-ops-researcher` | `scout` | 70 | 60 | 70 | 55 | 30 | `plan` |
 | `ai-ops-closer` | `forge` | 75 | 80 | 20 | 45 | 30 | `default` |

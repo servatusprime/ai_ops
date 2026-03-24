@@ -7,7 +7,7 @@ Governance plugin surface for ai_ops workflows, commands, and subagent profiles.
 - `.claude-plugin/plugin.json`: Plugin manifest metadata.
 - `commands/`: Command wrappers that dispatch to canonical workflow sources.
 - `skills/`: Skill wrappers for reusable invocation surfaces.
-- `agents/`: Generated functional subagent definitions.
+- `agents/`: Generated lane-aligned subagent definitions.
 
 ## Installation
 

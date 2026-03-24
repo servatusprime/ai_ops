@@ -3,14 +3,22 @@ title: AI Workbook Lite Template: <short_title>
 id: wb_<topic>_<scope>_lite
 status: planned
 license: Apache-2.0
-version: 0.4.2
+version: 0.4.3
 created: YYYY-MM-DD
-last_updated: 2026-03-06
+last_updated: 2026-03-21
 owner: ai_ops
 ai_role: executor
 model_profile: "<model_a>:<reasoning_level> | <model_b>:<reasoning_level>"
 authority_level: 3
 execution_mode: sequential
+execution_topology: single_agent  # single_agent | multi_agent | hybrid
+activated_lanes:  # List canonical lane names. Add Planner, Researcher, Builder, Linter, Closer as needed.
+  - Coordinator
+  - Executor
+  - Reviewer
+delegation_policy: explicit_only  # explicit_only | coordinator_judgment | open
+convergence_profile: iterative_convergence_minimal
+parallel_coordination_id: null
 depends_on: []
 affects:
   artifacts: []
@@ -37,6 +45,9 @@ related_refs:
 - Authority fit: Level 3 only.
 - If Level 4 scope appears, escalate to generic template plus approved
   work proposal.
+- `execution_topology` defaults to `single_agent`. For multi-agent or hybrid
+  runs, change to `multi_agent` or `hybrid` and add spawn criteria + lane
+  return contracts to the Cold-Start Execution Contract. See AGENTS.md §Role Reference.
 
 ## Upstream Governance Pointer
 
@@ -147,7 +158,7 @@ related_refs:
 - [ ] Scope is still bounded and unchanged
 - [ ] Inputs and dependencies are available
 - [ ] Executor role confirmed and appropriate for task authority level
-- [ ] If multi-agent: role assignments and handoff conditions are explicit
+- [ ] If multi-agent: lane assignments and handoff conditions are explicit
 - [ ] Placement decision record is captured when this workbook/bundle is newly created
 - [ ] `depends_on` and `affects` fields are populated when shared surfaces are touched
 - [ ] Validation commands are identified for touched scope

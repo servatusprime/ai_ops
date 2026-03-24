@@ -111,9 +111,9 @@ contract.
 
 - `00_Admin/guides/ai_operations/guide_scratchpad_usage.md`
 
-## Roles
+## Lane
 
-Default role: Executor (notes capture).
+Default lane: Executor (notes capture).
 
 ## Risks and Limits
 

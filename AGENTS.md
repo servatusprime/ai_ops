@@ -1,9 +1,9 @@
 ---
 title: Agents Start Here
-version: 3.5.4
+version: 3.5.5
 status: active
 license: Apache-2.0
-last_updated: 2026-03-14
+last_updated: 2026-03-19
 owner: ai_ops
 description: Bootstrap and authority contract for AI agents operating in ai_ops.
 related:
@@ -196,6 +196,28 @@ If scope expands during execution, stop and reclassify authority.
 
 ---
 
+## Decision Matrix Hooks
+
+Use decision aids in this order to avoid unnecessary rereads or duplicate
+branching logic:
+
+1. `Agent Decision Tree` in this file:
+   authority classification and workbook-threshold check.
+2. `Mode Detection` in this file:
+   direct vs governed vs standalone repo context.
+3. `00_Admin/guides/ai_operations/guide_workflows.md`:
+   canonical artifact-selection and execution-context matrices.
+4. Workflow-local matrix blocks in `.ai_ops/workflows/*.md`:
+   only when the selected workflow has command-specific branching or local
+   deltas not already covered upstream.
+
+Rule:
+
+- Prefer the upstream matrix family unless the active workflow truly differs.
+- Do not duplicate full upstream decision trees into every workflow.
+
+---
+
 ## Mode Detection
 
 | Target | Mode | Logic |
@@ -336,7 +358,7 @@ For narrow roles, use minimum bootstrap instead of full sequence:
 | Role | Use case | Minimum reading |
 | ------------------- | ------------------- | ------------------------------------------------ |
 | Crosscheck reviewer | Review only | This file -> `peer_review_template.md` |
-| Validator | Validate + report | This file -> `rb_repo_validator_01.md` |
+| Linter | Validate + report | This file -> `rb_repo_validator_01.md` |
 | Recentering agent | Refocus mid-session | This file (Quick Path only) |
 
 If authority is unclear after minimum bootstrap, read `CONTRIBUTING.md` and
@@ -384,16 +406,16 @@ Before executing Level 3+ work, confirm:
 Workflow source contracts live in `.ai_ops/workflows/`. Each command has one
 workflow file.
 
-| Command | Default role | Purpose |
+| Command | Default lane | Purpose |
 | --------------- | ------------------------ | ------------------------------------------ |
 | /work | Coordinator -> Executor | Establish work context, execute tasks |
 | /work_status | Coordinator | Summarize active work and blockers |
 | /work_savepoint | Executor | Commit + push savepoint, then end session |
 | /harvest | Coordinator -> Executor | Harvest/prune artifacts |
-| /crosscheck | Validator | Review and report only |
-| /health | Validator | Report-only repo health check |
+| /crosscheck | Reviewer | Review and report only |
+| /health | Reviewer | Report-only repo health check |
 | /closeout | Executor | Finalize and archive work |
-| /lint | Validator | Run configured validators and linters |
+| /lint | Linter | Run configured validators and linters |
 | /bootstrap | Coordinator | Orientation and readiness |
 | /scratchpad | Executor | Create session notes |
 | /customize | Coordinator -> Executor | Configure preferences |
@@ -405,8 +427,13 @@ If command folders are not installed for your tool, read `.ai_ops/workflows/<com
 
 ## Role Reference
 
-Role sequence flows left to right. Coordinator repeats at each cycle boundary.
-Builder is invoked as needed -- not every run requires a dedicated Builder step.
+The default single-agent baseline:
+
+- `Coordinator -> Executor -> Reviewer`
+
+Additional lanes activate only when the task shape requires them.
+
+Single-agent baseline:
 
 ```mermaid
 %%{init: {
@@ -431,85 +458,205 @@ Builder is invoked as needed -- not every run requires a dedicated Builder step.
 flowchart LR
   CO[Coordinator]
   EX[Executor]
+  RV[Reviewer]
+  CO --> EX --> RV
+  RV -. rework .-> EX
+
+  classDef node fill:#0d0b09,stroke:#FF9F00,color:#FFD85A,stroke-width:2px
+
+  class CO,EX,RV node
+```
+
+Full Iterative Convergence Flow (ICF):
+
+```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "darkMode": true,
+    "background": "#111111",
+    "primaryColor": "#0d0b09",
+    "primaryTextColor": "#FFD85A",
+    "primaryBorderColor": "#FF9F00",
+    "lineColor": "#FF9F00",
+    "textColor": "#FFD85A",
+    "mainBkg": "#0d0b09",
+    "clusterBkg": "#12110f",
+    "clusterBorder": "#8A4F00",
+    "titleColor": "#FFE680",
+    "edgeLabelBackground": "#0d0b09"
+  },
+  "themeCSS": ".edgeLabel rect, .labelBkg { fill: #0d0b09 !important; } .edgeLabel text, .edgeLabel span { fill: #FFD85A !important; color: #FFD85A !important; }"
+}}%%
+
+flowchart LR
+  CO[Coordinator]
+  RE[Researcher]
+  PL[Planner]
+  EX[Executor]
   BL[Builder]
-  VA[Validator]
+  LI[Linter]
+  RV[Reviewer]
+  CL[Closer]
   CO2[Coordinator]
 
-  CO --> EX --> BL --> VA --> CO2
+  CO --> RE --> PL --> EX --> LI --> RV --> CL --> CO2
+  EX -. tooling/config branch .-> BL --> LI
+  RV -. rework .-> EX
+  RV -. scope expansion .-> PL
+  EX -. blocked/escalation .-> CO
   CO2 -. next cycle .-> EX
 
   classDef node fill:#0d0b09,stroke:#FF9F00,color:#FFD85A,stroke-width:2px
 
-  class CO,EX,BL,VA,CO2 node
-
-  linkStyle 0,1,2,3 stroke:#FF9F00,stroke-width:2px
-  linkStyle 4 stroke:#FF9F00,stroke-width:2px,stroke-dasharray:6 4
+  class CO,RE,PL,EX,BL,LI,RV,CL,CO2 node
 ```
 
-| Role | When Active | Primary Duties | Default Model Level | Notes |
+| Lane | When Active | Primary Duties | Reasoning Level | Permission Mode | Max Turns |
+| --- | --- | --- | --- | --- | --- |
+| Coordinator | Start, phase boundaries, escalation points, end | Scope, approvals, orchestration, handoffs | 2 | — | — |
+| Planner | Scope must become executable steps | Turn approved scope into phased task contracts and sequencing | 2 | plan | 20 |
+| Researcher | Evidence, reconciliation, or discovery needed | Gather evidence, surface unknowns, reconcile context | 1 | plan | 30 |
+| Executor | Per implementation step | Bounded implementation and evidence | 2 | default | 30 |
+| Builder | Tooling or substrate changes needed | Write tools, automation, configs, substrate changes | 2 | default | 30 |
+| Linter | Mechanical validation needed | Run validators; report evidence-backed defects | 1 | default | 30 |
+| Reviewer | After meaningful execution phases | Judge correctness, governance fit, adequacy of decisions | 2 | plan | 10 |
+| Closer | At completion gates | Finalize closeout, handoff readiness, completion evidence | 2 | default | 30 |
+
+See `## AI Model Level Reference` below for per-lane reasoning level defaults and variation conditions.
+
+**Profile behavioral parameters** — Professional sliders that generate behavioral prose in lane
+profiles and directly affect agent behavior (source of truth:
+`02_Modules/01_agent_profiles/generated/single_agent_profile_map.md`):
+
+| Profile | Autonomy | Conservatism | Initiative | Deference |
 | --- | --- | --- | --- | --- |
-| Coordinator | Start, between phases, at end | Plan scope, select workflows, manage handoffs, approve gates | Level 2 | Level 3 for L4 or architectural decisions |
-| Executor | Per work step | Execute current step, maintain logs, flag blockers | Level 1 or 2 | Primary execution lane. Level 1 for bounded tasks; Level 2 when judgment required |
-| Builder | When tooling needed | Write tools, implement automation, update configs | Level 2 | Spawned as needed; may be skipped in execution-only runs |
-| Validator | After each phase | Review outputs against contracts, issue pass/fail verdict | Level 2 | Level 3 for Elevated Crosscheck |
+| Coordinator | — | — | — | — |
+| Planner | 55 | 75 | 30 | 60 |
+| Researcher | 70 | 60 | 70 | 55 |
+| Executor | 75 | 45 | 45 | 45 |
+| Builder | 75 | 60 | 35 | 45 |
+| Linter | 70 | 90 | 20 | 80 |
+| Reviewer | 25 | 90 | 20 | 80 |
+| Closer | 75 | 80 | 20 | 45 |
 
-**Agent topology:**
+Slider values are source data for prose generation — they drive authoring of system prompt
+instructions in generated profile files, not runtime numeric parameters. Agents read the
+generated prose.
 
-- **Single agent:** one agent cycles through all roles in sequence. This is the default mode. The agent you interact with directly is the *primary agent*; it holds all four roles internally.
-- **Multi-agent:** Coordinator (primary agent) spawns dedicated *subagents*, each pre-assigned a role. Subagent definitions live in `plugins/ai-ops-governance/agents/` -- six generated files (`ai-ops-planner.md`, `ai-ops-executor.md`, `ai-ops-reviewer.md`, `ai-ops-researcher.md`, `ai-ops-closer.md`, `ai-ops-linter.md`). These files are generated by `/profiles` + `regenerate_profiles.py`; do not hand-edit them.
-- **Profiles and topology:** `/profiles` configures your *primary agent's* behavioral posture. Subagent behavior is governed by their definition files and the `role_assignments` frontmatter in the active workbook. Lead-agent profile payloads are written to `02_Modules/01_agent_profiles/generated/lead_agent_profile_context.md`.
+**Relational sliders** (Communication Depth, Tone Warmth, Formality, Directness) apply to the
+**primary agent / Coordinator profile only** — subagents return structured output to the primary
+agent and do not communicate directly with humans.
+
+**Coordinator row** shows `—` across all parameters: the Coordinator is the primary agent.
+Permission mode comes from the session environment; no max turns cap applies. Professional
+sliders do not apply because no generated subagent profile exists for the Coordinator role.
+
+Riders are NOT per-lane defaults — see **Rider Archetypes** below.
+
+**Execution topology and delegation:**
+
+- **Single agent:** one agent sequences through all activated lanes in its own context -- this is the standard mode. Efficiency comes from task calibration: the right model level and behavioral parameters for the work shape, minimizing context overhead. Delegating a lane to a specialized subagent is a Coordinator judgment call, made when specialization meaningfully improves outcome or reduces token overhead.
+- **Multi-agent / hybrid:** the lead agent must declare the activated lanes, delegation policy, and return contracts in the execution artifact. ai_ops does not assume delegation by default.
+- **Remote Control:** a local Claude Code session reachable from multiple surfaces (terminal, browser, phone) via `claude remote-control`. This is a surface extension -- one session, one conversation. Topology and lane contracts are unchanged; the same authority rules apply.
+- **Selective subagent rule:** use delegated workers only for bounded sidecar tasks where delegation is more efficient than keeping the work local.
+- **Lead-agent responsibility:** the lead agent owns sequencing, architecture judgment, final integration, and the packaging of task brief, context, permission/tool envelope, skill surface, and return contract for any child task.
+- **Lane calibration:** `/profiles` configures the primary agent's behavioral posture. Runtime subagent files and generated presets are derivative surfaces; they do not replace canonical lanes.
+
+### Topology and Lane Concepts
+
+**Lane** defines the *behavioral contract for a type of work* -- what the agent is doing, what permissions it holds, what model level it uses, and when to stop. Lanes exist within an execution session.
+
+**Topology** defines the *structural arrangement of execution* -- how many agents, how they are connected, what surface controls them. Topology spans agents and sessions.
+
+The governing rule: **a topology uses lanes; a lane is not a topology.** All 8 lanes can run inside a single-agent topology. Those same lanes can be distributed across multiple agents in a multi-agent topology. Remote Control changes the control surface without changing either the topology or the lane contracts.
+
+| Topology | Description |
+| --- | --- |
+| `single_agent` | One agent handles all activated lanes sequentially. Default. |
+| `multi_agent` | Lead agent delegates lane-bounded tasks to worker subagents. |
+| `hybrid` | Mix of local and delegated lanes; lead agent retains some lanes directly. |
+| `remote_control` | Single-conversation session controlled from multiple surfaces. Topology and lanes unchanged. |
+
+**Director topology -- design note (not yet implemented):**
+
+A Director pattern is achievable within one primary session: the Director (primary agent) spawns Coordinator subagents per project, keeping multiple Coordinators active in parallel for concurrent work streams. Each Coordinator manages its own project's lane sequence and spawns worker subagents as needed.
+
+```text
+Primary session (Director)
+  ├── Coordinator subagent [needs Agent tool]  ← Project A
+  │     └── Executor, Reviewer, ...
+  └── Coordinator subagent [needs Agent tool]  ← Project B
+        └── Executor, Reviewer, ...
+```
+
+This requires a Coordinator native agent file with the `Agent` tool -- a deliberate design exception to the current rule that Coordinator has no native agent file. Implementation is deferred to a dedicated workbook.
 
 ---
 
 ## AI Model Level Reference
 
 Model level refers to LLM reasoning depth -- not authority level (0-4).
-Use this table to select an AI model level for each role assignment.
+Use this table to select a model level for each lane assignment.
 
-| Level | Depth | Typical Tasks | Recommended Role |
+| Level | Depth | Typical Tasks | Default Lanes |
 | --- | --- | --- | --- |
-| 1 | Low | Bounded extraction, formatting, simple edits | Executor (bounded execution), Builder (routine tasks) |
-| 2 | Medium | Scoped implementation, multi-step work | Executor (judgment needed), Builder, Validator (standard), Coordinator (standard) |
-| 3 | High | Architecture, governance, precedent-setting | Coordinator (L4 decisions), Validator (Elevated Crosscheck) |
+| 1 | Low | Bounded extraction, formatting, mechanical validation, simple edits | Researcher (bounded discovery), Executor (bounded execution), Linter, Builder (routine tasks) |
+| 2 | Medium | Scoped implementation, multi-step work, standard planning/review | Coordinator (standard), Planner, Executor (judgment needed), Builder, Reviewer (standard), Closer |
+| 3 | High | Architecture, governance, precedent-setting, elevated review | Coordinator (L4 decisions), Planner (architecture-heavy), Reviewer (Elevated Crosscheck) |
+| 4 | Maximum | Policy authorship, canonical specification, L4 crosscheck, extended reasoning tasks | Coordinator (policy decisions), Reviewer (L4 crosscheck), Planner (system-level design) |
+
+**Per-lane reasoning levels and variation conditions:**
+
+| Lane | Reasoning Level | Level variation conditions |
+| --- | --- | --- |
+| Coordinator | 2 | Level 3: architectural judgment required; Level 4: policy authorship or L4 governance decisions |
+| Planner | 2 | Level 3: scope spans multiple systems; Level 4: system-level architecture or canonical spec design |
+| Researcher | 1 | Level 2: synthesis-heavy or multi-authority discovery |
+| Executor | 2 | Level 1: fully deterministic tasks (optimize down) |
+| Builder | 2 | Level 1: routine tasks (optimize down); Level 3: substrate changes touching policy boundaries |
+| Linter | 1 | No variation — Level 1 always |
+| Reviewer | 2 | Level 3: Elevated Crosscheck or L3+ scope; Level 4: L4 crosscheck or policy-boundary review |
+| Closer | 2 | No variation — Level 2 always |
 
 **Notes:**
 
-- Default to Level 2 when unsure. Upgrade to Level 3 only for architectural decisions or Elevated Crosscheck.
+- Default to Level 2 when unsure. Upgrade only when the task shape explicitly requires it.
 - Level 1 is appropriate only for fully bounded, deterministic tasks with no judgment required.
-- Model level is set per role in the workbook `role_assignments` frontmatter field.
-- When loading a workbook for cold-start execution, read both `model_profile` (overall tier) and
-  `role_assignments` (per-role overrides) from frontmatter to determine the correct execution tier.
+- Level 4 maps to: Claude Opus + extended thinking / Codex max reasoning effort / provider-equivalent ceiling.
+- Model level is set per workbook through `model_profile` and `activated_lanes` frontmatter fields.
+- `role_assignments` broad-role keys (`coordinator`, `executor`, `builder`, `validator`) are **deprecated**. Use `activated_lanes` to express canonical lane participation and `model_profile` to declare the overall reasoning tier. Per-lane level overrides are a future enhancement.
+- When loading a workbook for cold-start execution, read `model_profile` (overall tier) and `activated_lanes` (active lane set) from frontmatter to determine the correct execution tier.
+- Operators may declare a model-ID-to-level binding in `.ai_ops/local/config.yaml` under `customizations.model_capabilities.model_level_map` (populated via `/customize`). This binding resolves workbook level references to concrete model IDs at runtime.
 
 ---
 
-## Agent Profiles
+## Rider Archetypes
 
-**Primary agent profiles** configure how your primary agent approaches work -- the
-agent you interact with directly. `/profiles` sets the active named preset. Without
-a named profile, the primary agent runs in default out-of-box posture.
+A rider is a **behavioral archetype** — a named preset that shapes how the agent approaches
+work (caution level, initiative, judgment style) without changing lane authority or permissions.
+Riders are **operator-selected** and **lane-agnostic**: the same rider applies regardless of
+which lane is active.
 
-**Subagent profiles** are different. Each subagent's definition file
-(`plugins/ai-ops-governance/agents/<name>.md`) sets its role, permission mode,
-and parameter defaults. The active workbook's `role_assignments` frontmatter field
-maps roles to model levels for the current run. Rider personality is less visible
-to you when applied to subagents -- behavioral differences primarily surface through
-the primary agent you interact with.
+Riders only come into play when the operator selects one via `/profiles`. Without a selected
+profile, the primary agent runs in default out-of-box posture. Riders do not assign to lanes
+and are not per-lane defaults.
 
-**Do not hand-edit** files in `plugins/ai-ops-governance/agents/`. These are
-generated. Use `/profiles` to modify profile source data, then regenerate.
+See **Profiles** for how riders combine with parameter sliders to form a named behavioral
+contract. Per-lane base parameters are in the generated map:
+`02_Modules/01_agent_profiles/generated/single_agent_profile_map.md`.
 
-Each profile assigns a rider archetype and sets behavioral parameters (0-100 scale):
+**Do not hand-edit** files in `plugins/ai-ops-governance/agents/`. These are generated. Use
+`/profiles` to modify profile source data, then regenerate.
 
-### Profile Catalog
+### Riders
 
-| Profile | Rider | Autonomy | Conservatism | Initiative | Deference | Permission Mode | Max Turns |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| ai-ops-planner | logike | 55 | 75 | 30 | 60 | plan | 20 |
-| ai-ops-executor | forge | 75 | 45 | 45 | 45 | default | 30 |
-| ai-ops-reviewer | anchor | 25 | 90 | 20 | 80 | plan | 10 |
-| ai-ops-researcher | scout | 70 | 60 | 70 | 55 | plan | 30 |
-| ai-ops-closer | forge | 75 | 80 | 20 | 45 | default | 30 |
-| ai-ops-linter | anchor | 70 | 90 | 20 | 80 | default | 30 |
+| Rider | Characteristic |
+| --- | --- |
+| logike | Methodical, structured -- planning and scoping focus |
+| forge | Action-oriented -- execution, build, and delivery focus |
+| anchor | Conservative, thorough -- review, gate, and correctness focus |
+| scout | Curious, exploratory -- research and discovery focus |
 
 ### Parameter Glossary
 
@@ -519,26 +666,6 @@ Each profile assigns a rider archetype and sets behavioral parameters (0-100 sca
 | Conservatism | Sticks strictly to stated scope | Open to expanding scope |
 | Initiative | Proactively surfaces gaps and follow-on items | Executes only what is asked |
 | Deference | Follows prior instructions closely | Applies more independent judgment |
-
-### Riders (Behavioral Archetypes)
-
-| Rider | Characteristic |
-| --- | --- |
-| logike | Methodical, structured -- planning and scoping focus |
-| forge | Action-oriented -- execution, build, and delivery focus |
-| anchor | Conservative, thorough -- review, gate, and correctness focus |
-| scout | Curious, exploratory -- research and discovery focus |
-
-### Profile to Role Mapping
-
-| Profile | Typical Role Assignment | Notes |
-| --- | --- | --- |
-| ai-ops-planner | Coordinator | Planning and scoping focus |
-| ai-ops-executor | Executor, Builder | Primary execution lane |
-| ai-ops-reviewer | Validator | Structured review and crosscheck |
-| ai-ops-researcher | Coordinator (research phase) | Discovery-oriented coordinator |
-| ai-ops-closer | Executor | Specialized for closeout workflow (/closeout) |
-| ai-ops-linter | Validator | Specialized for lint/validation automation (/lint) |
 
 ---
 
@@ -572,13 +699,17 @@ flowchart TB
   subgraph actors ["Participants"]
     direction LR
     CO[Coordinator]
+    PL[Planner]
+    RE[Researcher]
     EX[Executor]
     BL[Builder]
-    VA[Validator]
+    LI[Linter]
+    RV[Reviewer]
+    CL[Closer]
     HR[Human Reviewer]
   end
 
-  subgraph state ["Shared State"]
+  subgraph state ["Shared State"]
     direction TB
     CC[Compacted Context]
   end
@@ -590,9 +721,13 @@ flowchart TB
   end
 
   CO -- "reads and writes" --> CC
+  PL -- "reads and writes" --> CC
+  RE -- "reads and writes" --> CC
   EX -- "reads and writes" --> CC
   BL -- "reads and writes" --> CC
-  VA -- "reads and writes" --> CC
+  LI -- "reads and writes" --> CC
+  RV -- "reads and writes" --> CC
+  CL -- "reads and writes" --> CC
   HR -. "reads" .-> CC
 
   CC --> RS
@@ -603,11 +738,11 @@ flowchart TB
   classDef core fill:#1b1308,stroke:#FFB347,color:#FFE680,stroke-width:2.4px
 
   class actors,state,outcomes tier
-  class CO,EX,BL,VA,HR,RS,PER node
+  class CO,PL,RE,EX,BL,LI,RV,CL,HR,RS,PER node
   class CC core
 
   linkStyle default stroke:#FF9F00,stroke-width:2px,color:#FFD85A
-  linkStyle 4 stroke:#FF9F00,stroke-width:2px,color:#FFD85A,stroke-dasharray:6 4
+  linkStyle 8 stroke:#FF9F00,stroke-width:2px,color:#FFD85A,stroke-dasharray:6 4
 ```
 
 ### Storage Locations
@@ -622,7 +757,7 @@ flowchart TB
 
 Update compacted context at every:
 
-1. Role handoff (Coordinator to Executor, Executor to Validator, etc.)
+1. Lane handoff (Coordinator to Executor, Executor to Reviewer/Linter, etc.)
 2. Phase completion (end of each workbook phase)
 3. Scope change or new dependency discovered
 4. Validation result (pass/fail finding requiring action)
@@ -714,25 +849,25 @@ Detailed structure: [guide_repository_structure.md](00_Admin/guides/architecture
 
 ### Guides
 
-- [AI Operations](00_Admin/guides/ai_operations/) — commands, workflows, vocabulary, multi-agent patterns; start here for any operational question
-- [Architecture](00_Admin/guides/architecture/) — repo structure, naming, file placement, agent endpoint contract
-- [Authoring](00_Admin/guides/authoring/) — workbooks, runbooks, markdown/YAML/JSON formatting, changelog conventions
-- [Tooling](00_Admin/guides/tooling/) — environment setup, markdownlint handling
+- [AI Operations](00_Admin/guides/ai_operations/) - commands, workflows, vocabulary, multi-agent patterns; start here for any operational question
+- [Architecture](00_Admin/guides/architecture/) - repo structure, naming, file placement, agent endpoint contract
+- [Authoring](00_Admin/guides/authoring/) - workbooks, runbooks, markdown/YAML/JSON formatting, changelog conventions
+- [Tooling](00_Admin/guides/tooling/) - environment setup, markdownlint handling
 
 ### Governance
 
-- [Specs](00_Admin/specs/README.md) — formal requirements and validation schemas
-- [Policies](00_Admin/policies/README.md) — hard rules and constraints
-- [Runbooks](00_Admin/runbooks/README.md) — operational procedures
-- [CONTRIBUTING.md](CONTRIBUTING.md) — contributor and PR policy
-- `00_Admin/configs/context_routing.yaml` — command-specific always_read lists, guard profiles, and routing fallback policy
+- [Specs](00_Admin/specs/README.md) - formal requirements and validation schemas
+- [Policies](00_Admin/policies/README.md) - hard rules and constraints
+- [Runbooks](00_Admin/runbooks/README.md) - operational procedures
+- [CONTRIBUTING.md](CONTRIBUTING.md) - contributor and PR policy
+- `00_Admin/configs/context_routing.yaml` - command-specific always_read lists, guard profiles, and routing fallback policy
 
 ### Resources
 
-- [Templates](01_Resources/templates/README.md) — workbooks, runbooks, proposals, and documents
-- `<git_root>/repo_structure.txt` — full file tree; use when a task requires repo-wide navigation
+- [Templates](01_Resources/templates/README.md) - workbooks, runbooks, proposals, and documents
+- `<git_root>/repo_structure.txt` - full file tree; use when a task requires repo-wide navigation
 
 ### Local Config
 
-- `.ai_ops/local/work_state.yaml` — active artifact registry (gitignored; absence = no active work)
-- `.ai_ops/local/config.yaml` — session overrides e.g. validation policy (gitignored; absent on fresh clone)
+- `.ai_ops/local/work_state.yaml` - active artifact registry (gitignored; absence = no active work)
+- `.ai_ops/local/config.yaml` - session overrides e.g. validation policy (gitignored; absent on fresh clone)

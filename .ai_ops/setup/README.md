@@ -1,12 +1,13 @@
 ---
 title: AI Assistant Setup
-version: 0.7.2
+version: 0.7.3
 status: active
 created: 2026-01-25
-updated: 2026-03-13
+updated: 2026-03-19
 owner: ai_ops
 ---
 
+<!-- markdownlint-disable MD013 -->
 <!-- markdownlint-disable-next-line MD025 -->
 # AI Assistant Setup
 
@@ -25,6 +26,13 @@ installed into tool-specific skill/command folders, they appear as slash command
 - "read .ai_ops/workflows/health.md and follow it"
 
 The agent reads the workflow file and follows its instructions.
+
+Retained governance stays upstream in tracked repo sources such as
+`.ai_ops/workflows/*.md`, approved setup docs, and approved export lanes.
+Tool-specific folders such as `.agents/skills/` and `.claude/skills/` are
+downstream install surfaces only. If a retained skill or command needs to
+change, update the upstream source and rerun `/ai_ops_setup` rather than
+hand-maintaining the installed runtime copy.
 
 ## Using Commands with Any AI Tool
 
@@ -51,7 +59,7 @@ Before running any setup script, confirm:
 
 | Field | Values | Default |
 | --- | --- | --- |
-| `active_surface` | `codex_cli` \| `claude_code` \| `cursor` \| `gemini_cli` \| `other` | (ask) |
+| `active_surface` | `codex_cli` \| `claude_code` \| `claude_app` \| `github_copilot` \| `cursor` \| `gemini_cli` \| `other` | (ask) |
 | `installation_target` | `skills` \| `commands` \| `both` \| `none` | `none` |
 | `governed_validation_policy` | `ai_ops` \| `repo_native` | `ai_ops` |
 
@@ -69,6 +77,8 @@ For new governed repos, start `aiops.yaml` from:
 - `.ai_ops/` is repository source-of-truth for workflow contracts and setup scripts.
 - `.agents/` is the Codex runtime install target for generated skills.
 - `.codex/` is an optional Codex compatibility mirror, generated only on demand.
+- Tool-native install folders are downstream wrapper destinations only. Do not
+  treat them as the retained authoring surface for ai_ops behavior.
 
 ## Choose Install Scope
 
@@ -141,6 +151,42 @@ already exist.
 These copy workflow files into `.claude/commands/`. This path still works but
 skills are preferred for new installations.
 
+### Claude App (web + desktop)
+
+Claude app surfaces do not scan project skill or command folders. Use natural
+language or an explicit workflow-file reference, for example:
+
+- "run /crosscheck"
+- "read `.ai_ops/workflows/crosscheck.md` and follow it"
+
+For `claude_app`, set `installation_target: none`. There is no install-script
+lane for this surface. Use it as an instructions-only lane with Filesystem MCP
+when repo access is needed.
+
+Treat `claude_app` as an artifact-driven surface, not a runtime-discovery
+surface. The workbook/runbook carries the execution topology and delegation
+contract; `claude_app` should not be assumed to provide installed skill
+discovery, plugin-profile routing, or runtime-enforced delegation guardrails.
+
+#### Claude App Capability Matrix
+
+| Workflow shape | `claude_app` fit | Operator note |
+| --- | --- | --- |
+| Read-only review, planning, or artifact interpretation | Good fit | Use direct workflow reference plus the target artifact/file set. |
+| Artifact-driven single-agent execution with a bounded workbook/runbook | Limited fit | Keep the task brief, context pack, and acceptance criteria explicit in the artifact. |
+| `/ai_ops_setup` for `claude_app` itself | Limited fit | Use it to confirm modality and instructions-only posture; no install script lane applies. |
+| Delegation-heavy or multi-agent execution | Poor fit | Do not assume native subagent routing, installed skill discovery, or runtime-enforced delegation controls. |
+| Plugin-dependent or native-agent-export workflows | Poor fit | Prefer Claude Code, plugin surfaces, or later native export lanes when the workflow depends on those capabilities. |
+
+For `claude_app`, the lead agent or operator should package the minimum viable
+execution payload explicitly:
+
+- workflow reference
+- task brief
+- required context pack
+- any intended delegation limits or no-delegation rule
+- expected return/checkpoint shape
+
 ### Codex (CLI + VS Code Extension)
 
 Codex uses the `.agents/skills/` directory for custom skills. There is no
@@ -159,6 +205,10 @@ after installing skills so the new wrappers are re-indexed.
 Compatibility mirror (`.codex/skills/`) is available on-demand via
 `--compat` (repo or user scope), and is not installed by default.
 See `00_Admin/runbooks/rb_codex_compat_mirror_01.md` for explicit commands.
+
+If you prototype a local-only Codex skill under `.agents/skills/`, treat that
+runtime artifact as evidence only until the retained behavior is modeled in
+tracked repo sources and surfaced through `/ai_ops_setup`.
 
 Legacy `setup_codex.sh` / `setup_codex.bat` scripts were removed because they
 targeted `.codex/commands/`, which is not a valid Codex mechanism. Use
@@ -248,6 +298,7 @@ All workflow files are in `.ai_ops/workflows/`.
 | --- | --- | --- | --- |
 | Claude Code (skills) | Skills | `.claude/skills/` | Recommended (workspace-root) |
 | Claude Code (commands) | Commands | `.claude/commands/` | Legacy (backward-compatible) |
+| Claude App (web/desktop) | Direct workflow reference | none | Supported (instructions-only; no install; artifact-driven) |
 | Codex (skills, repo scope) | Skills | `.agents/skills/` | Recommended |
 | Codex (skills, user scope) | Skills | `$HOME/.agents/skills/` | Recommended |
 | Cursor | Commands | `.cursor/commands/` | Setup scripts |

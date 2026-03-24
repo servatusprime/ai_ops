@@ -1,10 +1,10 @@
 ---
 title: "Reference: Skills and Commands Classification"
 id: ref_skills_commands_classification_01
-version: 0.1.1
+version: 0.1.2
 status: active
 created: 2026-02-20
-last_updated: 2026-03-04
+last_updated: 2026-03-19
 owner: ai_ops
 license: Apache-2.0
 description: >
@@ -15,7 +15,7 @@ related_refs:
   - 00_Admin/specs/spec_subagent_file.md
 ---
 
-<!-- markdownlint-disable MD013 -->
+<!-- markdownlint-disable MD013 MD025 -->
 
 # Reference: Skills and Commands Classification
 
@@ -50,24 +50,27 @@ auto-loads when context is missing.
 
 ## Workflow Classification
 
-Subagent labels (planner/reviewer/closer/linter) are preset names.
-Canonical functional roles remain `Coordinator`, `Executor`, `Builder`, `Validator`.
+Managed subagent labels (`ai-ops-planner`, `ai-ops-reviewer`, `ai-ops-closer`,
+`ai-ops-linter`, etc.) are derivative preset names. Canonical orchestration
+lanes remain upstream in ai_ops canon:
+`Coordinator`, `Planner`, `Researcher`, `Executor`, `Builder`, `Reviewer`,
+`Linter`, `Closer`.
 
-| Workflow | Classification | Subagent Delegation | Canonical Functional Role | Rationale |
+| Workflow | Classification | Subagent Delegation | Canonical Lane Path | Rationale |
 | --- | --- | --- | --- | --- |
-| `/work` | Both | Primary agent (planner subagent for planning phases, executor for execution) | Coordinator -> Executor | Core workflow. User invokes explicitly; also needs to auto-load when the agent detects governed context. |
+| `/work` | Both | Primary agent (planner/executor sidecars when justified) | Coordinator -> Executor -> Reviewer | Core workflow. User invokes explicitly; also needs to auto-load when the agent detects governed context. |
 | `/bootstrap` | Skill | Planner | Coordinator | Primarily auto-invoked when context is missing. User rarely types `/bootstrap` directly -- `/work` triggers it. |
-| `/closeout` | Both | Closer | Executor | User invokes when ready to ship. Primary agent may also invoke after execution completes. |
-| `/crosscheck` | Both | Reviewer | Validator | User invokes for explicit review. Primary agent may invoke after changes as a quality gate. |
-| `/health` | Both | Reviewer | Validator | User invokes for audits. Primary agent may invoke during quality gates. |
-| `/harvest` | Both | Closer | Coordinator -> Executor | User invokes for artifact promotion. Primary agent may invoke as part of closeout. |
-| `/customize` | Command | Primary agent (executor subagent for config writes) | Coordinator -> Executor | Always user-initiated. Agent should not auto-invoke config changes. |
-| `/profiles` | Command | Primary agent (executor subagent for file regeneration) | Coordinator -> Executor | Always user-initiated. New command for rider/crew management. |
-| `/lint` | Both | Linter | Validator | User invokes for standalone validation. Closer and reviewer may invoke as part of their workflows. |
+| `/closeout` | Both | Closer | Closer | User invokes when ready to ship. Primary agent may also invoke after execution completes. |
+| `/crosscheck` | Both | Reviewer | Reviewer | User invokes for explicit review. Primary agent may invoke after changes as a quality gate. |
+| `/health` | Both | Reviewer | Reviewer | User invokes for audits. Primary agent may invoke during quality gates. |
+| `/harvest` | Both | Closer | Coordinator -> Closer | User invokes for artifact promotion. Primary agent may invoke as part of closeout. |
+| `/customize` | Command | Primary agent (builder sidecar for config writes when needed) | Coordinator -> Builder | Always user-initiated. Agent should not auto-invoke config changes. |
+| `/profiles` | Command | Primary agent (builder sidecar for file regeneration when needed) | Coordinator -> Builder | Always user-initiated. New command for rider/crew management. |
+| `/lint` | Both | Linter | Linter | User invokes for standalone validation. Closer and reviewer may invoke as part of their workflows. |
 | `/scratchpad` | Command | Executor | Executor | User-initiated note creation. Agent does not auto-create scratchpads. |
 | `/work_status` | Command | Planner | Coordinator | User-initiated status check. Single-turn report. |
-| `/work_savepoint` | Command | Primary agent | Executor | User-initiated session end. Commits + pushes savepoint, then ends. |
-| `/ai_ops_setup` | Command | Primary agent | Coordinator | User-initiated setup. Should never auto-invoke. |
+| `/work_savepoint` | Command | Primary agent | Closer | User-initiated session end. Commits + pushes savepoint, then ends. |
+| `/ai_ops_setup` | Command | Primary agent | Coordinator -> Builder | User-initiated setup. Should never auto-invoke. |
 
 ### Plugin Export Implications
 

@@ -16,7 +16,7 @@ path_basis: workspace_root  # path anchor used in evidence refs: workspace_root 
 evidence_schema: path_line_or_command  # required evidence format: path:line OR command + key output
 ---
 
-<!-- markdownlint-disable-next-line MD025 MD041 -->
+<!-- markdownlint-disable MD024 MD025 MD041 -->
 # Crosscheck Review - <subject>
 
 ## AI-First Guidance
@@ -54,7 +54,7 @@ Narrative-only evidence is not acceptable in `strict` reviews.
 | E-01 | file | `<path/to/file.md:42>` | `<observed content>` |
 | E-02 | command | `<command>` | `<key line>` |
 
-## CSCC Readiness Audit
+## CSCC (Cold-Start Capacity Constrained) Readiness Audit
 
 | Check | Status | Evidence |
 | --- | --- | --- |
@@ -99,21 +99,23 @@ Use this section for `bottom-up` and `hybrid` reviews. Keep it concise.
 
 ### Medium (Should Fix)
 
-1. **<Finding title>**
-   - <Description of the issue>
-   - Evidence: `E-xx`
-   - Enforcement type: `<code_enforced | doc_only | process_gap>`
-   - Disposition: `<patch_now | proposal_seed | follow_on_workbook>`
-   - Fix: <Recommended resolution>
+#### <Medium finding title>
+
+- <Description of the issue>
+- Evidence: `E-xx`
+- Enforcement type: `<code_enforced | doc_only | process_gap>`
+- Disposition: `<patch_now | proposal_seed | follow_on_workbook>`
+- Fix: <Recommended resolution>
 
 ### Low (Non-Blocking)
 
-1. **<Finding title>**
-   - <Description>
-   - Evidence: `E-xx`
-   - Enforcement type: `<code_enforced | doc_only | process_gap>`
-   - Disposition: `<patch_now | proposal_seed | follow_on_workbook>`
-   - Fix: <Recommended resolution>
+#### <Low finding title>
+
+- <Description>
+- Evidence: `E-xx`
+- Enforcement type: `<code_enforced | doc_only | process_gap>`
+- Disposition: `<patch_now | proposal_seed | follow_on_workbook>`
+- Fix: <Recommended resolution>
 
 ## Proposal vs Verified Guard
 
@@ -193,7 +195,8 @@ Status: <Acceptable | Acceptable with minor cleanup | Needs revision | Blocking 
 
 ## Review Timing Patterns
 
-Use this section as guidance for when to conduct reviews (delete from actual reviews):
+> **Template guidance only - remove this entire section before publishing the
+> review.**
 
 | Review Type | When | Focus | Output |
 | --- | --- | --- | --- |

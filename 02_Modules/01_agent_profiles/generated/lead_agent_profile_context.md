@@ -2,10 +2,10 @@
 title: Lead Agent Profile Context
 version: 0.1.0
 status: active
-last_updated: 2026-02-25
+last_updated: 2026-03-23
 owner: ai_ops
-generated_at: 2026-02-23T16:22:36Z
-source_hash: 701a4e1bd4db
+generated_at: 2026-03-23T18:23:26Z
+source_hash: 24265bdb323f
 ---
 
 <!-- markdownlint-disable MD013 MD025 -->
@@ -18,8 +18,8 @@ copied into root `AGENTS.md` or `GEMINI.md`.
 ## Source Summary
 
 - crew_preset: `default`
-- generated_at: `2026-02-23T16:22:36Z`
-- source_hash: `701a4e1bd4db`
+- generated_at: `2026-03-23T18:23:26Z`
+- source_hash: `24265bdb323f`
 
 ## Lead Profile State
 

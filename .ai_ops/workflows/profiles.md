@@ -2,7 +2,7 @@
 name: profiles
 description: Manage rider/crew profile source data and regenerate deterministic derivative behavior files.
 kind: workflow
-version: 0.1.2
+version: 0.1.3
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -122,8 +122,7 @@ contract.
 3. Load active profile source YAML:
    - prefer `.ai_ops/local/profiles/active_crew.yaml` when present
    - compatibility read: `.ai_ops/profiles/active_crew.yaml`
-   - otherwise use `02_Modules/01_agent_profiles/base/default_crew.yaml` (fallback compatibility:
-     `02_Modules/00_customize/base/default_crew.yaml`)
+   - otherwise use `02_Modules/01_agent_profiles/base/default_crew.yaml`
 4. Display current state:
    - crew preset
    - lead rider
@@ -167,6 +166,16 @@ contract.
 | Primary write target | `.ai_ops/local/config.yaml`                        | `.ai_ops/local/profiles/active_crew.yaml` and generated derivative files |
 | Typical trigger      | Setup and preference tuning                        | Behavior contract changes                                                |
 
+## Outputs
+
+- Updated profile source YAML (when confirmed).
+- Regenerated derivative files:
+  - lane-aligned subagent files
+  - single-agent profile map
+  - primary-agent adapter context (`lead_agent_profile_context.md`)
+  - model tuning summary (`model_tuning_summary.md`)
+- Structured regeneration summary and warnings.
+
 ## Surface Adapter Notes
 
 When `lead_agent_profile_context.md` is regenerated, load it as secondary
@@ -176,30 +185,9 @@ behavior context on supported surfaces:
 - Claude: load as secondary context artifact (do not modify root `CLAUDE.md`).
 - Gemini: load as secondary context artifact (do not modify root `GEMINI.md`).
 
-## Working with Native Commands
+## Lane
 
-Use native assistant commands for session-scoped mechanics (model selection, output formatting, local IDE helpers) when
-available.
-
-Use ai_ops workflow commands for governed execution contracts, authority gates, artifact handling, and
-validation/reporting behavior.
-
-If overlap exists, native commands handle session mechanics while this workflow remains the source of truth for governed
-process behavior.
-
-## Outputs
-
-- Updated profile source YAML (when confirmed).
-- Regenerated derivative files:
-  - functional subagent files
-  - single-agent profile map
-  - primary-agent adapter context (`lead_agent_profile_context.md`)
-  - model tuning summary (`model_tuning_summary.md`)
-- Structured regeneration summary and warnings.
-
-## Roles
-
-Default role: Coordinator -> Executor (profile edits and script invocation).
+Default lane: Coordinator -> Executor (profile edits and script invocation).
 
 ## Risks and Limits
 
@@ -216,7 +204,17 @@ Default role: Coordinator -> Executor (profile edits and script invocation).
 - `02_Modules/01_agent_profiles/base/model_tuning_manifest.yaml`
 - `02_Modules/01_agent_profiles/schemas/profile_source_schema.yaml`
 - `02_Modules/01_agent_profiles/schemas/model_tuning_manifest_schema.yaml`
-- compatibility fallback: `02_Modules/00_customize/base/default_crew.yaml`
 - `00_Admin/scripts/regenerate_profiles.py`
 - `00_Admin/specs/spec_slider_manifest.md`
 - `00_Admin/specs/spec_subagent_file.md`
+
+## Working with Native Commands
+
+Use native assistant commands for session-scoped mechanics (model selection, output formatting, local IDE helpers) when
+available.
+
+Use ai_ops workflow commands for governed execution contracts, authority gates, artifact handling, and
+validation/reporting behavior.
+
+If overlap exists, native commands handle session mechanics while this workflow remains the source of truth for governed
+process behavior.

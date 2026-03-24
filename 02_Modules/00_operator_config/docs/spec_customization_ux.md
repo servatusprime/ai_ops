@@ -1,12 +1,12 @@
 ---
 spec_id: customization_ux
 title: Spec: Customization UX
-status: stub
+status: active
 license: Apache-2.0
-version: 0.1.0
+version: 0.1.1
 owner: ai_ops
 related: []
-last_updated: 2026-01-24
+last_updated: 2026-03-23
 ---
 
 # Spec: Customization UX
@@ -40,7 +40,7 @@ Define how customization is presented to users through `/customize` and related 
 When users ask for session-level response formatting (for example concise vs verbose output), prefer the platform-native
 style command where available (for example Claude `/output-style`).
 
-ai_ops profile controls (`/profiles`) govern persistent behavioral contracts across roles. Native style commands govern
+ai_ops profile controls (`/profiles`) govern persistent behavioral contracts across lanes. Native style commands govern
 session surface formatting. If both are set, native style commands take precedence for presentation style.
 
 ## Outputs

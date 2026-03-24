@@ -140,9 +140,9 @@ those targets and proceed. Otherwise:
 - `00_Admin/guides/ai_operations/guide_scratchpad_usage.md`
 - `00_Admin/guides/authoring/guide_workbooks.md`
 
-## Roles
+## Lane
 
-Default roles: Coordinator → Executor.
+Default lane: Coordinator → Executor.
 
 ## Risks and Limits
 

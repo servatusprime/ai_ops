@@ -19,9 +19,10 @@ related:
 Define coordination rules for multiple agents working concurrently on the same repository, preventing conflicts while
 enabling parallel execution.
 
-In ai_ops multi-agent runs, agents are assigned canonical functional roles -- Coordinator, Executor, Builder,
-Validator -- per the **Crew Model**. See `00_Admin/guides/architecture/guide_design_and_philosophy.md`
-Sec.The Crew Model. The lock and conflict rules in this guide apply regardless of which role an agent holds.
+In ai_ops multi-agent runs, agents are assigned canonical lanes -- Coordinator, Planner, Executor, Builder,
+Reviewer, Researcher, Closer, Linter -- per the **Crew Model**. See
+`00_Admin/guides/architecture/guide_design_and_philosophy.md` Sec.The Crew Model. The lock and conflict rules
+in this guide apply regardless of which lane an agent holds.
 
 ## AI Agent Applicability
 

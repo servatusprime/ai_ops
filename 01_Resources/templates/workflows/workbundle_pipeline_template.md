@@ -1,11 +1,11 @@
 ---
 title: Workbundle Pipeline Template
 id: wb_pipeline_<bundle_name>_<nn>
-version: 0.2.1
+version: 0.2.2
 status: active
 license: Apache-2.0
 created: 2026-02-18
-updated: 2026-03-06
+updated: 2026-03-21
 owner: ai_ops
 related:
   - 00_Admin/guides/ai_operations/guide_workflows.md
@@ -13,6 +13,14 @@ related:
 lifecycle: transient
 primary_axis: execution
 execution_mode: sequential
+execution_topology: single_agent  # single_agent | multi_agent | parallel_safe
+activated_lanes:
+  - Coordinator
+  - Executor
+  - Reviewer
+delegation_policy: explicit_only
+convergence_profile: iterative_convergence_minimal
+parallel_coordination_id: null  # Set when sibling bundles run concurrently
 depends_on: []
 shared_files: []
 lock_scope: none

@@ -38,6 +38,7 @@ properties:
     required:
       - ai-ops-planner
       - ai-ops-executor
+      - ai-ops-builder
       - ai-ops-reviewer
       - ai-ops-researcher
       - ai-ops-closer
@@ -46,6 +47,8 @@ properties:
       ai-ops-planner:
         $ref: "#/definitions/subagent_slot"
       ai-ops-executor:
+        $ref: "#/definitions/subagent_slot"
+      ai-ops-builder:
         $ref: "#/definitions/subagent_slot"
       ai-ops-reviewer:
         $ref: "#/definitions/subagent_slot"

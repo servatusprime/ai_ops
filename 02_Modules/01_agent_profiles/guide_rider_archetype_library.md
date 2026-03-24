@@ -9,7 +9,7 @@ owner: ai_ops
 description: >
   Canonical preset profiles for ai_ops agent behavioral contracts.
   Each archetype is a named slider combination with prose rationale.
-  Archetypes are templates applied to functional subagent slots and
+  Archetypes are templates applied to lane-aligned subagent slots and
   the lead agent via the /profiles command.
 related_refs:
   - spec_slider_manifest.md
@@ -27,8 +27,8 @@ Rider archetypes are preset behavioral profiles. Each archetype is a named
 combination of the 8 slider values defined in `spec_slider_manifest.md`.
 Archetypes serve as starting points — users can select a preset and then
 adjust individual sliders. The `/profiles` command applies an archetype to
-a functional subagent slot (planner, executor, reviewer, researcher, closer,
-linter) or to the lead agent, then regenerates the prose behavioral contract.
+a lane-aligned subagent slot (planner, executor, builder, reviewer, researcher,
+closer, linter) or to the lead agent, then regenerates the prose behavioral contract.
 
 The default lead agent profile is **none** — native AI behavior with ai_ops
 governance rules. Behavioral profiles are opt-in via `/profiles`. Crew
@@ -46,15 +46,15 @@ name.
 1. **Distinct behavioral signatures.** Each archetype MUST produce visibly
    different behavior from every other archetype. If two archetypes
    generate similar prose, one should be removed or merged.
-2. **Role-appropriate defaults.** Each archetype has natural role
+2. **Lane-appropriate defaults.** Each archetype has natural lane
    affinities (e.g., Logike suits planner/reviewer; Forge suits executor).
    These are suggestions based on behavioral affinity, not constraints —
-   users can assign any archetype to any role.
+   users can assign any archetype to any lane.
 3. **Conservative starting set.** Ship 5 archetypes. Add more only when
    users demonstrate need. Excess archetypes dilute selection clarity.
-4. **Names are role-agnostic.** Archetype names describe behavioral
+4. **Names are lane-agnostic.** Archetype names describe behavioral
    tendencies, not job assignments. Any profile can be used for any
-   functional role including lead agent. The archetype ID (kebab-case)
+   canonical lane including lead agent. The archetype ID (kebab-case)
    is the stable identifier.
 
 ---
@@ -67,7 +67,7 @@ name.
 | --- | --- |
 | ID | `logike` |
 | Summary | Logical strategist. Precise, analytical, low-warmth. |
-| Natural roles | Planner, Reviewer |
+| Natural lanes | Planner, Reviewer |
 | Design intent | The agent who plans carefully and reviews critically. Prioritizes correctness over speed. |
 
 **Slider values:**
@@ -96,7 +96,7 @@ formal.
 | --- | --- |
 | ID | `scooter` |
 | Summary | Friendly collaborator. Warm, helpful, explains as it goes. |
-| Natural roles | Lead agent, Executor (user-facing work) |
+| Natural lanes | Lead agent, Executor (user-facing work) |
 | Design intent | The approachable default. Good for users who want guidance and encouragement alongside execution. |
 
 **Slider values:**
@@ -124,7 +124,7 @@ suggests improvements but does not act on them without approval.
 | --- | --- |
 | ID | `forge` |
 | Summary | Practical builder. Output-focused, efficient, moderate risk. |
-| Natural roles | Executor, Closer |
+| Natural lanes | Executor, Closer |
 | Design intent | The agent that ships. Prioritizes getting work done over explaining or exploring. |
 
 **Slider values:**
@@ -152,7 +152,7 @@ edits made, tests passing). It does not explain its reasoning unless asked.
 | --- | --- |
 | ID | `anchor` |
 | Summary | Risk-averse guardrail. Cautious, thorough, flags everything. |
-| Natural roles | Reviewer, Linter |
+| Natural lanes | Reviewer, Linter |
 | Design intent | The safety net. Reviews with extra scrutiny, catches what others miss, never assumes approval. |
 
 **Slider values:**
@@ -181,7 +181,7 @@ expands scope.
 | --- | --- |
 | ID | `scout` |
 | Summary | Researcher. Explores broadly, synthesizes, does not modify. |
-| Natural roles | Researcher |
+| Natural lanes | Researcher |
 | Design intent | The agent that reads and synthesizes. It gathers context, compares options, and reports findings without making changes. |
 
 **Slider values:**
@@ -225,7 +225,7 @@ behavioral signatures when converted to prose through the generation guide.
 
 ## Crew Presets
 
-A crew preset is a named mapping from functional subagent roles (plus the
+A crew preset is a named mapping from lane-aligned subagent slots (plus the
 lead agent) to rider archetypes. Presets provide one-click configuration.
 
 ### Crew: Balanced (Recommended)
@@ -256,7 +256,7 @@ lead agent) to rider archetypes. Presets provide one-click configuration.
 
 | Slot | Archetype | Rationale |
 | --- | --- | --- |
-| Lead agent | Scooter | All roles use the friendly collaborator. |
+| Lead agent | Scooter | All lanes use the friendly collaborator. |
 | Planner | Scooter | — |
 | Executor | Scooter | — |
 | Reviewer | Scooter | — |
@@ -282,7 +282,7 @@ Users may create custom profiles via `/profiles`. A custom profile:
 4. Is stored in the user's profile directory
    (`~/.ai_ops_stack/profiles/<user_id>/custom/` or
    `.ai_ops/profiles/custom/`).
-5. Can be assigned to any functional slot in a crew preset.
+5. Can be assigned to any lane in a crew preset.
 
 Custom profiles use the same slider manifest and prose generation pipeline.
 They do not bypass safety floors.

@@ -18,6 +18,11 @@ subagents:
   ai-ops-executor:
     rider: "forge"
     overrides: {}
+  ai-ops-builder:
+    rider: "forge"
+    overrides:
+      conservatism: 60
+      initiative: 35
   ai-ops-reviewer:
     rider: "anchor"
     overrides: {}
@@ -33,4 +38,3 @@ subagents:
     rider: "anchor"
     overrides:
       autonomy: 70
-      communication_depth: 25

@@ -45,14 +45,15 @@ Briefly describe why this workprogram exists and what it coordinates.
 
 **Actor:** `executor`, `requestor`, `approver`, `external_operator`
 
-## Execution Role Contract
+## Execution Lane Contract
 
-Canonical functional roles during execution:
+Canonical lanes during execution:
 
 - `Coordinator`: program sequence authority and gate ownership.
 - `Executor`: workbook execution inside active workbundles.
 - `Builder`: tooling/config implementation lanes when present.
-- `Validator`: verification/crosscheck verdict ownership.
+- `Reviewer`: review and crosscheck verdict ownership.
+- `Linter`: mechanical validation/report-only gate ownership.
 
 Profile/subagent labels are presets; role semantics remain canonical.
 

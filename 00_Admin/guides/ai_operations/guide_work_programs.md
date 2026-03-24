@@ -33,16 +33,18 @@ Workprogram:
 
 Workprograms are not Workbooks and are not executed directly.
 
-## Execution roles (canonical)
+## Execution lanes (canonical)
 
-Program execution uses canonical functional roles:
+Program execution uses canonical execution lanes:
 
 - `Coordinator`: owns program sequencing, gate decisions, and cross-bundle handoffs.
 - `Executor`: runs workbook tasks inside bundled lanes.
 - `Builder`: performs tooling/config implementation work when invoked by workbook scope.
-- `Validator`: performs phase/program verification and crosschecks.
+- `Reviewer`: performs phase/program review and crosschecks.
+- `Linter`: performs mechanical validation/report-only checks.
 
-Profile/subagent labels are execution presets. Functional role meaning remains canonical.
+Profile/subagent labels are execution presets. Canonical lane meaning remains
+the upstream execution contract.
 
 ## Required contents
 

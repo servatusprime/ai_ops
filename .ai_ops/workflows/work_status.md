@@ -132,9 +132,9 @@ If authority trail data is missing, note that explicitly and point to
 - `.ai_ops/local/work_state.yaml` (active work context — machine-local, gitignored)
 - `00_Admin/guides/architecture/guide_aiops_agent_endpoint.md`
 
-## Roles
+## Lane
 
-Default role: Coordinator (reporting only).
+Default lane: Coordinator (reporting only).
 
 ## Risks and Limits
 

@@ -2,7 +2,7 @@
 description: Signal that repo rules apply and establish work/run context.
 name: work
 kind: workflow
-version: 0.2.1
+version: 0.2.2
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -71,7 +71,7 @@ Before any broad file exploration:
 6. If request text is seed/proposal/datapoint intake without explicit execution
    action, capture in scratchpad first and confirm before edits.
 
-## Role/Profile Topology Gate (Mandatory)
+## Lane/Profile Topology Gate (Mandatory)
 
 After bootstrap read order and before execution:
 
@@ -81,14 +81,18 @@ After bootstrap read order and before execution:
    - `Agent Profiles`
    - `Context Management`
 2. Confirm these distinctions explicitly:
-   - Functional roles (`Coordinator`, `Executor`, `Builder`, `Validator`) are
-     execution lanes.
-   - Profiles/riders are behavior presets and do not replace functional role
+   - Canonical lanes (`Coordinator`, `Planner`, `Researcher`, `Executor`,
+     `Builder`, `Reviewer`, `Linter`, `Closer`) are the upstream execution
+     schema.
+   - Legacy broad-role keys (`Coordinator`, `Executor`, `Builder`,
+     `Validator`) remain compatibility keys for `role_assignments`.
+   - Profiles/riders are behavior presets and do not replace canonical lane
      semantics.
    - `primary agent` is the user-facing session agent; `subagents` are
      delegated workers in multi-agent runs.
-   - `/profiles` tunes behavior profiles; workbook `role_assignments` select
-     model-tier overrides by role.
+   - `/profiles` tunes behavior profiles; workbook `activated_lanes` declare
+     canonical participation, while `role_assignments` remain compatibility
+     overrides for model-tier hints.
 3. For CSCC workbook/workbundle/workprogram lanes, confirm compacted context
    location (workbook body vs bundle/program README).
 4. If any distinction is unclear, pause and ask.
@@ -190,17 +194,44 @@ Before creating workbook/workbundle artifacts:
    use current, switch existing, or create new.
 4. Record placement decision echo before writing artifacts.
 
+## Execution Topology and Delegation Gate (Before Artifact Creation) (Mandatory)
+
+Before creating or substantially rewriting a workbook, runbook, spine, or
+pipeline artifact:
+
+1. Classify `execution_topology`:
+   `single_agent`, `multi_agent`, or `hybrid`.
+2. Declare `activated_lanes` for the run. Default baseline:
+   `Coordinator -> Executor -> Reviewer`.
+3. Declare `delegation_policy` and any spawn criteria or do-not-delegate
+   constraints already known.
+4. Decide whether the artifact owns the full
+   `execution_topology_contract` (books/runbooks) or only a coordination
+   summary (spines/pipelines).
+5. If sibling active artifacts may run concurrently, create or reuse
+   `parallel_coordination_id`.
+6. Record this contract before execution begins; do not leave topology to
+   runtime guesswork.
+
 ## Workbook Preflight Gate (Before Execution)
 
 Required workbook sections:
 
+- `## Execution Topology Contract`
 - `## Cold-Start Execution Contract`
 - `## Pre-Execution Readiness Gate`
 - `## Ordered Execution Queue`
 - `## Verification Checklist`
 - `## Selfcheck Results`
 
-Read both `model_profile` (overall tier) and `role_assignments` (per-role overrides) from workbook frontmatter.
+Read these routing fields before execution:
+
+- `model_profile` (overall tier)
+- `execution_topology`
+- `activated_lanes`
+- `delegation_policy`
+- `convergence_profile`
+- `role_assignments` (compatibility overrides, when present)
 
 If missing, patch workbook structure before execution and record evidence.
 
@@ -216,8 +247,10 @@ If missing, patch workbook structure before execution and record evidence.
 6. Before creating workbook/workbundle, run Workbundle Relevance Gate.
 7. Add selected/created artifact to local active state.
 8. If artifact is a workbook, run Workbook Preflight Gate.
-9. Execute scoped tasks under authority guard and thrift gate.
-10. Use `spec_work_mode_direct.md` for direct-mode specifics.
+9. If a new workbook/runbook/spine/pipeline is being created, run Execution
+   Topology and Delegation Gate before writing the artifact body.
+10. Execute scoped tasks under authority guard and thrift gate.
+11. Use `spec_work_mode_direct.md` for direct-mode specifics.
 
 ### Governed Mode (External Repo via ai_ops)
 
@@ -229,9 +262,11 @@ If missing, patch workbook structure before execution and record evidence.
 6. Before creating workbook/workbundle, run Workbundle Relevance Gate.
 7. Add selected/created artifact to local active state with `repo` field.
 8. If artifact is a workbook, run Workbook Preflight Gate.
-9. Read `customizations.validation_policy.governed_mode` from `.ai_ops/local/config.yaml`.
-10. Apply ai_ops governance to target repo execution and validations using the selected policy.
-11. Use `spec_work_mode_governed.md` for governed-mode specifics.
+9. If a new workbook/runbook/spine/pipeline is being created, run Execution
+   Topology and Delegation Gate before writing the artifact body.
+10. Read `customizations.validation_policy.governed_mode` from `.ai_ops/local/config.yaml`.
+11. Apply ai_ops governance to target repo execution and validations using the selected policy.
+12. Use `spec_work_mode_governed.md` for governed-mode specifics.
 
 ### Standalone Mode
 
@@ -270,9 +305,10 @@ If checks fail, keep workbook active, fix, and rerun.
 - `00_Admin/guides/authoring/guide_workbooks.md`
 - `00_Admin/guides/authoring/guide_runbooks.md`
 
-## Roles
+## Lane
 
-Default roles: Coordinator -> Executor -> Validator (as needed).
+Default lane path: Coordinator -> Executor -> Reviewer (activate other lanes
+only when task shape requires them).
 
 ## Risks and Limits
 

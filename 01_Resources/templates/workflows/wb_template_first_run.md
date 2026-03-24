@@ -3,14 +3,22 @@ title: AI Workbook First-Run Template: <short_title>
 id: wb_<topic>_first_run
 status: planned
 license: Apache-2.0
-version: 0.3.1
+version: 0.3.2
 created: YYYY-MM-DD
-last_updated: 2026-03-06
+last_updated: 2026-03-21
 owner: ai_ops
 ai_role: executor
 model_profile: "<model_a>:<reasoning_level> | <model_b>:<reasoning_level>"
 authority_level: 3
 execution_mode: sequential
+execution_topology: single_agent  # single_agent | multi_agent | hybrid
+activated_lanes:  # List canonical lane names. Add Planner, Researcher, Builder, Linter, Closer as needed.
+  - Coordinator
+  - Executor
+  - Reviewer
+delegation_policy: explicit_only  # explicit_only | coordinator_judgment | open
+convergence_profile: iterative_convergence_standard
+parallel_coordination_id: null
 depends_on: []
 affects:
   artifacts: []
@@ -35,6 +43,10 @@ related_refs:
   recovery loops are expected.
 - Authority fit: Level 3 default. Level 4 changes require approved work
   proposal and explicit gates.
+- `execution_topology` defaults to `single_agent`. For multi-agent or hybrid
+  runs, change to `multi_agent` or `hybrid` and declare delegation contracts
+  explicitly — first-run lanes carry higher uncertainty so spawn criteria
+  must be explicit. See AGENTS.md §Role Reference.
 
 ## Upstream Governance Pointer
 

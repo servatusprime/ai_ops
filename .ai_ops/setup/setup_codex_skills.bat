@@ -1,6 +1,7 @@
 @echo off
 REM Setup script for Codex skill installation.
-REM Default install target is repo-scoped .agents\skills.
+REM Installs generated wrappers from tracked ai_ops workflow sources.
+REM Runtime skill folders are downstream install surfaces, not source-of-truth.
 
 setlocal enableextensions enabledelayedexpansion
 
@@ -126,6 +127,7 @@ echo Setting up ai_ops skills...
 echo Scope:           !scope!
 echo Workflow source: !WORKFLOW_DIR!
 echo Install target:  !PRIMARY_SKILLS_DIR!
+echo Managed-skill rule: tracked repo sources are authoritative; installed runtime wrappers are downstream outputs.
 if "!dry_run!"=="1" (
   echo Dry-run mode enabled ^(no files will be written^).
 )
@@ -314,6 +316,11 @@ echo Examples:
 echo   Workspace install ^(recommended^): .ai_ops\setup\setup_codex_skills.bat --workspace --force
 echo   Repo install ^(default^):          .ai_ops\setup\setup_codex_skills.bat
 echo   User install:                    .ai_ops\setup\setup_codex_skills.bat --user
+echo.
+echo Managed-skill rule:
+echo   Define retained ai_ops behavior in tracked repo sources first, then rerun
+echo   /ai_ops_setup or this script. Do not hand-maintain installed .agents\skills\
+echo   as the source-of-truth.
 endlocal
 exit /b 0
 

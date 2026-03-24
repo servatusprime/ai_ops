@@ -10,7 +10,7 @@ license: Apache-2.0
 updated: 2026-03-04
 ai_generated: true
 description: >
-  Defines the 6 functional subagent files for the ai_ops governance
+  Defines the 7 lane-aligned subagent files for the ai_ops governance
   plugin. Specifies frontmatter fields, body structure, tool permissions,
   and the relationship between rider profiles and subagent configuration.
 related_refs:
@@ -26,7 +26,7 @@ related_refs:
 
 ## Compacted Context
 
-The ai_ops governance plugin provides 6 functional subagents. Each
+The ai_ops governance plugin provides 7 lane-aligned subagents. Each
 subagent is a markdown file in the plugin `agents/` directory. The
 file has two parts: YAML frontmatter (mechanical enforcement by Claude
 Code) and a markdown body (behavioral instructions read by the agent).
@@ -36,9 +36,14 @@ the workbook or workflow file specifies which subagent handles which
 phase. For ad-hoc tasks, the primary agent selects based on the `description`
 field and naming conventions.
 
+**Topology vs Lane:** Each subagent file defines a *lane* (behavioral contract).
+The *topology* -- how many agents, how connected, what surface -- is a separate
+concern declared in the execution artifact. See `AGENTS.md §Topology and Lane
+Concepts` for the canonical distinction.
+
 Rider archetype profiles affect the markdown body (prose behavioral
 contract). The frontmatter is structurally stable -- it changes only when
-the functional role changes, not when the rider profile changes. This
+the canonical lane changes, not when the rider profile changes. This
 separation means switching from Logike to Scooter regenerates the body
 prose but leaves the frontmatter (tools, permissions, maxTurns) intact.
 
@@ -46,14 +51,15 @@ prose but leaves the frontmatter (tools, permissions, maxTurns) intact.
 
 ## Subagent Inventory
 
-| # | File | Role | permissionMode | Write Access | Primary Workflows |
+| # | File | Lane | permissionMode | Write Access | Primary Workflows |
 | --- | --- | --- | --- | --- | --- |
 | 1 | `ai-ops-planner.md` | Planner | `plan` | No | `/bootstrap`, `/work` (planning), `/work_status` |
 | 2 | `ai-ops-executor.md` | Executor | `default` | Yes | `/work` (execution), `/scratchpad`, `/customize` |
-| 3 | `ai-ops-reviewer.md` | Reviewer | `plan` | No | `/crosscheck`, `/health` |
-| 4 | `ai-ops-researcher.md` | Researcher | `plan` | No | Context gathering, codebase exploration |
-| 5 | `ai-ops-closer.md` | Closer | `default` | Yes | `/closeout`, `/harvest` |
-| 6 | `ai-ops-linter.md` | Linter | `default` | No (report only) | `/lint`, validation gates in `/closeout` and `/crosscheck` |
+| 3 | `ai-ops-builder.md` | Builder | `default` | Yes | `/work` (build/create phases), construction tasks |
+| 4 | `ai-ops-reviewer.md` | Reviewer | `plan` | No | `/crosscheck`, `/health` |
+| 5 | `ai-ops-researcher.md` | Researcher | `plan` | No | Context gathering, codebase exploration |
+| 6 | `ai-ops-closer.md` | Closer | `default` | Yes | `/closeout`, `/harvest` |
+| 7 | `ai-ops-linter.md` | Linter | `default` | No (report only) | `/lint`, validation gates in `/closeout` and `/crosscheck` |
 
 ---
 
@@ -63,6 +69,7 @@ prose but leaves the frontmatter (tools, permissions, maxTurns) intact.
 ai_ops/plugins/ai-ops-governance/agents/
 +-- ai-ops-planner.md
 +-- ai-ops-executor.md
++-- ai-ops-builder.md
 +-- ai-ops-reviewer.md
 +-- ai-ops-researcher.md
 +-- ai-ops-closer.md
@@ -504,16 +511,16 @@ adjustments to the user for confirmation before writing.
 | Slider | Frontmatter Field | Mapping Rule |
 | --- | --- | --- |
 | `autonomy` | `maxTurns` | T1->5, T2->10, T3->15-20, T4->25-30, T5->50 |
-| `deference` | (no direct mapping) | Deference is prose-only. `permissionMode` is structural and tied to the functional role, not the rider. |
+| `deference` | (no direct mapping) | Deference is prose-only. `permissionMode` is structural and tied to the canonical lane, not the rider. |
 | `conservatism` | (no direct mapping) | Conservatism is prose-only. Tool lists are structural. |
 
 **Key design decision:** `permissionMode` and `tools` are properties of
-the functional role, not the rider. A planner is always `plan` mode
+the canonical lane, not the rider. A planner is always `plan` mode
 regardless of whether its rider is Logike or Scooter. A reviewer is
 always `plan` mode. An executor is always `default` mode. Changing the
 rider changes the prose body; it does not change the structural
 permissions. This prevents a misconfigured rider from accidentally
-granting write access to a read-only role.
+granting write access to a read-only lane.
 
 ---
 
@@ -524,8 +531,8 @@ When profiles change, these files need regeneration:
 | Source | Derivative | Trigger |
 | --- | --- | --- |
 | Profile config (slider values) | Agent body prose (markdown) | `/profiles` command confirms changes |
-| Profile config (archetype + role) | Comment block in agent files | Same trigger |
-| Crew preset config | All 6 agent files + primary agent config | `/profiles` crew change |
+| Profile config (archetype + lane) | Comment block in agent files | Same trigger |
+| Crew preset config | All 7 agent files + primary agent config | `/profiles` crew change |
 | Profile config + workflow map | Consolidated single-agent profile variant (planned) | `/profiles` command in platforms without subagent delegation |
 
 The regeneration pipeline:
@@ -556,16 +563,16 @@ This specification is canonical for multi-agent environments that support
 delegation to subagents. In single-agent environments (no subagent runtime),
 it degrades as follows:
 
-1. The same 6 functional roles remain canonical for behavior design.
+1. The same 7 canonical lanes remain authoritative for behavior design.
 2. The profiler emits a consolidated single-agent profile variant instead of
-   six subagent files (see `guide_native_command_comparison.md`).
-3. `permissionMode`, `tools`, and `disallowedTools` remain structural role
+   seven subagent files (see `guide_native_command_comparison.md`).
+3. `permissionMode`, `tools`, and `disallowedTools` remain structural lane
    definitions in this spec and are NOT slider-driven runtime toggles.
 4. The fixed AI-facing return protocol section is omitted because there is
    no subagent-to-lead-agent handoff hop.
 
 This preserves behavior parity across environments while keeping structural
-safety decisions role-based.
+safety decisions lane-based.
 
 ---
 
@@ -575,6 +582,7 @@ safety decisions role-based.
 | --- | --- | --- |
 | ai-ops-planner | No | Returns structured plan -> primary agent presents to human |
 | ai-ops-executor | No | Returns execution report -> primary agent presents to human |
+| ai-ops-builder | No | Returns build/creation report -> primary agent presents to human |
 | ai-ops-reviewer | No | Returns review findings -> primary agent presents to human |
 | ai-ops-researcher | No | Returns research synthesis -> primary agent presents to human |
 | ai-ops-closer | No | Returns closeout report -> primary agent presents to human |
@@ -590,5 +598,5 @@ not actively used in prose generation for the subagent body.
 ## Plugin agents/README.md Update
 
 The current stub `agents/README.md` in the plugin skeleton (created by
-WB-01) should be replaced with content reflecting the 6 subagents defined
+WB-01) should be replaced with content reflecting the 7 lane-aligned subagents defined
 in this specification. See WB-03 revised for the implementation task.

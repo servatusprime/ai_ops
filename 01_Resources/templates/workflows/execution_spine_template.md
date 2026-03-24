@@ -1,17 +1,25 @@
 ---
 title: Execution Spine Template
 id: execution_spine_<program_id>
-version: 0.2.1
+version: 0.2.2
 status: active
 license: Apache-2.0
 created: 2026-02-18
-updated: 2026-03-06
+updated: 2026-03-21
 owner: ai_ops
 related:
   - 00_Admin/guides/ai_operations/guide_workflows.md
   - 00_Admin/guides/ai_operations/guide_execution_spines.md
 lifecycle: commitment
 primary_axis: commitment
+execution_topology: single_agent  # single_agent | multi_agent | parallel_safe
+activated_lanes:
+  - Coordinator
+  - Executor
+  - Reviewer
+delegation_policy: explicit_only  # explicit_only | lane_default
+convergence_profile: iterative_convergence_standard
+parallel_coordination_id: null  # Set when sibling spines run concurrently
 description: Template for canonical program-level execution spine artifacts.
 ---
 

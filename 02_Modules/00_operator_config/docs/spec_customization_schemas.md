@@ -17,10 +17,14 @@ Define the schema artifacts used to model rider settings, crews, and presets for
 
 ## Files
 
-- `02_Modules/01_agent_profiles/schemas/schema_rider_settings.yaml`
-- `02_Modules/01_agent_profiles/config/rider_archetypes.yaml`
-- `02_Modules/01_agent_profiles/config/crews.yaml`
-- `02_Modules/01_agent_profiles/profiles/preset_vibe_coder.yaml`
+- `02_Modules/01_agent_profiles/schemas/schema_rider_settings.yaml` — rider archetype field definitions
+- `02_Modules/01_agent_profiles/schemas/profile_source_schema.yaml` — active_crew.yaml structure
+- `02_Modules/01_agent_profiles/schemas/model_tuning_manifest_schema.yaml` — model-family calibration manifest
+- `02_Modules/00_operator_config/templates/aiops_config.template.yaml` — machine-local config template
+
+Note: `rider_archetypes.yaml`, `crews.yaml`, and `preset_vibe_coder.yaml` were deprecated and moved to
+`99_Trash/profiles_deprecated_2026-03-22/` (EA-11, 2026-03-22). The active profile source format is
+`active_crew.yaml` managed by `/profiles`.
 
 ## Schema Rules
 
@@ -31,8 +35,8 @@ Define the schema artifacts used to model rider settings, crews, and presets for
 ## Validation Expectations
 
 - Rider settings must include `id`, `name`, `version`, `status`, and `safety`.
-- Crews map roles to rider IDs defined in `rider_archetypes.yaml`.
-- Presets point to a crew and may override rider settings.
+- Profile source (`active_crew.yaml`) maps subagent slots to rider IDs + overrides.
+- Operator config (`aiops_config.template.yaml`) must not include machine-local paths.
 
 ## Overrides
 

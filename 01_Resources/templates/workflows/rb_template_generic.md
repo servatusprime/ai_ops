@@ -1,10 +1,10 @@
 ---
 title: Runbook: <task_title>
 id: rb_<topic>_<scope>
-version: 0.3.0
+version: 0.3.2
 status: active
 license: Apache-2.0
-last_updated: 2026-03-03
+last_updated: 2026-03-19
 owner: ai_ops
 ai_role: executor
 model_profile: "<model_a>:<reasoning_level> | <model_b>:<reasoning_level>"
@@ -13,6 +13,14 @@ model_profile: "<model_a>:<reasoning_level> | <model_b>:<reasoning_level>"
 #   medium (sonnet-class) -- implementation, file writes, moderate coordination
 #   high (opus-class)   -- architectural decisions, multi-surface governance changes
 execution_mode: sequential
+execution_topology: single_agent
+activated_lanes:
+  - Coordinator
+  - Executor
+  - Reviewer
+delegation_policy: explicit_only
+convergence_profile: iterative_convergence_minimal
+parallel_coordination_id: null  # Set only when sibling active artifacts must coordinate early
 depends_on: []
 shared_files: []
 lock_scope: none
@@ -23,6 +31,8 @@ related:
   - 00_Admin/specs/spec_runbook_structure.md
 ---
 
+<!-- markdownlint-disable MD013 MD033 -->
+<!-- markdownlint-disable-next-line MD025 -->
 # Runbook: <task_title>
 
 ## Purpose
@@ -64,7 +74,51 @@ related:
 
 ---
 
+## Execution Topology Contract
+
+Use this near-top section to declare the authoritative execution/delegation
+contract for the runbook.
+
+```yaml
+execution_topology_contract:
+  lead_lane: Coordinator
+  task_brief: "<one-line mission for the lead lane>"
+  spawn_criteria:
+    - "<when delegation is justified>"
+  do_not_delegate_when:
+    - "<when the lead retains the work>"
+  required_context_pack:
+    must_read:
+      - "<artifact>"
+  permission_envelope:
+    delegated_default: "<read-only findings support|...>"
+    lead_agent: "<final integration and authority-surface writes>"
+  lane_return_contracts:
+    Reviewer: "<expected return shape>"
+```
+
+Rules:
+
+- Keep the full contract in the runbook. Spines and pipelines should carry only
+  coordination summaries and references to child execution artifacts.
+- For strictly single-agent runs, keep the block minimal but still declare the
+  lead lane and stop conditions.
+- Use delegated workers only for bounded sidecar tasks where delegation is
+  actually efficient.
+
+---
+
 ## Ordered Execution Queue
+
+<!-- Delegation-intent rule (conditional):
+For delegated or specialized run steps, use
+`**[Agent: <canonical_lane> | <model_tier>]**` instead of a bare `**[Agent]**`
+marker and add an indented `Delegation Brief:` line under the step.
+Keep the lane surface-agnostic but canonical (for example `Researcher`,
+`Planner`, `Executor`, `Reviewer`, `Linter`, `Closer`) and avoid
+provider-specific runtime labels in canonical runbooks.
+See `00_Admin/guides/authoring/guide_workbooks.md` section
+`Delegation Intent Markers (conditional)` for full rules. -->
 
 ### Phase 0: Cold-Start and Pre-flight (Agent -- Level 0)
 
@@ -82,6 +136,11 @@ related:
 - 1.1 <execution step 1> **[Agent]**
 - 1.2 <execution step 2> **[Agent]**
 - 1.3 <execution step 3> **[Agent]**
+
+<!-- Example delegated step:
+- 1.4 Map current state **[Agent: Researcher | medium]**
+     Delegation Brief: Return findings only and do not modify files during the read pass.
+-->
 
 **-> Ph 1 complete when:** All steps executed or blocked with evidence.
 

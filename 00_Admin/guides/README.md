@@ -20,7 +20,7 @@ Guides are explanatory documentation (SHOULD/RECOMMENDED) that evolve with pract
 
 Location: `ai_operations/`
 
-- `guide_ai_operations_stack.md` - Master guide (axes, roles, handoffs)
+- `guide_ai_operations_stack.md` - Master guide (axes, lanes, handoffs)
 - `guide_workflows.md` - Intent/Commitment/Execution
 - `guide_contracts.md` - Verification-first contracts
 - `guide_ai_ops_vocabulary.md` - Canonical terminology

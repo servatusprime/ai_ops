@@ -275,10 +275,8 @@
 |   |   |-- README.md
 |   |   |-- base/
 |   |   |   |-- default_crew.yaml
-|   |   |   +-- model_tuning_manifest.yaml
-|   |   |-- config/
-|   |   |   |-- crews.yaml
-|   |   |   +-- rider_archetypes.yaml
+|   |   |   |-- model_tuning_manifest.yaml
+|   |   |   +-- rider_archetypes_numeric.yaml
 |   |   |-- generated/
 |   |   |   |-- lead_agent_profile_context.md
 |   |   |   |-- model_tuning_summary.md
@@ -287,8 +285,6 @@
 |   |   |-- guide_rider_archetype_library.md
 |   |   |-- metadata/
 |   |   |   +-- module.yaml
-|   |   |-- profiles/
-|   |   |   +-- preset_vibe_coder.yaml
 |   |   +-- schemas/
 |   |       |-- model_tuning_manifest_schema.yaml
 |   |       |-- profile_source_schema.yaml
@@ -334,6 +330,7 @@
 |   |   |-- README.md
 |   |   |-- agents/
 |   |   |   |-- README.md
+|   |   |   |-- ai-ops-builder.md
 |   |   |   |-- ai-ops-closer.md
 |   |   |   |-- ai-ops-executor.md
 |   |   |   |-- ai-ops-linter.md

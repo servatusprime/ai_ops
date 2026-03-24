@@ -1,9 +1,9 @@
 ---
 title: Guide: Workflows
-version: 1.1.0
+version: 1.1.1
 status: active
 license: Apache-2.0
-last_updated: 2026-03-14
+last_updated: 2026-03-19
 owner: ai_ops
 related:
 - ./guide_ai_operations_stack.md
@@ -11,6 +11,8 @@ related:
 - ../authoring/guide_runbooks.md
 - ../authoring/guide_workbooks.md
 ---
+
+<!-- markdownlint-disable MD013 MD025 -->
 
 # Guide: Workflows
 
@@ -167,9 +169,9 @@ artifact with execution-only fields.
 | Artifact Family | Always Include | Conditional Include | Avoid by Default |
 | --- | --- | --- | --- |
 | README templates (`workbundle`, `workprogram`, `runbundle`, `runprogram`) | `title`, `version`, `status`, `created`, `updated`, `owner`, `description`, `related` | `primary_axis`, `lifecycle` | `execution_mode`, `depends_on`, `shared_files`, `lock_scope` |
-| Spine templates (`execution_spine`) | README profile + `id`, `primary_axis` | `lifecycle` | `execution_mode`, `depends_on`, `shared_files`, `lock_scope` |
-| Pipeline templates (`workbundle/workprogram/runbundle/runprogram pipeline`) | spine profile + `execution_mode`, `depends_on`, `shared_files`, `lock_scope` | `primary_axis`, `lifecycle` | none |
-| Workbook/runbook templates (`wb_*`, `rb_*`) | follow `guide_workbooks.md` / `guide_runbooks.md` front matter requirements + `model_profile` (`model:reasoning`) | coordination keys when parallel/ordering matters | n/a |
+| Spine templates (`execution_spine`) | README profile + `id`, `primary_axis` | `lifecycle`, `execution_topology`, `activated_lanes`, `delegation_policy`, `convergence_profile`, `parallel_coordination_id` | `execution_mode`, `depends_on`, `shared_files`, `lock_scope` |
+| Pipeline templates (`workbundle/workprogram/runbundle/runprogram pipeline`) | spine profile + `execution_mode`, `depends_on`, `shared_files`, `lock_scope` | `primary_axis`, `lifecycle`, `execution_topology`, `activated_lanes`, `delegation_policy`, `convergence_profile`, `parallel_coordination_id` | none |
+| Workbook/runbook templates (`wb_*`, `rb_*`) | follow `guide_workbooks.md` / `guide_runbooks.md` front matter requirements + `model_profile` (`model:reasoning`) + `execution_topology` + `activated_lanes` + `delegation_policy` + `convergence_profile` | `parallel_coordination_id` when sibling artifacts may run concurrently | n/a |
 <!-- markdownlint-enable MD013 -->
 
 Reference key normalization:
@@ -177,6 +179,43 @@ Reference key normalization:
 - Use `related` as the canonical cross-reference list key for new templates.
 - `related_refs` remains validator-compatible for existing workbook surfaces
   during transition.
+
+## Execution Topology Placement
+
+Execution-topology metadata is part of the canonical orchestration contract.
+Keep it visible early, but do not duplicate full child execution logic across
+artifact families.
+
+Placement rules:
+
+- **Workbooks / runbooks** own the authoritative execution contract for the
+  active lane. They should carry:
+  - minimal frontmatter routing fields:
+    `execution_topology`, `activated_lanes`, `delegation_policy`,
+    `convergence_profile`, and `parallel_coordination_id` when needed
+  - an early `execution_topology_contract` YAML block containing the lead
+    lane, delegation criteria, context pack, permission/tool envelope, skill
+    surface, return contracts, and loopbacks
+- **Execution spines** summarize coordination intent for child books. They may
+  repeat routing fields and convergence profile, but they should reference
+  child execution artifacts instead of duplicating their full
+  `execution_topology_contract` blocks.
+- **Pipeline artifacts** summarize queue ordering, dependency/lock data, and
+  coordination metadata. They may repeat routing fields when needed for early
+  triage, but they should not become a second source of truth for child
+  delegation payloads.
+
+Single-agent default:
+
+- Canonical minimum path is `Coordinator -> Executor -> Reviewer`.
+- Additional lanes are activated only when the work shape requires them.
+
+Selective delegation rule:
+
+- Use delegated workers only for bounded sidecar tasks where delegation
+  materially reduces risk or effort.
+- Keep sequencing, architecture judgment, final integration, and authority-
+  surface writes in the lead lane.
 
 ## Planning Outputs vs Program Spec vs Execution Spine
 
@@ -189,6 +228,7 @@ Keep these boundaries tight to avoid overlap:
 | Program Spec | Requirements | Invariants, requirements, acceptance criteria | Execution sequencing |
 | Execution Spine | Sequencing + gates | Ordered steps, dependencies, validation gates, handoffs | Scope justification or requirements |
 <!-- markdownlint-enable MD013 -->
+<!-- markdownlint-disable MD013 -->
 
 If you need to pick one place for content, use this table. Recommended read order: Planning Outputs -> Program Spec ->
 Execution Spine.
@@ -363,7 +403,7 @@ When requestor input is an early-stage idea:
 
 ## Governance Rules
 
-> **Warning — Strict Frontmatter Schema:** Workflow files in `.ai_ops/workflows/` use
+> **Warning - Strict Frontmatter Schema:** Workflow files in `.ai_ops/workflows/` use
 > `additionalProperties: false` in `schema_workflow_frontmatter.yaml`. Only the declared
 > fields (`name`, `description`, `kind`, `version`, `status`, `owner`, `license`, `claude`,
 > `codex`, `exports`) are allowed. Adding any other field (including `last_updated`, `updated`,
@@ -516,7 +556,7 @@ Run these steps in order before commit/push:
 
 ## Handoff Payload
 
-At each handoff (Coordinator -> Executor -> Validator), include a compacted context block per
+At each handoff (Coordinator -> Executor -> Reviewer/Linter), include a compacted context block per
 `guide_ai_operations_stack.md`. When Level 4 applies, the handoff MUST include:
 
 - `proposal_id`
@@ -528,6 +568,28 @@ At each handoff (Coordinator -> Executor -> Validator), include a compacted cont
 
 Registry rules, promotion workflow, and maintenance guidance live in `00_Admin/guides/ai_operations/guide_workflow_registries.md`.
 Use that guide as the single source of truth and keep registries lean (paths + metadata, not full inventories).
+
+## Decision Matrix Family and Invocation
+
+Use decision matrices as a family, not as isolated one-off blocks:
+
+1. `AGENTS.md` `Agent Decision Tree`:
+   authority classification and workbook-threshold checks.
+2. `AGENTS.md` `Mode Detection`:
+   direct vs governed vs standalone execution context.
+3. `guide_workflows.md` matrices:
+   canonical artifact-selection, placement, and high-level execution-context
+   decisions.
+4. Workflow-local matrix blocks in `.ai_ops/workflows/*.md`:
+   only for command-specific branching or local deltas not already covered
+   upstream.
+
+Rule:
+
+- Keep canonical matrix families upstream.
+- Keep workflow-local matrices lean and limited to local execution choices.
+- `AGENTS.md` should summarize the trigger order, not duplicate full matrix
+  tables.
 
 ## AI Agent Quick Decision Matrix
 
@@ -541,6 +603,7 @@ Use that guide as the single source of truth and keep registries lean (paths + m
 | Coordinated multi-workbook | Workprogram | Workbook Planning Outputs + Spec + Spine + Registry + README | `90_Sandbox/ai_workbooks/work_program_<program_id>/` |
 | Coordinated multi-runbook | Runprogram | Spec + Spine + Registry + README | `00_Admin/runbooks/run_program_<program_id>/` |
 <!-- markdownlint-enable MD013 -->
+<!-- markdownlint-disable MD013 -->
 
 ## Validator Alignment
 

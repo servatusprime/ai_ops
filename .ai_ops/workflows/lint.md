@@ -3,7 +3,7 @@ name: lint
 description: Run configured validators and linters against a target scope and report
   findings without modifying files.
 kind: workflow
-version: 0.2.0
+version: 0.2.1
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -63,6 +63,10 @@ contract.
 5. If requested action requires remediation edits, transition to `/work`.
 
 ## Decision Matrix (Cold-Start)
+
+Use `00_Admin/guides/ai_operations/guide_workflows.md` for canonical
+artifact-selection and execution-context matrices. This block covers only
+lint-specific branching.
 
 ### Decision Matrix - Inside (Maintainer)
 
@@ -169,24 +173,13 @@ contract.
 5. Run available checks per validation policy and report findings without applying fixes.
 6. If fixes are requested, switch to a work lane for edits.
 
-## Working with Native Commands
-
-Use native assistant commands for session-scoped mechanics (model selection,
-output formatting, local IDE helpers) when available.
-
-Use ai_ops workflow commands for governed execution contracts, authority gates,
-artifact handling, and validation/reporting behavior.
-
-If overlap exists, native commands handle session mechanics while this workflow
-remains the source of truth for governed process behavior.
-
 ## Outputs
 
 - Structured lint report with validator outcomes, findings, and blocking verdict.
 
-## Roles
+## Lane
 
-Default role: Validator (read-only report lane).
+Default lane: Linter (read-only report lane).
 
 ## Risks and Limits
 
@@ -202,3 +195,14 @@ Default role: Validator (read-only report lane).
 - `00_Admin/scripts/lint.ps1`
 - `00_Admin/scripts/validate_repo_rules.py`
 - `00_Admin/scripts/validate_workflow_frontmatter.py`
+
+## Working with Native Commands
+
+Use native assistant commands for session-scoped mechanics (model selection,
+output formatting, local IDE helpers) when available.
+
+Use ai_ops workflow commands for governed execution contracts, authority gates,
+artifact handling, and validation/reporting behavior.
+
+If overlap exists, native commands handle session mechanics while this workflow
+remains the source of truth for governed process behavior.

@@ -145,51 +145,88 @@ verification proof.
 
 ## Agents
 
-Agents operate via **functional roles**, not personalities. Any model or human may assume any role.
-The complete configuration of roles + behavioral archetypes (riders) + profiles + model tiers
-is the **Crew Model** -- see `00_Admin/guides/architecture/guide_design_and_philosophy.md`
+Agents operate via **canonical lanes** as the execution schema. The primary
+orchestration model is lane-based. The complete configuration of lanes +
+behavioral archetypes (riders) + profiles + model tiers is the **Crew Model**
+-- see `00_Admin/guides/architecture/guide_design_and_philosophy.md`
 Sec.The Crew Model for the full conceptual overview.
 
-For the complete role vocabulary, see `guide_ai_ops_vocabulary.md` Section 5.
+For the complete lane vocabulary, see `guide_ai_ops_vocabulary.md` Section 5.
 
 **Summary:**
 
-| Role | Responsibility |
+| Lane | Responsibility |
 | ---- | -------------- |
 | Coordinator | Selects workflows, plans runs, manages handoffs |
+| Planner | Converts approved scope into executable sequencing |
+| Researcher | Gathers evidence, reconciles context, and surfaces gaps |
 | Executor | Executes the current step |
 | Builder | Writes or modifies tools/configs |
-| Validator | Evaluates outputs against contracts/specs |
+| Reviewer | Evaluates outputs for correctness, governance fit, and adequacy |
+| Linter | Runs mechanical validation and reports tool-backed findings |
+| Closer | Finalizes completion, closeout, and handoff readiness |
 
 ### Agent Delegation Patterns
 
-When a workbook involves multiple roles, each significant role transition is a natural
+When a workbook involves multiple lanes, each significant lane transition is a natural
 boundary for spawning a sub-agent. Use this heuristic to decide:
 
 | Condition | Pattern | Example |
 | --- | --- | --- |
-| Roles can run in parallel | Parallel sub-agents | Multiple Executor agents for independent tasks |
-| Role needs a different model tier | Separate sub-agent with `model` override | Validator spawned at high tier for crosscheck |
-| Role is a clean handoff with distinct outputs | Separate sub-agent (context isolation) | Builder sub-agent for tool edits |
+| Lanes can run in parallel | Parallel sub-agents | Multiple Executor agents for independent tasks |
+| Lane needs a different model tier | Separate sub-agent with `model` override | Reviewer spawned at high tier for crosscheck |
+| Lane is a clean handoff with distinct outputs | Separate sub-agent (context isolation) | Builder sub-agent for tool edits |
 | Task is short, sequential, shared state | Inline in current session | Simple config edits within an executor run |
 
 **Common sequencing pattern:**
 Coordinator (main session) -> spawn Executor sub-agents -> results returned ->
-Coordinator spawns Validator (optionally higher tier) -> Validator returns pass/fail.
+Coordinator runs Linter/Reviewer checks (optionally higher tier) -> findings
+return to the lead lane.
 
-**Model tier selection:** A Coordinator running at medium tier MAY spawn a Validator
-at high tier. The `role_assignments` frontmatter field (see `guide_workbooks.md`)
-allows the original workbook author to declare intended tiers per role. The `model`
-parameter on the Agent tool controls the actual model used when spawning.
+**Model tier selection:** A Coordinator running at medium tier MAY spawn a Reviewer
+at high tier. Use `model_profile` and `activated_lanes` in workbook frontmatter to
+declare the overall tier and active lane set. The `model` parameter on the Agent
+tool controls the actual model used when spawning. (`role_assignments` broad-role
+keys are deprecated -- see `AGENTS.md` AI Model Level Reference.)
+
+**model_level_map:** Operators may bind concrete model IDs to ai_ops reasoning
+levels (1–4) in `.ai_ops/local/config.yaml` under
+`customizations.model_capabilities.model_level_map` (populated via `/customize`).
+This binding resolves workbook `model_profile` level references at runtime.
 
 **Enhanced Crosscheck Mode:** A pattern where the executor spawns a higher-tier
 sub-agent specifically for the crosscheck phase, enabling a more capable model to
-review the work. Enable by setting `role_assignments.validator: high` in the workbook
-frontmatter and using the `model: opus` parameter when spawning the crosscheck agent.
+review the work. Enable by setting a higher review tier in workbook frontmatter
+and using the high-tier runtime model when spawning the review agent.
 
-### Role Extensibility
+**Relational sliders** (Communication Depth, Tone Warmth, Formality, Directness)
+apply to the **primary agent / Coordinator profile only** -- subagents return
+structured output to the primary agent and do not communicate directly with
+humans.
 
-New roles MAY be added if responsibilities are non-overlapping. If the repo
+### Topology vs Lane
+
+A **lane** defines the *behavioral contract for a type of work* -- what the agent
+is doing, what permissions it holds, what model level it uses, and when to stop.
+
+A **topology** defines the *structural arrangement of execution* -- how many agents,
+how they are connected, what surface controls them.
+
+The governing rule: **a topology uses lanes; a lane is not a topology.** All 8 lanes
+can run inside a single-agent topology. Those same lanes can be distributed across
+agents in a multi-agent topology. `activated_lanes` in a workbook declares which
+lanes are in scope -- it does not determine the topology.
+
+For the canonical topology table and topology/lane concepts, see `AGENTS.md`
+section `### Topology and Lane Concepts`.
+
+**Director topology (design note, not yet implemented):** A Director pattern
+allows one primary session to spawn Coordinator subagents per project for
+concurrent work streams. See `AGENTS.md §Topology and Lane Concepts`.
+
+### Lane Extensibility
+
+New lanes MAY be added if responsibilities are non-overlapping. If the repo
 uses the optional `01_Agents/` pattern, register them in
 `01_Agents/metadata/agent_registry.yaml`. Otherwise, document role capabilities
 and handoff rules alongside the owning module metadata under

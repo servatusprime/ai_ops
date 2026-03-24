@@ -41,16 +41,18 @@ Each Execution Spine MUST include:
 Execution Spines SHOULD reference their related planning-output source, spec, and registry paths to keep linkage
 explicit.
 
-## Role semantics during spine execution
+## Lane semantics during spine execution
 
-Execution Spines orchestrate role handoffs across program milestones:
+Execution Spines orchestrate lane handoffs across program milestones:
 
 - `Coordinator` owns sequence ordering, dependency gates, and go/no-go decisions.
 - `Executor` owns milestone task execution and output publication.
 - `Builder` owns tool/config implementation milestones when present.
-- `Validator` owns milestone validation verdicts and close-gate checks.
+- `Reviewer` owns judgment-heavy milestone review and close-gate checks.
+- `Linter` owns mechanical validation passes when a milestone requires them.
 
-Role labels are canonical functional roles; profile/subagent labels are implementation presets.
+Lane labels are canonical execution semantics; profile/subagent labels are
+implementation presets.
 
 Per-milestone gate format (example):
 

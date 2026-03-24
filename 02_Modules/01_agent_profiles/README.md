@@ -28,21 +28,22 @@ This module is the implementation layer of the ai_ops Crew Model — see
 - `schemas/*.yaml`
 - `generated/*.md`
 
-## Canonical Functional Role Mapping
+## Canonical Lane Mapping
 
-Subagent profile slots map to canonical ai_ops functional roles as follows:
+Subagent profile slots map to canonical ai_ops execution lanes as follows:
 
-| Profile Slot | Canonical Role |
+| Profile Slot | Canonical Lane |
 | --- | --- |
-| `ai-ops-planner` | `Coordinator` |
-| `ai-ops-executor` | `Executor` and `Builder` (task-dependent) |
-| `ai-ops-reviewer` | `Validator` |
-| `ai-ops-researcher` | `Coordinator` (research phase) |
-| `ai-ops-closer` | `Executor` |
-| `ai-ops-linter` | `Validator` |
+| `ai-ops-planner` | `Planner` |
+| `ai-ops-executor` | `Executor` |
+| `ai-ops-builder` | `Builder` |
+| `ai-ops-reviewer` | `Reviewer` |
+| `ai-ops-researcher` | `Researcher` |
+| `ai-ops-closer` | `Closer` |
+| `ai-ops-linter` | `Linter` |
 
 `ai-ops-closer` and `ai-ops-linter` are specialized presets bound to
-`Executor` and `Validator` respectively.
+`Closer` and `Linter` respectively.
 
 ## Local Runtime Boundary
 
@@ -50,4 +51,4 @@ Active user profile state is local and non-committed:
 `.ai_ops/local/profiles/active_crew.yaml`.
 
 Compatibility reads may still check legacy
-`.ai_ops/profiles/active_crew.yaml` during migration.
+`.ai_ops/profiles/active_crew.yaml`.

@@ -1,6 +1,6 @@
 ---
 title: Guide: AI Ops Vocabulary
-version: 1.0.4
+version: 1.0.5
 status: active
 license: Apache-2.0
 last_updated: 2026-03-13
@@ -179,28 +179,65 @@ One-liner: "Contracts are specs with machine-enforced checks."
 - Runbooks and Workbooks SHOULD reference **Pipelines** and **Contracts** by **ID** when available.
 - Runbooks and Workbooks SHOULD NOT reference **Tools** directly unless the Pipeline is intentionally omitted.
 
-## 5) Agent Role Vocabulary
+## 5) Agent Lane Vocabulary
 
-Use functional roles. Any model or human may assume any role.
+Use canonical execution **lanes** as the upstream orchestration schema.
 
-| Role | Responsibility | Outputs |
+**Lane:** behavioral contract for a type of work -- what the agent is doing,
+what permissions it holds, what model level it uses, and when to stop.
+
+**Topology:** structural arrangement of execution -- how many agents, how they
+are connected, what surface controls them. A topology uses lanes; `activated_lanes`
+in a workbook declares which lanes are in scope, not which topology is used.
+
+Any model or human may assume any lane.
+
+| Lane | Responsibility | Outputs |
 | --- | --- | --- |
 | **Coordinator** | Selects workflows, plans runs, manages handoffs | Workbook drafts, compacted context |
+| **Planner** | Converts approved scope into executable sequencing | Ordered execution plans, phase contracts |
+| **Researcher** | Gathers evidence and reconciles context | Findings, inventories, contradiction checks |
 | **Executor** | Executes the current step | Outputs + logs |
 | **Builder** | Writes/edits tools and configs | Tool changes + diffs |
-| **Validator** | Evaluates outputs against contracts/specs | Pass/fail + evidence |
+| **Reviewer** | Evaluates outputs against scope, governance, and correctness | Findings + evidence |
+| **Linter** | Runs validators/linters without fixing files | Mechanical pass/fail + evidence |
+| **Closer** | Finalizes completion and closeout state | Closeout summary + gate status |
 
-**Alignment note:** The `executor` value used in workbook frontmatter `ai_role` fields maps
-to the `Executor` canonical role. The `model_profile` frontmatter field and the optional
-`role_assignments` extension (see `guide_workbooks.md`) specify model tiers per role.
+**Rider:** a named behavioral archetype (logike / forge / anchor / scout) that shapes how
+the agent approaches work -- caution, initiative, and judgment style. Riders are
+**operator-selected** via `/profiles` and apply to the primary agent. They are
+**lane-agnostic**: the same rider works regardless of which lane is active. Riders do not
+assign to specific lanes and are not per-lane defaults. Without a selected profile, the
+primary agent runs in default out-of-box posture.
+
+**Profile:** a named behavioral contract that packages a rider archetype + professional
+parameter sliders (autonomy, conservatism, initiative, deference) + technical config
+(permission mode, max turns). Profiles are generated from source data. A profile may be
+associated with a *typical* canonical lane in a crew config, but the rider inside it
+remains lane-agnostic.
+
+**Relational sliders** (Communication Depth, Tone Warmth, Formality, Directness) are a
+separate category that applies to the **primary agent / Coordinator profile only** --
+subagents return structured output and do not communicate directly with humans.
+
+**Compatibility note:** The `executor` value used in workbook frontmatter
+`ai_role` fields maps to the primary delivery identity of the session agent.
+Canonical lane participation belongs in `activated_lanes`. The `role_assignments`
+field broad-role keys are **deprecated**; use `activated_lanes` and `model_profile`
+(level-based) instead. See `AGENTS.md §AI Model Level Reference`.
 
 ### Crew Model
 
 The **Crew Model** is the umbrella term for how ai_ops configures and coordinates agents:
-functional roles + behavioral archetypes (riders) + named profiles + model tier assignments.
-Applies to both single-agent mode (virtual role switching) and multi-agent mode
+canonical lanes + behavioral archetypes (riders) + named profiles + model tier assignments.
+Applies to both single-agent mode (virtual lane switching) and multi-agent mode
 (primary agent orchestrating dedicated subagents). See
 `00_Admin/guides/architecture/guide_design_and_philosophy.md` Sec.The Crew Model.
+
+**model_level_map:** Operators may declare a model-ID-to-level binding in
+`.ai_ops/local/config.yaml` under `customizations.model_capabilities.model_level_map`
+(populated via `/customize`). This resolves workbook `model_profile` level references
+to concrete model IDs at runtime.
 
 ### Agent Topology Terms
 
@@ -249,6 +286,7 @@ Terms used in `.ai_ops/workflows/*.md` slash command definitions.
 
 | Term | Definition | Used In |
 | --- | --- | --- |
+| **CSCC** | Cold-start, capacity-constrained. Describes an execution context where the agent starts with no prior session state and must operate within bounded context (token budget, limited reads). CSCC lanes must be self-contained: all required context must be readable from the artifact itself without relying on session memory. | All workflows |
 | **Turbo Authorization** | Pre-authorized commit/push without interactive pause. Applies when the user has already approved the work scope. See `rb_commit_push_streamlining_01.md`. | `/closeout` |
 | **Thrift Pass** | A review to remove unnecessary content, tighten wording, and confirm each element belongs in the artifact. Reduces bloat and improves clarity. | `/crosscheck`, `/health` |
 | **ai_ops_session** | The period between `/work` (or `/bootstrap`) and `/work_savepoint` when repo rules actively apply. During a session, the agent follows ai_ops governance. Ending a session (via `/work_savepoint`) suspends active tracking. | `/work_savepoint` |
@@ -286,7 +324,7 @@ until `/work_savepoint` ends the session.
 | Module | Anthropic MCP Skill | Ours is capability grouping with metadata |
 | Tool | MCP tool / API endpoint | Executable behind contracts/pipelines |
 | Contract | API schema / interface contract | Behavioral guarantees |
-| Agent | GPT "assistant" / MCP server actor | Functional roles, non-anthropomorphic |
+| Agent | GPT "assistant" / MCP server actor | Canonical lanes, non-anthropomorphic |
 | Workbook | Single-run plan | External "runbook" in some orgs |
 
 <!-- markdownlint-enable MD013 -->

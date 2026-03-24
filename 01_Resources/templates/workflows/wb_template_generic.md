@@ -3,14 +3,22 @@ title: AI Workbook Template: <short_title>
 id: wb_<topic>_<scope>
 status: planned
 license: Apache-2.0 # keep by default; inherit repo license unless repo policy says otherwise
-version: 0.9.3
+version: 0.9.5
 created: YYYY-MM-DD
-last_updated: 2026-03-06
+last_updated: 2026-03-19
 owner: ai_ops
 ai_role: executor
-model_profile: "<model_a>:<reasoning_level> | <model_b>:<reasoning_level>"
+model_profile: "medium"  # Reasoning level: low | medium | high | maximum. Provider-model mapping is operator-declared. See AGENTS.md §AI Model Level Reference.
 authority_level: 3
 execution_mode: parallel_safe
+execution_topology: single_agent  # single_agent | multi_agent | hybrid
+activated_lanes:  # List canonical lane names. Add Planner, Researcher, Builder, Linter, Closer as needed.
+  - Coordinator
+  - Executor
+  - Reviewer
+delegation_policy: explicit_only  # explicit_only | coordinator_judgment | open
+convergence_profile: iterative_convergence_minimal
+parallel_coordination_id: null  # Set only when sibling active artifacts must coordinate early
 depends_on: []
 affects:
   artifacts: []
@@ -33,11 +41,10 @@ related_refs:
   - 00_Admin/specs/spec_workbundle_placement_suggestion.md
   - 00_Admin/specs/spec_infrastructure_change_validation_gate.md
 ---
-
+<!-- markdownlint-disable MD013 MD033 -->
 <!-- VALIDATION: Run markdownlint and validate_repo_rules.py before commit. -->
 <!-- GUIDANCE: See 00_Admin/guides/authoring/guide_workbooks.md for patterns and anti-patterns. -->
 <!-- markdownlint-disable-next-line MD025 MD041 -->
-
 # AI Workbook Template: <short_title>
 
 ## Template Usage Notes
@@ -48,6 +55,14 @@ related_refs:
   single-run execution work.
 - NOTE: Authority fit is Level 3 baseline and Level 4-touching work when
   paired with approved work proposal rationale.
+- NOTE: `execution_topology` defaults to `single_agent`. For multi-agent
+  or hybrid runs, change to `multi_agent` or `hybrid`, expand `activated_lanes`,
+  and fill out the full `Execution Topology Contract` block with spawn criteria,
+  delegation contracts, and per-lane return shapes. See AGENTS.md §Role Reference.
+- NOTE: Keep delegation guidance surface-agnostic in canonical templates. Use
+  canonical lane names such as `Researcher`, `Planner`, `Executor`,
+  `Reviewer`, `Linter`, or `Closer`; do not
+  embed provider-specific runtime labels here.
 
 ## Upstream Governance Pointer
 
@@ -100,9 +115,78 @@ related_refs:
 
 ---
 
+## Execution Topology Contract
+
+Use this section to declare the execution/delegation contract near the top of
+the artifact. Frontmatter handles early routing; this block handles auditable
+task shaping.
+
+```yaml
+execution_topology_contract:
+  lead_lane: Coordinator
+  task_brief: "<one-line mission for the lead lane>"
+  spawn_criteria:
+    - "<when delegation is justified>"
+  do_not_delegate_when:
+    - "<when the lead must retain the work>"
+  required_context_pack:
+    must_read:
+      - "<artifact>"
+    may_consult:
+      - "<artifact>"
+  permission_envelope:
+    delegated_default: "<read-only findings support|...>"
+    lead_agent: "<final integration and authority-surface writes>"
+  tool_surface:
+    delegated_allowed:
+      - "<tool category>"
+    delegated_disallowed:
+      - "<tool category>"
+  skill_surface:
+    delegated_allowed:
+      - "<skill>"
+  lane_return_contracts:
+    Reviewer: "<expected return shape>"
+  standard_loopbacks:
+    - "Reviewer -> Executor"
+  escalation_loopbacks:
+    - "Any ambiguity -> Requestor"
+  surface_interpretation_notes:
+    codex: "<explicit delegation expectation>"
+    claude: "<auto-delegation constraint>"
+```
+
+Rules:
+
+- **Single-agent** (`execution_topology: single_agent`): keep the block minimal —
+  declare `lead_lane`, `task_brief`, and stop conditions only. The agent sequences
+  through all `activated_lanes` in its own context.
+- **Multi-agent** (`execution_topology: multi_agent`): use the full block. Declare
+  `spawn_criteria`, `do_not_delegate_when`, `permission_envelope`, `tool_surface`,
+  and `lane_return_contracts` for every delegated lane. Each spawned subagent
+  receives its own scoped task brief and return contract.
+- **Hybrid** (`execution_topology: hybrid`): primary agent handles most lanes;
+  specific phases delegate to subagents. Declare which phases delegate and which stay local.
+- Selective-subagent rule: delegate only when specialization meaningfully improves
+  outcome or reduces token overhead — not as a default.
+- See AGENTS.md §Role Reference and §Execution Topology Terms for topology definitions.
+
+---
+
 ## Ordered Execution Queue
 
 Use an explicit ordered queue. If reprioritized, log who requested the change and why.
+
+<!-- Delegation-intent rule (conditional):
+For delegated or specialized execution steps, replace the bare marker
+`**[Agent]**` with `**[Agent: <canonical_lane> | <model_tier>]**` and add an
+indented `Delegation Brief:` line immediately below the step.
+Keep `<canonical_lane>` to ai_ops lane names (for example `Researcher`,
+`Planner`, `Executor`, `Reviewer`, `Linter`, `Closer`) and keep
+`<model_tier>` to `low`, `medium`, or `high`. Do not embed provider-specific
+runtime labels in canonical templates.
+See `00_Admin/guides/authoring/guide_workbooks.md` section
+`Delegation Intent Markers (conditional)` for full rules. -->
 
 ### Phase 0: Cold-Start and Pre-flight (Agent -- Level 0)
 
@@ -123,6 +207,11 @@ Use an explicit ordered queue. If reprioritized, log who requested the change an
 
 - [ ] 1.1 <task> **[Agent]**
 - [ ] 1.2 <task> **[Agent]**
+
+<!-- Example delegated step:
+- [ ] 1.3 Map the current state **[Agent: Researcher | medium]**
+      Delegation Brief: Return findings only, include file references, and do not edit files.
+-->
 
 **-> Ph 1 complete when:** <gate condition>
 
@@ -156,6 +245,8 @@ Use an explicit ordered queue. If reprioritized, log who requested the change an
 **Role marker convention:**
 
 - **Agent**: step executed by AI agent
+- **Agent: <canonical_lane> | <model_tier>**: optional delegated-step marker;
+  add a one-line `Delegation Brief:` directly under the step
 - **Operator**: step executed by human operator
 - **Agent + Operator**: collaborative step requiring both
 
@@ -224,8 +315,14 @@ Must pass before any task execution:
 
 - [ ] Scope and out-of-scope sections are explicit and current
 - [ ] `execution_root` is declared and current shell CWD is validated against it
+- [ ] `execution_topology`, `activated_lanes`, `delegation_policy`, and
+      `convergence_profile` are declared in frontmatter
+- [ ] `Execution Topology Contract` is present, current, and aligned with the
+      Ordered Execution Queue
 - [ ] Executor role confirmed and appropriate for task authority level
-- [ ] If multi-agent scope: role assignments and handoff conditions are explicit for each phase
+- [ ] If multi-agent scope: lane assignments and handoff conditions are explicit for each phase
+- [ ] If parallel sibling artifacts exist: `parallel_coordination_id` is set or
+      explicitly omitted with rationale
 - [ ] Runtime import gate is declared when non-stdlib dependencies exist
 - [ ] Offline dependency mode is declared when network/package index is constrained
 - [ ] CLI drift check is declared when Python script command blocks are present
@@ -579,7 +676,7 @@ python 00_Admin/scripts/validate_repo_rules.py --config 00_Admin/configs/validat
 markdownlint <changed_paths>
 yamllint <changed_yaml_paths>
 
-# Governed path contract checks (when cross-repo references are in scope)
+## Governed path contract checks (when cross-repo references are in scope)
 rg -n "C:/Users|C:\\\\Users|/Users/|/home/" <changed_paths>
 rg -n -P "(?<!\\.\\./)ai_ops/" <governed_repo_changed_paths>
 ```
@@ -603,8 +700,6 @@ Smoke-pass command quick reference (run as applicable for touched scope):
 | Repo validator (`VS025` coverage) | `python 00_Admin/scripts/validate_repo_rules.py --config 00_Admin/configs/validator/validator_config.yaml` | Include findings disposition in evidence notes. |
 | Markdown lint | `markdownlint <changed_paths>` | Use repo config/default rules. |
 | YAML lint | `yamllint <changed_yaml_paths>` | Run when YAML files are touched and lint config exists. |
-
-<!-- markdownlint-enable MD013 -->
 
 ---
 
@@ -716,8 +811,6 @@ Evidence schema: each entry requires **path:line** or **command + key output** -
 | 0 | Initial Draft Selfcheck Gate | pending | `<required sections + markdownlint evidence>` | `<env_name>` |
 | 1 | Task 1: `<name>` | pending | `<path:line or command:key_output>` | `<env_name>` |
 | 1 | Task 2: `<name>` | pending | `<path:line or command:key_output>` | `<env_name>` |
-
-<!-- markdownlint-enable MD013 -->
 
 **Gaps identified:** (list any issues found during selfcheck, or "None")
 

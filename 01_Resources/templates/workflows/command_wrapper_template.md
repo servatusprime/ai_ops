@@ -54,9 +54,9 @@ operations, or validation:
 - Required runbooks, templates, or guides.
 - Any config files the command reads or writes.
 
-## Roles
+## Lane
 
-Default role(s) the agent should assume.
+Default lane(s) the agent should assume.
 
 ## Risks and Limits
 

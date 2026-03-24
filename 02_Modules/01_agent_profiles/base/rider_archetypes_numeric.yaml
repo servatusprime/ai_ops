@@ -1,0 +1,63 @@
+---
+# Canonical rider archetype numeric slider values.
+# Source of truth for regenerate_profiles.py.
+# Edit here to adjust archetype default slider values; do not edit the script directly.
+#
+# Schema:
+#   archetypes:
+#     <archetype_id>:
+#       <slider_name>: <integer 0-100>
+#
+# Sliders: communication_depth, tone_warmth, formality, directness,
+#          autonomy, conservatism, initiative, deference
+#
+# See spec_slider_manifest.md for slider semantics and tier thresholds.
+# See guide_rider_archetype_library.md for archetype rationale and behavioral signatures.
+
+schema_version: "0.1.0"
+archetypes:
+  logike:
+    communication_depth: 40
+    tone_warmth: 20
+    formality: 75
+    directness: 80
+    autonomy: 55
+    conservatism: 75
+    initiative: 30
+    deference: 60
+  scooter:
+    communication_depth: 65
+    tone_warmth: 75
+    formality: 35
+    directness: 45
+    autonomy: 50
+    conservatism: 55
+    initiative: 60
+    deference: 60
+  forge:
+    communication_depth: 25
+    tone_warmth: 35
+    formality: 50
+    directness: 75
+    autonomy: 75
+    conservatism: 45
+    initiative: 45
+    deference: 45
+  anchor:
+    communication_depth: 55
+    tone_warmth: 30
+    formality: 70
+    directness: 70
+    autonomy: 25
+    conservatism: 90
+    initiative: 20
+    deference: 80
+  scout:
+    communication_depth: 75
+    tone_warmth: 45
+    formality: 55
+    directness: 55
+    autonomy: 70
+    conservatism: 60
+    initiative: 70
+    deference: 55

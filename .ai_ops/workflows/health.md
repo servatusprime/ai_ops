@@ -2,7 +2,7 @@
 description: "Run a repo health check\u2014verify the repo is consistent and clean."
 name: health
 kind: workflow
-version: 0.1.3
+version: 0.1.4
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -115,6 +115,10 @@ procedure (same pattern as Options 1 and 2).
 
 ## Decision Matrix (Cold-Start)
 
+Use `00_Admin/guides/ai_operations/guide_workflows.md` for canonical
+artifact-selection and execution-context matrices. This block covers only
+health-specific branching.
+
 ### Decision Matrix - Inside (Maintainer)
 
 - Target repo stated + scope stated: confirm and proceed with health check.
@@ -129,13 +133,12 @@ procedure (same pattern as Options 1 and 2).
 
 ## Runbook Relationship
 
-This workflow is a **summary**. The detailed procedure is in `00_Admin/runbooks/rb_repo_health_review.md`.
+The detailed execution procedure is in `00_Admin/runbooks/rb_repo_health_review.md`.
 
-- **Primary Guide**: Use the **Workflow Steps below** as your primary trusted source.
-- **Reference**: Only consult the full Runbook for edge cases or specific report formatting details not covered here.
+- **Entry Point**: Steps below route execution to the runbook for the full procedure.
+- **Detail Source**: Consult the runbook for report formatting, scoring criteria, and edge cases.
 - **Preflight Contract**: Lock preflight and recovery signals are defined in
   `rb_repo_health_review.md`.
-- The steps below are a quick reference; defer to the runbook for report format and edge cases.
 
 ## Steps
 
@@ -191,9 +194,9 @@ When scope is Option 2 (Comprehensive), run and report:
 - Follow report contract/metrics formatting from
   `00_Admin/runbooks/rb_repo_health_review.md`.
 
-## Roles
+## Lane
 
-Default role: Validator (read-only check).
+Default lane: Reviewer (read-only check).
 
 ## Risks and Limits
 

@@ -1,6 +1,7 @@
 #!/bin/sh
 # Setup script for Codex skill installation.
-# Default install target is repo-scoped .agents/skills.
+# Installs generated wrappers from tracked ai_ops workflow sources.
+# Runtime skill folders are downstream install surfaces, not source-of-truth.
 
 set -e
 
@@ -25,6 +26,11 @@ Examples:
   Include compat mirror:           ./.ai_ops/setup/setup_codex_skills.sh --compat
   Overwrite existing:              ./.ai_ops/setup/setup_codex_skills.sh --repo --force
   Preview only:                    ./.ai_ops/setup/setup_codex_skills.sh --dry-run
+
+Managed-skill rule:
+  Define retained ai_ops behavior in tracked repo sources first, then rerun
+  /ai_ops_setup or this script. Do not hand-maintain installed .agents/skills/
+  as the source-of-truth.
 EOF
 }
 
@@ -90,6 +96,7 @@ echo "Setting up ai_ops skills..."
 echo "Scope:           $scope"
 echo "Workflow source: $WORKFLOW_DIR"
 echo "Install target:  $PRIMARY_SKILLS_DIR"
+echo "Managed-skill rule: tracked repo sources are authoritative; installed runtime wrappers are downstream outputs."
 if [ "$dry_run" = "1" ]; then
   echo "Dry-run mode enabled (no files will be written)."
 fi

@@ -63,6 +63,10 @@ contract.
 
 ## Decision Matrix (Cold-Start)
 
+Use `00_Admin/guides/ai_operations/guide_workflows.md` for canonical
+artifact-selection and execution-context matrices. This block covers only
+closeout-specific branching.
+
 ### Decision Matrix - Inside (Maintainer)
 
 - No changes: report there is nothing to close out.
@@ -193,9 +197,9 @@ contract.
 - `00_Admin/specs/spec_infrastructure_change_validation_gate.md`
 - `00_Admin/specs/spec_workbundle_dependency_tracking.md`
 
-## Roles
+## Lane
 
-Default role: Executor (execution); Validator for lint results.
+Default lane: Executor (execution); Linter for lint results.
 
 ## Risks and Limits
 

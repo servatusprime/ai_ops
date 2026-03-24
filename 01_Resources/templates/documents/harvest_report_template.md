@@ -17,7 +17,7 @@ owner: ai_ops
 - Trigger: /harvest
 - Scope: [primary target]
 - Additional targets: [list or none]
-- Agent role: Coordinator -> Step Agent
+- Agent role: Coordinator -> Executor
 
 ## Inputs Confirmed
 

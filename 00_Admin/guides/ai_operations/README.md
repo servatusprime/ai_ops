@@ -19,7 +19,7 @@ Applicability labels:
 - Recommended: use when applicable, but not required on every task
 - Conditional: only when the trigger conditions apply
 
-- `guide_ai_operations_stack.md` - Master guide (axes, roles, compacted context) [Required]
+- `guide_ai_operations_stack.md` - Master guide (axes, lanes, compacted context) [Required]
 - `guide_workflows.md` - Workflow definition and relationships [Required]
 - `guide_contracts.md` - Verification-first contracts [Required]
 - `guide_ai_ops_vocabulary.md` - Canonical terminology [Required]

@@ -1,11 +1,11 @@
 ---
 title: Guide - Command Workflows
-version: 0.7.0
+version: 0.7.2
 status: active
 license: Apache-2.0
 created: 2026-01-25
-updated: 2026-03-13
-last_updated: 2026-03-13
+updated: 2026-03-19
+last_updated: 2026-03-19
 owner: ai_ops
 description: Guidance for ai_ops command workflows.
 ---
@@ -47,6 +47,44 @@ Terminology mapping:
 - **Skill/wrapper** = tool-specific install form that routes to the same
   workflow source file.
 
+Governance placement rule:
+
+- Retained ai_ops behavior belongs upstream in tracked workflow/setup/export
+  sources.
+- Tool runtime folders such as `.agents/skills/`, `.claude/skills/`, and
+  `.cursor/commands/` are downstream install surfaces only.
+- If a retained skill or command needs to change, update the upstream source
+  lane and reinstall or regenerate the wrapper.
+
+## Execution Topology Consumption
+
+When an active workbook, runbook, spine, or pipeline declares execution-
+topology metadata, command workflows should consume that metadata before
+improvising sequencing or delegation.
+
+Early-routing fields:
+
+- `execution_topology`
+- `activated_lanes`
+- `delegation_policy`
+- `convergence_profile`
+- `parallel_coordination_id` (when present)
+
+Authoritative body contract:
+
+- `execution_topology_contract`
+
+Consumption rules:
+
+- `/work` evaluates or creates this contract when new execution artifacts are
+  authored.
+- `/crosscheck` verifies that the routing fields, topology contract, and
+  Ordered Execution Queue agree with each other.
+- `/work_status` and `/closeout` should report against the active topology when
+  that metadata exists instead of inferring sequencing from file names alone.
+- Command workflows should treat books/runbooks as the authoritative home for
+  the full contract. Spines/pipelines provide coordination summaries only.
+
 ## Command Availability
 
 ai_ops supports two activation modes:
@@ -59,11 +97,16 @@ Direct support targets (setup scripts available):
 | Tool | Folder | Format |
 | --- | --- | --- |
 | Claude Code | `.claude/skills/` (workspace-root recommended), `.claude/commands/` (legacy) | Markdown wrappers |
+| Claude App (web/desktop) | none | Instructions-only via direct workflow reference |
 | Codex CLI | `.agents/skills/` (recommended), `.codex/skills/` (compat mirror) | Markdown wrappers |
 | Cursor | `.cursor/commands/` | Markdown |
 | Gemini CLI | `.gemini/commands/` | TOML |
 | GitHub Copilot | `.github/copilot-instructions.md`, `.claude/skills/`, `.github/skills/` | Instructions + SKILL.md skills |
 | Antigravity | `.ai_ops/workflows/` | Native (no install) |
+
+Claude App is supported as an instructions-only surface: no install scripts,
+no native slash discovery, and no local wrapper folder. Reference
+`.ai_ops/workflows/*.md` directly.
 
 All other tools use manual invocation by referencing `.ai_ops/workflows/*.md`.
 
@@ -207,6 +250,10 @@ Strict-review requirements:
 - Findings must be classified as `code_enforced`, `doc_only`, or `process_gap`.
 - Recommendations must be tagged `patch_now`, `proposal_seed`, or `follow_on_workbook`.
 - Review output must include a CSCC readiness table and explicit verdict.
+- For workbook/workbundle/workprogram scope, include a body-of-work shape
+  check: verify whether the current control artifact is still the right
+  placement and flag unnecessary sibling artifact proliferation as
+  `process_gap`.
 
 **Note:** Named `/crosscheck` to avoid conflict with native PR review commands.
 
@@ -410,7 +457,7 @@ Install or verify ai_ops wrappers (skills/commands) and write setup receipts.
 
 **Minimum Inputs / Conditions**
 
-- Active surface (`codex_cli`, `claude_code`, `cursor`, `gemini_cli`, `other`)
+- Active surface (`codex_cli`, `claude_code`, `claude_app`, `github_copilot`, `cursor`, `gemini_cli`, `other`)
 - Installation target (`skills`, `commands`, `both`, `none`)
 - Install scope (`workspace`, `repo`, `user`)
 

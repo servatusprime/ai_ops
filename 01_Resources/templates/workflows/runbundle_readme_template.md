@@ -46,14 +46,15 @@ Briefly describe why this runbundle exists and what it executes.
 
 **Actor:** `executor`, `requestor`, `approver`, `external_operator`
 
-## Execution Role Contract
+## Execution Lane Contract
 
-Canonical functional roles during execution:
+Canonical lanes during execution:
 
 - `Coordinator`: sequence and gate ownership.
 - `Executor`: runbook execution.
 - `Builder`: tooling/config implementation when required by runbook scope.
-- `Validator`: validation/crosscheck findings and verdicts.
+- `Reviewer`: judgment-heavy review and crosscheck findings.
+- `Linter`: mechanical validation findings and report-only checks.
 
 ## Sequence Naming Contract
 

@@ -82,10 +82,12 @@ ai_ops **is not**:
      is adopted. See [Design Tests](HUMANS.md#design-tests).
    - Every artifact is evaluated against four quality axes: Clarity, Thrift,
      Context, and Governance. See [HUMANS.md](HUMANS.md#axes-at-a-glance).
-6. **Structures agent behavior through roles and profiles**
-   - Four roles — Coordinator, Executor, Builder, Validator — cycle through
-     every work session, single agent or multi-agent.
-   - The authority and role framework guides agents to self-select the right
+6. **Structures agent behavior through lanes and profiles**
+   - Eight canonical lanes — Coordinator, Planner, Researcher, Executor, Builder,
+     Linter, Reviewer, Closer — provide behavioral contracts for every work type.
+     Single-agent mode sequences through activated lanes; multi-agent mode delegates
+     each lane to a specialized subagent.
+   - The authority and lane framework guides agents to self-select the right
      model and approach per step: simpler models for bounded execution,
      higher-capability models for governance and crosschecks, escalation
      when scope is uncertain.

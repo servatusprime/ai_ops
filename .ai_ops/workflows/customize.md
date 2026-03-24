@@ -95,10 +95,10 @@ contract.
    steps.
 2. Run Setup-State Guard before customization writes.
 3. Run the customization interview and load defaults from
-   `02_Modules/00_operator_config/templates/aiops_config.template.yaml`
-   (fallback compatibility: `02_Modules/00_customize/templates/aiops_config.template.yaml`).
+   `02_Modules/00_operator_config/templates/aiops_config.template.yaml`.
 4. Focus areas: bootstrap preferences, profile layering, external resources, session limits.
-   - model capabilities (user-declared available models + default model/reasoning level)
+   - model capabilities (user-declared available models, default model/reasoning level,
+     and operator model-to-level binding via `model_level_map`)
    - validation policy for governed external repos (ai_ops vs repo-native)
 5. Preview changes and confirm before writing overrides to `.ai_ops/local/config.yaml`.
 6. If user adds free-form notes, record them in `customizations.notes.free_form` only.
@@ -126,9 +126,9 @@ contract.
 - `02_Modules/00_operator_config/docs/spec_customization_schemas.md`
 - `02_Modules/00_operator_config/docs/spec_customization_ux.md`
 
-## Roles
+## Lane
 
-Default roles: Coordinator → Executor.
+Default lane: Coordinator → Executor.
 
 ## Risks and Limits
 

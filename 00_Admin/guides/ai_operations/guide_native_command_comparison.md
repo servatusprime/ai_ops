@@ -242,7 +242,7 @@ and AGENTS.md).
 | Artifact promotion/archive | `/harvest` | No native artifact lifecycle management. |
 | Governed closeout | `/closeout` | Native commit/push is ungoverned. `/closeout` adds validation gates, commit message standards, and archive steps. |
 | Context initialization | `/bootstrap` | Native `/init` creates config files. `/bootstrap` loads governance context (AGENTS.md, CONTRIBUTING.md). |
-| Agent behavioral profiles | `/profiles` | `/personality` (Codex) and `/output-style` (Claude) are session-level surface adjustments. `/profiles` manages persistent behavioral contracts across roles. |
+| Agent behavioral profiles | `/profiles` | `/personality` (Codex) and `/output-style` (Claude) are session-level surface adjustments. `/profiles` manages persistent behavioral contracts across lanes. |
 | Standalone validation | `/lint` | No native "just run the linters" command. |
 | Repo configuration | `/customize` | Native config is agent-centric. `/customize` is repo-centric (preferences, session limits, external resources). |
 | Setup for multiple agents | `/ai_ops_setup` | Each platform has its own init. ai_ops provides cross-platform setup. |
@@ -271,7 +271,7 @@ and AGENTS.md).
 | `/review` confusion | User might type `/review` expecting ai_ops crosscheck behavior | Document in `/crosscheck` description that it differs from native `/review`. Consider an alias: `/crosscheck` can also be invoked as `/ai-ops:review` in plugin contexts to disambiguate. |
 | `/init` vs `/bootstrap` | User runs `/init` and expects governance context | `/work` should detect whether `/init` was run but `/bootstrap` was not, and offer to bootstrap. |
 | Memory systems | Native `/memory` edits CLAUDE.md. ai_ops config lives in `.ai_ops/`. | Separate concerns. Document that native memory manages the platform's context file; ai_ops config manages repo governance settings. |
-| Plan mode confusion | Codex `/plan` enters a read-only planning mode. ai_ops planner subagent is a delegated planning role. | Different mechanisms. Document that `/plan` is a session mode; the ai_ops planner is a functional role assigned to a subagent. |
+| Plan mode confusion | Codex `/plan` enters a read-only planning mode. ai_ops planner subagent is a delegated planning lane. | Different mechanisms. Document that `/plan` is a session mode; the ai_ops planner is a canonical lane assigned to a subagent. |
 
 ---
 

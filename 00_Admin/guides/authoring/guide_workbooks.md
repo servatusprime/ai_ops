@@ -1,9 +1,9 @@
 ---
 title: Guide: AI Workbooks
-version: 1.8.6
+version: 1.8.8
 status: active
 license: Apache-2.0
-last_updated: 2026-03-14
+last_updated: 2026-03-19
 owner: ai_ops
 related:
 - ./guide_markdown_authoring.md
@@ -11,6 +11,8 @@ related:
 - 00_Admin/specs/spec_repo_metadata_standard.md
 ---
 
+<!-- markdownlint-disable MD013 -->
+<!-- markdownlint-disable-next-line MD025 -->
 # Guide: AI Workbooks
 
 This guide defines the expected structure and lint-safe practices for AI workbooks in `90_Sandbox/ai_workbooks/`. Use
@@ -39,7 +41,7 @@ conflict, the spec wins.
 
 Terminology shorthand:
 
-- `CSCC` = cold-start, capacity-constrained.
+- `CSCC` = cold-start, capacity-constrained. Canonical definition: `guide_ai_ops_vocabulary.md` §9 Operational Vocabulary.
 
 ## Template Selection Addendum
 
@@ -63,6 +65,14 @@ conditions.
 For heavy edits/replacements of canonical guidance artifacts, maintain a
 relocation map (`keep/move/remove/derive`) before removing canonical sections.
 
+Shape checkpoint:
+
+- If one objective starts spreading across multiple sibling workbooks or
+  workbundles, stop and reassess whether the work should consolidate under one
+  control bundle or escalate to a workprogram.
+- Initial design crosschecks should verify this placement choice explicitly
+  instead of only reviewing the local artifact in isolation.
+
 ## 1) Structure and lint rules
 
 - Front matter first, then keep exactly one H1 that matches the `title`; use lower-level headings for sections.
@@ -82,6 +92,10 @@ relocation map (`keep/move/remove/derive`) before removing canonical sections.
 
 - **Status Checklist**: at-a-glance phase progress; checkbox items per phase; MUST appear first.
 - **Approvals and Decisions**: pre-authorizations and open items; MUST appear before the execution queue.
+- **Execution Topology Contract**: orchestration and delegation metadata; MUST
+  appear after Approvals and Decisions and before the execution queue. For
+  fully single-agent lanes, the contract may be minimal but is still required
+  in new ai_ops workbook templates.
 - **Ordered Execution Queue**: primary navigation aid; Phase 0 (cold-start) is always first.
 - Overview (or Scope): what the workbook does and where it applies.
 - Inputs/assumptions: files, datasets, or context the AI can rely on.
@@ -105,19 +119,20 @@ Recommended execution-oriented section order for CSCC lanes:
 
 1. Status Checklist (Sec.2 -- required; at top)
 2. Approvals and Decisions (Sec.3 -- required; before execution queue)
-3. Ordered Execution Queue (Sec.4 -- required; Phase 0 first)
-4. Cold-Start Execution Contract
-5. Pre-Execution Readiness Gate
-6. Placement Decision Record
-7. Scope and authority
-8. Inputs and preconditions
-9. Target files / Outputs
-10. Design Principles / Rules
-11. Validation commands
-12. Verification checklist
-13. Selfcheck Results
-14. Crosscheck Stop Marker
-15. Requestor Review Gate
+3. Execution Topology Contract (Sec.4 -- required; near-top)
+4. Ordered Execution Queue (Sec.5 -- required; Phase 0 first)
+5. Cold-Start Execution Contract
+6. Pre-Execution Readiness Gate
+7. Placement Decision Record
+8. Scope and authority
+9. Inputs and preconditions
+10. Target files / Outputs
+11. Design Principles / Rules
+12. Validation commands
+13. Verification checklist
+14. Selfcheck Results
+15. Crosscheck Stop Marker
+16. Requestor Review Gate
 
 ## 2.0.1 Approvals and Decisions
 
@@ -392,7 +407,11 @@ Optional pipeline artifact:
 
 Frontmatter self-check (required before marking "done"):
 
-- [ ] Required fields present (title, id, status, version, created, updated, owner, ai_role, authority_level, description)
+- [ ] Required fields present (title, id, status, version, created, updated,
+      owner, ai_role, authority_level, description)
+- [ ] Orchestration routing fields present (`execution_topology`,
+      `activated_lanes`, `delegation_policy`, `convergence_profile`; plus
+      `parallel_coordination_id` when needed)
 - [ ] Frontmatter matches repo conventions (status values, date formats, LF endings)
 
 Registry tables MUST use full, copy-pasteable paths so agents can locate artifacts without guessing.
@@ -407,11 +426,57 @@ Parallel work metadata (front matter):
 Use these fields to express preference and coordination guidance, not hard enforcement unless a validator rule is
 enabled.
 
-### `role_assignments` (optional)
+### Execution Topology Routing Fields
 
-Declares per-role model tier overrides for sub-agent delegation. When present, it allows a
-workbook to specify that different roles (executor, validator, etc.) should use different
-model capability tiers. All fields are optional; absent fields inherit `model_profile`.
+Use these frontmatter fields for early execution classification before a reader
+enters the full workbook body:
+
+```yaml
+execution_topology: single_agent | multi_agent | hybrid
+activated_lanes:
+  - Coordinator
+  - Executor
+  - Reviewer
+delegation_policy: none | explicit_only | conditional | proactive_allowed
+convergence_profile: iterative_convergence_minimal | iterative_convergence_standard | <custom>
+parallel_coordination_id: <string-or-omit>
+```
+
+Rules:
+
+- `execution_topology` declares whether the run stays in one lead agent,
+  explicitly uses subagents, or mixes both patterns.
+- `activated_lanes` declares only the canonical lanes actually participating in
+  this run. It is not an inventory of every lane ai_ops knows about.
+- `delegation_policy` describes how child work may be spawned. It is not a
+  permission override.
+- `convergence_profile` names the review/rework loop posture for the lane.
+- `parallel_coordination_id` is conditional. Use it only when sibling active
+  artifacts may run concurrently and need a shared coordination identifier.
+
+Canonical lanes:
+
+- `Coordinator`
+- `Planner`
+- `Researcher`
+- `Executor`
+- `Builder`
+- `Reviewer`
+- `Linter`
+- `Closer`
+
+Single-agent default:
+
+- Use `Coordinator -> Executor -> Reviewer` unless the task shape clearly
+  requires additional lanes.
+
+### `role_assignments` (optional; compatibility field)
+
+Declares per-role model tier overrides for legacy compatibility while the
+canonical lane model is being promoted. When present, it allows a workbook to
+specify different model tiers for the broad compatibility keys
+(`coordinator`, `executor`, `validator`, `builder`). All fields are optional;
+absent fields inherit `model_profile`.
 
 ```yaml
 role_assignments_values: low | medium | high
@@ -422,13 +487,97 @@ role_assignments:
   builder: low          # writes/edits tools and configs; usually lightweight
 ```
 
-**Common pattern:** Set `executor: medium` and `validator: high` to enable Enhanced Crosscheck
-Mode -- the workbook's executor runs at medium tier and spawns a high-tier sub-agent for
-the crosscheck phase.
+**Common pattern:** Set `executor: medium` and `validator: high` to enable
+Elevated Crosscheck while `activated_lanes` expresses the richer canonical lane
+path.
+
+**model_level_map:** If your environment uses non-standard model IDs, declare a
+`model_level_map` in `.ai_ops/local/config.yaml` under
+`customizations.model_capabilities.model_level_map` (via `/customize`). This
+binding resolves `model_profile` level references to concrete model IDs at runtime.
+See `AGENTS.md §AI Model Level Reference`.
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `role_assignments` | optional object | Per-role model tier overrides (`low`/`medium`/`high`) for sub-agent delegation |
+| `role_assignments` | optional object | Per-role compatibility overrides (`low`/`medium`/`high`) for the legacy broad-role keys |
+
+### Delegation Intent Markers (conditional)
+
+When a workbook or canonical template needs to express delegated execution
+intent, keep the syntax surface-agnostic.
+
+Use this pattern on delegated steps:
+
+```markdown
+- [ ] 1.2 Map current state **[Agent: Researcher | medium]**
+      Delegation Brief: Return findings only, include file references, and do not edit files.
+```
+
+Rules:
+
+- Use canonical lane names such as `Planner`, `Researcher`, `Executor`,
+  `Builder`, `Reviewer`, `Linter`, and `Closer`.
+- Keep model tiers to `low`, `medium`, or `high`.
+- Add a one-line `Delegation Brief:` directly below the delegated step so the
+  task objective, boundaries, and expected output shape travel with the step.
+- Do not embed provider-specific runtime vocabulary in canonical templates or
+  workbook guidance.
+- Put surface-specific delegation recipes in skills, governed-repo runbooks,
+  or runtime-local artifacts instead of canonical templates.
+
+### Execution Topology Contract (required)
+
+Place this section after `## Approvals and Decisions` and before
+`## Ordered Execution Queue`.
+
+Template:
+
+```yaml
+execution_topology_contract:
+  lead_lane: Coordinator
+  task_brief: "<one-line mission for the lead lane>"
+  spawn_criteria:
+    - "<when delegation is justified>"
+  do_not_delegate_when:
+    - "<when the lead must retain the work>"
+  required_context_pack:
+    must_read:
+      - "<artifact>"
+    may_consult:
+      - "<artifact>"
+  permission_envelope:
+    delegated_default: "<read-only findings support|...>"
+    lead_agent: "<final integration and authority-surface writes>"
+  tool_surface:
+    delegated_allowed:
+      - "<tool category>"
+    delegated_disallowed:
+      - "<tool category>"
+  skill_surface:
+    delegated_allowed:
+      - "<skill>"
+  lane_return_contracts:
+    Reviewer: "<expected return shape>"
+  standard_loopbacks:
+    - "Reviewer -> Executor"
+  escalation_loopbacks:
+    - "Any ambiguity -> Requestor"
+  surface_interpretation_notes:
+    codex: "<explicit delegation expectation>"
+    claude: "<auto-delegation constraint>"
+```
+
+Rules:
+
+- Frontmatter handles early routing. The `execution_topology_contract` handles
+  auditable task shaping.
+- Books and runbooks are the authoritative home for the full contract.
+  Spines/pipelines should carry only the coordination summary and references to
+  child execution artifacts.
+- Selective-subagent rule: use subagents only for bounded sidecar tasks where
+  delegation is actually efficient.
+- Keep sequencing, architecture judgment, final integration, and authority-
+  surface review in the lead lane.
 
 ### `model_profile` Usage
 
@@ -445,17 +594,26 @@ When loading a workbook for cold-start execution, read both `model_profile`
 (tier) and `role_assignments` (per-role overrides) from frontmatter to
 determine the correct execution tier for each role.
 
-### Execution Role Semantics (CSCC Lanes)
+### Execution Lane Semantics (CSCC Lanes)
 
-When a CSCC agent executes a workbook, role labels are functional execution lanes, not personality labels:
+When a CSCC agent executes a workbook, lane labels are functional execution
+lanes, not personality labels:
 
-- `Coordinator`: sets scope, sequencing, and approvals/handoffs.
+- `Coordinator`: sets scope, sequencing, approvals, and handoffs.
+- `Planner`: converts approved scope into executable task sequencing.
+- `Researcher`: gathers bounded discovery findings and evidence.
 - `Executor`: performs workbook tasks and records evidence.
-- `Builder`: performs tool/config/script implementation steps when needed.
-- `Validator`: evaluates outputs and issues pass/fail findings.
+- `Builder`: performs tool/config/script implementation when needed.
+- `Reviewer`: evaluates outputs, decisions, and governance fit.
+- `Linter`: performs mechanical validation and reports evidence-backed defects.
+- `Closer`: finalizes completion and closeout readiness.
 
-Profile labels (`ai-ops-planner`, `ai-ops-reviewer`, `ai-ops-closer`, etc.) are subagent presets.
-They do not replace canonical functional roles.
+Legacy compatibility:
+
+- `Coordinator`, `Executor`, `Builder`, and `Validator` remain the compatibility
+  keys for `role_assignments`.
+- Profile labels (`ai-ops-planner`, `ai-ops-reviewer`, `ai-ops-closer`, etc.)
+  are derivative subagent presets. They do not replace canonical lanes.
 
 ### CSCC Context Contract (Workbook Execution)
 
@@ -468,6 +626,14 @@ Before executing workbook tasks, confirm these context artifacts are loaded and 
 - `.ai_ops/local/work_state.yaml` active artifact entry for the current run context.
 
 If any required context artifact is missing, execution MUST stop until context is restored.
+
+Before executing workbook tasks, confirm the near-top orchestration contract is
+loaded in addition to the context artifacts above:
+
+- frontmatter routing fields:
+  `execution_topology`, `activated_lanes`, `delegation_policy`,
+  `convergence_profile`
+- `execution_topology_contract` section in the workbook body
 
 If the workbook is in a workbundle, add a "Parallel Work Guidance" section to the workbundle README with a one-line
 summary (e.g., "WB-02 and WB-04 may run in parallel; WB-03 must follow WB-01").
@@ -785,7 +951,7 @@ Phase 1 is definitional and does not require separate execution unless changes a
 
 ## 17) Handoff Payload
 
-When work moves between roles or agents, include a compacted context block per
+When work moves between lanes or agents, include a compacted context block per
 `00_Admin/guides/ai_operations/guide_ai_operations_stack.md`. Treat compacted context as persistent domain memory
 for the workbook (keep it current, not exhaustive). For Level 4 work, the handoff MUST include:
 

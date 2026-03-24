@@ -20,7 +20,7 @@ manifest_output_count: 26
 workflows:
 - workflow: ai_ops_setup
   source: .ai_ops/workflows/ai_ops_setup.md
-  source_sha256_12: a562b5ecf9c9
+  source_sha256_12: c967d6c73aa1
   description: Run ai_ops setup scripts for skills, commands, and supported instruction
     surfaces
   outputs:
@@ -32,7 +32,7 @@ workflows:
     sha256_12: f78743d574d0
 - workflow: bootstrap
   source: .ai_ops/workflows/bootstrap.md
-  source_sha256_12: 93501a330238
+  source_sha256_12: 7880fa706331
   description: Initialize agent context by reading repo entry point and instructions.
   outputs:
   - path: plugins/ai-ops-governance/commands/bootstrap.md
@@ -43,7 +43,7 @@ workflows:
     sha256_12: 5e3e551d96b0
 - workflow: closeout
   source: .ai_ops/workflows/closeout.md
-  source_sha256_12: 7c1bc2055c98
+  source_sha256_12: c9114e05c965
   description: Finalize a work session with cleanup, lint, commit, and push.
   outputs:
   - path: plugins/ai-ops-governance/commands/closeout.md
@@ -54,7 +54,7 @@ workflows:
     sha256_12: bbb22cf94532
 - workflow: crosscheck
   source: .ai_ops/workflows/crosscheck.md
-  source_sha256_12: 74e12c8d56b0
+  source_sha256_12: 015cb615cea8
   description: Conduct a structured peer review of work.
   outputs:
   - path: plugins/ai-ops-governance/commands/crosscheck.md
@@ -65,7 +65,7 @@ workflows:
     sha256_12: 703bf46927f6
 - workflow: customize
   source: .ai_ops/workflows/customize.md
-  source_sha256_12: 9fac33e075de
+  source_sha256_12: b092afb18c33
   description: Configure agent preferences and customization options.
   outputs:
   - path: plugins/ai-ops-governance/commands/customize.md
@@ -76,7 +76,7 @@ workflows:
     sha256_12: 9da93b5fad68
 - workflow: harvest
   source: .ai_ops/workflows/harvest.md
-  source_sha256_12: c7a4ab18d9ad
+  source_sha256_12: 94535f5938f3
   description: Harvest, prune, and summarize work artifacts across one or more targets.
   outputs:
   - path: plugins/ai-ops-governance/commands/harvest.md
@@ -87,7 +87,7 @@ workflows:
     sha256_12: 01266cb5fbf2
 - workflow: health
   source: .ai_ops/workflows/health.md
-  source_sha256_12: e0876f544381
+  source_sha256_12: ea426aa3e49b
   description: "Run a repo health check\u2014verify the repo is consistent and clean."
   outputs:
   - path: plugins/ai-ops-governance/commands/health.md
@@ -98,7 +98,7 @@ workflows:
     sha256_12: 0a7174678693
 - workflow: lint
   source: .ai_ops/workflows/lint.md
-  source_sha256_12: 4813c8583bc9
+  source_sha256_12: 660029dc5566
   description: Run configured validators and linters against a target scope and report
     findings without modifying files.
   outputs:
@@ -110,7 +110,7 @@ workflows:
     sha256_12: 5c9050ad6aef
 - workflow: profiles
   source: .ai_ops/workflows/profiles.md
-  source_sha256_12: f67e7b1f916c
+  source_sha256_12: f0fd8b601307
   description: Manage rider/crew profile source data and regenerate deterministic
     derivative behavior files.
   outputs:
@@ -122,7 +122,7 @@ workflows:
     sha256_12: 69af9edc528f
 - workflow: scratchpad
   source: .ai_ops/workflows/scratchpad.md
-  source_sha256_12: 26728a5147e4
+  source_sha256_12: 3f7be7defc0d
   description: Create a scratchpad for session notes and observations.
   outputs:
   - path: plugins/ai-ops-governance/commands/scratchpad.md
@@ -133,7 +133,7 @@ workflows:
     sha256_12: dcd9fad693c0
 - workflow: work
   source: .ai_ops/workflows/work.md
-  source_sha256_12: 47e3f81e9b81
+  source_sha256_12: ed4d0b5bdc04
   description: Signal that repo rules apply and establish work/run context.
   outputs:
   - path: plugins/ai-ops-governance/commands/work.md
@@ -144,7 +144,7 @@ workflows:
     sha256_12: 79ffc08c02fc
 - workflow: work_savepoint
   source: .ai_ops/workflows/work_savepoint.md
-  source_sha256_12: 5af541906706
+  source_sha256_12: 9e295b6559bc
   description: Commit and push active work as a savepoint, then end the ai_ops session.
   outputs:
   - path: plugins/ai-ops-governance/commands/work_savepoint.md
@@ -155,7 +155,7 @@ workflows:
     sha256_12: d34c7c6f6217
 - workflow: work_status
   source: .ai_ops/workflows/work_status.md
-  source_sha256_12: 9dec10904794
+  source_sha256_12: f031af9959a2
   description: Summarize active work context and blockers.
   outputs:
   - path: plugins/ai-ops-governance/commands/work_status.md

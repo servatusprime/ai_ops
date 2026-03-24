@@ -14,7 +14,7 @@ import argparse
 import hashlib
 import json
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -50,8 +50,10 @@ COMMUNICATION_SLIDERS: Tuple[str, ...] = (
     "directness",
 )
 
-WRITE_ROLES = {"ai-ops-executor", "ai-ops-closer"}
+WRITE_ROLES = {"ai-ops-executor", "ai-ops-builder", "ai-ops-closer"}
 
+# Built-in fallback only. Prefer 02_Modules/01_agent_profiles/base/rider_archetypes_numeric.yaml.
+# When that YAML file exists, main() loads it and replaces these values at runtime (DQ-09).
 RIDER_ARCHETYPES: Dict[str, Dict[str, int]] = {
     "logike": {
         "communication_depth": 40,
@@ -177,6 +179,9 @@ class RoleSpec:
     skills: List[str]
     role_summary: str
     protocol: List[str]
+    canonical_lanes: List[str]
+    best_fit: List[str] = field(default_factory=list)
+    report_contract: List[str] = field(default_factory=list)
     model: str = "inherit"
     disallowed_tools: List[str] = None  # type: ignore[assignment]
     mcp_servers: List[str] = None  # type: ignore[assignment]
@@ -187,13 +192,15 @@ class RoleSpec:
 ROLE_SPECS: Dict[str, RoleSpec] = {
     "ai-ops-planner": RoleSpec(
         description=(
-            "Analyze scope, governance context, and workbook state. Produce "
-            "structured plans and status summaries. Does not write files."
+            "Analyze scope, governance context, and workbook state. Return "
+            "planning output, delegation-ready briefs, and status summaries "
+            "without editing files."
         ),
         tools=["Read", "Grep", "Glob", "LS"],
         permission_mode="plan",
         default_max_turns=15,
         skills=["work", "bootstrap", "work_status"],
+        canonical_lanes=["Planner"],
         role_summary=(
             "Read governance files and active artifacts, then return actionable "
             "plans and status reports."
@@ -202,17 +209,34 @@ ROLE_SPECS: Dict[str, RoleSpec] = {
             "Build scope understanding before planning actions.",
             "State assumptions and unresolved questions explicitly.",
             "Return recommendations with clear next-step options.",
+            "Preserve the task's Delegation Brief when one is provided and keep "
+            "the response read-only unless the lead agent explicitly changes "
+            "that contract.",
+        ],
+        best_fit=[
+            "delegated planning or scoping tasks aligned to "
+            "`[Agent: Planner | <tier>]`",
+            "sequencing, scope-boundary, and status synthesis tasks that keep "
+            "`Coordinator` ownership in the lead lane",
+            "delegation briefs that need sequencing, scope boundaries, and "
+            "evidence expectations clarified before execution",
+        ],
+        report_contract=[
+            "When delegated from a template-driven task, restate the delegated "
+            "outcome in the first line so the handoff remains traceable.",
         ],
     ),
     "ai-ops-executor": RoleSpec(
         description=(
-            "Implement approved changes, run scripts, and execute workbook tasks "
-            "within authority and scope guardrails."
+            "Implement approved changes, execute delegated workbook tasks, and "
+            "report scoped outcomes against the task's files, validation, and "
+            "guardrails."
         ),
         tools=["Read", "Grep", "Glob", "LS", "Write", "Edit", "Bash"],
         permission_mode="default",
         default_max_turns=30,
         skills=["work", "scratchpad", "customize"],
+        canonical_lanes=["Executor"],
         role_summary=(
             "Implement approved tasks, keep edits scoped, and report outcomes with "
             "evidence."
@@ -221,17 +245,63 @@ ROLE_SPECS: Dict[str, RoleSpec] = {
             "Follow Pre-Write Authority Guard for every write.",
             "Stop and report blockers instead of widening scope silently.",
             "Keep execution aligned to approved workbook tasks.",
+            "Restate delegated scope, touched paths, and validation intent "
+            "before edits when a Delegation Brief is provided.",
+        ],
+        best_fit=[
+            "delegated execution tasks aligned to "
+            "`[Agent: Executor | <tier>]` or `[Agent: Builder | <tier>]`",
+            "bounded file or script changes with explicit target paths and validation",
+            "implementation steps whose Delegation Brief already defines scope "
+            "and exit criteria",
+        ],
+        report_contract=[
+            "Report what changed, what was validated, and what remains blocked "
+            "against the delegated acceptance criteria.",
+        ],
+    ),
+    "ai-ops-builder": RoleSpec(
+        description=(
+            "Implement tooling, automation, configuration, or substrate changes "
+            "within approved scope and report structural impacts with evidence."
+        ),
+        tools=["Read", "Grep", "Glob", "LS", "Write", "Edit", "Bash"],
+        permission_mode="default",
+        default_max_turns=30,
+        skills=["work", "customize"],
+        canonical_lanes=["Builder"],
+        role_summary=(
+            "Deliver tooling/configuration changes and explain the structural "
+            "impact of what changed."
+        ),
+        protocol=[
+            "Treat schema, tooling, automation, and config changes as structural writes.",
+            "Document the before/after state for any config, schema, or workflow surface changed.",
+            "Prefer one coherent implementation path over speculative alternatives.",
+            "Restate delegated scope, touched paths, and expected validation "
+            "before edits when a Delegation Brief is provided.",
+        ],
+        best_fit=[
+            "delegated build or tooling tasks aligned to `[Agent: Builder | <tier>]`",
+            "automation, CI/CD, configuration, schema, or substrate changes with explicit target paths",
+            "structural implementation steps whose Delegation Brief already defines scope and validation gates",
+        ],
+        report_contract=[
+            "Report tooling/configuration changes made, validation or test "
+            "evidence, and rollback or recovery notes for structural surfaces.",
         ],
     ),
     "ai-ops-reviewer": RoleSpec(
         description=(
-            "Review quality, correctness, and governance compliance. Produces "
-            "findings with evidence and remediation disposition."
+            "Review delegated outputs for quality, correctness, and governance "
+            "compliance. Return evidence-backed findings with remediation "
+            "disposition."
         ),
         tools=["Read", "Grep", "Glob", "LS", "Bash"],
         permission_mode="plan",
         default_max_turns=20,
         skills=["crosscheck", "health"],
+        canonical_lanes=["Reviewer"],
         role_summary=(
             "Run structured reviews against clarity, thrift, context, and governance."
         ),
@@ -239,6 +309,19 @@ ROLE_SPECS: Dict[str, RoleSpec] = {
             "Build evidence ledger before writing findings.",
             "Classify finding type and remediation disposition.",
             "Return prioritized findings with concrete file references.",
+            "Preserve the delegated review question and do not silently expand "
+            "the review scope beyond the stated target.",
+        ],
+        best_fit=[
+            "delegated review tasks aligned to `[Agent: Reviewer | <tier>]`",
+            "evidence-backed review passes where findings, severity, and "
+            "disposition are required",
+            "completion checks that should not widen into execution without "
+            "explicit approval",
+        ],
+        report_contract=[
+            "Mirror the delegated review brief in the opening line so the lead "
+            "agent can map findings back to the original task contract.",
         ],
     ),
     "ai-ops-researcher": RoleSpec(
@@ -250,6 +333,7 @@ ROLE_SPECS: Dict[str, RoleSpec] = {
         permission_mode="plan",
         default_max_turns=25,
         skills=["work"],
+        canonical_lanes=["Researcher"],
         role_summary=(
             "Explore broadly for context synthesis and produce structured factual reports."
         ),
@@ -257,6 +341,20 @@ ROLE_SPECS: Dict[str, RoleSpec] = {
             "Organize findings by topic, not read order.",
             "Separate facts from inferences.",
             "Cite source artifacts for all critical findings.",
+            "Preserve the delegated research question when one is provided and "
+            "call out unresolved evidence gaps explicitly.",
+        ],
+        best_fit=[
+            "delegated exploration and fact-gathering aligned to "
+            "`[Agent: Researcher | <tier>]`",
+            "evidence collection, contradiction checks, or source reconciliation "
+            "before planning or review",
+            "context synthesis tasks that must remain read-only and should not "
+            "collapse into implementation",
+        ],
+        report_contract=[
+            "Lead with the delegated question, then separate facts, gaps, and "
+            "inferences so the handoff stays decision-ready.",
         ],
     ),
     "ai-ops-closer": RoleSpec(
@@ -268,6 +366,7 @@ ROLE_SPECS: Dict[str, RoleSpec] = {
         permission_mode="default",
         default_max_turns=20,
         skills=["closeout", "harvest"],
+        canonical_lanes=["Closer"],
         role_summary=(
             "Run closeout lane checks and produce clear completion evidence."
         ),
@@ -275,6 +374,20 @@ ROLE_SPECS: Dict[str, RoleSpec] = {
             "Run configured validators before completion steps.",
             "Stop on blocking failures and report exact error evidence.",
             "Keep closeout reports concise and auditable.",
+            "Restate validation scope and completion boundaries before running "
+            "closeout steps when a Delegation Brief is provided.",
+        ],
+        best_fit=[
+            "delegated closeout tasks aligned to `[Agent: Closer | <tier>]` "
+            "when the scope is closeout or finalization",
+            "closeout steps involving validation, staging, summary, or harvest "
+            "within explicit guardrails",
+            "completion tasks that must stop on blocked validators or missing "
+            "approval gates",
+        ],
+        report_contract=[
+            "Report validator results, closeout actions taken, and any blocked "
+            "completion gates against the delegated contract.",
         ],
     ),
     "ai-ops-linter": RoleSpec(
@@ -286,6 +399,7 @@ ROLE_SPECS: Dict[str, RoleSpec] = {
         permission_mode="default",
         default_max_turns=15,
         skills=["lint"],
+        canonical_lanes=["Linter"],
         role_summary=(
             "Execute mechanical checks and return pass/fail evidence for gate decisions."
         ),
@@ -293,6 +407,19 @@ ROLE_SPECS: Dict[str, RoleSpec] = {
             "Run repo validators before language-specific linters when available.",
             "Return file paths, line references, and rule identifiers.",
             "Do not apply fixes from this lane.",
+            "Restate validator scope and keep the lane report-only when a "
+            "Delegation Brief is provided.",
+        ],
+        best_fit=[
+            "delegated validation tasks aligned to `[Agent: Linter | <tier>]` "
+            "when the work is mechanical and tool-driven",
+            "repo validator or linter passes that should remain report-only",
+            "narrow gate checks used to unblock review, closeout, or release "
+            "decisions",
+        ],
+        report_contract=[
+            "Report each validator run, its outcome, and the resulting blocking "
+            "status against the delegated gate.",
         ],
     ),
 }
@@ -359,6 +486,12 @@ def resolve_model_tuning_source(repo_root: Path, tuning_arg: str | None) -> Path
     if tuning_arg:
         return Path(tuning_arg).resolve()
     return repo_root / "02_Modules" / "01_agent_profiles" / "base" / "model_tuning_manifest.yaml"
+
+
+def resolve_rider_archetypes_source(repo_root: Path, archetypes_arg: str | None) -> Path:
+    if archetypes_arg:
+        return Path(archetypes_arg).resolve()
+    return repo_root / "02_Modules" / "01_agent_profiles" / "base" / "rider_archetypes_numeric.yaml"
 
 
 def default_model_tuning_manifest() -> Dict:
@@ -512,6 +645,7 @@ def profile_comment_block(
     crew_preset: str,
     source_hash: str,
     generated_at: str,
+    canonical_lanes: List[str],
     sliders: Dict[str, int],
 ) -> str:
     lines = [
@@ -522,12 +656,50 @@ def profile_comment_block(
         f"role: {role_name}",
         f"profile_id: {rider}",
         f"crew_preset: {crew_preset}",
-        "sliders:",
+        "canonical_lanes:",
     ]
+    for lane in canonical_lanes:
+        lines.append(f"  - {lane}")
+    lines.extend(
+        [
+        "sliders:",
+        ]
+    )
     for slider in SLIDERS:
         lines.append(f"  - {slider}: {sliders[slider]} ({slider_tier(sliders[slider])})")
     lines.append("-->")
     return "\n".join(lines)
+
+
+def build_lane_markers(canonical_lanes: List[str]) -> List[str]:
+    return [f"`[Agent: {lane} | <tier>]`" for lane in canonical_lanes]
+
+
+def build_payload_contract(spec: RoleSpec) -> List[str]:
+    return [
+        (
+            "- `task_brief`: treat the Delegation Brief or cited queue item as "
+            "the authoritative scoped objective for this lane."
+        ),
+        (
+            "- `context_pack`: read the cited workbook, target files, and "
+            "supporting evidence first; call out missing context instead of "
+            "inferring omitted parent intent."
+        ),
+        (
+            f"- `permission_envelope`: obey frontmatter `tools` and `permissionMode` "
+            f"(`{spec.permission_mode}`), plus any narrower lead-agent constraints."
+        ),
+        (
+            "- `skill_surface`: use only the listed skills when the delegated task "
+            "explicitly calls for them."
+        ),
+        (
+            "- `return_contract`: report against the delegated acceptance "
+            "criteria with evidence and blockers, not just free-form "
+            "observations."
+        ),
+    ]
 
 
 def render_agent_file(
@@ -543,6 +715,19 @@ def render_agent_file(
     title = role_name
     how_you_work_lines = build_how_you_work(sliders)
     protocol_lines = "\n".join([f"- {line}" for line in spec.protocol])
+    role_section = spec.role_summary
+    if spec.best_fit:
+        best_fit_lines = "\n".join([f"- {line}" for line in spec.best_fit])
+        role_section = f"{role_section}\n\nBest fit:\n\n{best_fit_lines}"
+    lane_markers = "\n".join([f"- {marker}" for marker in build_lane_markers(spec.canonical_lanes)])
+    payload_block = "\n".join(build_payload_contract(spec))
+    report_lines = [
+        "- Return a structured summary with outcomes, evidence, and blockers.",
+        "- Include concrete file paths and line references for findings.",
+        "- Distinguish observed facts from inferred recommendations.",
+    ]
+    report_lines.extend([f"- {line}" for line in spec.report_contract])
+    report_block = "\n".join(report_lines)
     skills_lines = "\n".join([f"  - {item}" for item in spec.skills])
     tools_lines = "\n".join([f"  - {tool}" for tool in spec.tools])
     metadata_block = profile_comment_block(
@@ -551,6 +736,7 @@ def render_agent_file(
         crew_preset=crew_preset,
         source_hash=source_hash,
         generated_at=generated_at,
+        canonical_lanes=spec.canonical_lanes,
         sliders=sliders,
     )
     body_lines = "\n".join(how_you_work_lines)
@@ -599,7 +785,17 @@ You are the {role_name} subagent for ai_ops governance.
 
 ## Role
 
-{spec.role_summary}
+{role_section}
+
+## Canonical Lane Alignment
+
+- Primary canonical lane(s): `{", ".join(spec.canonical_lanes)}`
+- Typical task markers:
+{lane_markers}
+
+## Delegation Payload Expectations
+
+{payload_block}
 
 ## Operating Protocol
 
@@ -611,9 +807,7 @@ You are the {role_name} subagent for ai_ops governance.
 
 ## How You Report to the Lead Agent
 
-- Return a structured summary with outcomes, evidence, and blockers.
-- Include concrete file paths and line references for findings.
-- Distinguish observed facts from inferred recommendations.
+{report_block}
 
 ## Safety and Trust (Invariant)
 
@@ -623,6 +817,93 @@ You are the {role_name} subagent for ai_ops governance.
 
 <!-- Managed by ai_ops /profiles -->
 {metadata_block}
+"""
+
+
+def render_native_agent_file(
+    role_name: str,
+    spec: RoleSpec,
+    source_hash: str,
+    generated_at: str,
+    max_turns: int,
+) -> str:
+    """Render a lean native Claude agent file (.claude/agents/).
+
+    Lean output: lane contract and governance pointers only.
+    No rider-generated How You Work prose — that belongs in the plugin profile.
+    """
+    tools_lines = "\n".join([f"  - {tool}" for tool in spec.tools])
+    skills_lines = "\n".join([f"  - {item}" for item in spec.skills])
+    model_line = f"model: {spec.model}" if spec.model else "model: inherit"
+    disallowed_block = "disallowedTools: null"
+    if spec.disallowed_tools:
+        disallowed_lines = "\n".join([f"  - {t}" for t in spec.disallowed_tools])
+        disallowed_block = f"disallowedTools:\n{disallowed_lines}"
+
+    canonical_lane = spec.canonical_lanes[0] if spec.canonical_lanes else role_name
+    is_read_only = spec.permission_mode == "plan"
+    authority_note = (
+        "Read-only. No file writes permitted. Stop and return blocked if execution is required."
+        if is_read_only
+        else "Write-permitted within delegated scope. Follow Pre-Write Authority Guard for every write."
+    )
+
+    protocol_lines = "\n".join([f"- {line}" for line in spec.protocol])
+
+    return f"""---
+name: {role_name}
+description: >-
+  {spec.description}
+tools:
+{tools_lines}
+{disallowed_block}
+{model_line}
+permissionMode: {spec.permission_mode}
+maxTurns: {max_turns}
+skills:
+{skills_lines}
+mcpServers: null
+hooks: null
+memory: null
+---
+
+<!-- markdownlint-disable MD013 -->
+<!-- Generated by regenerate_profiles.py | source_hash: {source_hash} | {generated_at} -->
+# {role_name}
+
+You are the **{canonical_lane}** lane agent for ai_ops governance.
+
+## Lane Contract
+
+- **Canonical lane**: `{canonical_lane}`
+- **Purpose**: {spec.role_summary}
+- **Authority posture**: {authority_note}
+
+## Operating Protocol
+
+{protocol_lines}
+
+## Stop Conditions
+
+Stop immediately and return a blocked status to the lead agent when:
+
+- Required context or governance files are missing or unresolvable
+- Scope expansion beyond the delegated task brief is needed
+- A decision requires human or Coordinator approval
+- Permission posture of this lane does not match the required action
+
+## Governance Reference
+
+Full lane definitions, authority levels, and workflow contracts:
+
+- `AGENTS.md` — Role Reference section (canonical lane governance)
+- `.ai_ops/workflows/` — Workflow contracts and lane-specific protocol
+
+## Safety and Trust (Invariant)
+
+- Pre-Write Authority Guard applies for every write operation.
+- Keep scope bounded to the delegated task contract.
+- Escalate blockers instead of bypassing controls.
 """
 
 
@@ -668,9 +949,9 @@ subagent delegation is not available.
 - generated_at: `{generated_at}`
 - source_hash: `{source_hash}`
 
-## Functional Role Mapping
+## Canonical Lane Mapping
 
-| Role | Rider | Autonomy | Conservatism | Initiative | Deference | maxTurns | permissionMode |
+| Profile Slot | Rider | Autonomy | Conservatism | Initiative | Deference | maxTurns | permissionMode |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 {row_lines}
 
@@ -856,6 +1137,13 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--rider-archetypes",
+        help=(
+            "Optional path to rider archetypes numeric YAML. "
+            "Defaults to 02_Modules/01_agent_profiles/base/rider_archetypes_numeric.yaml."
+        ),
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Validate and render outputs without writing files.",
@@ -863,6 +1151,19 @@ def main() -> int:
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parents[2]
+
+    # Load rider archetypes from YAML source (DQ-09: operators adjust here, not in script).
+    archetypes_path = resolve_rider_archetypes_source(repo_root, args.rider_archetypes)
+    if archetypes_path.exists():
+        try:
+            archetypes_data = load_yaml(archetypes_path)
+            loaded = archetypes_data.get("archetypes", {})
+            if loaded:
+                RIDER_ARCHETYPES.clear()
+                RIDER_ARCHETYPES.update(loaded)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[WARN] Could not load rider archetypes from {archetypes_path}: {exc}. Using built-in defaults.")
+
     profile_path = resolve_profile_source(repo_root, args.profile)
     model_tuning_path = resolve_model_tuning_source(repo_root, args.model_tuning)
     if not profile_path.exists():
@@ -1024,6 +1325,32 @@ def main() -> int:
     )
     write_text(model_summary_path, model_summary_content, dry_run=args.dry_run)
     written_files.append(model_summary_path)
+
+    # Generate native Claude agent files (.claude/agents/).
+    # These are lean downstream outputs derived from plugin profiles.
+    # Coordinator is intentionally absent (lead lane; no worker profile file).
+    native_agents_dir = repo_root / ".claude" / "agents"
+    if not args.dry_run:
+        native_agents_dir.mkdir(parents=True, exist_ok=True)
+    for role_name, spec in ROLE_SPECS.items():
+        slot_data = profile["subagents"].get(role_name, {})
+        rider = slot_data.get("rider", "")
+        overrides = slot_data.get("overrides", {})
+        try:
+            sliders, _ = merge_slider_values(role_name, rider, overrides)
+        except Exception:  # noqa: BLE001
+            sliders = {k: 50 for k in SLIDERS}
+        mt = max_turns_from_autonomy(sliders["autonomy"], spec.default_max_turns)
+        native_content = render_native_agent_file(
+            role_name=role_name,
+            spec=spec,
+            source_hash=source_hash,
+            generated_at=generated_at,
+            max_turns=mt,
+        )
+        native_target = native_agents_dir / f"{role_name}.md"
+        write_text(native_target, native_content, dry_run=args.dry_run)
+        written_files.append(native_target)
 
     print("[OK] Profile regeneration completed.")
     print(f"Source: {profile_path}")

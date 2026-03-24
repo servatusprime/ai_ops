@@ -21,5 +21,9 @@ model_families:
     status: "planned"
     notes: "Pending empirical validation."
     lead_profile_addendum: ""
+  codex:
+    status: "planned"
+    notes: "Pending empirical validation. Added DQ-10 (wb_native_subagent_runtime_delivery_01)."
+    lead_profile_addendum: ""
 
 evidence_log: []

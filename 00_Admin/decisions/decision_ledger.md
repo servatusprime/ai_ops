@@ -41,13 +41,13 @@ This ledger records irreversible, cross-cutting governance decisions. Entries ar
 - **Work-Family and Run-Family Separation** - Planning/commitment artifacts and
   reusable execution artifacts remain distinct; workbooks bind to runbooks by
   reference to prevent intent/tool lock and commitment leakage.
-- **Functional Agent Roles Govern Execution** - Execution responsibilities are
-  assigned by functional role contracts and constraints, not by personality
-  identity; role behavior is portable across runtimes.
+- **Canonical Lanes Govern Execution** - Execution responsibilities are
+  assigned by canonical lane contracts and constraints, not by personality
+  identity; lane behavior is portable across runtimes.
 - **Verification Is Embedded, Not Terminal** - Verification is integrated
   throughout the lifecycle via selfcheck, crosscheck, closeout validation, and
   health review, not deferred to an end-only gate.
-- **Compacted Context Is Required for Handoff** - Cross-role/session handoffs
+- **Compacted Context Is Required for Handoff** - Cross-lane/session handoffs
   must use structured compacted context so work can resume from repository files
   without chat-history dependency.
 - **Native-Session vs Governed-Work Boundary** - Native platform commands manage

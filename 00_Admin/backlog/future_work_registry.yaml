@@ -1,10 +1,10 @@
 ---
 title: future_work_registry
-version: 0.2.0
+version: 0.4.0
 status: active
 owner: ai_ops
 created: 2026-01-07
-updated: '2026-03-15'
+updated: '2026-03-23'
 migration_note: >-
   Most items were moved to wb_governance_hardening_02; selected deferred items
   remain here.
@@ -13,6 +13,12 @@ prune_note_2026_02_24: >-
   fw_20260125_10 (superseded rider/crew stub), fw_20260125_05 and
   fw_20260125_06 (scope absorbed by WB-03 revised reference docs), and
   fw_20260124_04 (insufficient provenance to execute).
+prune_note_2026_03_23: >-
+  Pruned actualized entries: fw_20260227_01 (plugin.json GitHub URL),
+  fw_20260227_02 (work_savepoint rename), fw_20260227_06 (HUMANS.md path guard),
+  fw_20260228_01 (root bootstrap artifacts), fw_20260228_02 (split-aware setup
+  wiring). All five confirmed delivered across wp_oss_readiness_01 and
+  wb_agent_architecture_evolution_01.
 scorecard_sync:
   required: true
   scorecard_file: 00_Admin/backlog/future_work_scorecard.md
@@ -52,6 +58,98 @@ scorecard_schema:
     - medium
     - low
 entries:
+  - id: fw_20260323_01
+    title: Director Topology implementation
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wb_agent_architecture_evolution_01_2026-03-22/wb_agent_architecture_evolution_01.md
+    proposed_workbook: null
+    scope: >-
+      Implement the Director topology: a multi-agent mode where the primary
+      session agent spawns Coordinator subagents per project. Requires:
+      (1) Coordinator native agent file — DQ-12 revisit; currently absent by
+      design because Coordinator is the primary agent, not a subagent; Director
+      topology changes this assumption for the spawned Coordinator role;
+      (2) delegation contract documenting how the Director hands off scope to
+      a Coordinator subagent and what the return contract is;
+      (3) AGENTS.md Director topology entry promoted from design note to
+      canonical spec;
+      (4) spec_subagent_file.md Coordinator section;
+      (5) crew config and profile updates in 02_Modules/01_agent_profiles/ if
+      Director becomes a named topology preset.
+    priority: low
+    benefit: medium
+    effort: l
+    readiness: deferred
+    risk_if_deferred: low
+    activation_trigger: >-
+      Requestor confirms Director topology is needed for a specific use case,
+      or multi-project orchestration becomes a recurring operational need.
+    next_review: 2026-06-01
+    status: planned
+    owner: ai_ops
+    created: 2026-03-23
+    compacted_context:
+      source: >-
+        wb_agent_architecture_evolution_01 EA-10 design note (2026-03-23);
+        DQ-12 revisit identified as prerequisite
+      note: >-
+        EA-10 documented the Director topology as a design-only note and
+        explicitly deferred implementation. DQ-12 must be resolved first:
+        current design intentionally omits a Coordinator subagent file because
+        Coordinator is the primary session agent. Director topology introduces
+        a spawned Coordinator role that would need its own agent file.
+    notes: >-
+      No urgency. Current single-agent and hybrid topologies cover all
+      documented use cases. Director topology adds value only for parallel
+      multi-project orchestration scenarios.
+
+  - id: fw_20260323_02
+    title: Operator model-to-level mapping in /customize
+    domain: tooling
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wb_agent_architecture_evolution_01_2026-03-22/wb_agent_architecture_evolution_01.md
+    proposed_workbook: null
+    scope: >-
+      Add a /customize enhancement that lets operators declare an explicit
+      model-ID-to-ai_ops-level binding (e.g., claude-opus-4 → Level 3,
+      claude-sonnet-4 → Level 2). Store the mapping in a config file
+      (candidate: .ai_ops/local/config.yaml) so workbook model_profile
+      level-based references (high/standard/fast) can be resolved to concrete
+      model IDs at runtime without hard-coding them in templates. Scope:
+      /customize workflow update, config schema, AGENTS.md AI Model Level
+      Reference section, and workbook template model_profile field notes.
+    priority: medium
+    benefit: medium
+    effort: s
+    readiness: partial
+    risk_if_deferred: low
+    activation_trigger: >-
+      Operator installs ai_ops with a non-default model set, or model-agnostic
+      spec gaps are flagged during onboarding or a governed-repo setup.
+    next_review: 2026-06-01
+    status: planned
+    owner: ai_ops
+    created: 2026-03-23
+    compacted_context:
+      source: >-
+        wb_agent_architecture_evolution_01 EA-07 model-agnostic spec
+        (2026-03-23); workbook templates updated to level-based model_profile
+      note: >-
+        EA-07 updated workbook templates to use level-based model_profile
+        references (high/standard/fast) instead of hard-coded model IDs.
+        The operator binding layer (model ID to level) was explicitly noted
+        as a future /customize enhancement and not implemented in EA-07.
+        Current level references are sufficient for standard Anthropic model
+        deployments.
+    notes: >-
+      Level-based references work for current usage. The binding layer becomes
+      important when operators run ai_ops with custom or non-default model
+      configurations, or when CI/CD pipelines need to resolve concrete model
+      IDs from workbook specs.
+
   - id: fw_20260315_01
     title: Session-state infrastructure for context routing fast-path evaluation
     domain: integration
@@ -144,73 +242,6 @@ entries:
       Recurring maintenance. Low effort per bump — single file, 1-3 line edits.
       Consider automating with Dependabot once repo is public.
 
-  - id: fw_20260228_01
-    title: Standalone ai_ops root bootstrap artifacts for repo split
-    domain: operations
-    target_repo: ai_ops
-    source_workbook: >-
-      90_Sandbox/ai_workbooks/wp_aiops_yaml_retirement_01_2026-02-28/wb_aiops_yaml_migration_01.md
-    proposed_workbook: >-
-      90_Sandbox/ai_workbooks/wb_aiops_split_root_bootstrap_01.md
-    scope: >-
-      Define and implement the canonical root file set for standalone ai_ops:
-      `.pre-commit-config.yaml`, `.vscode/extensions.json`,
-      `repo_structure.txt`, and `.yamllint`; update docs and setup guidance so
-      the files are generated or synced from ai_ops-owned scripts instead of
-      ad-hoc manual copy.
-    priority: high
-    benefit: high
-    effort: m
-    readiness: ready
-    risk_if_deferred: high
-    activation_trigger: >-
-      Execute before splitting ai_ops into its own git repository.
-    next_review: 2026-03-07
-    status: planned
-    owner: ai_ops
-    created: 2026-02-28
-    compacted_context:
-      source: requestor direction during yaml retirement follow-up
-      note: >-
-        Root config ownership must be explicit and reproducible for new users
-        in split-repo mode.
-    notes: >-
-      Must include migration notes from monorepo paths to standalone paths.
-
-  - id: fw_20260228_02
-    title: Split-aware setup wiring for root config refresh and repo map trigger
-    domain: tooling
-    target_repo: ai_ops
-    source_workbook: >-
-      90_Sandbox/ai_workbooks/wp_aiops_yaml_retirement_01_2026-02-28/wb_aiops_yaml_deletion_01.md
-    proposed_workbook: >-
-      90_Sandbox/ai_workbooks/wb_aiops_split_setup_wiring_01.md
-    scope: >-
-      Add setup/install wiring that can provision and maintain standalone root
-      artifacts, including pre-commit hook wiring for repo-structure refresh
-      and validator path normalization. Ensure scripts work in both current
-      monorepo and future split-repo layouts.
-    priority: high
-    benefit: high
-    effort: m
-    readiness: partial
-    risk_if_deferred: high
-    activation_trigger: >-
-      Trigger when split implementation branch is opened or immediately after
-      split to avoid drift.
-    next_review: 2026-03-07
-    status: planned
-    owner: ai_ops
-    created: 2026-02-28
-    compacted_context:
-      source: requestor directive to automate root file maintenance
-      note: >-
-        Existing generators/validators now support both layouts; setup lane
-        still needs explicit split-era provisioning behavior.
-    notes: >-
-      Keep non-destructive defaults; support `--force` only with explicit user
-      confirmation.
-
   - id: fw_20260216_01
     title: Protected-path authority evidence enforcement for workflow edits
     domain: governance
@@ -268,87 +299,6 @@ entries:
       source: wb_ai_ops_stack_cli_01_03_governance_and_validation.md
       note: Deferred from WB-03 deliverable manifest.
     notes: Deferred pending protocol activation.
-
-  - id: fw_20260227_01
-    title: Set actual GitHub repository URL in plugin.json
-    domain: operations
-    target_repo: ai_ops
-    source_workbook: >-
-      90_Sandbox/ai_workbooks/wp_oss_readiness_01_2026-02-26/wb_oss_readiness_01.md
-    proposed_workbook: null
-    scope: >-
-      Replace `[YOUR_ORG]` placeholder in
-      `plugins/ai-ops-governance/.claude-plugin/plugin.json` `repository` field
-      with actual GitHub URL (https://github.com/servatusprime/ai-ops-governance
-      or equivalent) once the repository is created and the URL is confirmed.
-    priority: high
-    benefit: high
-    effort: xs
-    readiness: blocked
-    risk_if_deferred: high
-    activation_trigger: >-
-      GitHub repository created and URL confirmed; update plugin.json before
-      or at initial public release commit.
-    next_review: 2026-03-01
-    status: actualized
-    owner: ai_ops
-    created: 2026-02-27
-    actualized: 2026-03-16
-    actualized_by: >-
-      URL updated to https://github.com/servatusprime/ai_ops in plugin.json
-      during 0.3.0 work. Confirmed resolved at OSS launch (repo made public
-      2026-03-16, v0.3.1 tagged).
-    compacted_context:
-      source: wb_oss_readiness_01.md task H3 (decision D2)
-      note: >-
-        H3 inserts placeholder; this item tracks the final value once the
-        GitHub repo is created. Release blocker.
-    notes: >-
-      Resolved in 0.3.0 — URL updated from ai-ops-governance placeholder to
-      https://github.com/servatusprime/ai_ops. Closed out at OSS public
-      launch 2026-03-16.
-
-  - id: fw_20260227_02
-    title: Rename work_pause to work_savepoint with commit/push default
-    domain: governance
-    target_repo: ai_ops
-    source_workbook: >-
-      90_Sandbox/ai_workbooks/wp_oss_readiness_01_2026-02-26/_scratchpad_claude_2026-02-26.md
-    proposed_workbook: >-
-      90_Sandbox/ai_workbooks/wb_work_savepoint_01.md
-    scope: >-
-      Rename `work_pause` to `work_savepoint`. Default behavior: commit+push
-      with `savepoint:` prefix message, workbook status remains in_progress.
-      Add `--no-commit` flag to preserve old pause-without-commit behavior.
-      Change surface: `.ai_ops/workflows/work_pause.md` (rename+update),
-      setup scripts, installed skill wrappers, any docs referencing work_pause.
-    priority: medium
-    benefit: medium
-    effort: s
-    readiness: ready
-    risk_if_deferred: low
-    activation_trigger: >-
-      Requestor approves Level 4 scope; straightforward to execute as
-      standalone workbook.
-    next_review: 2026-03-01
-    status: actualized
-    owner: ai_ops
-    created: 2026-02-27
-    actualized: 2026-02-27
-    actualized_by: >-
-      Direct execution during wp_oss_readiness_01 session on requestor direction.
-      work_savepoint.md created; work_pause.md and all work-pause plugin artifacts
-      deleted; 19-file reference sweep complete; workspace wrappers regenerated.
-    compacted_context:
-      source: Requestor request 2026-02-27 during wp_oss_readiness_01 session
-      note: >-
-        Requestor wants mid-execution commit/push without full closeout.
-        Decided: rename work_pause → work_savepoint, commit+push is default,
-        --no-commit flag covers old pause behavior. work_status kept as-is.
-        Level 4 (workflow rename). Deferred from OSS readiness workbundle.
-    notes: >-
-      Actualized 2026-02-27. No redirect stub — requestor confirmed work_pause
-      was unused. Level 4 reference sweep complete.
 
   - id: fw_20260227_03
     title: Add examples/ directory with sample artifacts
@@ -440,33 +390,6 @@ entries:
       Post-release. Friction observed during OSS readiness session —
       remediation scope is well-defined externally, templates add overhead.
 
-  - id: fw_20260227_06
-    title: Add HUMANS.md authority level to AGENTS.md path guard table
-    domain: governance
-    target_repo: ai_ops
-    source_workbook: >-
-      90_Sandbox/ai_workbooks/wp_oss_readiness_01_2026-02-26/wb_oss_pre_commit_completions_01.md
-    proposed_workbook: null
-    scope: >-
-      Add `HUMANS.md` to the path-based authority guard table in AGENTS.md
-      to clarify its authority level for edits (expected: Level 3, guide-equivalent).
-      Requires Level 4 approval per AGENTS.md path guard rules.
-    priority: low
-    benefit: low
-    effort: xs
-    readiness: ready
-    risk_if_deferred: low
-    activation_trigger: >-
-      Next AGENTS.md gate or closeout pass for wp_oss_readiness_01.
-    next_review: 2026-03-01
-    status: planned
-    owner: ai_ops
-    created: 2026-02-27
-    compacted_context:
-      source: wb_oss_pre_commit_completions_01.md seed S14
-      note: Excluded from WB4 (Level 3 scope) because AGENTS.md edits are Level 4 path.
-    notes: Level 4 path. Handle at wp_oss_readiness_01 closeout or next AGENTS.md workbook.
-
   - id: fw_20260227_07
     title: Review /work numeric scoring contract
     domain: governance
@@ -496,3 +419,281 @@ entries:
       source: wb_oss_pre_commit_completions_01.md seed S15
       note: Policy discussion, not a build task. Deferred from WB4 scope.
     notes: Not a build task. Requires requestor decision on scoring contract value.
+
+  - id: fw_20260319_01
+    title: Draft artifact authority guidance
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wb_native_subagent_runtime_delivery_01_2026-03-19/wb_native_subagent_runtime_delivery_01.md
+    proposed_workbook: null
+    scope: >-
+      Clarify when working-tree ai_ops artifacts (agent files, workflow docs)
+      are authoritative vs. only committed versions. Especially relevant when
+      a workbook uses the changed agent files as dogfood during execution:
+      if the changed files are in the working tree but not committed, an agent
+      bootstrapping off the committed state will use stale definitions.
+      Deliverables: a governance note in AGENTS.md or a spec section defining
+      the working-tree vs. committed authority boundary; integration into
+      workbook pre-flight checklist where dogfood execution is expected.
+    priority: medium
+    benefit: medium
+    effort: s
+    readiness: partial
+    risk_if_deferred: medium
+    activation_trigger: >-
+      Next workbook where dogfood execution is expected (agent files or
+      workflow docs are changed in the same bundle that will use them), or
+      when an operator reports confusion about which file version was active
+      during an execution.
+    next_review: 2026-06-01
+    status: planned
+    owner: ai_ops
+    created: 2026-03-23
+    compacted_context:
+      source: >-
+        wb_native_subagent_runtime_delivery_01 Accumulated Seeds —
+        Directly WB-D Relevant (2026-03-19)
+      note: >-
+        Surfaced during planning for WB-D: workbook used changed agent files
+        as dogfood but authority boundary (working-tree vs. committed) was
+        not documented. Directly WB-D relevant; carried forward as future work
+        after WB-D scope was locked.
+    notes: >-
+      Medium risk if deferred because dogfood workbooks are common and the
+      confusion risk is real. Small effort — a spec note and pre-flight
+      checklist item.
+
+  - id: fw_20260319_02
+    title: Status-ledger helper
+    domain: tooling
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wb_native_subagent_runtime_delivery_01_2026-03-19/wb_native_subagent_runtime_delivery_01.md
+    proposed_workbook: null
+    scope: >-
+      Reduce same-day multi-artifact sync burden. During active execution,
+      README, workbook, harvest, plan, and work_state.yaml all require
+      synchronized execution-state updates — manually keeping these in sync
+      is high overhead and a common source of drift. Design and implement
+      a helper (script or workflow step) that propagates a single status
+      update to all registered state surfaces in one operation.
+    priority: low
+    benefit: medium
+    effort: m
+    readiness: deferred
+    risk_if_deferred: low
+    activation_trigger: >-
+      Status-drift incidents accumulate across two or more workbundles, or
+      a requestor explicitly flags the multi-artifact sync overhead as a
+      workflow friction point.
+    next_review: 2026-06-01
+    status: planned
+    owner: ai_ops
+    created: 2026-03-23
+    compacted_context:
+      source: >-
+        wb_native_subagent_runtime_delivery_01 Accumulated Seeds —
+        ai_ops Process Seeds (2026-03-19)
+      note: >-
+        Surfaced during WB-D execution planning as a recurring overhead.
+        Scope and approach TBD at activation — could be a script, a workflow
+        step, or a structured update contract.
+    notes: >-
+      Related to fw_20260319_05 (dedicated handoff artifact) and
+      fw_20260319_06 (authority spread reduction). These three seeds address
+      the same root friction from different angles.
+
+  - id: fw_20260319_03
+    title: Crosscheck-to-execution handoff
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wb_native_subagent_runtime_delivery_01_2026-03-19/wb_native_subagent_runtime_delivery_01.md
+    proposed_workbook: null
+    scope: >-
+      Define a lighter translation path from crosscheck findings into
+      execution surfaces. Currently the path is fully manual: crosscheck
+      produces a findings report, and the executor must manually triage
+      findings into workbook tasks, a new workbook, or future-work entries.
+      Deliverables: a structured handoff format (crosscheck → execution task
+      list), a triage gate in crosscheck.md or a separate handoff artifact
+      template, and optional tooling to emit the handoff artifact from the
+      crosscheck report.
+    priority: low
+    benefit: medium
+    effort: s
+    readiness: deferred
+    risk_if_deferred: low
+    activation_trigger: >-
+      Crosscheck findings are observed to stall execution because the
+      translation path is unclear, or two or more instances of finding-loss
+      (crosscheck surfaced something that was never acted on) are documented.
+    next_review: 2026-06-01
+    status: planned
+    owner: ai_ops
+    created: 2026-03-23
+    compacted_context:
+      source: >-
+        wb_native_subagent_runtime_delivery_01 Accumulated Seeds —
+        ai_ops Process Seeds (2026-03-19)
+      note: >-
+        Surfaced during WB-D execution planning as a governance process gap.
+        No design committed; scope TBD at activation.
+    notes: Low urgency. Current manual path works but adds friction at every crosscheck boundary.
+
+  - id: fw_20260319_04
+    title: Orchestration sequential guard
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wb_native_subagent_runtime_delivery_01_2026-03-19/wb_native_subagent_runtime_delivery_01.md
+    proposed_workbook: null
+    scope: >-
+      Add an explicit governance rule: mutating stages that write the same
+      output path must be sequential-only and must not run in parallel
+      subagent lanes. Currently this constraint is informal and left to
+      operator memory. Deliverables: a policy note in AGENTS.md or
+      guide_multi_agent_coordination.md; optional lint check (validator rule)
+      flagging workbook task queues that schedule same-output-path writes
+      as parallel steps.
+    priority: medium
+    benefit: medium
+    effort: xs
+    readiness: ready
+    risk_if_deferred: medium
+    activation_trigger: >-
+      Next governance review cycle, or when a same-output-path collision
+      is observed during a multi-lane workbook execution.
+    next_review: 2026-06-01
+    status: planned
+    owner: ai_ops
+    created: 2026-03-23
+    compacted_context:
+      source: >-
+        wb_native_subagent_runtime_delivery_01 Accumulated Seeds —
+        ai_ops Process Seeds (2026-03-19)
+      note: >-
+        Surfaced during WB-D execution planning. The sequential-only
+        constraint for same-output-path writes is well understood but
+        undocumented. Small effort to document; optional lint check adds
+        enforcement teeth.
+    notes: >-
+      Medium risk if deferred — parallel subagent execution is increasingly
+      common and collision risk grows with usage. Governance note alone
+      (without the lint check) is xs effort.
+
+  - id: fw_20260319_05
+    title: Dedicated handoff artifact pattern
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wb_native_subagent_runtime_delivery_01_2026-03-19/wb_native_subagent_runtime_delivery_01.md
+    proposed_workbook: null
+    scope: >-
+      Promote a small dedicated handoff artifact as a first-class pattern.
+      Currently, passing execution context between agents or phases requires
+      syncing the full README + workbook + harvest + plan + work_state.yaml
+      set. A small handoff artifact (e.g., a YAML or Markdown file scoped to
+      the handoff context) is often cheaper and less error-prone. Deliverables:
+      pattern definition in guide_workbooks.md or guide_multi_agent_coordination.md;
+      optional lightweight handoff artifact template.
+    priority: low
+    benefit: low
+    effort: s
+    readiness: deferred
+    risk_if_deferred: low
+    activation_trigger: >-
+      Next workbook where a phase boundary or agent handoff requires context
+      transfer, or when multi-artifact sync overhead (see fw_20260319_02)
+      is flagged as the primary friction point.
+    next_review: 2026-06-01
+    status: planned
+    owner: ai_ops
+    created: 2026-03-23
+    compacted_context:
+      source: >-
+        wb_native_subagent_runtime_delivery_01 Accumulated Seeds —
+        ai_ops Process Seeds (2026-03-19)
+      note: >-
+        Related to fw_20260319_02 (status-ledger helper) and fw_20260319_06
+        (authority spread reduction). These three seeds address the same root
+        friction from different angles.
+    notes: Low urgency. Pattern definition is low effort; the value compounds over time.
+
+  - id: fw_20260319_06
+    title: Authority spread reduction
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wb_native_subagent_runtime_delivery_01_2026-03-19/wb_native_subagent_runtime_delivery_01.md
+    proposed_workbook: null
+    scope: >-
+      Reduce the number of places the same execution state must be echoed.
+      Current required surfaces: proposal + workbook + README + harvest +
+      plan + work_state.yaml. Identify which surfaces are redundant for
+      bounded workbooks, define a minimal required set per workbook size/scope
+      tier, and update the workbook template standard to reflect the reduced
+      obligation. Goal: lower overhead without losing traceability.
+    priority: low
+    benefit: medium
+    effort: m
+    readiness: deferred
+    risk_if_deferred: low
+    activation_trigger: >-
+      Workbook template review cycle, or when multiple consecutive workbundles
+      flag multi-surface sync as their top execution overhead.
+    next_review: 2026-06-01
+    status: planned
+    owner: ai_ops
+    created: 2026-03-23
+    compacted_context:
+      source: >-
+        wb_native_subagent_runtime_delivery_01 Accumulated Seeds —
+        ai_ops Process Seeds (2026-03-19)
+      note: >-
+        Related to fw_20260319_02 (status-ledger helper) and fw_20260319_05
+        (dedicated handoff artifact). These three seeds address the same root
+        friction from different angles. fw_20260319_06 is the structural
+        governance change; the others are tooling/pattern responses.
+    notes: >-
+      Medium benefit but medium effort. Requires a governance decision about
+      which surfaces are mandatory vs. optional by workbook scope tier.
+
+  - id: fw_20260319_07
+    title: Git-status discovery friction
+    domain: tooling
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wb_native_subagent_runtime_delivery_01_2026-03-19/wb_native_subagent_runtime_delivery_01.md
+    proposed_workbook: null
+    scope: >-
+      Find a lighter worktree discovery path for narrow-lane execution.
+      Broad git status output (worktree noise, warnings, untracked files
+      across the whole repo) can obscure the useful execution signal when
+      an agent is working in a narrow lane touching only a small file set.
+      Deliverables: a targeted git-status pattern or wrapper that scopes
+      discovery to the active work paths; optional integration into workflow
+      pre-flight steps.
+    priority: low
+    benefit: low
+    effort: s
+    readiness: deferred
+    risk_if_deferred: low
+    activation_trigger: >-
+      Git-status noise is flagged as obscuring execution signal during a
+      workbundle execution, or a pre-flight step is observed to be reading
+      and discarding large volumes of irrelevant worktree state.
+    next_review: 2026-06-01
+    status: planned
+    owner: ai_ops
+    created: 2026-03-23
+    compacted_context:
+      source: >-
+        wb_native_subagent_runtime_delivery_01 Accumulated Seeds —
+        ai_ops Process Seeds (2026-03-19)
+      note: >-
+        Surfaced during WB-D execution planning as a tooling friction point.
+        No design committed; scope is a targeted git-status approach for
+        narrow lane work.
+    notes: Low urgency. Quality-of-life improvement; not a blocking issue.

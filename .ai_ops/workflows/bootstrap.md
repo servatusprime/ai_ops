@@ -218,9 +218,9 @@ If any item fails, pause and correct before continuing.
 - `00_Admin/runbooks/rb_bootstrap.md` (bootstrap steps)
 - `00_Admin/guides/ai_operations/guide_capability_certification.md`
 
-## Roles
+## Lane
 
-Default role: Coordinator (orientation and readiness).
+Default lane: Coordinator (orientation and readiness).
 
 ## Risks and Limits
 

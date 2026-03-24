@@ -1,9 +1,9 @@
 ---
 title: Guide: Runbooks
-version: 1.0.6
+version: 1.0.7
 status: active
 license: Apache-2.0
-last_updated: 2026-03-14
+last_updated: 2026-03-19
 owner: ai_ops
 related:
 - ./guide_markdown_authoring.md
@@ -11,6 +11,8 @@ related:
 - ../ai_operations/guide_ai_ops_vocabulary.md
 - 00_Admin/specs/spec_repo_metadata_standard.md
 ---
+
+<!-- markdownlint-disable MD013 MD025 -->
 
 # Guide: Runbooks
 
@@ -215,6 +217,24 @@ Parallel work metadata (front matter):
 Use these fields to express preference and coordination guidance, not hard enforcement unless a validator rule is
 enabled.
 
+Execution topology routing fields:
+
+- `execution_topology`: `single_agent`, `multi_agent`, or `hybrid`
+- `activated_lanes`: canonical lanes active for the run
+- `delegation_policy`: `none`, `explicit_only`, `conditional`, or `proactive_allowed`
+- `convergence_profile`: named review/rework loop posture
+- `parallel_coordination_id`: conditional coordination identifier when sibling
+  active artifacts may run concurrently
+
+Runbooks should keep the same two-layer pattern as workbooks:
+
+- frontmatter routing fields for early classification
+- an early `execution_topology_contract` YAML block for the authoritative
+  execution/delegation contract
+
+Books and runbooks own the full execution contract. Spines and pipelines only
+carry coordination summaries and references to child execution artifacts.
+
 `model_profile` usage:
 
 - In **runbook templates**: use tier-only descriptors (e.g., `"high"`,
@@ -229,7 +249,9 @@ enabled.
 ## <!-- File: 00_Admin/runbooks/rb_example.md -->
 
 title: Runbook: Example Task version: 0.1.0 status: active last_updated: 2026-01-15 owner: ai_ops execution_mode:
-sequential model_profile: "<model_a>:<reasoning_level> | <model_b>:<reasoning_level>" depends_on: [] shared_files: []
+sequential execution_topology: single_agent activated_lanes: [Coordinator, Executor, Reviewer]
+delegation_policy: explicit_only convergence_profile: iterative_convergence_minimal model_profile:
+"<model_a>:<reasoning_level> | <model_b>:<reasoning_level>" depends_on: [] shared_files: []
 lock_scope: none
 
 ---
@@ -239,6 +261,16 @@ H1: Runbook: Example Task
 ## Purpose
 
 - One or two bullets that describe the goal.
+
+## Execution Topology Contract
+
+execution_topology_contract:
+  lead_lane: Coordinator
+  task_brief: "<one-line mission>"
+  spawn_criteria:
+    - "<when delegation is allowed>"
+  do_not_delegate_when:
+    - "<when the lead retains the work>"
 
 ## Scope and Authority
 

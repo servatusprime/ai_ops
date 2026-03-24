@@ -23,9 +23,9 @@ related_refs:
 
 ## Compacted Context
 
-All 6 ai_ops subagents report to the primary agent using the same structured
+All 7 ai_ops subagents report to the primary agent using the same structured
 format. This protocol is uniform -- it does not vary by rider archetype,
-crew preset, or functional role. The fixed format ensures the primary agent
+crew preset, or canonical lane. The fixed format ensures the primary agent
 can reliably parse subagent output regardless of which subagent produced
 it and which rider profile was active.
 
@@ -56,7 +56,7 @@ with no content should include "None" rather than being omitted.
 If no file deliverables, state "No file deliverables."]
 
 ### Findings
-[Structured findings, if any. Use consistent sub-structure per role.
+[Structured findings, if any. Use consistent sub-structure per lane.
 If no findings, state "No findings."]
 
 ### Blockers
@@ -117,7 +117,7 @@ A flat list of concrete outputs. Each entry includes:
 
 ### Findings
 
-Structured per the subagent's role. Each role has a consistent sub-format:
+Structured per the subagent's lane. Each lane has a consistent sub-format:
 
 **Reviewer findings:**
 

@@ -45,14 +45,15 @@ Briefly describe why this workbundle exists and what it will accomplish.
 
 **Actor:** `executor`, `requestor`, `approver`, `external_operator`
 
-## Execution Role Contract
+## Execution Lane Contract
 
-Canonical functional roles during execution:
+Canonical lanes during execution:
 
 - `Coordinator`: sequencing and approval/gate ownership.
 - `Executor`: workbook task execution and evidence capture.
 - `Builder`: tooling/config implementation when invoked by workbook scope.
-- `Validator`: pass/fail verification and crosscheck findings.
+- `Reviewer`: judgment-heavy review and crosscheck findings.
+- `Linter`: mechanical validation findings and report-only checks.
 
 Profile/subagent labels are presets; role semantics remain canonical.
 

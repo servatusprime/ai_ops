@@ -51,14 +51,15 @@ Runbundle layout expectation (recommended):
 
 **Actor:** `executor`, `requestor`, `approver`, `external_operator`
 
-## Execution Role Contract
+## Execution Lane Contract
 
-Canonical functional roles during execution:
+Canonical lanes during execution:
 
 - `Coordinator`: runprogram sequencing and gate ownership.
 - `Executor`: runbundle/runbook task execution.
 - `Builder`: tooling/config implementation lanes when present.
-- `Validator`: verification and crosscheck verdict ownership.
+- `Reviewer`: review and crosscheck verdict ownership.
+- `Linter`: mechanical validation/report-only gate ownership.
 
 ## Sequence Naming Contract
 
