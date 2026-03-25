@@ -597,6 +597,25 @@ def check_workflow_routing_contract(
                 )
 
 
+def check_active_status_has_purpose(
+    files: List[str],
+    warnings: List[str],
+    rule_id: str,
+) -> None:
+    """VS032: Flag status:active files that are missing a ## Purpose heading."""
+    purpose_re = re.compile(r"^##\s+Purpose\b", re.MULTILINE)
+    for path in files:
+        text = read_text(path)
+        fm, body = split_front_matter(text)
+        status = fm.get("status")
+        if status != "active":
+            continue
+        if not purpose_re.search(body):
+            warnings.append(
+                f"{rule_id}: {path} has status:active but is missing a '## Purpose' heading"
+            )
+
+
 def check_prefix_in_dir(dir_path: str, prefix: str, warnings: List[str], rule_id: str) -> None:
     if not os.path.isdir(dir_path):
         warnings.append(f"{rule_id}: directory missing {dir_path}")
@@ -1309,6 +1328,8 @@ def main() -> int:
             patterns = list(dict.fromkeys(patterns))
             if patterns:
                 check_forbidden_patterns(paths, patterns, errors, warnings, severity, rule_id)
+        elif rule_id == "VS032":
+            check_active_status_has_purpose(paths, warnings, rule_id)
 
     if errors:
         print("Validator errors:")

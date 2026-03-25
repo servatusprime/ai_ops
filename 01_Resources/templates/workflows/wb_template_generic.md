@@ -3,9 +3,9 @@ title: AI Workbook Template: <short_title>
 id: wb_<topic>_<scope>
 status: planned
 license: Apache-2.0 # keep by default; inherit repo license unless repo policy says otherwise
-version: 0.9.5
+version: 0.9.6
 created: YYYY-MM-DD
-last_updated: 2026-03-19
+last_updated: 2026-03-25
 owner: ai_ops
 ai_role: executor
 model_profile: "medium"  # Reasoning level: low | medium | high | maximum. Provider-model mapping is operator-declared. See AGENTS.md §AI Model Level Reference.
@@ -340,6 +340,9 @@ Must pass before any task execution:
   `approve_deferral`, `split_scope`)
 - [ ] If workbook is newly created in this lane, Selfcheck iteration 0 evidence
       exists (required sections + markdownlint pass)
+- [ ] If any `.ai_ops/workflows/` files are in scope, export drift check is
+      scheduled before first edit (run `python 00_Admin/scripts/generate_workflow_exports.py`
+      after editing; pre-commit export-drift hook will block commit if skipped)
 
 ---
 
@@ -842,6 +845,10 @@ Before commit/push:
 - [ ] Change summary provided (files touched, key edits, validation results).
 - [ ] Explicit requestor approval obtained.
 - [ ] Approval recorded in `00_Admin/logs/log_workbook_run.md`.
+
+<!-- Optional: fill in when gate is cleared -->
+<!-- sign_off_date: YYYY-MM-DD -->
+<!-- sign_off_by: <requestor_id> -->
 
 ---
 

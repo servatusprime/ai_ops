@@ -1,10 +1,10 @@
 ---
 title: future_work_registry
-version: 0.4.0
+version: 0.5.0
 status: active
 owner: ai_ops
 created: 2026-01-07
-updated: '2026-03-24'
+updated: '2026-03-25'
 migration_note: >-
   Most items were moved to wb_governance_hardening_02; selected deferred items
   remain here.
@@ -232,7 +232,13 @@ entries:
       A new version tag (e.g. v7) is released for any pinned action, or a
       security advisory references a pinned SHA that must be rotated.
     next_review: 2026-06-01
-    status: planned
+    status: completed
+    completed: 2026-03-25
+    completed_by: wb_01_protocol_updates
+    completion_note: >-
+      Verified via git ls-remote: all three v6 SHA pins in lint.yml are current
+      (checkout de0fac2e, setup-python a309ff8b, setup-node 53b83947). No update
+      needed. Recurring maintenance item — review again when v7 tags are released.
     owner: ai_ops
     created: 2026-03-12
     compacted_context:
@@ -739,7 +745,13 @@ entries:
       is fully established from wb_health_and_remediation_01 Phase 4
       analysis (2026-03-24). Ready to execute immediately.
     next_review: 2026-06-01
-    status: planned
+    status: completed
+    completed: 2026-03-25
+    completed_by: wb_01_protocol_updates
+    completion_note: >-
+      Step 7 "Subagent Execution Context" added to rb_repo_health_review.md §3.7
+      Option 3 protocol (verified present in prior session; confirmed current in
+      wb_01 Phase 1).
     owner: ai_ops
     created: 2026-03-24
     compacted_context:
@@ -777,7 +789,13 @@ entries:
     risk_if_deferred: low
     activation_trigger: Next validator hardening cycle.
     next_review: 2026-06-01
-    status: planned
+    status: completed
+    completed: 2026-03-25
+    completed_by: wb_01_protocol_updates
+    completion_note: >-
+      VS032 added to validate_repo_rules.py and validator_config.yaml. Rule flags
+      status:active .md files missing ## Purpose heading. Fires on 41 files (all
+      warnings, no errors) — baseline confirmed 0 regressions.
     owner: ai_ops
     created: 2026-03-24
 
@@ -801,7 +819,13 @@ entries:
     risk_if_deferred: low
     activation_trigger: Next template maintenance cycle.
     next_review: 2026-06-01
-    status: planned
+    status: completed
+    completed: 2026-03-25
+    completed_by: wb_01_protocol_updates
+    completion_note: >-
+      Export drift checklist item added to Pre-Execution Readiness Gate in
+      wb_template_generic.md v0.9.6. Item instructs running generate_workflow_exports.py
+      before first edit when .ai_ops/workflows/ files are in scope.
     owner: ai_ops
     created: 2026-03-24
 
@@ -824,6 +848,11 @@ entries:
     risk_if_deferred: low
     activation_trigger: Next template maintenance or audit tooling cycle.
     next_review: 2026-06-01
-    status: planned
+    status: completed
+    completed: 2026-03-25
+    completed_by: wb_01_protocol_updates
+    completion_note: >-
+      sign_off_date and sign_off_by comment block added to Requestor Review Gate
+      in wb_template_generic.md v0.9.6 (HTML comment block, optional fill-in).
     owner: ai_ops
     created: 2026-03-24

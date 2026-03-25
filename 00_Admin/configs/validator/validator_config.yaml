@@ -361,6 +361,19 @@ rules:
         - "## Context Routing Hook"
       required_content:
         - "context_routing.yaml` as the canonical onboarding"
+  - id: VS032
+    enabled: true
+    paths:
+      - 00_Admin/policies/**/*.md
+      - 00_Admin/specs/**/*.md
+      - 00_Admin/guides/**/*.md
+      - 00_Admin/runbooks/rb_*.md
+    params:
+      severity: warning
+      description: >-
+        Flag files with status:active in frontmatter that are missing a
+        ## Purpose heading. Scope: non-trash .md files with YAML frontmatter.
+        (fw_20260324_02)
 # Cross-Repo Validation Baseline (ROADMAP - not yet implemented)
 # These rules are planned for future cross-repo validation support.
 # The validator script does not currently parse this section.

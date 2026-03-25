@@ -1,9 +1,9 @@
 ---
 title: rb_repo_health_review
-version: 0.5.3
+version: 0.5.4
 status: active
 license: Apache-2.0
-last_updated: 2026-03-24
+last_updated: 2026-03-25
 owner: ai_ops
 related:
   - .ai_ops/workflows/health.md
@@ -330,7 +330,21 @@ section titles.
    - capture detail/nuance points in source sections,
    - confirm canonical target preserves them,
    - flag nuance-loss risk.
-7. Report section-level verdicts with rationale and a per-file summary.
+7. **Subagent Execution Context** (fw_20260324_01): Before recommending any
+   move, evaluate whether the target file is consumed by a subagent at
+   execution time (templates, runbooks filled out or executed by an agent
+   without a follow-on guide read). If yes:
+   - Operational reminders and normative safety guards must stay inline
+     regardless of topological axis placement — subagents need these at
+     execution time without a separate guide lookup.
+   - Annotate the section verdict as `move_reliability_cost: high` before
+     recommending any downstream move.
+   - Distinguish tutorial/teaching content (safe to move) from operational
+     reminders and normative safety rules (subagent-local value — keep or
+     annotate).
+   - Optionally record `consumer_context: agent | human | both` in the
+     audit CSV schema.
+8. Report section-level verdicts with rationale and a per-file summary.
 
 ### 3.8 Lock Preflight and Recovery Signals
 
