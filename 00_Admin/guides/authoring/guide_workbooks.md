@@ -1,9 +1,9 @@
 ---
 title: Guide: AI Workbooks
-version: 1.8.9
+version: 1.9.1
 status: active
 license: Apache-2.0
-last_updated: 2026-03-24
+last_updated: 2026-03-25
 owner: ai_ops
 related:
 - ./guide_markdown_authoring.md
@@ -853,6 +853,150 @@ For multi-workbook workbundles:
 - update compacted context/checkpoint status,
 - confirm next workbook and shared-file locks,
 - archive transient artifacts once migrated into durable logs.
+
+## 12.1) Handoff Artifact Pattern
+
+A **Handoff Artifact** is a thin, purpose-built markdown or YAML file that carries
+execution state across a lane boundary or agent handoff without requiring the next
+agent to re-read all state surfaces.
+
+**Axis:** Meta (shared context infrastructure, same axis as Compacted Context).
+
+**Purpose:**
+Reduce cold-start overhead at phase or agent boundaries by providing a single,
+pre-digested context object that covers: what just completed, what is next, what
+constraints carry forward, and what is still open.
+
+**When to use:**
+
+- Director-to-Coordinator dispatch (replaces full state re-read).
+- Coordinator-to-Executor phase handoff within a multi-phase workbook.
+- Workbundle closeout hand-off to a follow-on workbundle or workprogram.
+- Any lane transition where the next agent would otherwise need to read 3+
+  state surfaces to reconstruct context.
+
+**Minimal content (required fields):**
+
+```yaml
+handoff:
+  source_artifact: <workbook_id or workbundle_id>
+  destination_lane: <lane name>
+  status_summary: <one-sentence completed-state description>
+  carry_forward:
+    constraints: []          # authority limits, L4 gates, etc.
+    blocking_issues: []      # anything still unresolved
+  open_items: []             # deferred tasks or pending decisions
+  next_step:
+    goal: <one-sentence goal for the next lane>
+    entry_point: <workbook file path or phase reference>
+```
+
+Optional fields: `validation_commands`, `references` (paths), `notes`.
+
+**File naming convention:**
+
+```text
+handoff_<source_id>_<YYYY-MM-DD>.md
+```
+
+Example: `handoff_wb_governance_ops_01_wb01_2026-03-25.md`
+
+Place in the workbundle root alongside the workbook and README.
+
+**Lifecycle:** Handoff artifacts are `lifecycle: transient`. Route to `99_Trash/`
+after the destination lane has acknowledged receipt and begun execution.
+
+Template: `01_Resources/templates/documents/handoff_template.md`
+
+## 12.2) Crosscheck-to-Execution Handoff Format
+
+After a crosscheck completes, findings must be triaged before the next execution
+lane begins. Use the **Crosscheck-to-Execution Handoff Table** to translate each
+finding into an explicit disposition:
+
+```markdown
+## Crosscheck Handoff — <target_id> (<YYYY-MM-DD>)
+
+| Finding ID | Summary | Disposition | Assigned Lane | Target File | Blocking? |
+| --- | --- | --- | --- | --- | --- |
+| F-01 | <short finding summary> | patch_now | Executor | path/to/file.md | yes |
+| F-02 | <short finding summary> | proposal_seed | Coordinator | future_work_registry.yaml | no |
+| F-03 | <short finding summary> | follow_on_workbook | Coordinator | (new workbook) | no |
+```
+
+**Disposition values:**
+
+- `patch_now` — in-scope, actionable in the current execution lane; block closeout
+  until resolved.
+- `proposal_seed` — good idea but not yet authorized; log in future_work_registry.yaml
+  and close without action.
+- `follow_on_workbook` — requires its own workbook/workbundle; create a FW entry or
+  a draft workbook before closing.
+
+**Blocking column:** `yes` means the current workbook's Crosscheck Stop Marker
+remains unchecked until this finding is resolved or explicitly deferred with
+requestor approval.
+
+**Placement options:**
+
+1. Inline in the workbook's `## Crosscheck Stop Marker` section (preferred for
+   small finding sets — 1 to 4 findings).
+2. As a standalone `handoff_crosscheck_<target>_<date>.md` in the workbundle root
+   (preferred for 5+ findings or when findings span multiple workbooks).
+
+**Lifecycle:** Crosscheck handoff tables are `lifecycle: transient`. Once all
+`patch_now` items are resolved and `proposal_seed`/`follow_on_workbook` items
+are logged, the table may be archived with the workbundle.
+
+## 12.3) State Surfaces — Required vs Optional by Tier
+
+This section is **normative**. It defines which state surfaces agents MUST maintain
+and which are optional for each workbook/workbundle/workprogram tier.
+
+**Definition — State Surface:** Any file that records execution state for an active
+artifact. Includes workbook frontmatter (version, status), workbundle/program README
+Status table, `work_state.yaml` active artifacts entry, and harvest/plan docs.
+
+### Required and Optional Surfaces by Tier
+
+| Tier | Required Surfaces | Optional Surfaces |
+| --- | --- | --- |
+| Solitary workbook (no workbundle) | workbook frontmatter (`version`, `status`); `.ai_ops/local/work_state.yaml` entry | harvest doc; plan doc |
+| Workbundle — single workbook | workbook frontmatter; bundle README Status table; `work_state.yaml` entry | harvest doc |
+| Workbundle — two or more workbooks | each workbook frontmatter; bundle README Status table; `work_state.yaml` entry | plan doc; harvest doc |
+| Workprogram | each workbook frontmatter; execution spine; program README Status table; `work_state.yaml` entry | per-bundle docs; harvest doc |
+
+### Normative Rules
+
+- Agents MUST update required surfaces on every phase transition.
+  Optional surfaces MAY be updated at agent discretion.
+- Required surfaces are the minimum signal set for resumption and crosscheck. Omitting
+  them creates context gaps that increase cold-start overhead.
+- `work_state.yaml` is always required because it is the single canonical active-artifact
+  index. Update it on activation, on status change, and on closeout.
+- The bundle README Status table is required for all workbundle tiers because it provides
+  the Director/operator at-a-glance view without reading individual workbooks.
+- Harvest docs and plan docs are optional because they are supplementary artifacts —
+  their absence does not block resumption.
+
+### Update Cadence
+
+Required surfaces MUST be updated at these triggers:
+
+1. Workbook/workbundle activated (status: planned → active)
+2. Phase completion (workbook phase checkbox swept, frontmatter version bumped)
+3. Scope change or new dependency discovered
+4. Completion / closeout (status: active → completed)
+
+Optional surfaces SHOULD be updated at the same triggers when they exist.
+
+### Relationship to Handoff Artifact Pattern
+
+The Handoff Artifact (§12.1) is a transient supplement to required surfaces — it does
+not replace them. When a handoff artifact is used, the required surfaces MUST still be
+updated before the handoff file is written.
+
+See also: `spec_workbundle_dependency_tracking.md` (affects/depends_on contract).
 
 ## 13) Pre-Flight Checklist: Do I Need a Workbook?
 

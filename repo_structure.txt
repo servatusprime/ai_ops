@@ -170,6 +170,7 @@
 |   |   |-- run_markdownlint.ps1
 |   |   |-- run_release_quality_gate.py
 |   |   |-- sync_validator_baseline.py
+|   |   |-- update_artifact_status.py
 |   |   |-- validate_ide_extensions.ps1
 |   |   |-- validate_metadata.py
 |   |   |-- validate_repo_precommit.ps1
@@ -225,6 +226,7 @@
 |       |-- README.md
 |       |-- documents/
 |       |   |-- env_vars_template.md
+|       |   |-- handoff_template.md
 |       |   |-- harvest_report_template.md
 |       |   |-- health/
 |       |   |   |-- section_placement_audit_template.md
