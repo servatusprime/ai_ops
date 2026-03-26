@@ -9,7 +9,9 @@ version: 0.2.1
 
 modality:
   # AI surface this machine uses. Set by /ai_ops_setup.
-  active_surface: null  # codex_cli | claude_code | claude_app | remote_control | github_copilot | cursor | gemini_cli | other
+  # Allowed values: codex_cli | claude_code | claude_app | remote_control
+  # | github_copilot | cursor | gemini_cli | other
+  active_surface: null
   # remote_control: claude_code session reachable from multiple devices; treated as claude_code for install purposes.
   installation_target: none  # skills | commands | both | none
   # claude_app is instructions-only; keep installation_target as none.

@@ -36,7 +36,7 @@ scorecard_sync:
   generator: 00_Admin/scripts/generate_future_work_scorecard.py
   command: python ai_ops/00_Admin/scripts/generate_future_work_scorecard.py
   policy_ref: 00_Admin/policies/policy_future_work_registry.md
-# Entry schema reference:
+# Registry entry schema reference:
 #   id: fw_YYYYMMDD_NN — unique registry entry ID
 #   title: short description of the work item
 #   domain: governance | tooling | validation | documentation | integration | operations
