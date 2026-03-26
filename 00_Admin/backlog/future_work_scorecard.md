@@ -17,7 +17,6 @@ generated_by: 00_Admin/scripts/generate_future_work_scorecard.py
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | fw_20260216_01 | Protected-path authority evidence enforcement for workflow edits | governance | ai_ops | medium | high | m | partial | medium | 2026-03-01 |
 | fw_20260227_04 | Bash equivalents for critical PowerShell setup scripts | operations | ai_ops | medium | medium | l | deferred | medium | 2026-04-01 |
-| fw_20260319_01 | Draft artifact authority guidance | governance | ai_ops | medium | medium | s | partial | medium | 2026-06-01 |
 | fw_20260125_01 | Audit event schemas for Emergency Autonomy | governance | ai_ops | low | low | s | deferred | low | 2026-03-01 |
 | fw_20260227_03 | Add examples/ directory with sample artifacts | documentation | ai_ops | low | medium | m | deferred | low | 2026-04-01 |
 | fw_20260227_05 | Remediation-lite workbook template variant | governance | ai_ops | low | low | s | deferred | low | 2026-05-01 |

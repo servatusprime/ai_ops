@@ -21,6 +21,11 @@ related_refs:
 
 # Reference: AI-Facing Communication Protocol
 
+## Purpose
+
+Defines the uniform return format all subagents must use when reporting results to the primary agent.
+This protocol is invariant across rider profiles and enables structured parsing and relay of subagent output.
+
 ## Compacted Context
 
 All 7 ai_ops subagents report to the primary agent using the same structured

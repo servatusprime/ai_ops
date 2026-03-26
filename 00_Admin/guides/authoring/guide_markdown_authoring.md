@@ -15,6 +15,11 @@ related:
 
 # Guide: Markdown Authoring
 
+## Purpose
+
+Source of truth for writing Markdown in this repo. Defines formatting rules aligned with configured linters
+and editor settings to keep docs readable and diffs clean.
+
 This guide is the source of truth for writing Markdown in this repo. It aligns with our configured linters and editor
 settings to keep docs readable and diffs clean.
 

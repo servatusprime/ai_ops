@@ -14,6 +14,11 @@ ai_generated: true
 <!-- markdownlint-disable-next-line MD025 -->
 # Work Governed Mode Spec
 
+## Purpose
+
+Defines normative `/work` behavior when ai_ops governs an external target repo (Governed mode). Covers
+activation conditions, cross-repo authority rules, and pre-flight checks for governed-mode sessions.
+
 ## 1. Purpose
 
 Define normative `/work` behavior when ai_ops governs an external target repo.

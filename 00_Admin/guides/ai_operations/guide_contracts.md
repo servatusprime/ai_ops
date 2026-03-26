@@ -15,6 +15,11 @@ promoted_from: 90_Sandbox/AI_Operations_Drafts/guide_contracts.md
 
 # Guide: Contracts
 
+## Purpose
+
+Defines what a Contract is within the AI Operations Stack and how verification-first contracts govern
+what is allowed, required, and forbidden at each execution boundary.
+
 This guide defines **Contracts** within the AI Operations Stack. It is normative.
 
 ## Definition

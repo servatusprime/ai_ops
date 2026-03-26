@@ -16,6 +16,12 @@ related:
 
 # Guide: Workflows
 
+## Purpose
+
+Defines Workflows and their relationship to Runbooks and Workbooks within the AI Operations Stack. Covers
+placement rules, artifact selection, pipeline artifact patterns, governance boundaries, and agent decision
+matrices. Normative — if this guide conflicts with a spec, the spec wins.
+
 This guide defines **Workflows** and how they relate to Runbooks and Workbooks. It is normative.
 
 Enforceable requirements live in `00_Admin/specs/spec_workflow_structure.md`. This guide provides advisory context;
@@ -490,6 +496,8 @@ Do not continue execution until this checklist is complete.
 - Scratchpads may be used for ai_ops development and active `/work` sessions; they are temporary and must be
   distilled into canonical artifacts or future work entries.
 - **Repo artifacts** (guides/specs/templates/logs) are the only long-lived records.
+- Coordinator agents should update the active artifact note field in work_state.yaml on each phase transition
+  to maintain a live Director-readable status.
 
 ## Reference Thrift Rule
 

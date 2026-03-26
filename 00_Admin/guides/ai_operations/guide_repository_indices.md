@@ -11,6 +11,11 @@ related:
 
 # Guide: Repository Indices
 
+## Purpose
+
+Explains how canonical and derived index files are structured, maintained, and used across ai_ops and governed
+repos. Defers to `spec_repository_indices.md` for normative requirements.
+
 This guide explains how canonical and derived indices are used and maintained.
 
 ## 1) Canonical vs derived indices

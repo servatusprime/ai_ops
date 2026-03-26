@@ -14,6 +14,10 @@ ai_generated: true
 <!-- markdownlint-disable-next-line MD025 MD041 -->
 # Runbook Structure Spec
 
+## Purpose
+
+Defines enforceable structure, naming, and metadata rules for runbooks in ai_ops and governed repos.
+
 ## 1. Purpose
 
 Define enforceable structure, naming, and metadata rules for runbooks.

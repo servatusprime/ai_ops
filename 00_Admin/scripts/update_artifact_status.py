@@ -200,7 +200,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--id",
         required=True,
         metavar="ARTIFACT_ID",
-        help="Artifact id to update (must match 'id' field in work_state.yaml).",
+        help=(
+            "Artifact id to update (must match 'id' field in work_state.yaml). "
+            "To update a specific workbook row in a bundle README, pass the workbook "
+            "filename (e.g., 'wb_02_state_sync_friction.md'), not the bundle id."
+        ),
     )
     parser.add_argument(
         "--status",

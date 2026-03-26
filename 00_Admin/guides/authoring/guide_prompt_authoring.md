@@ -18,6 +18,11 @@ related:
 
 # Guide: Prompt Authoring
 
+## Purpose
+
+Defines how to author prompt documents for the repo. Covers prompt structure, metadata, style, and the
+relationship between prompt specs and AI agent behavior.
+
 ## 1. Purpose and Scope
 
 This guide defines how to author prompt documents for <repo_name>. It covers prompt structure, metadata, and style. It

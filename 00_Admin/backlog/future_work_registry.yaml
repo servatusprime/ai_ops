@@ -27,12 +27,37 @@ prune_note_2026_03_25: >-
   fw_20260319_05 (handoff artifact pattern), fw_20260319_06 (state surface table),
   fw_20260324_01 (Option 3 subagent axis), fw_20260324_02 (VS032 rule),
   fw_20260324_03 (export drift gate), fw_20260324_04 (sign_off_date field).
+prune_note_2026_03_25b: >-
+  fw_20260319_01 (draft artifact authority) actualized in
+  wb_04_governance_friction_patches WB04 2026-03-25.
 scorecard_sync:
   required: true
   scorecard_file: 00_Admin/backlog/future_work_scorecard.md
   generator: 00_Admin/scripts/generate_future_work_scorecard.py
   command: python ai_ops/00_Admin/scripts/generate_future_work_scorecard.py
   policy_ref: 00_Admin/policies/policy_future_work_registry.md
+# Entry schema reference:
+#   id: fw_YYYYMMDD_NN — unique registry entry ID
+#   title: short description of the work item
+#   domain: governance | tooling | validation | documentation | integration | operations
+#   target_repo: ai_ops | governed_repo | both
+#   source_workbook: repo-relative path to originating workbook
+#   proposed_workbook: repo-relative path to planned workbook (null if not yet proposed)
+#   scope: detailed description of what needs to be done
+#   priority: low | medium | high
+#   benefit: low | medium | high
+#   effort: xs | s | m | l | xl
+#   readiness: ready | partial | blocked | deferred
+#   risk_if_deferred: low | medium | high
+#   activation_trigger: condition or event that re-opens deferred items
+#   next_review: YYYY-MM-DD — date to re-evaluate status
+#   status: planned | active | deferred | recurring
+#   recurrence_trigger: (for status:recurring only) schedule or trigger condition that re-opens the item
+#   owner: team or person responsible
+#   created: YYYY-MM-DD — date entry was added
+#   compacted_context: {source, note} — provenance and context for future agents
+#   notes: free-text notes
+
 scorecard_schema:
   purpose: Lightweight benefit-effort-risk triage for future work sorting.
   domain_values:
@@ -345,50 +370,6 @@ entries:
       source: wb_oss_pre_commit_completions_01.md seed S15
       note: Policy discussion, not a build task. Deferred from WB4 scope.
     notes: Not a build task. Requires requestor decision on scoring contract value.
-
-  - id: fw_20260319_01
-    title: Draft artifact authority guidance
-    domain: governance
-    target_repo: ai_ops
-    source_workbook: >-
-      90_Sandbox/ai_workbooks/wb_native_subagent_runtime_delivery_01_2026-03-19/wb_native_subagent_runtime_delivery_01.md
-    proposed_workbook: null
-    scope: >-
-      Clarify when working-tree ai_ops artifacts (agent files, workflow docs)
-      are authoritative vs. only committed versions. Especially relevant when
-      a workbook uses the changed agent files as dogfood during execution:
-      if the changed files are in the working tree but not committed, an agent
-      bootstrapping off the committed state will use stale definitions.
-      Deliverables: a governance note in AGENTS.md or a spec section defining
-      the working-tree vs. committed authority boundary; integration into
-      workbook pre-flight checklist where dogfood execution is expected.
-    priority: medium
-    benefit: medium
-    effort: s
-    readiness: partial
-    risk_if_deferred: medium
-    activation_trigger: >-
-      Next workbook where dogfood execution is expected (agent files or
-      workflow docs are changed in the same bundle that will use them), or
-      when an operator reports confusion about which file version was active
-      during an execution.
-    next_review: 2026-06-01
-    status: planned
-    owner: ai_ops
-    created: 2026-03-23
-    compacted_context:
-      source: >-
-        wb_native_subagent_runtime_delivery_01 Accumulated Seeds —
-        Directly WB-D Relevant (2026-03-19)
-      note: >-
-        Surfaced during planning for WB-D: workbook used changed agent files
-        as dogfood but authority boundary (working-tree vs. committed) was
-        not documented. Directly WB-D relevant; carried forward as future work
-        after WB-D scope was locked.
-    notes: >-
-      Medium risk if deferred because dogfood workbooks are common and the
-      confusion risk is real. Small effort — a spec note and pre-flight
-      checklist item.
 
   - id: fw_20260319_07
     title: Git-status discovery friction

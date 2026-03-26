@@ -17,6 +17,11 @@ related:
 
 # Guide: Python Authoring
 
+## Purpose
+
+Defines Python authoring conventions for ETL, automation, and validation scripts across modules. Covers
+environment setup, path strategy, linting standards, CONTRACT pattern, and common failure patterns.
+
 Python is used for ETL, automation, and validation across modules.
 
 ## Canonical Script Template
@@ -75,6 +80,9 @@ the baseline path passes.
   exceptions.
 - Commit/push steps and lint execution are defined in `00_Admin/policies/policy_git_workflow_conventions.md`.
 - Avoid file-wide lint disables; prefer fixing or narrowly scoping ignores.
+- VS028 scans inline comments and string literals in Python files for forbidden path patterns (sibling repo
+  names and absolute path fragments). Avoid mentioning sibling repo names in comments or docstrings even as
+  documentation examples; use generic placeholders (e.g., `<work_repo>`, `<governed_repo>`) instead.
 
 ## Structure
 

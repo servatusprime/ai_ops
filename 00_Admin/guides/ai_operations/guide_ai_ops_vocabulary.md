@@ -14,6 +14,11 @@ promoted_from: 90_Sandbox/AI_Operations_Drafts/guide_ai_ops_vocabulary.md
 
 # Guide: AI Ops Vocabulary
 
+## Purpose
+
+Defines the canonical vocabulary used across the AI Operations Stack. Normative — all agents and authors
+must use these terms consistently to avoid ambiguity in governance artifacts and execution records.
+
 This document defines the **canonical vocabulary** used across the AI Operations Stack. It is **normative**.
 
 <!-- markdownlint-disable MD013 -->

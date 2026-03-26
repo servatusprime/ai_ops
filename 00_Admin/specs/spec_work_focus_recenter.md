@@ -14,6 +14,11 @@ ai_generated: true
 <!-- markdownlint-disable-next-line MD025 -->
 # Work Focus Recenter Spec
 
+## Purpose
+
+Defines normative focus-tracking and recenter behavior for `/work` sessions, ensuring agents can recover
+scope after context compression or mid-session interruption.
+
 ## 1. Purpose
 
 Define normative focus-tracking and recenter behavior for `/work` sessions.

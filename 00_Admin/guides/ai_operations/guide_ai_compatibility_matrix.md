@@ -12,6 +12,11 @@ owner: ai_ops
 <!-- markdownlint-disable-next-line MD025 -->
 # Guide: AI Compatibility Matrix
 
+## Purpose
+
+Documents how ai_ops commands integrate with supported AI tools (Claude Code, Codex, etc.) and provides
+a compatibility matrix for choosing the correct installation and invocation method per tool.
+
 ## How ai_ops Works with AI Tools
 
 ai_ops commands work via workflow files that any AI agent can read.

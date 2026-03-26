@@ -16,6 +16,12 @@ note: >
 
 # Guide: Environment Setup & Integration Phases
 
+## Purpose
+
+Outlines practical phases for setting up a local environment, version control, and tools in a clean and
+reproducible way. For requestor and agent collaboration. Domain-specific tooling belongs in the target
+work repo's own guides.
+
 For requestor and agent collaboration. This guide outlines practical phases to get your local
 environment, version control, and tools configured in a clean, reproducible way.
 

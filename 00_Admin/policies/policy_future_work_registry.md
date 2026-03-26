@@ -12,6 +12,16 @@ updated: 2026-02-01
 
 Define how the `00_Admin/backlog/future_work_registry.yaml` is maintained.
 
+## Status Values
+
+Valid `status` values for registry entries:
+
+- `planned` — Work is identified and scoped but not yet started.
+- `active` — Work is currently in progress.
+- `deferred` — Work is postponed; see `activation_trigger` for conditions to re-open.
+- `recurring` — Task recurs on a schedule or when a trigger condition is met. Use `recurrence_trigger` field
+  to document when to re-open.
+
 ## Completion and Deletion Rule
 
 The registry is for pending work only. Completed items MUST be removed to keep it lean. Completion is defined as any

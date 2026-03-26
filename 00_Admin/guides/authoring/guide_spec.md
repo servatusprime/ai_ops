@@ -19,6 +19,11 @@ related:
 
 # Guide: Spec Authoring
 
+## Purpose
+
+Defines how to author specification documents for the repo. Covers spec structure, required frontmatter,
+authoring rules, and the relationship between specs and other governance artifacts.
+
 ## 1. Purpose and Scope
 
 This guide defines how to author specification documents for <repo_name>. It covers spec structure, requirement IDs, and

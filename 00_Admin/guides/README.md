@@ -12,6 +12,11 @@ description: Navigation for guides organized by topic
 <!-- markdownlint-disable-next-line MD025 -->
 # Guides Index
 
+## Purpose
+
+Navigation index for all ai_ops guides organized by topic area. Use this file to discover the right guide
+for a given domain before reading individual guides.
+
 Guides are explanatory documentation (SHOULD/RECOMMENDED) that evolve with practice.
 
 ## Navigation by Topic

@@ -20,6 +20,11 @@ related_refs:
 
 # Reference: Native Command Comparative Analysis
 
+## Purpose
+
+Inventories and compares built-in commands across Claude Code, Codex CLI, Codex IDE Extension, and Gemini CLI.
+Maps native capabilities to ai_ops commands and identifies complementary relationships, overlaps, and gaps.
+
 ## Compacted Context
 
 Users of ai_ops may work with any of the major AI coding agents -- Claude

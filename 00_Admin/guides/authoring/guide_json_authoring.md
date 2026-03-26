@@ -14,6 +14,11 @@ related:
 
 # Guide: JSON Authoring
 
+## Purpose
+
+Defines JSON authoring conventions for the repo. Used for configuration, manifests, AI agent payloads, and
+structured outputs to ensure agents can reliably parse and produce JSON artifacts.
+
 This guide defines the JSON authoring conventions for the `<repo_name>` repo. JSON is used for configuration, manifests,
 AI agent payloads, and structured outputs. Consistency ensures agents (ChatGPT, Codex) can reliably parse and produce
 JSON artifacts.

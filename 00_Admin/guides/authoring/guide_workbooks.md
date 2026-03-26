@@ -16,6 +16,11 @@ related:
 <!-- markdownlint-disable-next-line MD025 -->
 # Guide: AI Workbooks
 
+## Purpose
+
+Defines the expected structure and lint-safe authoring practices for AI workbooks in `90_Sandbox/ai_workbooks/`.
+Covers required sections, front matter schema, phase conventions, and the relationship to workbook specs and templates.
+
 This guide defines the expected structure and lint-safe practices for AI workbooks in `90_Sandbox/ai_workbooks/`. Use
 it alongside the markdown authoring guide and the repo lint configuration.
 
@@ -997,6 +1002,60 @@ not replace them. When a handoff artifact is used, the required surfaces MUST st
 updated before the handoff file is written.
 
 See also: `spec_workbundle_dependency_tracking.md` (affects/depends_on contract).
+
+## 12.4) Delegated Lane Interruption Recovery
+
+This section is **normative**. It defines the recovery protocol when a delegated
+execution lane is interrupted before completing all phases.
+
+### Definition
+
+An **interruption** is any of the following events that halt a delegated lane
+mid-execution:
+
+- Agent timeout (context window exhaustion or session hard limit reached)
+- User kill signal (explicit abort or task cancellation)
+- Infrastructure failure (tool error, network loss, or environment crash mid-phase)
+
+Normal phase completion is not an interruption. Graceful stop-gate pauses
+(ambiguity gates, operator escalations) are not interruptions.
+
+### Checkpoint Surface
+
+The **Ordered Execution Queue** checkbox state is the canonical checkpoint. No
+separate checkpoint file is needed.
+
+- The last completed `[x]` item marks the safe resume point.
+- The resuming agent reads the workbook to identify the last checked item and
+  continues from the next unchecked item.
+- If no items are checked, the lane resumes from Phase 0.
+
+### Recovery Authority
+
+No re-authorization is required for a restart after interruption. The original
+delegation scope, authority level, and workbook design decisions apply unchanged
+to the resumed or restarted lane. The resuming agent does not need a new dispatch
+from the Coordinator or Director tier unless the scope has changed.
+
+### Merge Behavior
+
+If partial output exists (a file was partially written before interruption), the
+resuming agent **must read the current file state before writing**. Do not assume
+a clean slate. The read-before-write requirement prevents duplication or overwrite
+of partial progress. If the partial state is corrupt or ambiguous, the agent must
+stop and surface the ambiguity rather than silently overwriting.
+
+### Out of Scope
+
+This protocol covers execution-lane recovery only. The following are engineering
+concerns and are explicitly out of scope:
+
+- Retries for external API failures or rate limits
+- CI/CD flakiness or transient test failures
+- Network connectivity errors
+
+Those failure modes have their own operational procedures and are not governed
+by this workbook recovery protocol.
 
 ## 13) Pre-Flight Checklist: Do I Need a Workbook?
 

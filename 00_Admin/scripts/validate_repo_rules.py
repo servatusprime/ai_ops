@@ -616,6 +616,70 @@ def check_active_status_has_purpose(
             )
 
 
+def check_workbook_related_refs(
+    files: List[str],
+    warnings: List[str],
+    rule_id: str,
+    allow_repo_names: List[str],
+    work_repo_names: List[str],
+) -> None:
+    """VS033: Flag related_refs entries that use absolute paths or bare sibling-repo names
+    without a ../ prefix. Accepted patterns: repo-relative paths and ../anything/..."""
+    abs_drive_re = re.compile(r"^[A-Za-z]:[/\\]")  # e.g. C:\ or D:/
+    abs_unix_re = re.compile(r"^/")                  # starts with /
+    # Known ai_ops top-level directories; repo-relative refs starting with these are valid
+    ai_ops_roots = {
+        "00_Admin", "01_Resources", "02_Modules",
+        "90_Sandbox", "99_Trash", ".ai_ops", ".",
+    }
+    work_repo_set = set(work_repo_names)
+
+    for path in files:
+        text = read_text(path)
+        if not text.startswith("---"):
+            continue
+        end_idx = text.find("\n---", 3)
+        if end_idx == -1:
+            continue
+        fm_block = text[3:end_idx]
+
+        # Extract related_refs list from raw frontmatter text
+        refs: List[str] = []
+        in_related_refs = False
+        for line in fm_block.splitlines():
+            if re.match(r"^related_refs\s*:", line):
+                in_related_refs = True
+                continue
+            if in_related_refs:
+                list_match = re.match(r"^\s+-\s+(.+)$", line)
+                if list_match:
+                    entry = list_match.group(1).strip().strip('"').strip("'")
+                    refs.append(entry)
+                elif line.strip() and not line.startswith(" ") and not line.startswith("\t"):
+                    in_related_refs = False
+
+        for ref in refs:
+            # Rule (b): absolute paths are forbidden
+            if abs_drive_re.match(ref) or abs_unix_re.match(ref):
+                warnings.append(
+                    f"{rule_id}: {path} related_refs entry uses absolute path: '{ref}'"
+                )
+                continue
+            # Entries with ../ prefix are always valid (cross-repo correct form)
+            if ref.startswith("../"):
+                continue
+            # Repo-relative refs anchored in known ai_ops root dirs are valid
+            first_component = ref.replace("\\", "/").split("/")[0]
+            if first_component in ai_ops_roots or first_component in allow_repo_names:
+                continue
+            # Flag entries whose first component matches a known work-repo name
+            if first_component in work_repo_set:
+                warnings.append(
+                    f"{rule_id}: {path} related_refs entry references sibling repo"
+                    f" '{first_component}' without ../ prefix: '{ref}'"
+                )
+
+
 def check_prefix_in_dir(dir_path: str, prefix: str, warnings: List[str], rule_id: str) -> None:
     if not os.path.isdir(dir_path):
         warnings.append(f"{rule_id}: directory missing {dir_path}")
@@ -1330,6 +1394,11 @@ def main() -> int:
                 check_forbidden_patterns(paths, patterns, errors, warnings, severity, rule_id)
         elif rule_id == "VS032":
             check_active_status_has_purpose(paths, warnings, rule_id)
+        elif rule_id == "VS033":
+            params = rule.get("params", {})
+            _allow = list(params.get("allow_repo_names", ["ai_ops"]))
+            _work_repos = read_local_work_repo_names(repo_root)
+            check_workbook_related_refs(paths, warnings, rule_id, _allow, _work_repos)
 
     if errors:
         print("Validator errors:")

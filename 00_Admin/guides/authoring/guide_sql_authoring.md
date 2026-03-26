@@ -14,6 +14,11 @@ related:
 
 # Guide: SQL Authoring
 
+## Purpose
+
+Defines SQL authoring conventions for Postgres/PostGIS schema, views, ETL helpers, and validation queries.
+Covers dialect rules, formatting standards, and naming conventions for SQL files in the repo.
+
 SQL is used for Postgres/PostGIS schema, views, ETL helpers, and validation queries.
 
 ## Dialect & Environment

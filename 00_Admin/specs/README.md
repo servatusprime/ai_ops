@@ -11,6 +11,11 @@ description: Canonical list of specs in priority reading order
 <!-- markdownlint-disable-next-line MD025 -->
 # Specs Index
 
+## Purpose
+
+Navigation index for all ai_ops specifications in priority reading order. Specs define requirements that
+MUST or SHOULD be true across governance artifacts, execution surfaces, and repository structure.
+
 Specs define requirements that MUST or SHOULD be true. Unlike contracts, specs may not be automatically enforced.
 
 ## Reading Priority

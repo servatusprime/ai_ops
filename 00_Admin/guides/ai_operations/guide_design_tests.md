@@ -18,6 +18,11 @@ related:
 
 # Design Tests
 
+## Purpose
+
+Provides eight named design tests for validating new ai_ops artifacts and processes. Use these tests to
+evaluate whether a proposed change meets the structural and governance standards of the ai_ops system.
+
 When proposing a new artifact or process, run these eight named design tests.
 All must pass.
 

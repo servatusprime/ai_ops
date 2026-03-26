@@ -15,6 +15,11 @@ related:
 
 # Guide: Scratchpad Usage
 
+## Purpose
+
+Defines when and how to use scratchpads as temporary companion artifacts during workbook execution. Covers
+creation, lifecycle rules, pruning, and promotion of scratchpad content into canonical repo artifacts.
+
 This guide defines when and how to use scratchpads as companion artifacts during workbook execution.
 
 ## 1) Definition

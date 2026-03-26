@@ -16,6 +16,11 @@ related:
 <!-- markdownlint-disable-next-line MD025 -->
 # Guide: README Authoring
 
+## Purpose
+
+Defines how to author README files in the repo and formalizes front matter expectations for root onboarding
+docs. Covers required sections, frontmatter schema, and README placement rules.
+
 This guide defines how to author README files in `<repo_name>` and formalizes
 front matter expectations for root onboarding docs.
 

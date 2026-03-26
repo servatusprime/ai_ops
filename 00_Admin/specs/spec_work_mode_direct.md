@@ -14,6 +14,11 @@ ai_generated: true
 <!-- markdownlint-disable-next-line MD025 -->
 # Work Direct Mode Spec
 
+## Purpose
+
+Defines normative `/work` behavior when the target repo is `ai_ops` (Direct mode). Covers activation
+conditions, pre-flight checks, and authority boundaries for direct-mode sessions.
+
 ## 1. Purpose
 
 Define normative `/work` behavior when the target repo is `ai_ops` (Direct

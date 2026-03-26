@@ -24,6 +24,11 @@ related_refs:
 
 # Reference: Subagent File Specification
 
+## Purpose
+
+Defines the 7 lane-aligned subagent files for the ai_ops governance plugin. Specifies frontmatter fields,
+body structure, tool permissions, and the relationship between rider profiles and subagent configuration.
+
 ## Compacted Context
 
 The ai_ops governance plugin provides 7 lane-aligned subagents. Each

@@ -343,6 +343,8 @@ Must pass before any task execution:
 - [ ] If any `.ai_ops/workflows/` files are in scope, export drift check is
       scheduled before first edit (run `python 00_Admin/scripts/generate_workflow_exports.py`
       after editing; pre-commit export-drift hook will block commit if skipped)
+- [ ] If this workbook edits files used in the same execution (dogfood pattern),
+      working-tree vs. committed authority boundary recorded in Phase 0
 
 ---
 
@@ -807,11 +809,13 @@ task and record verification. Do not leave `pending` values when workbook
 
 <!-- markdownlint-disable MD013 -->
 
+<!-- NOTE: Iteration-0 evidence MUST cite a lint/validator command output (e.g., npx markdownlint-cli2 and VS024), not narrative prose. -->
+
 Evidence schema: each entry requires **path:line** or **command + key output** -- narrative-only evidence is not acceptable.
 
 | Iteration | Task | Status | Verification (path:line or command output) | Environment |
 | --- | --- | --- | --- | --- |
-| 0 | Initial Draft Selfcheck Gate | pending | `<required sections + markdownlint evidence>` | `<env_name>` |
+| 0 | Initial Draft Selfcheck Gate | pending | `npx markdownlint-cli2 <workbook>.md → 0 errors; VS024 required sections verified` | `<env_name>` |
 | 1 | Task 1: `<name>` | pending | `<path:line or command:key_output>` | `<env_name>` |
 | 1 | Task 2: `<name>` | pending | `<path:line or command:key_output>` | `<env_name>` |
 

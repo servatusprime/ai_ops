@@ -17,9 +17,10 @@ related:
 <!-- markdownlint-disable-next-line MD025 MD041 -->
 # Workbook Structure Spec
 
-## 1. Purpose
+## Purpose
 
-Define enforceable structure, naming, and metadata rules for workbooks.
+Defines enforceable structure, naming, and metadata rules for workbooks in ai_ops and governed repos.
+Used by the validator and as the authoritative authoring contract alongside `guide_workbooks.md`.
 
 ## 2. Scope
 
@@ -47,6 +48,20 @@ If a workprogram exists, it MUST include:
 - Program spec: `spec_<program_id>.md`
 - Registry: `workbooks_registry.md`
 - README: `README.md`
+
+### 3.4 Dogfood Execution Authority
+
+When a workbook edits governance files that will be consumed during the same
+execution session (dogfood pattern), the executing agent MUST record in Phase 0
+which file version is authoritative — working-tree or last committed.
+
+- **Working-tree files are authoritative** for agents running in the same session
+  where those files were written. The committed state is stale for that session.
+- **Committed state is authoritative** for agents bootstrapping fresh in a new
+  session where no in-session writes have occurred.
+- Record the authority boundary explicitly in Phase 0 when dogfood execution is
+  expected. Example: "WB03 changes are in working tree (uncommitted); this run
+  executes against working-tree state as authoritative."
 
 ## 4. Required Workbook Structure
 
@@ -110,3 +125,16 @@ When a workbundle is closed, a `work_summary.md` MUST be added to the workbundle
 - Workbook template: `01_Resources/templates/workflows/wb_template_generic.md`
 - Policies: `00_Admin/policies/`
 - Specs: `00_Admin/specs/`
+
+### 8.1 Cross-Repo Path Rules
+
+The following rules apply to all `related_refs` entries in ai_ops workbooks:
+
+(a) Entries must be repo-relative (e.g., `00_Admin/guides/...`) or use a `../` prefix for
+cross-repo references. The patterns `../ai_ops/...` and `../<work_repo>/...` are accepted.
+
+(b) Absolute paths are forbidden. Entries starting with `/`, a drive letter (e.g., `C:\`,
+`D:\`), or any machine-specific root must not appear in `related_refs`.
+
+(c) Mixing repo-relative and workspace-absolute paths in the same `related_refs` block is
+forbidden. All entries in a block must use the same path anchor convention.

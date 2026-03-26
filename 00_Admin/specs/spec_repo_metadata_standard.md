@@ -13,6 +13,11 @@ ai_generated: true
 <!-- markdownlint-disable-next-line MD025 MD041 -->
 # Repo Metadata Standard
 
+## Purpose
+
+Defines required YAML front matter and key fields for guides, specs, workflows, AI workbooks, and catalog
+entries to keep files AI-friendly, diff-friendly, and consistent across the repo.
+
 ## 1. Purpose
 
 Defines required YAML front matter and key fields for guides, specs, workflows,

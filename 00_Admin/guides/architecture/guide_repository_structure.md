@@ -9,6 +9,12 @@ owner: ai_ops
 
 # Guide: Repository Structure
 
+## Purpose
+
+Defines the organizational architecture of a governed target repository. Explains the role and contents of each
+top-level folder, relationships between them, and file naming and usage conventions. Descriptive and
+instructional — not a technical specification.
+
 **Scope:** Repo-agnostic guidance. Replace `<work_repo>` with your target repo root.
 
 ## 1. Purpose

@@ -9,6 +9,11 @@ owner: ai_ops
 
 # AI Operations Stack Guides
 
+## Purpose
+
+Navigation index and applicability labels for all AI operations guides. Use this to identify which guides
+are required reading for agents versus conditional or recommended references.
+
 Authoritative guides for AI-first work management in ai_ops and governed repos.
 
 ## Contents

@@ -14,6 +14,11 @@ ai_generated: true
 <!-- markdownlint-disable-next-line MD025 MD041 -->
 # Workflow Structure Spec
 
+## Purpose
+
+Defines enforceable structure and naming rules for workflow definitions in `.ai_ops/workflows/`. Used as
+the machine-checkable contract for workflow frontmatter and required content sections.
+
 ## 1. Purpose
 
 Define enforceable structure and naming rules for workflow definitions.

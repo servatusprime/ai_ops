@@ -14,6 +14,11 @@ related:
 
 # Guide: YAML Authoring
 
+## Purpose
+
+Defines YAML authoring conventions for the repo. YAML is the authoritative human-authored format for
+metadata, configuration, and structured data files. Covers baseline rules, formatting, and common pitfalls.
+
 YAML is the authoritative human-authored format for metadata in `<repo_name>`.
 
 ## Baseline Rules

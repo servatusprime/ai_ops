@@ -11,6 +11,11 @@ description: Canonical list of policies in priority reading order
 <!-- markdownlint-disable-next-line MD025 -->
 # Policies Index
 
+## Purpose
+
+Navigation index for all ai_ops policies in priority reading order. Policies define hard rules (MUST/MUST NOT)
+enforced by human judgment and code review.
+
 Policies are hard rules (MUST/MUST NOT) enforced by human judgment and code review.
 
 ## Reading Priority

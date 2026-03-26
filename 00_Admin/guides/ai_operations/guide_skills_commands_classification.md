@@ -19,6 +19,11 @@ related_refs:
 
 # Reference: Skills and Commands Classification
 
+## Purpose
+
+Classifies ai_ops workflows as commands, skills, or both. Compares ai_ops capabilities to native Claude Code
+and Codex features and identifies complementary native commands and potential overlap areas.
+
 ## Compacted Context
 
 ai_ops has 13 workflow files that can be deployed as Claude Code skills

@@ -139,7 +139,6 @@ rules:
         - scope
         - priority
         - created
-      forbid_completed: true
   - id: VS013
     enabled: true
     paths:
@@ -374,6 +373,15 @@ rules:
         Flag files with status:active in frontmatter that are missing a
         ## Purpose heading. Scope: non-trash .md files with YAML frontmatter.
         (fw_20260324_02)
+  - id: VS033
+    enabled: true
+    paths:
+      - 90_Sandbox/ai_workbooks/**/*.md
+    params:
+      severity: warning
+      description: >-
+        Flag workbook related_refs entries that use absolute paths or bare
+        sibling-repo names without ../ prefix.
 # Cross-Repo Validation Baseline (ROADMAP - not yet implemented)
 # These rules are planned for future cross-repo validation support.
 # The validator script does not currently parse this section.

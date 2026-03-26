@@ -12,6 +12,12 @@ related:
 
 # Guide: Naming Architecture
 
+## Purpose
+
+Defines the semantic naming model for ai_ops — what names mean and where naming decisions belong. Covers
+naming layers (platform, capability, artifact, output) and defers concrete syntax/prefix rules to
+`guide_naming_conventions.md`.
+
 **Scope:** Semantic naming model for ai_ops. This guide defines what names mean and where naming decisions live. It
 does not redefine file/folder syntax rules.
 

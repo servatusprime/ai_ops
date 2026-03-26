@@ -29,6 +29,12 @@ source_documents:
 
 # ai_ops: Design and Philosophy
 
+## Purpose
+
+Consolidated design philosophy and principles for ai_ops. Covers the central bet, axis systems, the Crew Model
+(lanes, riders, profiles, model tiers), verification approach, and design tests. Human-audience orientation
+document; for AI agent bootstrapping see AGENTS.md.
+
 ## Why ai_ops exists
 
 The first week with AI on a real project feels like magic. An agent

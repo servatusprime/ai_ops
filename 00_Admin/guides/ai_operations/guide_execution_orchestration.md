@@ -11,6 +11,11 @@ related:
 
 # Guide: Execution Orchestration
 
+## Purpose
+
+Advisory guide for how execution state, triggers, and handoffs are managed across workbooks and sessions.
+Defers to `spec_execution_orchestration.md` for normative requirements.
+
 This guide provides advisory context for how execution state, triggers, and handoffs are used across workbooks.
 
 ## 1) When to use execution state files

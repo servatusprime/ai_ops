@@ -23,6 +23,11 @@ related_refs:
 
 # Reference: Subagent Behavioral Slider Manifest
 
+## Purpose
+
+Canonical definition of the 8 behavioral axes used in rider archetype profiles. Each axis maps to prose
+generation targets in subagent system prompts and primary agent configuration.
+
 ## Compacted Context
 
 Rider archetypes define how ai_ops agents behave during governed work.

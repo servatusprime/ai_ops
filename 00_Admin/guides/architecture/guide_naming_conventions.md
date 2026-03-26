@@ -12,6 +12,12 @@ related:
 
 # Guide: Naming Conventions (ai_ops)
 
+## Purpose
+
+Defines concrete file and folder naming syntax rules for ai_ops: prefixes, casing, date formats, branch and
+commit conventions, and module-specific naming patterns. See `guide_naming_architecture.md` for the semantic
+layer above these syntax rules.
+
 ## 1) General Principles
 
 - Use **lowercase_with_underscores** for all files and folders.
@@ -66,8 +72,11 @@ note: 'Do not edit directly; update canonical source and re-copy.'
 | SQL                 | `sql_` (optional)           | `sql_01_schemas.sql`          |
 | Script (PowerShell) | `ps_`                       | `ps_backup_postgis.ps1`       |
 | Script (Python)     | `py_` (optional)            | `py_refresh_aoi.py`           |
+| Handoff artifact    | `handoff_`                  | `handoff_wb03_summary.md`     |
 
 > Module directories may add their own sub-prefixes; keep them consistent.
+>
+> Handoff artifact pattern: see `guide_workbooks.md §12.1` for naming rules and content contract.
 
 Runbook prefix note:
 

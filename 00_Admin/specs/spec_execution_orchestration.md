@@ -14,6 +14,11 @@ ai_generated: true
 <!-- markdownlint-disable-next-line MD025 -->
 # Execution Orchestration Spec
 
+## Purpose
+
+Defines the canonical lifecycle, triggers, and state tracking for workbook execution so AI agents can execute
+work consistently without inference.
+
 ## 1. Purpose
 
 Define the canonical lifecycle, triggers, and state tracking for workbook execution so AI agents can execute work

@@ -20,6 +20,11 @@ related:
 
 # Runbook: Repo Health Review
 
+## Purpose
+
+Reusable runbook for conducting a repo health review. Produces a structured health report covering
+validator output, frontmatter compliance, link integrity, and governance artifact coverage.
+
 > **Note**: This runbook is model-agnostic. Agents must have **write access** to create the health report (and should
 > only write the report artifact). For external repos, agents should adapt these checks to the target repo's own
 > stated conventions.
