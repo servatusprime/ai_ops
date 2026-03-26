@@ -25,7 +25,6 @@ import sys
 from pathlib import Path
 from typing import Any, Optional
 
-
 try:
     import yaml  # type: ignore
 except ImportError:

@@ -6,7 +6,7 @@ license: Apache-2.0
 last_updated: 2026-03-24
 owner: ai_ops
 related:
-- 01_Resources/templates/documents/PROMPT_SPEC_TEMPLATE.md
+- 01_Resources/templates/documents/prompt_spec_template.md
 - 00_Admin/guides/authoring/guide_markdown_authoring.md
 - 00_Admin/guides/authoring/guide_ai_assistants.md
 - 00_Admin/guides/architecture/guide_naming_conventions.md
@@ -36,7 +36,7 @@ does not cover spec authoring (see `guide_spec.md`).
 
 ## 3. Front Matter (Required)
 
-Use the template in `01_Resources/templates/documents/PROMPT_SPEC_TEMPLATE.md`. Include at least:
+Use the template in `01_Resources/templates/documents/prompt_spec_template.md`. Include at least:
 
 - `title`
 - `module` (when module-specific)
@@ -75,7 +75,7 @@ Use the addendum block in
 
 ## 6. Templates and References
 
-- Prompt template: `01_Resources/templates/documents/PROMPT_SPEC_TEMPLATE.md`
+- Prompt template: `01_Resources/templates/documents/prompt_spec_template.md`
 - Markdown authoring rules: `00_Admin/guides/authoring/guide_markdown_authoring.md`
 
 ## 7. Maintenance
