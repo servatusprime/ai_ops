@@ -1,11 +1,11 @@
 ---
 title: configs_readme
-version: 0.3.0
+version: 0.3.1
 status: active
 license: Apache-2.0
 owner: ai_ops
 created: 2026-02-25
-updated: 2026-02-28
+updated: 2026-04-12
 ---
 
 # Configs
@@ -42,6 +42,9 @@ In open-source mode, keep only placeholders/docs in `secrets/` (`README.md`,
 - Baseline setup contract version is defined in `00_Admin/configs/setup_contract.yaml`.
 - Local setup receipt is machine-local:
   `.ai_ops/local/setup/state.yaml`.
+- Installed local Python review-tooling packages should also be recorded in
+  `.ai_ops/local/setup/state.yaml` so machine-specific dependency receipts stay
+  in one place.
 - Repo-local operator overrides are machine-local:
   `.ai_ops/local/config.yaml`.
 - Compatibility reads may still check legacy paths during migration:

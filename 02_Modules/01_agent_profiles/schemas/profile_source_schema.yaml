@@ -74,5 +74,22 @@ definitions:
           type: integer
           minimum: 0
           maximum: 100
+      model:
+        type: string
+        description: >-
+          Model tier override for this subagent slot. Valid values: haiku, sonnet, opus,
+          inherit. Defaults to inherit (uses lead agent model family). Passed through
+          to agent file frontmatter by regenerate_profiles.py.
+      background:
+        type: boolean
+        description: >-
+          If true, this agent runs as a background agent. Defaults to false.
+          Passed through to agent file frontmatter by regenerate_profiles.py.
+      hooks:
+        type: object
+        description: >-
+          Per-agent hooks configuration. Structured as PreToolUse/PostToolUse
+          keys containing lists of hook definitions. Serialized as YAML into
+          agent file frontmatter by regenerate_profiles.py.
     additionalProperties: false
 additionalProperties: false

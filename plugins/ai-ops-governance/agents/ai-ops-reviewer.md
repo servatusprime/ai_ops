@@ -9,14 +9,22 @@ tools:
   - LS
   - Bash
 disallowedTools: null
-model: inherit
+model: opus
 permissionMode: plan
 maxTurns: 10
 skills:
   - crosscheck
   - health
 mcpServers: null
-hooks: null
+hooks:
+  PreToolUse:
+  - matcher: Edit|Write
+    hooks:
+    - type: command
+      command: "if ! echo \"$CLAUDE_TOOL_INPUT_FILE_PATH\" | grep -qE '(90_Sandbox|99_Trash|\\\
+        .ai_ops/local)'; then echo \"[REVIEWER GUARD] Write outside sandbox detected:\
+        \ $CLAUDE_TOOL_INPUT_FILE_PATH \u2014 reviewer lane is read/report-only except\
+        \ in sandbox.\"; fi; exit 0"
 memory: null
 ---
 
@@ -79,8 +87,8 @@ Best fit:
 <!-- Managed by ai_ops /profiles -->
 <!--
 Managed by ai_ops /profiles
-generated_at: 2026-03-23T18:23:26Z
-source_hash: 24265bdb323f
+generated_at: 2026-04-12T15:30:56Z
+source_hash: 5fb80f32367f
 role: ai-ops-reviewer
 profile_id: anchor
 crew_preset: default

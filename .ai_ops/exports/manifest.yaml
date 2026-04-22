@@ -20,7 +20,7 @@ manifest_output_count: 26
 workflows:
 - workflow: ai_ops_setup
   source: .ai_ops/workflows/ai_ops_setup.md
-  source_sha256_12: c967d6c73aa1
+  source_sha256_12: 0fd9bbe7e550
   description: Run ai_ops setup scripts for skills, commands, and supported instruction
     surfaces
   outputs:

@@ -183,6 +183,7 @@ class RoleSpec:
     best_fit: List[str] = field(default_factory=list)
     report_contract: List[str] = field(default_factory=list)
     model: str = "inherit"
+    background: bool = False
     disallowed_tools: List[str] = None  # type: ignore[assignment]
     mcp_servers: List[str] = None  # type: ignore[assignment]
     hooks: List[str] = None  # type: ignore[assignment]
@@ -702,6 +703,24 @@ def build_payload_contract(spec: RoleSpec) -> List[str]:
     ]
 
 
+def render_hooks_block(spec_hooks, slot_hooks) -> str:
+    """Render the hooks frontmatter block.
+
+    slot_hooks (from source YAML) takes precedence over spec_hooks (from RoleSpec).
+    slot_hooks is a Dict (structured YAML); spec_hooks is a List[str] (legacy simple list).
+    """
+    if slot_hooks and yaml is not None:
+        serialized = yaml.dump(slot_hooks, default_flow_style=False, sort_keys=False).strip()
+        indented = "\n".join(f"  {line}" if line else "" for line in serialized.splitlines())
+        return f"hooks:\n{indented}"
+    if slot_hooks:
+        return "hooks: null  # yaml module unavailable; structured hooks skipped"
+    if spec_hooks:
+        hooks_lines = "\n".join([f"  - {h}" for h in spec_hooks])
+        return f"hooks:\n{hooks_lines}"
+    return "hooks: null"
+
+
 def render_agent_file(
     role_name: str,
     spec: RoleSpec,
@@ -710,6 +729,9 @@ def render_agent_file(
     source_hash: str,
     generated_at: str,
     sliders: Dict[str, int],
+    slot_model: str = None,
+    slot_background: bool = False,
+    slot_hooks: Dict = None,
 ) -> str:
     max_turns = max_turns_from_autonomy(sliders["autonomy"], spec.default_max_turns)
     title = role_name
@@ -741,8 +763,10 @@ def render_agent_file(
     )
     body_lines = "\n".join(how_you_work_lines)
 
-    # Build optional field lines
-    model_line = f"model: {spec.model}" if spec.model else "model: inherit"
+    # Build optional field lines — slot_model/slot_background/slot_hooks from source YAML take precedence
+    effective_model = slot_model if slot_model else (spec.model or "inherit")
+    model_line = f"model: {effective_model}"
+    background_line = "background: true" if slot_background else ""
     if spec.disallowed_tools:
         disallowed_lines = "\n".join(
             [f"  - {t}" for t in spec.disallowed_tools]
@@ -755,11 +779,9 @@ def render_agent_file(
         mcp_block = f"mcpServers:\n{mcp_lines}"
     else:
         mcp_block = "mcpServers: null"
-    hooks_block = "hooks: null"
-    if spec.hooks:
-        hooks_lines = "\n".join([f"  - {h}" for h in spec.hooks])
-        hooks_block = f"hooks:\n{hooks_lines}"
+    hooks_block = render_hooks_block(spec.hooks, slot_hooks)
     memory_block = f"memory: {spec.memory}" if spec.memory else "memory: null"
+    background_block = f"\n{background_line}" if background_line else ""
 
     return f"""---
 name: {role_name}
@@ -768,7 +790,7 @@ description: >-
 tools:
 {tools_lines}
 {disallowed_block}
-{model_line}
+{model_line}{background_block}
 permissionMode: {spec.permission_mode}
 maxTurns: {max_turns}
 skills:
@@ -826,6 +848,9 @@ def render_native_agent_file(
     source_hash: str,
     generated_at: str,
     max_turns: int,
+    slot_model: str = None,
+    slot_background: bool = False,
+    slot_hooks: Dict = None,
 ) -> str:
     """Render a lean native Claude agent file (.claude/agents/).
 
@@ -834,11 +859,15 @@ def render_native_agent_file(
     """
     tools_lines = "\n".join([f"  - {tool}" for tool in spec.tools])
     skills_lines = "\n".join([f"  - {item}" for item in spec.skills])
-    model_line = f"model: {spec.model}" if spec.model else "model: inherit"
+    effective_model = slot_model if slot_model else (spec.model or "inherit")
+    model_line = f"model: {effective_model}"
+    background_line = "background: true" if slot_background else ""
+    background_block = f"\n{background_line}" if background_line else ""
     disallowed_block = "disallowedTools: null"
     if spec.disallowed_tools:
         disallowed_lines = "\n".join([f"  - {t}" for t in spec.disallowed_tools])
         disallowed_block = f"disallowedTools:\n{disallowed_lines}"
+    hooks_block = render_hooks_block(spec.hooks, slot_hooks)
 
     canonical_lane = spec.canonical_lanes[0] if spec.canonical_lanes else role_name
     is_read_only = spec.permission_mode == "plan"
@@ -857,13 +886,13 @@ description: >-
 tools:
 {tools_lines}
 {disallowed_block}
-{model_line}
+{model_line}{background_block}
 permissionMode: {spec.permission_mode}
 maxTurns: {max_turns}
 skills:
 {skills_lines}
 mcpServers: null
-hooks: null
+{hooks_block}
 memory: null
 ---
 
@@ -1235,6 +1264,9 @@ def main() -> int:
         if not isinstance(overrides, dict):
             print(f"[FAIL] overrides for {role_name} must be an object")
             return 1
+        slot_model = slot_data.get("model")  # e.g. "haiku", "sonnet", "opus", "inherit"
+        slot_background = bool(slot_data.get("background", False))
+        slot_hooks = slot_data.get("hooks")  # structured dict or None
 
         try:
             sliders, slot_warnings = merge_slider_values(role_name, rider, overrides)
@@ -1251,6 +1283,9 @@ def main() -> int:
             source_hash=source_hash,
             generated_at=generated_at,
             sliders=sliders,
+            slot_model=slot_model,
+            slot_background=slot_background,
+            slot_hooks=slot_hooks,
         )
         target = agents_dir / f"{role_name}.md"
         write_text(target, rendered, dry_run=args.dry_run)
@@ -1336,6 +1371,9 @@ def main() -> int:
         slot_data = profile["subagents"].get(role_name, {})
         rider = slot_data.get("rider", "")
         overrides = slot_data.get("overrides", {})
+        native_slot_model = slot_data.get("model")
+        native_slot_background = bool(slot_data.get("background", False))
+        native_slot_hooks = slot_data.get("hooks")
         try:
             sliders, _ = merge_slider_values(role_name, rider, overrides)
         except Exception:  # noqa: BLE001
@@ -1347,6 +1385,9 @@ def main() -> int:
             source_hash=source_hash,
             generated_at=generated_at,
             max_turns=mt,
+            slot_model=native_slot_model,
+            slot_background=native_slot_background,
+            slot_hooks=native_slot_hooks,
         )
         native_target = native_agents_dir / f"{role_name}.md"
         write_text(native_target, native_content, dry_run=args.dry_run)

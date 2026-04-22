@@ -224,6 +224,9 @@
 |   |   +-- README.md
 |   +-- templates/
 |       |-- README.md
+|       |-- config/
+|       |   |-- hooks_template.json
+|       |   +-- settings_global_template.json
 |       |-- documents/
 |       |   |-- env_vars_template.md
 |       |   |-- handoff_template.md
@@ -317,6 +320,7 @@
 |           +-- test_template_module_smoke.py
 |-- AGENTS.md
 |-- CHANGELOG.md
+|-- CLAUDE.md
 |-- CODEOWNERS
 |-- CODE_OF_CONDUCT.md
 |-- CONTRIBUTING.md

@@ -11,7 +11,7 @@ tools:
   - Edit
   - Bash
 disallowedTools: null
-model: inherit
+model: sonnet
 permissionMode: default
 maxTurns: 30
 skills:
@@ -82,8 +82,8 @@ Best fit:
 <!-- Managed by ai_ops /profiles -->
 <!--
 Managed by ai_ops /profiles
-generated_at: 2026-03-23T18:23:26Z
-source_hash: 24265bdb323f
+generated_at: 2026-04-12T15:30:56Z
+source_hash: 5fb80f32367f
 role: ai-ops-executor
 profile_id: forge
 crew_preset: default

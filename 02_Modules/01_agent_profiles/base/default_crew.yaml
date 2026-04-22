@@ -3,7 +3,7 @@
 # Run /profiles to modify and regenerate derivative files.
 
 schema_version: "0.1.0"
-generated_at: "2026-02-20T12:00:00Z"
+generated_at: "2026-04-12T00:00:00Z"
 
 crew_preset: "default"
 
@@ -14,27 +14,50 @@ lead_agent:
 subagents:
   ai-ops-planner:
     rider: "logike"
+    model: "sonnet"
+    background: false
     overrides: {}
   ai-ops-executor:
     rider: "forge"
+    model: "sonnet"
+    background: false
     overrides: {}
   ai-ops-builder:
     rider: "forge"
+    model: "sonnet"
+    background: false
     overrides:
       conservatism: 60
       initiative: 35
   ai-ops-reviewer:
     rider: "anchor"
+    model: "opus"
+    background: false
     overrides: {}
+    hooks:
+      PreToolUse:
+        - matcher: "Edit|Write"
+          hooks:
+            - type: command
+              command: >-
+                if ! echo "$CLAUDE_TOOL_INPUT_FILE_PATH" | grep -qE '(90_Sandbox|99_Trash|\.ai_ops/local)';
+                then echo "[REVIEWER GUARD] Write outside sandbox detected: $CLAUDE_TOOL_INPUT_FILE_PATH — reviewer lane is read/report-only except in sandbox.";
+                fi; exit 0
   ai-ops-researcher:
     rider: "scout"
+    model: "sonnet"
+    background: false
     overrides: {}
   ai-ops-closer:
     rider: "forge"
+    model: "sonnet"
+    background: false
     overrides:
       conservatism: 80
       initiative: 20
   ai-ops-linter:
     rider: "anchor"
+    model: "haiku"
+    background: true
     overrides:
       autonomy: 70

@@ -1,0 +1,43 @@
+{
+  "_comment": "ai_ops hooks template. Copy content into .claude/settings.local.json at workspace root. Adjust paths to match your workspace layout.",
+  "permissions": {
+    "allow": [
+      "Bash(bash .ai_ops/setup/*.sh:*)",
+      "Bash(bash ai_ops/.ai_ops/setup/*.sh:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT_FILE_PATH\" | grep -qE '\\.md$'; then npx --yes markdownlint-cli2 \"$CLAUDE_TOOL_INPUT_FILE_PATH\" 2>&1; fi; exit 0"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT_FILE_PATH\" | grep -qE '(00_Admin/(policies|specs|configs)/|AGENTS\\.md|CONTRIBUTING\\.md|\\.ai_ops/workflows/)'; then echo \"[GOVERNANCE GUARD] Level 4 path detected: $CLAUDE_TOOL_INPUT_FILE_PATH — verify explicit L4 approval exists before proceeding.\"; fi; exit 0"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"{\\\"additionalContext\\\": \\\"Branch: $(git branch --show-current 2>/dev/null || echo none). Active artifacts: $(grep -c 'type:' ai_ops/.ai_ops/local/work_state.yaml 2>/dev/null || echo 0) in work_state.yaml.\\\"}\""
+          }
+        ]
+      }
+    ]
+  }
+}

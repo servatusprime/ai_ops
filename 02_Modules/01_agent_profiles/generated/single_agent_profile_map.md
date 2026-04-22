@@ -2,10 +2,10 @@
 title: Single-Agent Profile Map
 version: 0.1.0
 status: active
-last_updated: 2026-03-23
+last_updated: 2026-04-12
 owner: ai_ops
-generated_at: 2026-03-23T18:23:26Z
-source_hash: 24265bdb323f
+generated_at: 2026-04-12T15:30:56Z
+source_hash: 5fb80f32367f
 ---
 
 <!-- markdownlint-disable MD013 MD025 -->
@@ -18,8 +18,8 @@ subagent delegation is not available.
 ## Source Summary
 
 - crew_preset: `default`
-- generated_at: `2026-03-23T18:23:26Z`
-- source_hash: `24265bdb323f`
+- generated_at: `2026-04-12T15:30:56Z`
+- source_hash: `5fb80f32367f`
 
 ## Canonical Lane Mapping
 

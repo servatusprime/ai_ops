@@ -282,6 +282,22 @@ contract.
 - "Run `/customize` to declare available models and default reasoning tier in `.ai_ops/local/config.yaml`."
 - "Run `/profiles` if you want behavior tuning per model family after declaration."
 
+2. Recommend hooks configuration (structural governance enforcement):
+
+- "Copy the hooks template from `01_Resources/templates/config/hooks_template.json`
+  into `.claude/settings.local.json` at your workspace root. Hooks provide
+  structural (non-LLM) enforcement of governance rules: PostToolUse markdown lint,
+  PreToolUse Level 4 path guard, and SessionStart context injection."
+
+3. New machine onboarding — global `~/.claude/` configuration:
+
+- "Apply the global settings template from `01_Resources/templates/config/settings_global_template.json`
+  to `~/.claude/settings.json`. This replaces accumulated one-off rules with
+  category-level permissions and a deny list for sensitive paths."
+- "Create `~/.claude/CLAUDE.md` with user preferences (language, shell, commit gate rules)."
+- "Note: CLAUDE.md files at workspace root, `ai_ops/` root, and governed repo roots are
+  committed artifacts installed at clone time. They do not require setup provisioning."
+
 ## No-Install Fallback
 
 If wrappers are not installed (or user selects `none`), commands remain usable by invoking workflow source files
@@ -307,6 +323,9 @@ providing ai_ops-installed routing or runtime-enforced delegation guardrails.
 - Or instructions-only path confirmed when install scripts are not required.
 - Short confirmation of install targets.
 - Post-setup recommendation to declare model capabilities in `/customize`.
+- Post-setup recommendation to configure hooks from `01_Resources/templates/config/hooks_template.json`.
+- New machine onboarding note: apply global settings and `~/.claude/CLAUDE.md` from templates.
+- Note that CLAUDE.md files at repo roots are committed artifacts — no setup provisioning needed.
 - Confirmation of governed validation policy written to `.ai_ops/local/config.yaml`.
 
 ## Risks and Limits
