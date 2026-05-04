@@ -64,6 +64,11 @@ Thrift interpretation:
 > avoidable read hops, retracing, and other internal cycle burden that slow
 > cold-start execution or review.
 
+For quantitative cost governance levers (token budgets, model routing preferences,
+alert thresholds), see `00_Admin/specs/spec_cost_governance.md`. The Thrift axis is
+the qualitative goal; that spec defines the optional machine-readable contract agents
+use to self-govern their cost footprint.
+
 **Local vs Global:**
 
 - **Local:** Apply to individual artifacts (each file, each section)

@@ -371,6 +371,130 @@ entries:
       note: Policy discussion, not a build task. Deferred from WB4 scope.
     notes: Not a build task. Requires requestor decision on scoring contract value.
 
+  - id: fw_20260423_01
+    title: G-5 Lane-to-Platform Mapping Spec
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wb_platform_governance_uplift_01_2026-04-12/wb_platform_governance_uplift_01.md
+    proposed_workbook: null
+    scope: >-
+      Author spec_platform_lane_mapping.md in 00_Admin/specs/. Maps each of the 8
+      canonical lanes (Coordinator, Planner, Researcher, Executor, Builder, Linter,
+      Reviewer, Closer) to concrete platform instantiation guidance for OpenClaw,
+      Dispatch/Managed Agents, and Claude Code. Includes a mapping table (8 lanes x 3
+      platforms), per-platform notes, and Quick Reference. Governance intent only —
+      not a runtime router; non-harness boundary applies. See Phase 7 in source workbook
+      for full spec structure and mapping table draft.
+    priority: low
+    benefit: medium
+    effort: s
+    readiness: ready
+    risk_if_deferred: low
+    activation_trigger: >-
+      Platform adopter requests lane-to-platform guidance, or a second platform
+      integration is underway and the mapping adds material value.
+    next_review: 2026-07-01
+    status: planned
+    owner: ai_ops
+    created: 2026-04-23
+    compacted_context:
+      source: >-
+        wb_platform_governance_uplift_01 Phase 7 (deferred per D-E=B, 2026-04-23);
+        P3 priority in Cordum analysis
+      note: >-
+        Full spec structure and mapping table content is already drafted in the source
+        workbook Phase 7 tasks. Ready to execute when activated. Non-harness boundary
+        must be verified: this is a conceptual mapping doc, not a runtime router.
+    notes: >-
+      Deferred to keep wb_platform_governance_uplift_01 focused on P1/P2 governance
+      core (PDR, async approval, lifecycle, cost governance). No urgency.
+
+  - id: fw_20260423_02
+    title: G-6 Decision Card Template and Pointer Additions
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wb_platform_governance_uplift_01_2026-04-12/wb_platform_governance_uplift_01.md
+    proposed_workbook: null
+    scope: >-
+      Author decision_card_template.md in 01_Resources/templates/documents/. Decision Card
+      is a lightweight template for capturing a single governance decision: context, options
+      considered, resolution, and rationale. Required pointer additions at 6 locations:
+      spec_policy_decision_record.md (pointer to template), spec_async_approval_contract.md
+      (pointer to template), spec_governance_lifecycle.md (pointer to template),
+      guide_ai_operations_stack.md (pointer to template), AGENTS.md Phase 9.7 (pointer to
+      template), and 01_Resources/templates/README.md (catalog entry). See Phase 8 in source
+      workbook for full template structure and pointer location details.
+    priority: low
+    benefit: low
+    effort: s
+    readiness: ready
+    risk_if_deferred: low
+    activation_trigger: >-
+      Decision-card pattern is observed being used informally (inline YAML in workbooks)
+      and a reusable template would reduce friction, or first external contributor requests
+      governance decision documentation guidance.
+    next_review: 2026-07-01
+    status: planned
+    owner: ai_ops
+    created: 2026-04-23
+    compacted_context:
+      source: >-
+        wb_platform_governance_uplift_01 Phase 8 (deferred per D-E=B, 2026-04-23);
+        P4 priority in Cordum analysis; D-D resolved as template-only + 6 pointers
+      note: >-
+        Template structure and all 6 pointer locations are already specified in the source
+        workbook Phase 8 tasks. Ready to execute when activated. Phase 9.7 (AGENTS.md
+        Decision Card pointer) is also deferred and must be included in the same execution.
+    notes: >-
+      Deferred to keep wb_platform_governance_uplift_01 focused on P1/P2 governance
+      core. P4 priority; execute when the pattern is actively needed.
+
+  - id: fw_20260504_01
+    title: Subagent Budget Governance in Conductor Protocols
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: null
+    proposed_workbook: null
+    scope: >-
+      Extend Conductor coordination protocols to include cost_governance budget
+      assignment for spawned subagents. When a lead agent spawns subagents, it
+      should be able to pass a workpacket_token_budget derived from the parent
+      session budget. Covers: protocol for budget inheritance/delegation, how
+      subagent PDR emissions surface budget warnings back to the Coordinator,
+      and whether budget-exceeded PARK from a subagent halts the parent or only
+      that subagent lane. May require a new spec section or Conductor runbook
+      addition. Frontier models (high-tier) SHOULD set meaningful subagent
+      budgets when spawning execution lanes.
+    priority: medium
+    benefit: medium
+    effort: m
+    readiness: seed
+    risk_if_deferred: low
+    activation_trigger: >-
+      Conductor protocol is actively used for multi-agent coordination and
+      subagent cost overruns are observed, or cost_governance adoption in
+      run-family artifacts reaches sufficient maturity to warrant delegation rules.
+    next_review: 2026-08-01
+    status: planned
+    owner: ai_ops
+    created: 2026-05-04
+    compacted_context:
+      source: >-
+        Identified during wb_platform_governance_uplift_01 cost_governance rollout
+        review (2026-05-04); operator insight on subagent budgeting as intuitive
+        governance extension
+      note: >-
+        Operator framing: frontier models partner on run-family artifacts and can
+        set meaningful values; self-imposed limits on workbooks ("fox in the hen
+        house") are acceptable and may be a good governance pattern. Subagent
+        budget delegation is the natural next step once parent-level budgets are
+        established.
+    notes: >-
+      Seed-level. No urgency. Activate when Conductor protocol sees active
+      multi-agent use with cost governance in place.
+
   - id: fw_20260319_07
     title: Git-status discovery friction
     domain: tooling

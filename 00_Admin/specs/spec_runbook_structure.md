@@ -4,9 +4,9 @@ id: spec_runbook_structure
 module: admin
 status: active
 license: Apache-2.0
-version: 0.1.1
+version: 0.1.2
 created: 2026-01-31
-last_updated: 2026-03-14
+last_updated: 2026-04-23
 owner: ai_ops
 ai_generated: true
 ---
@@ -85,6 +85,10 @@ When runbooks are frequently executed together, group them in a runbundle:
   - In **active runbooks**: provider-specific names are allowed
     (e.g., `"claude-sonnet-4.6:high"`).
   - See `00_Admin/guides/authoring/guide_runbooks.md` for authoring guidance.
+- `cost_governance:` (optional): quantitative cost governance levers for token budgets,
+  model routing preferences, and alert thresholds. Applies to runbooks and runbundles.
+  Absence means all values are `null` — agents apply thrift judgment without a hard
+  budget constraint. See `00_Admin/specs/spec_cost_governance.md` for the full schema.
 
 ## 8. Related References
 

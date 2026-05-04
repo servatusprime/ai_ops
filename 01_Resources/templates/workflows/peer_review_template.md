@@ -166,6 +166,8 @@ Use this section for `bottom-up` and `hybrid` reviews. Keep it concise.
 - [ ] Authority gates are explicit and referenced from canonical upstream sources.
 - [ ] No downstream artifacts introduce governance rules without upstream backing.
 - [ ] Enforcement surfaces (validators, linters) are aligned with upstream rule sources.
+- [ ] Ledger Candidate Audit: does this work introduce any governance decisions that are irreversible,
+  cross-cutting, or non-obvious? If yes, raise as a Ledger Candidate in the Findings section.
 
 ### Streamlining Pass
 

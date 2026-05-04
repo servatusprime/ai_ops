@@ -186,6 +186,10 @@ Reference key normalization:
 - `related_refs` remains validator-compatible for existing workbook surfaces
   during transition.
 
+Cost governance: the `cost_governance:` field is optional for all artifact families in
+the table above. All values default to `null` — agents apply thrift judgment without a
+hard budget constraint. See `00_Admin/specs/spec_cost_governance.md` for the full schema.
+
 ## Execution Topology Placement
 
 Execution-topology metadata is part of the canonical orchestration contract.

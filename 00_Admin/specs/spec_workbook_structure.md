@@ -4,9 +4,9 @@ id: spec_workbook_structure
 module: admin
 status: active
 license: Apache-2.0
-version: 0.2.4
+version: 0.2.5
 created: 2026-01-31
-updated: 2026-03-24
+updated: 2026-04-23
 owner: ai_ops
 ai_generated: true
 related:
@@ -118,6 +118,11 @@ When a workbundle is closed, a `work_summary.md` MUST be added to the workbundle
     (e.g., `"claude-sonnet-4.6:high"`).
   - In **specs and guides**: document both levels; abstract tiers for templates,
     concrete names allowed in artifact examples.
+- `cost_governance:` (optional): quantitative cost governance levers for token budgets,
+  model routing preferences, and alert thresholds. Applies to workbooks, workbundles,
+  and workprograms. Absence means all values are `null` — agents apply thrift judgment
+  without a hard budget constraint.
+  See `00_Admin/specs/spec_cost_governance.md` for the full schema.
 
 ## 8. Related References
 

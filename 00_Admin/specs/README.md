@@ -4,7 +4,7 @@ version: 1.2.0
 status: active
 license: Apache-2.0
 created: 2025-12-19
-updated: 2026-02-26
+updated: 2026-04-23
 owner: ai_ops
 description: Canonical list of specs in priority reading order
 ---
@@ -40,6 +40,13 @@ Read specs in this order:
 1. `spec_workbundle_placement_suggestion.md` - Placement scoring and decision-echo contract
 1. `spec_infrastructure_change_validation_gate.md` - Infrastructure-touching validation gate
 1. `spec_context_routing_runtime.md` - Target-state runtime design for context_routing.yaml
+
+### Priority 4: Output Contract Layer
+
+1. `spec_policy_decision_record.md` - PDR schema: structured governance output agents emit at L2+ authority evaluations
+1. `spec_async_approval_contract.md` - Async approval contract: PARK flow and CSCC context snapshot for L3/L4 gates
+1. `spec_governance_lifecycle.md` - Governance lifecycle map (Before/During/Across) and circuit breaker conditions
+1. `spec_cost_governance.md` - Quantitative cost governance: token budgets, model routing preferences, and alert thresholds
 
 ## Deprecated Specs (Archived to 99_Trash)
 

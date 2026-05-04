@@ -179,10 +179,14 @@
 |   |   +-- validate_workflow_frontmatter.py
 |   |-- specs/
 |   |   |-- README.md
+|   |   |-- spec_async_approval_contract.md
 |   |   |-- spec_context_routing_runtime.md
+|   |   |-- spec_cost_governance.md
 |   |   |-- spec_execution_orchestration.md
 |   |   |-- spec_governance_enforcement.md
+|   |   |-- spec_governance_lifecycle.md
 |   |   |-- spec_infrastructure_change_validation_gate.md
+|   |   |-- spec_policy_decision_record.md
 |   |   |-- spec_repo_metadata_standard.md
 |   |   |-- spec_repository_indices.md
 |   |   |-- spec_runbook_structure.md

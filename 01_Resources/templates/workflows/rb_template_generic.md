@@ -29,6 +29,15 @@ description: >
 related:
   - 00_Admin/guides/authoring/guide_runbooks.md
   - 00_Admin/specs/spec_runbook_structure.md
+cost_governance:  # Work-family: MAY self-impose limits. Run-family: SHOULD populate. null = thrift judgment. See spec_cost_governance.md.
+  session_token_budget: null
+  workpacket_token_budget: null
+  model_routing:
+    planning: null
+    execution: null
+    review: null
+  alert_threshold_pct: 80
+  exceeded_action: PARK
 ---
 
 <!-- markdownlint-disable MD013 MD033 -->

@@ -87,7 +87,14 @@ Runbundle grouping (optional):
 | Location | `run_program_<id>/run_bundles/rnb_<bundle_name>/` | Dedicated program folder |
 | Example | Maintenance runbooks grouped together | Full deployment sequence |
 
+## Cost Governance
+
+The `cost_governance:` field is optional frontmatter available in all execution artifact
+types including runbundles and runprograms. Absence means thrift judgment applies without
+a hard budget constraint. See `00_Admin/specs/spec_cost_governance.md` for the full schema.
+
 ## References
 
 - `00_Admin/guides/authoring/guide_spec.md`
 - `00_Admin/guides/ai_operations/guide_execution_spines.md`
+- `00_Admin/specs/spec_cost_governance.md`

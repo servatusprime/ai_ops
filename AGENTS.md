@@ -144,6 +144,7 @@ Before proposing actions, verify:
 - [ ] If Level 4, I documented rationale and am waiting for explicit approval.
 - [ ] I am not presenting multi-step implementation as ad-hoc "quick wins".
 - [ ] I am not prescribing command sequences for workbook-sized work.
+- [ ] If L2+, I emitted a `policy_decision:` PDR (see `00_Admin/specs/spec_policy_decision_record.md`).
 
 ## Response Thrift
 
@@ -154,6 +155,7 @@ Keep outputs efficient without sacrificing correctness:
 - Optimize for clarity and actionability
 - Do not increase internal cycle burden in touched docs without explicit
   justification and landing-zone mapping
+- Quantitative cost governance (token budgets, model routing): `00_Admin/specs/spec_cost_governance.md`
 
 ## Thriftiness Pass
 
@@ -190,6 +192,10 @@ END LOOP
 
 **Never report "done" after a single pass.** The first pass often misses edge cases.
 
+**Circuit Breakers:** Self-interrupt conditions for unattended execution (token budget exceeded,
+scope creep, authority escalation, stale context, consecutive tool failures) — PARK and emit PDR.
+See `00_Admin/specs/spec_governance_lifecycle.md`.
+
 ---
 
 ## Approval Scope Rule
@@ -199,6 +205,10 @@ all actions within approved scope. If scope changes, stop and ask.
 
 Workbook creation approval does not authorize workbook execution. Treat these
 as separate gates.
+
+When an L3/L4 gate is reached and the operator is not synchronously present, use the
+async approval contract (PARK): save context, emit REQUIRE_APPROVAL PDR, resume when
+approved. See `00_Admin/specs/spec_async_approval_contract.md`.
 
 ## Pre-Authorized Actions
 
@@ -856,7 +866,7 @@ If command folders are not installed for your tool, read `.ai_ops/workflows/<com
 
 ### Governance
 
-- [Specs](00_Admin/specs/README.md) - formal requirements and validation schemas
+- [Specs](00_Admin/specs/README.md) - formal requirements and validation schemas; read in priority order per README
 - [Policies](00_Admin/policies/README.md) - hard rules and constraints
 - [Runbooks](00_Admin/runbooks/README.md) - operational procedures
 - [CONTRIBUTING.md](CONTRIBUTING.md) - contributor and PR policy

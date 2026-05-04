@@ -21,6 +21,15 @@ delegation_policy: explicit_only  # explicit_only | lane_default
 convergence_profile: iterative_convergence_standard
 parallel_coordination_id: null  # Set when sibling spines run concurrently
 description: Template for canonical program-level execution spine artifacts.
+cost_governance:  # Work-family: MAY self-impose limits. Run-family: SHOULD populate. null = thrift judgment. See spec_cost_governance.md.
+  session_token_budget: null
+  workpacket_token_budget: null
+  model_routing:
+    planning: null
+    execution: null
+    review: null
+  alert_threshold_pct: 80
+  exceeded_action: PARK
 ---
 
 # Execution Spine: <program_title>

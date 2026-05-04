@@ -122,7 +122,14 @@ owner: ai_ops
 ## Status and last run notes
 ```
 
+## Cost Governance
+
+The `cost_governance:` field is optional frontmatter available in all execution artifact
+types including execution spines. Absence means thrift judgment applies without a hard
+budget constraint. See `00_Admin/specs/spec_cost_governance.md` for the full schema.
+
 ## References
 
 - `00_Admin/guides/authoring/guide_spec.md`
 - `00_Admin/specs/spec_execution_orchestration.md`
+- `00_Admin/specs/spec_cost_governance.md`
