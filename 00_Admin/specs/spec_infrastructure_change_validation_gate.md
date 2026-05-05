@@ -6,10 +6,11 @@ version: 0.2.0
 status: active
 license: Apache-2.0
 created: 2026-02-24
-updated: 2026-03-04
+updated: 2026-05-05
 owner: ai_ops
 owners: ["ai_ops"]
 ai_generated: true
+spec_archetype: governance_spec
 description: Canonical validation gate contract for infrastructure-touching changes.
 ---
 
@@ -19,6 +20,11 @@ description: Canonical validation gate contract for infrastructure-touching chan
 
 Standardize validation requirements for infrastructure-touching changes
 (workflows, validators, scripts, routing configs, manifest schemas).
+
+## Scope
+
+Applies to workbook, runbook, workflow, script, validator, config, and manifest-schema changes
+that touch ai_ops infrastructure or governed-repo infrastructure managed by ai_ops.
 
 ## Trigger Conditions
 
@@ -58,3 +64,8 @@ Run this gate when a change touches one or more of:
 - no new high-severity validation regressions
 - all required commands executed or explicitly blocked with workaround rationale
 - rollback action documented
+
+## Change Log
+
+- 0.2.0 (2026-05-05): Metadata normalized to declare spec_archetype.
+  Existing version history remains in Git history and prior frontmatter dates.

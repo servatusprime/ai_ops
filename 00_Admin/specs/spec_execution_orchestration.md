@@ -6,9 +6,10 @@ status: active
 license: Apache-2.0
 version: 0.3.1
 created: 2026-01-15
-updated: 2026-03-04
+updated: 2026-05-05
 owner: ai_ops
 ai_generated: true
+spec_archetype: governance_spec
 ---
 
 <!-- markdownlint-disable-next-line MD025 -->
@@ -175,3 +176,8 @@ Expected checks:
 - blocker type is explicitly classified,
 - archive-first fallback is attempted when policy allows,
 - unresolved blockers include explicit manual follow-up.
+
+## Change Log
+
+- 0.3.1 (2026-05-05): Metadata normalized to declare spec_archetype.
+  Existing version history remains in Git history and prior frontmatter dates.

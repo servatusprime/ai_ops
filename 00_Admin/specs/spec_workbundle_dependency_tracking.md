@@ -6,10 +6,11 @@ version: 0.2.0
 status: active
 license: Apache-2.0
 created: 2026-02-24
-updated: 2026-03-04
+updated: 2026-05-05
 owner: ai_ops
 owners: ["ai_ops"]
 ai_generated: true
+spec_archetype: governance_spec
 description: Canonical dependency declaration contract for workbook and infrastructure impact tracking.
 ---
 
@@ -67,3 +68,8 @@ affects:
 - Workbook templates SHOULD include `affects` by default.
 - `/closeout` SHOULD use `depends_on` + `affects` metadata during boundary checks.
 - Schema enforcement MAY be staged; contract publication does not require immediate validator hard-fail.
+
+## Change Log
+
+- 0.2.0 (2026-05-05): Metadata normalized to declare spec_archetype.
+  Existing version history remains in Git history and prior frontmatter dates.

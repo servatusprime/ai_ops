@@ -7,8 +7,9 @@ status: active
 created: 2026-02-20
 owner: ai_ops
 license: Apache-2.0
-updated: 2026-03-04
+updated: 2026-05-05
 ai_generated: true
+spec_archetype: governance_spec
 description: >
   Defines the 7 lane-aligned subagent files for the ai_ops governance
   plugin. Specifies frontmatter fields, body structure, tool permissions,
@@ -43,7 +44,7 @@ field and naming conventions.
 
 **Topology vs Lane:** Each subagent file defines a *lane* (behavioral contract).
 The *topology* -- how many agents, how connected, what surface -- is a separate
-concern declared in the execution artifact. See `AGENTS.md §Topology and Lane
+concern declared in the execution artifact. See `AGENTS.md Section Topology and Lane
 Concepts` for the canonical distinction.
 
 Rider archetype profiles affect the markdown body (prose behavioral
@@ -605,3 +606,8 @@ not actively used in prose generation for the subagent body.
 The current stub `agents/README.md` in the plugin skeleton (created by
 WB-01) should be replaced with content reflecting the 7 lane-aligned subagents defined
 in this specification. See WB-03 revised for the implementation task.
+
+## Change Log
+
+- 0.1.1 (2026-05-05): Metadata normalized to declare spec_archetype.
+  Existing version history remains in Git history and prior frontmatter dates.

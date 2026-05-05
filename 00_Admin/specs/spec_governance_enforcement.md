@@ -6,9 +6,10 @@ status: active
 license: Apache-2.0
 version: 0.2.0
 created: 2026-02-14
-updated: 2026-03-24
+updated: 2026-05-05
 owner: ai_ops
 ai_generated: true
+spec_archetype: governance_spec
 ---
 
 <!-- markdownlint-disable-next-line MD025 -->
@@ -51,3 +52,8 @@ evaluating whether a rule has sufficient enforcement backing.
 - Record rationale: why enforcement is deferred
 - Set review trigger: milestone or timeframe to revisit
 - Document manual fallback: how to check compliance without automation
+
+## Change Log
+
+- 0.2.0 (2026-05-05): Metadata normalized to declare spec_archetype.
+  Existing version history remains in Git history and prior frontmatter dates.

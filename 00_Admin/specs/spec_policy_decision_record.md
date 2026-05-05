@@ -6,9 +6,10 @@ status: active
 license: Apache-2.0
 version: 1.0.1
 created: 2026-04-23
-updated: 2026-05-04
+updated: 2026-05-05
 owner: ai_ops
 ai_generated: true
+spec_archetype: output_contract_spec
 related:
   - 00_Admin/specs/spec_async_approval_contract.md
   - 00_Admin/specs/spec_governance_lifecycle.md
@@ -67,10 +68,10 @@ and MAY be empty for all other decision values.
 
 | Value | Meaning | When to use |
 | --- | --- | --- |
-| `ALLOW` | Action is within the agent's current authority | `authority_held` ≥ `authority_required` |
+| `ALLOW` | Action is within the agent's current authority | `authority_held` >= `authority_required` |
 | `DENY` | Action is explicitly forbidden | Would violate a policy or boundary regardless of authority level |
 | `REQUIRE_APPROVAL` | Action requires human approval before proceeding | `authority_held` < `authority_required` (L3/L4 gate) |
-| `ALLOW_WITH_CONSTRAINTS` | Action is permitted under specific conditions | `authority_held` ≥ `authority_required` but scope must be narrowed |
+| `ALLOW_WITH_CONSTRAINTS` | Action is permitted under specific conditions | `authority_held` >= `authority_required` but scope must be narrowed |
 
 ## 3. Emission Conditions
 
@@ -87,7 +88,7 @@ Agents SHOULD emit a PDR when:
 
 Agents MAY omit a PDR for:
 
-- L0–L1 pre-authorized routine actions where no governance question arises
+- L0-L1 pre-authorized routine actions where no governance question arises
 
 ## 4. Platform Consumption Note
 
@@ -98,9 +99,9 @@ decide how to act on the output:
 - **OpenClaw:** Gateway reads PDR from agent output; routes to human notification on `REQUIRE_APPROVAL`.
 - **Dispatch/Managed Agents:** Session log captures PDR; harness may pause session on `REQUIRE_APPROVAL`.
 
-ai_ops does not enforce PDR handling. The PDR is consumed as structured output — not a wire protocol.
+ai_ops does not enforce PDR handling. The PDR is consumed as structured output, not a wire protocol.
 
-**Recording scope:** Individual PDR emissions are workbook-level records — write them to the
+**Recording scope:** Individual PDR emissions are workbook-level records; write them to the
 terminal or workbook evidence section. The decision ledger (`00_Admin/decisions/decision_ledger.md`)
 is reserved for cross-cutting governance decisions, not routine PDR emissions.
 
@@ -122,7 +123,7 @@ policy_decision:
   constraints: []
   rationale: "L1 pre-authorized scope; workbook status update is explicitly permitted."
   evidence_refs:
-    - AGENTS.md#authority-levels
+    - AGENTS.md#authority-quick-reference
   emitted_at: "2026-04-23T10:00:00-04:00"
   emitted_by: "Executor"
 ```
@@ -138,8 +139,8 @@ policy_decision:
   constraints: []
   rationale: "New canonical spec requires L4 human approval per AGENTS.md authority gates."
   evidence_refs:
-    - AGENTS.md#authority-levels
-    - 00_Admin/policies/policy_authority_levels.md
+    - AGENTS.md#authority-quick-reference
+    - AGENTS.md#path-based-authority-guard-pre-write
   emitted_at: "2026-04-23T10:05:00-04:00"
   emitted_by: "Coordinator"
 ```
@@ -153,16 +154,16 @@ policy_decision:
   authority_held: 4
   decision: ALLOW_WITH_CONSTRAINTS
   constraints:
-    - "Additions only — no existing Thrift rules may be removed or weakened"
+    - "Additions only; no existing Thrift rules may be removed or weakened"
     - "Add pointer to spec_cost_governance.md; do not inline the schema"
   rationale: "L4 approval covers guide extension; additive-only constraint preserves existing canon."
   evidence_refs:
-    - wb_platform_governance_uplift_01.md#phase-2-gate
+    - 90_Sandbox/ai_workbooks/<active_workbook_packet>/<active_workbook>.md#phase-2-gate
   emitted_at: "2026-04-23T10:10:00-04:00"
   emitted_by: "Coordinator"
 ```
 
 ## 6. Change Log
 
-- 1.0.1 (2026-05-04): §4 — added Recording scope note (workbook-level, not decision ledger) and Frontmatter alignment note (authority_held/emitted_by derivation guidance).
+- 1.0.1 (2026-05-04): Section 4 - added Recording scope note (workbook-level, not decision ledger) and Frontmatter alignment note (authority_held/emitted_by derivation guidance).
 - 1.0.0 (2026-04-23): Initial spec authored per `wb_platform_governance_uplift_01` Phase 3.

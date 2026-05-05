@@ -6,9 +6,10 @@ status: active
 license: Apache-2.0
 version: 0.1.4
 created: 2025-12-02
-updated: 2026-03-14
+updated: 2026-05-05
 owner: ai_ops
 ai_generated: true
+spec_archetype: governance_spec
 ---
 <!-- markdownlint-disable-next-line MD025 MD041 -->
 # Repo Metadata Standard
@@ -62,7 +63,7 @@ Quoting and brackets are not required for simple scalar owner values.
 - Required fields: `title`, `id`, `status`, `version`, `created`, `ai_role`, `description`
 - Optional: `replaces` (list of workbook IDs superseded), `role_assignments` (per-role
   model/tier overrides), `execution_mode` (e.g., `sequential`), `model_profile`
-  (overall model tier or provider-specific name — see note below)
+  (overall model tier or provider-specific name - see note below)
 
 > **`model_profile` format:** Templates use generic tier descriptors only
 > (e.g., `"high"`, `"reasoning:high | standard:medium"`). Active workbooks and
@@ -149,3 +150,8 @@ license fields are contract metadata, not a substitute legal file.
 
 `00_Admin/scripts/validate_repo_precommit.ps1` may warn or fail when required fields are missing on `wb_*.md`,
 `guide_*.md`, or `spec_*.md`. This spec is the canonical reference for those checks.
+
+## Change Log
+
+- 0.1.4 (2026-05-05): Metadata normalized to declare spec_archetype.
+  Existing version history remains in Git history and prior frontmatter dates.

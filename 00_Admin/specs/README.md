@@ -1,10 +1,10 @@
 ---
 title: Specs Index
-version: 1.2.0
+version: 1.3.0
 status: active
 license: Apache-2.0
 created: 2025-12-19
-updated: 2026-04-23
+updated: 2026-05-05
 owner: ai_ops
 description: Canonical list of specs in priority reading order
 ---
@@ -73,6 +73,18 @@ All specs:
 - May or may not be validated
 - Are versioned and stable
 - Change via governance process
+
+## Spec Archetypes
+
+ai_ops uses four spec archetypes. The archetype determines structure; every spec still follows
+the common minimum authoring rules in `00_Admin/guides/authoring/guide_spec.md`.
+
+| Archetype | Use When | Examples |
+| --- | --- | --- |
+| `module_spec` | Module, feature, data model, API, or implementation surface | module specs in governed repos |
+| `governance_spec` | Repository rules, workflow structure, authority behavior, lifecycle rules, or artifact structure | `spec_workbook_structure.md`, `spec_governance_enforcement.md` |
+| `output_contract_spec` | Structured agent output, schema blocks, emission rules, or consumption rules | `spec_policy_decision_record.md`, `spec_async_approval_contract.md` |
+| `runtime_design_spec` | Target-state runtime behavior that is not fully enforceable yet | `spec_context_routing_runtime.md` |
 
 ## Specs vs Contracts vs Policies
 

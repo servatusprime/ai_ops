@@ -53,7 +53,7 @@ This ledger records irreversible, cross-cutting governance decisions. Entries ar
 - **Native-Session vs Governed-Work Boundary** - Native platform commands manage
   session/runtime concerns, while ai_ops commands govern scope, authority,
   verification, and artifact lifecycle.
-- **Mandatory Policy Decision Record (PDR) at L2+** — At L2+ authority evaluations,
+- **Mandatory Policy Decision Record (PDR) at L2+** - At L2+ authority evaluations,
   agents emit a structured `policy_decision:` YAML block per
   `00_Admin/specs/spec_policy_decision_record.md`, making governance decisions observable
   and auditable. Formalizes the implicit decision requirement of the Explicit Authority

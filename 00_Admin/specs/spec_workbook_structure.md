@@ -6,9 +6,10 @@ status: active
 license: Apache-2.0
 version: 0.2.5
 created: 2026-01-31
-updated: 2026-04-23
+updated: 2026-05-05
 owner: ai_ops
 ai_generated: true
+spec_archetype: governance_spec
 related:
   - ../guides/authoring/guide_workbooks.md
   - ../../01_Resources/templates/workflows/wb_template_generic.md
@@ -53,7 +54,7 @@ If a workprogram exists, it MUST include:
 
 When a workbook edits governance files that will be consumed during the same
 execution session (dogfood pattern), the executing agent MUST record in Phase 0
-which file version is authoritative — working-tree or last committed.
+which file version is authoritative - working-tree or last committed.
 
 - **Working-tree files are authoritative** for agents running in the same session
   where those files were written. The committed state is stale for that session.
@@ -120,7 +121,7 @@ When a workbundle is closed, a `work_summary.md` MUST be added to the workbundle
     concrete names allowed in artifact examples.
 - `cost_governance:` (optional): quantitative cost governance levers for token budgets,
   model routing preferences, and alert thresholds. Applies to workbooks, workbundles,
-  and workprograms. Absence means all values are `null` — agents apply thrift judgment
+  and workprograms. Absence means all values are `null` - agents apply thrift judgment
   without a hard budget constraint.
   See `00_Admin/specs/spec_cost_governance.md` for the full schema.
 
@@ -143,3 +144,8 @@ cross-repo references. The patterns `../ai_ops/...` and `../<work_repo>/...` are
 
 (c) Mixing repo-relative and workspace-absolute paths in the same `related_refs` block is
 forbidden. All entries in a block must use the same path anchor convention.
+
+## Change Log
+
+- 0.2.5 (2026-05-05): Metadata normalized to declare spec_archetype.
+  Existing version history remains in Git history and prior frontmatter dates.

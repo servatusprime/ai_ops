@@ -6,9 +6,10 @@ status: active
 license: Apache-2.0
 version: 1.0.2
 created: 2026-04-23
-updated: 2026-05-04
+updated: 2026-05-05
 owner: ai_ops
 ai_generated: true
+spec_archetype: governance_spec
 related:
   - 00_Admin/specs/spec_policy_decision_record.md
   - 00_Admin/specs/spec_async_approval_contract.md
@@ -26,7 +27,7 @@ related:
 - **What:** Maps ai_ops governance mechanisms to three lifecycle stages: Before, During, Across.
 - **Circuit breaker:** Self-interrupt conditions agents MUST honor during unattended execution.
 - **Trigger output:** Circuit breaker conditions emit a PDR (`spec_policy_decision_record.md`).
-- **Non-harness:** These are governance *definitions* — conditions and signals, not runtime monitors.
+- **Non-harness:** These are governance *definitions* - conditions and signals, not runtime monitors.
 - See also: `spec_policy_decision_record.md`, `spec_async_approval_contract.md`,
   `spec_cost_governance.md` (`session_token_budget` feeds the budget circuit breaker).
 
@@ -35,7 +36,7 @@ related:
 Defines the three lifecycle stages at which ai_ops governance is active, maps each stage to
 its governing mechanisms, and specifies the circuit breaker conditions under which an agent
 MUST self-interrupt. Circuit breakers are the most significant governance gap for unattended
-execution — they define the conditions under which an agent aborts and parks rather than
+execution - they define the conditions under which an agent aborts and parks rather than
 continuing when governance integrity degrades.
 
 ## Scope
@@ -50,10 +51,10 @@ platform-specific implementation of those signals is out of scope for this spec.
 
 | Stage | ai_ops Mechanism | Governance Signal |
 | --- | --- | --- |
-| **Before** | Workbook approval gate, authority level evaluation, PDR emission | Pre-acceptance validation point — agent confirms authorization before starting |
-| **During** | Lane authority boundaries, L1 pre-authorized scope, scratchpad logging | Per-step authority enforcement — agent checks scope before each consequential action |
-| **During (circuit breaker)** | Circuit breaker conditions (§2 below) | Session abort / PARK signal — agent self-interrupts when conditions degrade |
-| **Across** | Crosscheck reviews, workbook run logs, harvest reports | Session state persistence, audit surface — record of what was decided and done |
+| **Before** | Workbook approval gate, authority level evaluation, PDR emission | Pre-acceptance validation point - agent confirms authorization before starting |
+| **During** | Lane authority boundaries, L1 pre-authorized scope, scratchpad logging | Per-step authority enforcement - agent checks scope before each consequential action |
+| **During (circuit breaker)** | Circuit breaker conditions (Section 2 below) | Session abort / PARK signal - agent self-interrupts when conditions degrade |
+| **Across** | Crosscheck reviews, workbook run logs, harvest reports | Session state persistence, audit surface - record of what was decided and done |
 
 ## 2. Circuit Breaker Conditions
 
@@ -79,7 +80,7 @@ An agent MUST self-interrupt (PARK) and emit a PDR when any of the following con
 ### 2.3 Authority Escalation Required
 
 - **Trigger:** An action requires higher authority than the agent currently holds in context.
-  This is distinct from a pre-declared gate — this is an unexpected escalation mid-execution.
+  This is distinct from a pre-declared gate - this is an unexpected escalation mid-execution.
 - **Action:** Emit `REQUIRE_APPROVAL` PDR and PARK. Do not proceed.
 - **Note:** Pre-declared gates (Phase 2 gate) are handled by the workbook gate pattern, not here.
 
@@ -87,7 +88,7 @@ An agent MUST self-interrupt (PARK) and emit a PDR when any of the following con
 
 - **Trigger:** Context compaction has occurred mid-session and the agent cannot confirm its
   current state against the workbook's Execution Notes or Status Checklist.
-- **Action:** PARK. Emit PDR with `decision: REQUIRE_APPROVAL`, rationale "Stale context —
+- **Action:** PARK. Emit PDR with `decision: REQUIRE_APPROVAL`, rationale "Stale context -
   context refresh required before resuming." Request context refresh from the active workbook
   before resuming.
 - **Note:** After compaction, re-read the workbook start-to-finish before continuing.
@@ -96,7 +97,7 @@ An agent MUST self-interrupt (PARK) and emit a PDR when any of the following con
 
 - **Trigger:** Three or more consecutive tool errors on the same task without a successful
   intermediate step.
-- **Action:** PARK with `decision: DENY`, rationale "Repeated tool failures — requires investigation."
+- **Action:** PARK with `decision: DENY`, rationale "Repeated tool failures - requires investigation."
 - **Note:** A different task succeeding does not reset the counter. The counter resets on a
   successful tool call within the same task.
 
@@ -120,7 +121,7 @@ policy_decision:
 
 ## 4. Platform Integration Notes
 
-These notes describe governance intent — platform-specific implementation belongs in
+These notes describe governance intent - platform-specific implementation belongs in
 downstream platform docs:
 
 - **Before stage:** Platform should provide a pre-session validation surface where the
@@ -135,6 +136,6 @@ downstream platform docs:
 
 ## 5. Change Log
 
-- 1.0.2 (2026-05-04): §Scope — replaced "strongly recommended" with SHOULD per spec language standard.
-- 1.0.1 (2026-04-23): §2.4 Stale Context — added explicit PDR emission step (patch per crosscheck finding).
+- 1.0.2 (2026-05-04): Section Scope - replaced "strongly recommended" with SHOULD per spec language standard.
+- 1.0.1 (2026-04-23): Section 2.4 Stale Context - added explicit PDR emission step (patch per crosscheck finding).
 - 1.0.0 (2026-04-23): Initial spec authored per `wb_platform_governance_uplift_01` Phase 5.

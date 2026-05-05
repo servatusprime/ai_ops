@@ -6,9 +6,10 @@ status: active
 license: Apache-2.0
 version: 0.3.0
 created: 2026-02-13
-updated: 2026-03-09
+updated: 2026-05-05
 owner: ai_ops
 ai_generated: true
+spec_archetype: governance_spec
 ---
 
 <!-- markdownlint-disable-next-line MD025 -->
@@ -71,3 +72,8 @@ Governed-mode execution evidence SHOULD include:
 - `ai_ops/.ai_ops/workflows/work.md`
 - `ai_ops/AGENTS.md`
 - `ai_ops/00_Admin/guides/ai_operations/guide_command_workflows.md`
+
+## Change Log
+
+- 0.3.0 (2026-05-05): Metadata normalized to declare spec_archetype.
+  Existing version history remains in Git history and prior frontmatter dates.

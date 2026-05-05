@@ -8,7 +8,7 @@ created: YYYY-MM-DD
 last_updated: 2026-03-25
 owner: ai_ops
 ai_role: executor
-model_profile: "medium"  # Reasoning level: low | medium | high | maximum. Provider-model mapping is operator-declared. See AGENTS.md §AI Model Level Reference.
+model_profile: "medium"  # Reasoning level: low | medium | high | maximum. Provider-model mapping is operator-declared. See AGENTS.md Section AI Model Level Reference.
 authority_level: 3
 execution_mode: parallel_safe
 execution_topology: single_agent  # single_agent | multi_agent | hybrid
@@ -67,7 +67,7 @@ cost_governance:  # Work-family: MAY self-impose limits. Run-family: SHOULD popu
 - NOTE: `execution_topology` defaults to `single_agent`. For multi-agent
   or hybrid runs, change to `multi_agent` or `hybrid`, expand `activated_lanes`,
   and fill out the full `Execution Topology Contract` block with spawn criteria,
-  delegation contracts, and per-lane return shapes. See AGENTS.md §Role Reference.
+  delegation contracts, and per-lane return shapes. See AGENTS.md Section Role Reference.
 - NOTE: Keep delegation guidance surface-agnostic in canonical templates. Use
   canonical lane names such as `Researcher`, `Planner`, `Executor`,
   `Reviewer`, `Linter`, or `Closer`; do not
@@ -167,7 +167,7 @@ execution_topology_contract:
 
 Rules:
 
-- **Single-agent** (`execution_topology: single_agent`): keep the block minimal —
+- **Single-agent** (`execution_topology: single_agent`): keep the block minimal -
   declare `lead_lane`, `task_brief`, and stop conditions only. The agent sequences
   through all `activated_lanes` in its own context.
 - **Multi-agent** (`execution_topology: multi_agent`): use the full block. Declare
@@ -177,8 +177,8 @@ Rules:
 - **Hybrid** (`execution_topology: hybrid`): primary agent handles most lanes;
   specific phases delegate to subagents. Declare which phases delegate and which stay local.
 - Selective-subagent rule: delegate only when specialization meaningfully improves
-  outcome or reduces token overhead — not as a default.
-- See AGENTS.md §Role Reference and §Execution Topology Terms for topology definitions.
+  outcome or reduces token overhead - not as a default.
+- See AGENTS.md Section Role Reference and Section Execution Topology Terms for topology definitions.
 
 ---
 
@@ -824,7 +824,7 @@ Evidence schema: each entry requires **path:line** or **command + key output** -
 
 | Iteration | Task | Status | Verification (path:line or command output) | Environment |
 | --- | --- | --- | --- | --- |
-| 0 | Initial Draft Selfcheck Gate | pending | `npx markdownlint-cli2 <workbook>.md → 0 errors; VS024 required sections verified` | `<env_name>` |
+| 0 | Initial Draft Selfcheck Gate | pending | `npx markdownlint-cli2 <workbook>.md -> 0 errors; VS024 required sections verified` | `<env_name>` |
 | 1 | Task 1: `<name>` | pending | `<path:line or command:key_output>` | `<env_name>` |
 | 1 | Task 2: `<name>` | pending | `<path:line or command:key_output>` | `<env_name>` |
 

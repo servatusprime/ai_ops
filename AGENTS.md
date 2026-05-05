@@ -193,7 +193,7 @@ END LOOP
 **Never report "done" after a single pass.** The first pass often misses edge cases.
 
 **Circuit Breakers:** Self-interrupt conditions for unattended execution (token budget exceeded,
-scope creep, authority escalation, stale context, consecutive tool failures) — PARK and emit PDR.
+scope creep, authority escalation, stale context, consecutive tool failures): PARK and emit PDR.
 See `00_Admin/specs/spec_governance_lifecycle.md`.
 
 ---
@@ -547,7 +547,7 @@ flowchart LR
 
 | Lane | When Active | Primary Duties | Reasoning Level | Permission Mode | Max Turns |
 | --- | --- | --- | --- | --- | --- |
-| Coordinator | Start, phase boundaries, escalation points, end | Scope, approvals, orchestration, handoffs | 2 | — | — |
+| Coordinator | Start, phase boundaries, escalation points, end | Scope, approvals, orchestration, handoffs | 2 | - | - |
 | Planner | Scope must become executable steps | Turn approved scope into phased task contracts and sequencing | 2 | plan | 20 |
 | Researcher | Evidence, reconciliation, or discovery needed | Gather evidence, surface unknowns, reconcile context | 1 | plan | 30 |
 | Executor | Per implementation step | Bounded implementation and evidence | 2 | default | 30 |
@@ -558,13 +558,13 @@ flowchart LR
 
 See `## AI Model Level Reference` below for per-lane reasoning level defaults and variation conditions.
 
-**Profile behavioral parameters** — Professional sliders that generate behavioral prose in lane
+**Profile behavioral parameters** - Professional sliders that generate behavioral prose in lane
 profiles and directly affect agent behavior (source of truth:
 `02_Modules/01_agent_profiles/generated/single_agent_profile_map.md`):
 
 | Profile | Autonomy | Conservatism | Initiative | Deference |
 | --- | --- | --- | --- | --- |
-| Coordinator | — | — | — | — |
+| Coordinator | - | - | - | - |
 | Planner | 55 | 75 | 30 | 60 |
 | Researcher | 70 | 60 | 70 | 55 |
 | Executor | 75 | 45 | 45 | 45 |
@@ -573,19 +573,19 @@ profiles and directly affect agent behavior (source of truth:
 | Reviewer | 25 | 90 | 20 | 80 |
 | Closer | 75 | 80 | 20 | 45 |
 
-Slider values are source data for prose generation — they drive authoring of system prompt
+Slider values are source data for prose generation - they drive authoring of system prompt
 instructions in generated profile files, not runtime numeric parameters. Agents read the
 generated prose.
 
 **Relational sliders** (Communication Depth, Tone Warmth, Formality, Directness) apply to the
-**primary agent / Coordinator profile only** — subagents return structured output to the primary
+**primary agent / Coordinator profile only** - subagents return structured output to the primary
 agent and do not communicate directly with humans.
 
-**Coordinator row** shows `—` across all parameters: the Coordinator is the primary agent.
+**Coordinator row** shows `-` across all parameters: the Coordinator is the primary agent.
 Permission mode comes from the session environment; no max turns cap applies. Professional
 sliders do not apply because no generated subagent profile exists for the Coordinator role.
 
-Riders are NOT per-lane defaults — see **Rider Archetypes** below.
+Riders are NOT per-lane defaults - see **Rider Archetypes** below.
 
 **Execution topology and delegation:**
 
@@ -617,10 +617,10 @@ A Director pattern is achievable within one primary session: the Director (prima
 
 ```text
 Primary session (Director)
-  ├── Coordinator subagent [needs Agent tool]  ← Project A
-  │     └── Executor, Reviewer, ...
-  └── Coordinator subagent [needs Agent tool]  ← Project B
-        └── Executor, Reviewer, ...
+  |-- Coordinator subagent [needs Agent tool] <- Project A
+  |   `-- Executor, Reviewer, ...
+  `-- Coordinator subagent [needs Agent tool] <- Project B
+      `-- Executor, Reviewer, ...
 ```
 
 This requires a Coordinator native agent file with the `Agent` tool -- a deliberate design exception to the current rule that Coordinator has no native agent file. Implementation is deferred to a dedicated workbook.
@@ -648,9 +648,9 @@ Use this table to select a model level for each lane assignment.
 | Researcher | 1 | Level 2: synthesis-heavy or multi-authority discovery |
 | Executor | 2 | Level 1: fully deterministic tasks (optimize down) |
 | Builder | 2 | Level 1: routine tasks (optimize down); Level 3: substrate changes touching policy boundaries |
-| Linter | 1 | No variation — Level 1 always |
+| Linter | 1 | No variation - Level 1 always |
 | Reviewer | 2 | Level 3: Elevated Crosscheck or L3+ scope; Level 4: L4 crosscheck or policy-boundary review |
-| Closer | 2 | No variation — Level 2 always |
+| Closer | 2 | No variation - Level 2 always |
 
 **Notes:**
 
@@ -666,7 +666,7 @@ Use this table to select a model level for each lane assignment.
 
 ## Rider Archetypes
 
-A rider is a **behavioral archetype** — a named preset that shapes how the agent approaches
+A rider is a **behavioral archetype** - a named preset that shapes how the agent approaches
 work (caution level, initiative, judgment style) without changing lane authority or permissions.
 Riders are **operator-selected** and **lane-agnostic**: the same rider applies regardless of
 which lane is active.

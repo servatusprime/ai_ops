@@ -37,7 +37,7 @@ scorecard_sync:
   command: python ai_ops/00_Admin/scripts/generate_future_work_scorecard.py
   policy_ref: 00_Admin/policies/policy_future_work_registry.md
 # Registry entry schema reference:
-#   id: fw_YYYYMMDD_NN — unique registry entry ID
+#   id: fw_YYYYMMDD_NN - unique registry entry ID
 #   title: short description of the work item
 #   domain: governance | tooling | validation | documentation | integration | operations
 #   target_repo: ai_ops | governed_repo | both
@@ -50,12 +50,12 @@ scorecard_sync:
 #   readiness: ready | partial | blocked | deferred
 #   risk_if_deferred: low | medium | high
 #   activation_trigger: condition or event that re-opens deferred items
-#   next_review: YYYY-MM-DD — date to re-evaluate status
+#   next_review: YYYY-MM-DD - date to re-evaluate status
 #   status: planned | active | deferred | recurring
 #   recurrence_trigger: (for status:recurring only) schedule or trigger condition that re-opens the item
 #   owner: team or person responsible
-#   created: YYYY-MM-DD — date entry was added
-#   compacted_context: {source, note} — provenance and context for future agents
+#   created: YYYY-MM-DD - date entry was added
+#   compacted_context: {source, note} - provenance and context for future agents
 #   notes: free-text notes
 
 scorecard_schema:
@@ -101,7 +101,7 @@ entries:
     scope: >-
       Implement the Director topology: a multi-agent mode where the primary
       session agent spawns Coordinator subagents per project. Requires:
-      (1) Coordinator native agent file — DQ-12 revisit; currently absent by
+      (1) Coordinator native agent file - DQ-12 revisit; currently absent by
       design because Coordinator is the primary agent, not a subagent; Director
       topology changes this assumption for the spawned Coordinator role;
       (2) delegation contract documenting how the Director hands off scope to
@@ -189,7 +189,7 @@ entries:
         the session-state-dependent content that will be reactivated when this
         infrastructure exists. Current fallback: always apply fresh_bootstrap.
     notes: >-
-      No urgency — current fallback (fresh_bootstrap every session) works
+      No urgency - current fallback (fresh_bootstrap every session) works
       correctly, just with extra read overhead. The spec preserves the design
       intent so it is not reconstructed from scratch when infrastructure arrives.
 
@@ -306,7 +306,7 @@ entries:
       source: wb_oss_pre_commit_completions_01.md seed S11
       note: Deferred from WB4 pre-commit completions pass. Post-release scope.
     notes: >-
-      Partial readiness — .sh scripts already exist for most setup paths.
+      Partial readiness - .sh scripts already exist for most setup paths.
       Identify which .ps1 scripts have no .sh equivalent before scoping.
 
   - id: fw_20260227_05
@@ -338,7 +338,7 @@ entries:
       note: >-
         Deferred from WB4 pre-commit completions pass. Internal improvement.
     notes: >-
-      Post-release. Friction observed during OSS readiness session —
+      Post-release. Friction observed during OSS readiness session -
       remediation scope is well-defined externally, templates add overhead.
 
   - id: fw_20260227_07
@@ -352,7 +352,7 @@ entries:
       Review whether the numeric scoring contract in the Workbundle Relevance
       Gate (spec_workbundle_placement_suggestion.md) adds value or is
       aspirational overhead. The spec defines a formula but no tooling computes
-      it — agents score intuitively. Decide: keep spec as-is, simplify to
+      it - agents score intuitively. Decide: keep spec as-is, simplify to
       intent-level gate only, or build tooling.
     priority: low
     benefit: low
@@ -376,14 +376,14 @@ entries:
     domain: governance
     target_repo: ai_ops
     source_workbook: >-
-      90_Sandbox/ai_workbooks/wb_platform_governance_uplift_01_2026-04-12/wb_platform_governance_uplift_01.md
+      99_Trash/wb_platform_governance_uplift_01_2026-04-12/wb_platform_governance_uplift_01.md
     proposed_workbook: null
     scope: >-
       Author spec_platform_lane_mapping.md in 00_Admin/specs/. Maps each of the 8
       canonical lanes (Coordinator, Planner, Researcher, Executor, Builder, Linter,
       Reviewer, Closer) to concrete platform instantiation guidance for OpenClaw,
       Dispatch/Managed Agents, and Claude Code. Includes a mapping table (8 lanes x 3
-      platforms), per-platform notes, and Quick Reference. Governance intent only —
+      platforms), per-platform notes, and Quick Reference. Governance intent only;
       not a runtime router; non-harness boundary applies. See Phase 7 in source workbook
       for full spec structure and mapping table draft.
     priority: low
@@ -415,7 +415,7 @@ entries:
     domain: governance
     target_repo: ai_ops
     source_workbook: >-
-      90_Sandbox/ai_workbooks/wb_platform_governance_uplift_01_2026-04-12/wb_platform_governance_uplift_01.md
+      99_Trash/wb_platform_governance_uplift_01_2026-04-12/wb_platform_governance_uplift_01.md
     proposed_workbook: null
     scope: >-
       Author decision_card_template.md in 01_Resources/templates/documents/. Decision Card
@@ -525,7 +525,7 @@ entries:
     created: 2026-03-23
     compacted_context:
       source: >-
-        wb_native_subagent_runtime_delivery_01 Accumulated Seeds —
+        wb_native_subagent_runtime_delivery_01 Accumulated Seeds -
         ai_ops Process Seeds (2026-03-19)
       note: >-
         Surfaced during WB-D execution planning as a tooling friction point.

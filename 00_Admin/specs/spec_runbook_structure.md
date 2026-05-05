@@ -6,9 +6,10 @@ status: active
 license: Apache-2.0
 version: 0.1.2
 created: 2026-01-31
-last_updated: 2026-04-23
+last_updated: 2026-05-05
 owner: ai_ops
 ai_generated: true
+spec_archetype: governance_spec
 ---
 
 <!-- markdownlint-disable-next-line MD025 MD041 -->
@@ -87,7 +88,7 @@ When runbooks are frequently executed together, group them in a runbundle:
   - See `00_Admin/guides/authoring/guide_runbooks.md` for authoring guidance.
 - `cost_governance:` (optional): quantitative cost governance levers for token budgets,
   model routing preferences, and alert thresholds. Applies to runbooks and runbundles.
-  Absence means all values are `null` — agents apply thrift judgment without a hard
+  Absence means all values are `null` - agents apply thrift judgment without a hard
   budget constraint. See `00_Admin/specs/spec_cost_governance.md` for the full schema.
 
 ## 8. Related References
@@ -96,3 +97,8 @@ When runbooks are frequently executed together, group them in a runbundle:
 - Runbooks index: `00_Admin/runbooks/README.md`
 - Workflow guide: `00_Admin/guides/ai_operations/guide_workflows.md`
 - Vocabulary: `00_Admin/guides/ai_operations/guide_ai_ops_vocabulary.md`
+
+## Change Log
+
+- 0.1.2 (2026-05-05): Metadata normalized to declare spec_archetype.
+  Existing version history remains in Git history and prior frontmatter dates.

@@ -6,9 +6,10 @@ status: stub
 license: Apache-2.0
 version: 0.1.0
 created: 2026-01-15
-updated: 2026-01-15
+updated: 2026-05-05
 owner: ai_ops
 ai_generated: true
+spec_archetype: governance_spec
 ---
 
 <!-- markdownlint-disable-next-line MD025 -->
@@ -18,6 +19,11 @@ ai_generated: true
 
 Define the canonical index hierarchy so AI agents know which inventory is authoritative and how derived indices
 are maintained.
+
+## 1.1 Scope
+
+Applies to repository index files that declare canonical or derived inventories for agents,
+modules, AI core domain views, and workbook inventories.
 
 ## 2. Canonical Index
 
@@ -58,3 +64,8 @@ Validators SHOULD confirm:
 ## 6. Related References
 
 - Guide: `00_Admin/guides/ai_operations/guide_repository_indices.md`
+
+## Change Log
+
+- 0.1.0 (2026-05-05): Metadata normalized to declare spec_archetype.
+  Existing version history remains in Git history and prior frontmatter dates.

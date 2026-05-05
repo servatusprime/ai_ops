@@ -7,8 +7,9 @@ status: active
 created: 2026-02-20
 owner: ai_ops
 license: Apache-2.0
-updated: 2026-03-04
+updated: 2026-05-05
 ai_generated: true
+spec_archetype: governance_spec
 description: >
   Canonical definition of the 8 behavioral axes used in rider archetype
   profiles. Each axis maps to prose generation targets in subagent system
@@ -397,3 +398,8 @@ command MAY suggest proportional `maxTurns` updates but MUST NOT modify
 | `conservatism` | (no direct mapping) | Prose-only. Scope/risk posture changes in generated body text. |
 
 These rules are documented in `spec_subagent_file.md`.
+
+## Change Log
+
+- 0.1.1 (2026-05-05): Metadata normalized to declare spec_archetype.
+  Existing version history remains in Git history and prior frontmatter dates.

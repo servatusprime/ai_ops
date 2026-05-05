@@ -54,8 +54,8 @@ cost_governance:  # Work-family: MAY self-impose limits. Run-family: SHOULD popu
   proposal and explicit gates.
 - `execution_topology` defaults to `single_agent`. For multi-agent or hybrid
   runs, change to `multi_agent` or `hybrid` and declare delegation contracts
-  explicitly — first-run lanes carry higher uncertainty so spawn criteria
-  must be explicit. See AGENTS.md §Role Reference.
+  explicitly - first-run lanes carry higher uncertainty so spawn criteria
+  must be explicit. See AGENTS.md Section Role Reference.
 
 ## Upstream Governance Pointer
 

@@ -56,7 +56,7 @@ cost_governance:  # Work-family: MAY self-impose limits. Run-family: SHOULD popu
   work proposal.
 - `execution_topology` defaults to `single_agent`. For multi-agent or hybrid
   runs, change to `multi_agent` or `hybrid` and add spawn criteria + lane
-  return contracts to the Cold-Start Execution Contract. See AGENTS.md §Role Reference.
+  return contracts to the Cold-Start Execution Contract. See AGENTS.md Section Role Reference.
 
 ## Upstream Governance Pointer
 

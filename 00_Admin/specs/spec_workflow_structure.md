@@ -6,9 +6,10 @@ status: active
 license: Apache-2.0
 version: 0.2.2
 created: 2026-01-31
-updated: 2026-02-17
+updated: 2026-05-05
 owner: ai_ops
 ai_generated: true
+spec_archetype: governance_spec
 ---
 
 <!-- markdownlint-disable-next-line MD025 MD041 -->
@@ -68,3 +69,8 @@ These gates remain tool-agnostic; execution evidence belongs in runbooks/workboo
 - Runbook spec: `00_Admin/specs/spec_runbook_structure.md`
 - Workbook spec: `00_Admin/specs/spec_workbook_structure.md`
 - Vocabulary: `00_Admin/guides/ai_operations/guide_ai_ops_vocabulary.md`
+
+## Change Log
+
+- 0.2.2 (2026-05-05): Metadata normalized to declare spec_archetype.
+  Existing version history remains in Git history and prior frontmatter dates.

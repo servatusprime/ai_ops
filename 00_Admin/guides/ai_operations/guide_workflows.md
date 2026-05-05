@@ -20,7 +20,7 @@ related:
 
 Defines Workflows and their relationship to Runbooks and Workbooks within the AI Operations Stack. Covers
 placement rules, artifact selection, pipeline artifact patterns, governance boundaries, and agent decision
-matrices. Normative — if this guide conflicts with a spec, the spec wins.
+matrices. Normative - if this guide conflicts with a spec, the spec wins.
 
 This guide defines **Workflows** and how they relate to Runbooks and Workbooks. It is normative.
 
@@ -187,7 +187,7 @@ Reference key normalization:
   during transition.
 
 Cost governance: the `cost_governance:` field is optional for all artifact families in
-the table above. All values default to `null` — agents apply thrift judgment without a
+the table above. All values default to `null` - agents apply thrift judgment without a
 hard budget constraint. See `00_Admin/specs/spec_cost_governance.md` for the full schema.
 
 ## Execution Topology Placement

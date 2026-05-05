@@ -5,9 +5,10 @@ module: ai_ops
 status: active
 version: 0.2.1
 created: 2026-03-14
-updated: 2026-03-24
+updated: 2026-05-05
 owner: ai_ops
 ai_generated: true
+spec_archetype: runtime_design_spec
 description: >
   Target-state runtime design for context_routing.yaml. Captures session-state-dependent
   onboarding tiers, hook points, fast-path conditions, and trigger detection contracts
@@ -223,3 +224,8 @@ When a stateful runtime context manager is available:
 3. Activate `resume_same_scope_fast_path.conditions` evaluation.
 4. Wire `hook_points` to an event bus or tool integration layer.
 5. Migrate activated specs back into `context_routing.yaml` as enforced active config.
+
+## Change Log
+
+- 0.2.1 (2026-05-05): Metadata normalized to declare spec_archetype.
+  Existing version history remains in Git history and prior frontmatter dates.

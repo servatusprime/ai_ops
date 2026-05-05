@@ -195,7 +195,7 @@ tool controls the actual model used when spawning. (`role_assignments` broad-rol
 keys are deprecated -- see `AGENTS.md` AI Model Level Reference.)
 
 **model_level_map:** Operators may bind concrete model IDs to ai_ops reasoning
-levels (1–4) in `.ai_ops/local/config.yaml` under
+levels (1-4) in `.ai_ops/local/config.yaml` under
 `customizations.model_capabilities.model_level_map` (populated via `/customize`).
 This binding resolves workbook `model_profile` level references at runtime.
 
@@ -227,7 +227,7 @@ section `### Topology and Lane Concepts`.
 
 **Director topology (design note, not yet implemented):** A Director pattern
 allows one primary session to spawn Coordinator subagents per project for
-concurrent work streams. See `AGENTS.md §Topology and Lane Concepts`.
+concurrent work streams. See `AGENTS.md Section Topology and Lane Concepts`.
 
 ### Lane Extensibility
 

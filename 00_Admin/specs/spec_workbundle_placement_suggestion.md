@@ -6,10 +6,11 @@ version: 0.1.0
 status: active
 license: Apache-2.0
 created: 2026-02-24
-updated: 2026-03-04
+updated: 2026-05-05
 owner: ai_ops
 owners: ["ai_ops"]
 ai_generated: true
+spec_archetype: governance_spec
 description: Canonical contract for deterministic workbundle candidate suggestion during /work intake.
 ---
 
@@ -73,3 +74,8 @@ Thresholds:
 - no indexed bundles -> return `create_new`
 - sparse metadata -> return `manual_confirm`
 - multi-topic request -> return grouped candidates by intent token
+
+## Change Log
+
+- 0.1.0 (2026-05-05): Metadata normalized to declare spec_archetype.
+  Existing version history remains in Git history and prior frontmatter dates.
