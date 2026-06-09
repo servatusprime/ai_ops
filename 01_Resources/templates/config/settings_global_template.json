@@ -1,5 +1,11 @@
 {
   "_comment": "ai_ops global settings template. Apply to ~/.claude/settings.json on new machine onboarding. Replace <workspace-root> with your actual workspace path in additionalDirectories.",
+  "additionalDirectories": [
+    "<workspace-root>\\ai_ops\\.claude\\skills",
+    "<workspace-root>\\.claude\\skills",
+    "<workspace-root>\\ai_ops\\.git\\hooks"
+  ],
+  "effortLevel": "high",
   "permissions": {
     "defaultMode": "acceptEdits",
     "allow": [
@@ -16,6 +22,12 @@
       "Bash(git checkout:*)",
       "Bash(git rm:*)",
       "Bash(git reset:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git fetch:*)",
+      "Bash(git stash:*)",
+      "Bash(git show:*)",
+      "Bash(git merge:*)",
       "Bash(grep:*)",
       "Bash(rg:*)",
       "Bash(findstr:*)",
@@ -59,11 +71,5 @@
       "Bash(*git push --force*)",
       "Bash(*git push*--delete*)"
     ]
-  },
-  "effortLevel": "high",
-  "additionalDirectories": [
-    "<workspace-root>\\ai_ops\\.claude\\skills",
-    "<workspace-root>\\.claude\\skills",
-    "<workspace-root>\\ai_ops\\.git\\hooks"
-  ]
+  }
 }

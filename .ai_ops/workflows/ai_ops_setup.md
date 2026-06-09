@@ -2,7 +2,7 @@
 name: ai_ops_setup
 description: Run ai_ops setup scripts for skills, commands, and supported instruction surfaces
 kind: workflow
-version: 0.1.6
+version: 0.2.0
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -67,7 +67,7 @@ Before any setup actions, capture explicit confirmation:
 
 | Field | Values | Required |
 | --- | --- | --- |
-| `active_surface` | `codex_cli` \| `claude_code` \| `claude_app` \| `remote_control` \| `github_copilot` \| `cursor` \| `gemini_cli` \| `other` | Yes |
+| `active_surface` | `codex_cli` \| `claude_code` \| `claude_app` \| `claude_app_plugin` \| `remote_control` \| `github_copilot` \| `cursor` \| `gemini_cli` \| `other` | Yes |
 | `installation_target` | `skills` \| `commands` \| `both` \| `none` | Yes |
 | `install_scope` | `workspace` \| `repo` \| `user` | Yes |
 | `governed_validation_policy` | `ai_ops` \| `repo_native` | Yes |
@@ -82,14 +82,20 @@ Before any setup actions, capture explicit confirmation:
 6. If `governed_validation_policy` is not specified, default to `ai_ops` and confirm with user.
 7. If `active_surface` is `claude_app`, `installation_target` must be `none`.
    This is an instructions-only lane with direct workflow references.
-8. If `active_surface` is `github_copilot`, `commands` is not a valid ai_ops
+8. If `active_surface` is `claude_app_plugin`, use the `claude_app_plugin`
+   install lane: run `setup_cowork_plugin.bat|.sh` to package `.claude/skills/`
+   into a `.plugin` zip. This is distinct from `claude_app` (instructions-only)
+   — the plugin lane produces a distributable artifact that delivers skills to
+   Cowork and Claude desktop. Supported `install_scope`: `workspace` (default)
+   and `repo`. `installation_target` must be `skills` or `none`.
+9. If `active_surface` is `github_copilot`, `commands` is not a valid ai_ops
    install lane. Use instructions-only (`none`) or project skills (`skills`).
-9. If `active_surface` is `github_copilot`, interpret `skills` as project
-   skills in `.claude/skills/` via `setup_claude_skills.*`, plus tracked repo
-   instructions in `.github/copilot-instructions.md`.
-10. If the selected script lane does not support the requested `install_scope`,
-   stop and ask for a supported scope before writing anything.
-11. If `active_surface` is `remote_control`, treat as `claude_code` for all
+10. If `active_surface` is `github_copilot`, interpret `skills` as project
+    skills in `.claude/skills/` via `setup_claude_skills.*`, plus tracked repo
+    instructions in `.github/copilot-instructions.md`.
+11. If the selected script lane does not support the requested `install_scope`,
+    stop and ask for a supported scope before writing anything.
+12. If `active_surface` is `remote_control`, treat as `claude_code` for all
     install purposes. `remote_control` is a surface extension -- one local
     Claude Code session reachable from multiple devices (terminal, browser,
     phone). Topology and lane contracts are unchanged from `claude_code`.
@@ -101,6 +107,14 @@ Before any setup actions, capture explicit confirmation:
 | `workspace` | `<workspace_root>/.agents/skills/`, `.claude/skills/`, or surface-native command folders | `ai_ops/.ai_ops/workflows/` | `--workspace` when supported |
 | `repo` | `ai_ops/.agents/skills/`, `ai_ops/.claude/skills/`, or repo-local command folders | `.ai_ops/workflows/` | surface default |
 | `user` | `$HOME/.agents/skills/` or another surface-native user folder when supported | `ai_ops/.ai_ops/workflows/` | `--user` when supported |
+
+For `claude_app_plugin`, install scope controls which `.claude/skills/` tree is
+packaged into the `.plugin` zip output:
+
+| Scope | Skills Source | Output | Script Flag |
+| --- | --- | --- | --- |
+| `workspace` (default) | `<workspace_root>/.claude/skills/` | `<workspace_root>/ai-ops-skills.plugin` | `--workspace` |
+| `repo` | `<repo_root>/.claude/skills/` | configurable via `--output` | `--repo` |
 
 Workspace scope is recommended for multi-repo workspaces where agents run from
 workspace root, not repo root.
@@ -115,6 +129,10 @@ Current ai_ops support notes:
   artifact-carried operator guidance rather than runtime-enforced behavior:
   do not assume installed skill discovery, plugin-profile routing, or native
   subagent delegation controls on this surface.
+- Cowork (`claude_app_plugin`) uses the plugin install lane via
+  `setup_cowork_plugin.bat|.sh`. Skills are packaged from `.claude/skills/`
+  into a distributable `.plugin` zip. Supported scopes: `workspace` and `repo`.
+  The `.plugin` file must be installed manually via Cowork Settings → Plugins.
 - GitHub Copilot skills follow the current Claude skill lane
   (`setup_claude_skills.*`) and therefore support `workspace` and `repo`.
 - GitHub Copilot repo instructions (`.github/copilot-instructions.md`) are
@@ -242,6 +260,9 @@ contract.
    - Claude skills: `setup_claude_skills.bat|.sh [--workspace|--repo]`
    - Claude app: no install script; confirm direct workflow-reference lane
      and Filesystem access when repo files are needed
+   - Cowork plugin: `setup_cowork_plugin.bat|.sh [--workspace|--repo] [--output <path>]`
+     Packages `.claude/skills/` into a `.plugin` zip for Cowork installation.
+     Use `--dry-run` to preview skill count and output path before writing.
    - Codex skills: `setup_codex_skills.bat|.sh [--workspace|--repo|--user]`
    - GitHub Copilot skills: reuse `setup_claude_skills.bat|.sh [--workspace|--repo]`
      on surfaces that support project skills from `.claude/skills/`
@@ -282,74 +303,36 @@ contract.
 - "Run `/customize` to declare available models and default reasoning tier in `.ai_ops/local/config.yaml`."
 - "Run `/profiles` if you want behavior tuning per model family after declaration."
 
-2. Recommend hooks configuration (structural governance enforcement):
+2. Recommend hooks configuration and two-file permission separation (structural governance enforcement):
 
 - "Copy the hooks template from `01_Resources/templates/config/hooks_template.json`
   into `.claude/settings.local.json` at your workspace root. Hooks provide
   structural (non-LLM) enforcement of governance rules: PostToolUse markdown lint,
   PreToolUse Level 4 path guard, and SessionStart context injection."
+- "Keep `.claude/settings.local.json` for hooks and machine-local overrides only.
+  Do not duplicate `allow`/`deny` entries that already appear in the committed
+  `.claude/settings.json`. The two-file separation is: `settings.json` (committed,
+  allow/deny rules, portable across machines) and `settings.local.json` (gitignored,
+  hooks + machine-local keys only)."
+- "Verify `.claude/settings.local.json` is listed in `.gitignore` before committing."
 
-3. New machine onboarding — global `~/.claude/` configuration:
+3. New machine onboarding — workspace and global `~/.claude/` configuration:
+
+3a. **Workspace `settings.json`** (committed, portable):
+
+- "Ensure a committed `.claude/settings.json` exists at the workspace root. This is the
+  primary allow/deny permission file — it persists across machines and applies to all
+  Claude Code sessions in the workspace."
+- "Populate it from the global settings template using `sync_claude_settings.py --write`
+  (run from workspace root). This strips global-only keys (`defaultMode`,
+  `additionalDirectories`, `effortLevel`) and propagates only `allow`/`deny` rules."
+- "For governed repos, run `sync_claude_settings.py --write --target <repo>/.claude/settings.json`
+  to align the repo file with the workspace template. Add repo-specific allow entries
+  (e.g. `conda activate gis-etl:*`) after sync — these are the only allowed repo overrides."
+- "Run `sync_claude_settings.py --check` periodically to detect drift as the template evolves."
+
+3b. **Global `~/.claude/settings.json`** (user-global, new machine only):
 
 - "Apply the global settings template from `01_Resources/templates/config/settings_global_template.json`
   to `~/.claude/settings.json`. This replaces accumulated one-off rules with
-  category-level permissions and a deny list for sensitive paths."
-- "Create `~/.claude/CLAUDE.md` with user preferences (language, shell, commit gate rules)."
-- "Note: CLAUDE.md files at workspace root, `ai_ops/` root, and governed repo roots are
-  committed artifacts installed at clone time. They do not require setup provisioning."
-
-## No-Install Fallback
-
-If wrappers are not installed (or user selects `none`), commands remain usable by invoking workflow source files
-directly (for example: `ai_ops/.ai_ops/workflows/work.md`).
-
-For `claude_app`, this no-install fallback is the normal lane rather than an
-exception.
-
-When `active_surface` is `claude_app`, the operator or lead agent must carry
-the execution contract in the artifact itself: workflow reference, task brief,
-context pack, and any intended delegation limits. Do not treat this surface as
-providing ai_ops-installed routing or runtime-enforced delegation guardrails.
-
-## Setup Maintenance Hooks
-
-- **Platform discovery:** `active_surface` is required input and maps to `.ai_ops/local/config.yaml` `modality` semantics.
-- **Adapter generation:** setup wrappers are generated from `.ai_ops/workflows/*.md` source contracts.
-- **Format/version sync:** when wrapper formats change, update `.ai_ops/setup/README.md` metadata in the same patch.
-
-## Outputs
-
-- Skills/commands installed for the requested tools.
-- Or instructions-only path confirmed when install scripts are not required.
-- Short confirmation of install targets.
-- Post-setup recommendation to declare model capabilities in `/customize`.
-- Post-setup recommendation to configure hooks from `01_Resources/templates/config/hooks_template.json`.
-- New machine onboarding note: apply global settings and `~/.claude/CLAUDE.md` from templates.
-- Note that CLAUDE.md files at repo roots are committed artifacts — no setup provisioning needed.
-- Confirmation of governed validation policy written to `.ai_ops/local/config.yaml`.
-
-## Risks and Limits
-
-- `/ai_ops_setup` is setup-only; do not use it for general remediation edits.
-- Do not assume install target or scope; capture modality confirmation first.
-- GitHub Copilot currently has no Copilot-specific ai_ops installer; use the
-  tracked instructions file and, when desired, the Claude skill lane for
-  `.claude/skills/` compatibility.
-- Do not write setup receipts outside `.ai_ops/local/**`.
-- Do not assume command folders exist; if missing, read
-  `.ai_ops/workflows/ai_ops_setup.md` manually.
-
-## Resources
-
-- `.ai_ops/setup/README.md`
-
-## Working with Native Commands
-
-Use native assistant commands for session-scoped mechanics (model selection, output formatting, local IDE helpers) when
-available.
-
-Use ai_ops workflow commands for governed execution contracts, authority gates, artifact handling, and
-validation/reporting behavior.
-
-If overlap exists, native commands handle session mechanics while this workflow remains the source of truth for governed
-process behavior.
+  category-level permissions and a deny list for se

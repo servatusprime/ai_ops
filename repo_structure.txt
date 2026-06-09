@@ -11,6 +11,9 @@
 |   |   |-- setup_claude_skills.sh
 |   |   |-- setup_codex_skills.bat
 |   |   |-- setup_codex_skills.sh
+|   |   |-- setup_cowork_plugin.bat
+|   |   |-- setup_cowork_plugin.py
+|   |   |-- setup_cowork_plugin.sh
 |   |   |-- setup_cursor.bat
 |   |   |-- setup_cursor.sh
 |   |   |-- setup_gemini.bat
@@ -29,6 +32,8 @@
 |       |-- work.md
 |       |-- work_savepoint.md
 |       +-- work_status.md
+|-- .claude-plugin/
+|   +-- plugin.json
 |-- .editorconfig
 |-- .gitattributes
 |-- .github/
@@ -169,6 +174,7 @@
 |   |   |-- regenerate_profiles.py
 |   |   |-- run_markdownlint.ps1
 |   |   |-- run_release_quality_gate.py
+|   |   |-- sync_claude_settings.py
 |   |   |-- sync_validator_baseline.py
 |   |   |-- update_artifact_status.py
 |   |   |-- validate_ide_extensions.ps1

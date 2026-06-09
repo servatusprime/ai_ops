@@ -1,0 +1,15 @@
+{
+  "author": {
+    "name": "ai_ops"
+  },
+  "description": "Governance skills for Claude Cowork and Claude desktop.",
+  "keywords": [
+    "ai_ops",
+    "governance",
+    "workflow",
+    "skills"
+  ],
+  "license": "Apache-2.0",
+  "name": "ai-ops-skills",
+  "version": "0.1.0"
+}

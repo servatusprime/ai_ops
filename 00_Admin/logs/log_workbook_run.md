@@ -280,3 +280,31 @@ ai_generated: true
   `99_Trash/wb_closeout_gitworkflow_patch_01_2026-03-14`. Source:
   `99_Trash/wb_closeout_gitworkflow_patch_01_2026-03-14/wb_closeout_gitworkflow_patch_01.md`.
   Requestor approval for closeout + commit/push recorded in current session.
+
+- 2026-06-09 | wb_cowork_plugin_build_and_l4_proposal_01 (L4) | Completed
+  claude_app_plugin surface lane, permission governance, and surface alignment.
+  ai_ops repo changes: (1) `ai_ops_setup.md` v0.2.0 — added claude_app_plugin
+  active_surface, Rule 8, install scope table, two-file separation guidance;
+  (2) `settings_global_template.json` — added 6 git allow entries;
+  (3) `sync_claude_settings.py` (new) — allow/deny propagation helper with
+  --check/--write/--all modes, multi-target workspace.work_repos discovery,
+  local_adds drift semantics; (4) `setup_cowork_plugin.{bat,py,sh}` (new) —
+  Cowork plugin packaging helpers (--workspace/--repo/--output/--dry-run);
+  (5) `.claude-plugin/plugin.json` (new) — plugin manifest skeleton;
+  (6) `rb_setup_smoke_matrix_01.md` — added Inputs, Outputs, Postconditions,
+  Validation sections; Cowork plugin rows added to matrix; (7)
+  `.ai_ops/exports/manifest.yaml` — regenerated after workflow source changes.
+  Governed-repo change: `.claude/settings.json` — synced 49-entry template
+  allow/deny; 1 repo-local conda entry preserved (local_adds, not drift).
+  Two crosscheck passes (v0.1.0, v0.2.0) with all 6 findings remediated.
+  Validation: validate_workflow_frontmatter PASS (13 files); validate_repo_rules
+  errors in gitignored 90_Sandbox only (pre-existing governance status values);
+  check_workflow_exports_drift 0 drift; run_release_quality_gate PASS
+  (--skip-lint: markdownlint/ruff/yamllint not installed in Linux sandbox;
+  markdown files validated 0 errors in Phase 10 pass; Python py_compile clean);
+  sync_claude_settings --check workspace → clean exit 0; governed repo → local_adds
+  exit 0; --all → clean/skipped/local_adds exit 0.
+  Requestor approval: "good to run /ai-ops-skills:closeout" (2026-06-09).
+  Workbook archived: 99_Trash/wb_cowork_plugin_build_and_l4_proposal_01_2026-06-05/.
+  Manual checks outstanding: Cowork plugin install test; VS Code git
+  commit/push stop-approval tests (operator-performed, not automatable).
