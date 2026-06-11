@@ -1,6 +1,6 @@
 ---
 title: Crosscheck Review - <subject>
-version: 0.3.0
+version: 0.4.0
 status: active
 license: Apache-2.0
 created: YYYY-MM-DD
@@ -122,6 +122,39 @@ Use this section for `bottom-up` and `hybrid` reviews. Keep it concise.
 - Verified defects (must fix now): <count>
 - Improvement proposals (not defects): <count>
 - Speculative recommendations explicitly marked as proposal seeds: yes/no
+
+## Accepted Finding Destination Matrix (Required)
+
+| Finding | Priority | Disposition | Destination Type | Target Path / No-Action Rationale | Placement Verified |
+| --- | --- | --- | --- | --- | --- |
+| `<F-01>` | `<high/medium/low>` | `<patch_now/proposal_seed/follow_on_workbook>` | `<canonical_doc/template/validator/config/script/backlog/no_action_with_reason>` | `<path or rationale>` | `<yes/no>` |
+
+High-priority or accepted findings require a verified destination. Prose-only
+acknowledgement is not sufficient.
+
+## Canonical Promotion Gate Coverage (Conditional)
+
+| Named Runbook Gate | Workbook Evidence | Representative Content Sample | Status |
+| --- | --- | --- | --- |
+| `<gate name>` | `<path:line>` | `<path:line or sample description>` | `<pass/fail/not_applicable>` |
+
+For Level 3+ promotion, list gates individually. Generic gate-coverage claims
+are invalid when promoted content encodes judgment.
+
+## Operator Decision Completeness
+
+| Decision | Rationale | Actor | Date | Status |
+| --- | --- | --- | --- | --- |
+| `<decision>` | `<required rationale>` | `<operator>` | `<YYYY-MM-DD>` | `<accepted/rework/pending>` |
+
+Empty decision or rationale fields remain pending and block convergence.
+
+## Completed-Workbook Divergence Audit (Completion Reviews)
+
+- Latest crosscheck verdict matches current outputs: yes/no
+- Later review artifacts inspected: `<paths or none>`
+- Later evidence overturns acceptance: yes/no
+- Re-review required and completed: yes/no/not_applicable
 
 ## Scope Integrity
 

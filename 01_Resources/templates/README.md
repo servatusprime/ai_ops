@@ -1,10 +1,10 @@
 ---
 title: Template Catalog
-version: 0.1.0
+version: 0.2.0
 status: active
 license: Apache-2.0
 created: 2026-03-14
-last_updated: 2026-03-14
+last_updated: 2026-06-11
 owner: ai_ops
 description: >
   Canonical entrypoint for all authoring templates. Guides and specs link here
@@ -28,9 +28,12 @@ Run-family and work-family scaffolds plus operational wrappers.
 | Template | Path | Primary Consumers | Use Notes | Audience |
 | --- | --- | --- | --- | --- |
 | `command_wrapper_template.md` | `workflows/command_wrapper_template.md` | `/work`, `/health`, `/crosscheck` command authors | Scaffold for adding a new named command | Mixed |
+| `artifact_cleanup_manifest_template.md` | `workflows/artifact_cleanup_manifest_template.md` | `/harvest`, `/closeout`, workbook authors | Retention and cleanup decision manifest | Agent-facing |
+| `canonical_promotion_manifest_template.md` | `workflows/canonical_promotion_manifest_template.md` | Promotion workbooks, `/harvest`, `/closeout` | Source-to-canonical promotion and rollback manifest | Mixed |
 | `execution_spine_template.md` | `workflows/execution_spine_template.md` | Workbook authors, agents | Gate-and-phase execution spine for single-run workbooks | Agent-facing |
 | `governed_repo_bootstrap.md` | `workflows/governed_repo_bootstrap.md` | Repo initializers, operators | Bootstrap scaffold for standing up a governed repo | Human/Mixed |
 | `peer_review_template.md` | `workflows/peer_review_template.md` | Crosscheck reviewers, validators | Peer/crosscheck review checklist scaffold | Mixed |
+| `quality_loop_convergence_template.md` | `workflows/quality_loop_convergence_template.md` | Iterative quality-loop workbooks | Bounded validator and operator exit contract | Mixed |
 | `rb_template_generic.md` | `workflows/rb_template_generic.md` | Runbook authors | Generic runbook starting point | Mixed |
 | `runbundle_pipeline_template.md` | `workflows/runbundle_pipeline_template.md` | Runbundle coordinators | Pipeline descriptor for a runbundle | Agent-facing |
 | `runbundle_readme_template.md` | `workflows/runbundle_readme_template.md` | Runbundle authors | README scaffold for runbundles | Mixed |

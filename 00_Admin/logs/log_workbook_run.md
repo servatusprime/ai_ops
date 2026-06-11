@@ -330,3 +330,19 @@ ai_generated: true
   reverse-crosscheck report. Requestor approval: "commits and push please"
   (2026-06-10). Workbook archived:
   99_Trash/wb_authoring_template_uplift_01_2026-06-05/.
+
+- 2026-06-11 | wb_governance_seed_intake_01 (L4) | Completed governance-seed
+  intake and full actualization. Ten governed-repo proposal seeds were reviewed,
+  consolidated for intake, then implemented across canonical crosscheck,
+  closeout, harvest, and savepoint workflows; workbook, peer-review, scratchpad,
+  handoff, cleanup, promotion, and quality-loop templates; workbook and
+  scratchpad guides; future-work lifecycle policy; VS012/VS034 validator logic;
+  and focused regression tests. The seven temporary future-work rows were
+  removed after implementation and the scorecard was regenerated to 10 rows.
+  Strict hybrid completion crosscheck found three defects; all were resolved.
+  Validation: six focused tests passed; repo validator passed with pre-existing
+  warnings only; metadata and workflow-frontmatter checks passed; workflow
+  export drift was zero; release-quality gate passed; privacy/path/EOL scans
+  found no personal-name content, machine-local paths, or CRLF text artifacts.
+  Workbook remains in its sandbox workbundle pending an explicit closeout and
+  archive decision. No commit or push was performed.

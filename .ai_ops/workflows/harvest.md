@@ -2,7 +2,7 @@
 description: Harvest, prune, and summarize work artifacts across one or more targets.
 name: harvest
 kind: workflow
-version: 0.1.2
+version: 0.2.0
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -109,16 +109,28 @@ those targets and proceed. Otherwise:
 
 1. Inventory files in each target.
 2. Identify keepers to promote and artifacts to prune.
-3. Default to pruning harvested scratchpads/artifacts after promotion unless the requestor opts to retain.
-4. Propose actions (promote/move/archive/delete) and get confirmation.
-5. Execute approved actions.
-6. After relocation actions (move/archive/delete), run stale-reference checks on
+3. For each stabilized workbook lesson, record: stable rule, canonical target,
+   executable enforcement target, documentation target, owner, validation,
+   follow-on state, and verified placement path/section/version.
+4. Use the canonical manifest templates when files are promoted, replaced,
+   archived, or deleted:
+   - `01_Resources/templates/workflows/canonical_promotion_manifest_template.md`
+   - `01_Resources/templates/workflows/artifact_cleanup_manifest_template.md`
+5. For governed-repo ai_ops improvement seeds, require a handoff payload with
+   self-contained context, generic source classification, owner, problem,
+   recommendation, target surfaces, activation trigger, and authority boundary.
+   Move the seed into an ai_ops sandbox workbundle only when its activation
+   trigger is satisfied and the requestor authorizes intake.
+6. Default to pruning harvested scratchpads/artifacts after promotion unless the requestor opts to retain.
+7. Propose actions (promote/move/archive/delete) and get confirmation.
+8. Execute approved actions.
+9. After relocation actions (move/archive/delete), run stale-reference checks on
    touched docs/indices and fix or report broken references before completion.
-7. Update workbundle README or compacted context when applicable.
-8. If `00_Admin/backlog/future_work_registry.yaml` changed, regenerate scorecard:
-   `python ai_ops/00_Admin/scripts/generate_future_work_scorecard.py`.
-9. Provide a short harvest summary in chat.
-10. If multi-target or complex, create a short `harvest_report.md` in the primary target.
+10. Update workbundle README or compacted context when applicable.
+11. If `00_Admin/backlog/future_work_registry.yaml` changed, regenerate scorecard:
+    `python 00_Admin/scripts/generate_future_work_scorecard.py`.
+12. Provide a short harvest summary in chat.
+13. If multi-target or complex, create a short `harvest_report.md` in the primary target.
 
 ### External Repo (User)
 

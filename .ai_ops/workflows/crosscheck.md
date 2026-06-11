@@ -2,7 +2,7 @@
 description: Conduct a structured peer review of work.
 name: crosscheck
 kind: workflow
-version: 0.1.2
+version: 0.2.0
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -166,6 +166,12 @@ review-local defaults and workflow-specific deltas.
     - `patch_now` (in-scope and actionable)
     - `proposal_seed` (good idea, not yet authorized)
     - `follow_on_workbook` (approved next-lane execution)
+    - For high-priority or accepted findings, also require a destination:
+      `canonical_doc`, `template`, `validator`, `config`, `script`, `backlog`,
+      or `no_action_with_reason`. A disposition without a destination is
+      incomplete and blocks completion.
+    - Verify destination evidence identifies the target path or the explicit
+      no-action rationale; workbook prose alone is not placement evidence.
 15. Run an explicit **four-axis** review on all touched artifacts:
 
     **Clarity axis** — Can a cold-start agent follow inputs, steps, and outputs
@@ -202,7 +208,17 @@ review-local defaults and workflow-specific deltas.
     - Design review: before implementation starts
     - Mid-execution review: at phase boundaries
     - Completion review: before closeout
-19. If inline comments used, remove them before lint/commit.
+19. For Level 3+ canonical promotion reviews:
+    - list every applicable runbook gate by name,
+    - map each gate to workbook evidence,
+    - sample representative promoted content when it encodes judgment,
+    - reject generic assertions such as "gate coverage confirmed".
+20. Verify operator decision rows contain decision, rationale, date, and actor.
+    Empty decision or rationale fields remain pending and block convergence.
+21. For completed workbooks, compare the latest crosscheck verdict with current
+    outputs and any later review artifacts. If later evidence overturns
+    acceptance, require remediation and a new completion crosscheck.
+22. If inline comments used, remove them before lint/commit.
 <!-- markdownlint-enable MD029 -->
 
 ### External Repo (User)

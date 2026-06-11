@@ -3,7 +3,7 @@ title: AI Workbook Lite Template: <short_title>
 id: wb_<topic>_<scope>_lite
 status: planned
 license: Apache-2.0
-version: 0.4.4
+version: 0.5.0
 created: YYYY-MM-DD
 last_updated: 2026-06-10
 owner: ai_ops
@@ -309,6 +309,15 @@ If touched scope includes `.ai_ops/workflows/**`, `00_Admin/scripts/**`,
 Reference: `00_Admin/specs/spec_infrastructure_change_validation_gate.md`
 
 ---
+
+## Feedback and Decision Controls
+
+| Finding / Decision | Destination or Decision | Rationale | Owner / Actor | Date | Status |
+| --- | --- | --- | --- | --- | --- |
+| `<item>` | `<canonical_doc/template/validator/config/script/backlog/no_action_with_reason or decision>` | `<required rationale>` | `<owner>` | `<YYYY-MM-DD>` | `<accepted/rework/pending>` |
+
+Accepted findings require placement evidence. Empty decision or rationale
+fields remain pending and block convergence.
 
 ## Validation Commands
 

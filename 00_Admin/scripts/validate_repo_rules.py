@@ -749,7 +749,13 @@ def check_future_work_registry(path: str, warnings: List[str]) -> None:
     entries = re.split(r"^\s*-\s+id:\s*", text, flags=re.MULTILINE)
     for entry in entries[1:]:
         block = "id: " + entry
-        for key in ["source_workbook", "scope", "priority", "created"]:
+        for key in [
+            "source_workbook",
+            "completion_workbook",
+            "scope",
+            "priority",
+            "created",
+        ]:
             if re.search(rf"^\s*{key}\s*:", block, flags=re.MULTILINE) is None:
                 warnings.append(f"VS012: entry missing '{key}'")
                 break
@@ -757,9 +763,55 @@ def check_future_work_registry(path: str, warnings: List[str]) -> None:
     log_path = os.path.normpath(log_path)
     if os.path.exists(log_path):
         log_text = read_text(log_path)
-        for match in re.findall(r"source_workbook:\s*([^\n]+)", text):
-            if match in log_text:
-                warnings.append(f"VS012: source_workbook completed in run log: {match}")
+        for entry in entries[1:]:
+            match = re.search(
+                r"^\s*completion_workbook\s*:\s*(\S+)\s*$",
+                entry,
+                flags=re.MULTILINE,
+            )
+            if match is None:
+                continue
+            completion_workbook = match.group(1).strip("'\"")
+            if completion_workbook.lower() in {"null", "~"}:
+                continue
+            if completion_workbook in log_text:
+                warnings.append(
+                    "VS012: completion_workbook completed in run log: "
+                    f"{completion_workbook}"
+                )
+
+
+def check_required_contract_content(
+    contract_markers: List[str],
+    errors: List[str],
+    warnings: List[str],
+    severity: str,
+    rule_id: str,
+    repo_root: str,
+) -> None:
+    issues = errors if severity == "error" else warnings
+    if not contract_markers:
+        issues.append(f"{rule_id}: no contract markers configured")
+        return
+    for contract_marker in contract_markers:
+        rel_path, separator, marker = str(contract_marker).partition("::")
+        rel_path = rel_path.strip()
+        marker = marker.strip()
+        if not separator or not rel_path or not marker:
+            issues.append(
+                f"{rule_id}: invalid contract marker (expected path::marker): "
+                f"{contract_marker}"
+            )
+            continue
+        path = os.path.join(repo_root, rel_path)
+        if not os.path.exists(path):
+            issues.append(f"{rule_id}: missing contract path {rel_path}")
+            continue
+        text = read_text(path)
+        if marker not in text:
+            issues.append(
+                f"{rule_id}: {rel_path} missing required contract content: {marker}"
+            )
 
 
 def check_registry_paths(
@@ -1364,6 +1416,13 @@ def main() -> int:
             req_content = params.get("required_content", [])
             check_workflow_routing_contract(
                 paths, errors, warnings, severity, rule_id, req_sections, req_content
+            )
+        elif rule_id == "VS034":
+            params = rule.get("params", {})
+            severity = params.get("severity", "error")
+            contract_markers = params.get("contract_markers", [])
+            check_required_contract_content(
+                contract_markers, errors, warnings, severity, rule_id, repo_root
             )
         elif rule_id == "VS028":
             params = rule.get("params", {})

@@ -89,7 +89,17 @@ contract.
    - Run `git -C <repo_root> rev-parse --abbrev-ref HEAD`. If output is `HEAD`: emit `push_preflight: detached_head` — stop; a branch must be checked out before committing.
    - Run `git -C <repo_root> rev-parse --is-shallow-repository`. If `true`: emit `push_preflight: shallow_clone`. Warn: push may require `git fetch --unshallow` first. Record warning and proceed.
    - Run `git -C <repo_root> config --get commit.gpgsign`. If `true`: emit `signed_commits_required: true` and verify a signing key is available before the commit step.
-   - Record `push_preflight_result: clean | detached_head | shallow_clone` in output.
+   - Record `push_preflight_result: clean | detached_head | shallow_clone |
+     longpath_risk | permission_blocked` in output.
+   - On Windows, run `git -C <repo_root> config --get core.longpaths` and
+     record `core_longpaths: true | false | unset`. Measure the longest changed
+     repo-relative path. If long paths are disabled/unset and a changed path is
+     240 characters or longer, stop before staging and report
+     `push_preflight: longpath_risk` with the path; do not silently change Git
+     configuration.
+   - Treat Git metadata permission errors as a bounded escalation: report the
+     failing path and operation, retry only after an approved permission repair,
+     and never interpret ambiguous or permission-denied status output as clean.
 3. **Identify scope**: Run `git -C <repo_root> status` to confirm which files have changes.
    - `warning: unable to access '.../.config/git/ignore': Permission denied` is a non-blocking environment warning. Report it explicitly; do not treat ambiguous output as a clean tree.
    - If changed files include paths not covered by any artifact in `work_state.active_artifacts`, report `artifact_scope_drift: true` and `drift_paths: [...]`. Include drifted paths in the savepoint commit unless the requestor explicitly excludes them.
@@ -141,7 +151,8 @@ contract.
 - If `--no-commit` was passed, report session end only.
 - Report exactly which artifact(s) were included in the savepoint message.
 - Output metadata fields: `target_repo`, `repo_root`, `git_root`,
-  `safe_directory_applied`, `push_preflight_result`, `signed_commits_required`,
+  `safe_directory_applied`, `push_preflight_result`, `core_longpaths`,
+  `longest_changed_path_length`, `longpath_risk_path`, `signed_commits_required`,
   `validation_commands_run`, `validation_escalated`, `artifact_scope_drift`,
   `push_escalation`.
 

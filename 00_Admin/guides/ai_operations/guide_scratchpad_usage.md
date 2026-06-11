@@ -1,9 +1,9 @@
 ---
 title: Guide: Scratchpad Usage
-version: 0.2.0
+version: 0.3.0
 status: active
 license: Apache-2.0
-last_updated: 2026-02-03
+last_updated: 2026-06-11
 owner: ai_ops
 related:
 - ./guide_ai_ops_vocabulary.md
@@ -115,6 +115,15 @@ Use these checkpoints to keep scratchpads lean and synchronized:
    - workbook checklists reflect promoted items
    - registry contains only intentional future handoffs
    - scratchpad keeps only unmigrated items
+
+### 5.2) Governed-Repo ai_ops Proposal Seeds
+
+When a governed repo discovers an ai_ops improvement, capture owner, problem,
+recommendation, target surfaces, and activation trigger in the scratchpad. Use
+the proposal-seed block in
+`01_Resources/templates/documents/handoff_template.md` to cross the repository
+boundary. The handoff is evidence only; ai_ops sandbox intake requires a
+satisfied activation trigger and explicit requestor authorization.
 
 ## 6) Relationship to Other Artifacts
 

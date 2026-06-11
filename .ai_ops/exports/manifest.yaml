@@ -43,7 +43,7 @@ workflows:
     sha256_12: 5e3e551d96b0
 - workflow: closeout
   source: .ai_ops/workflows/closeout.md
-  source_sha256_12: b08e8cec97b6
+  source_sha256_12: 4ce876799171
   description: Finalize a work session with cleanup, lint, commit, and push.
   outputs:
   - path: plugins/ai-ops-governance/commands/closeout.md
@@ -54,7 +54,7 @@ workflows:
     sha256_12: bbb22cf94532
 - workflow: crosscheck
   source: .ai_ops/workflows/crosscheck.md
-  source_sha256_12: 015cb615cea8
+  source_sha256_12: 23dcbecf523e
   description: Conduct a structured peer review of work.
   outputs:
   - path: plugins/ai-ops-governance/commands/crosscheck.md
@@ -76,7 +76,7 @@ workflows:
     sha256_12: 9da93b5fad68
 - workflow: harvest
   source: .ai_ops/workflows/harvest.md
-  source_sha256_12: 94535f5938f3
+  source_sha256_12: 3afcb3fab4d1
   description: Harvest, prune, and summarize work artifacts across one or more targets.
   outputs:
   - path: plugins/ai-ops-governance/commands/harvest.md
@@ -144,7 +144,7 @@ workflows:
     sha256_12: 79ffc08c02fc
 - workflow: work_savepoint
   source: .ai_ops/workflows/work_savepoint.md
-  source_sha256_12: 9e295b6559bc
+  source_sha256_12: 032d40bab227
   description: Commit and push active work as a savepoint, then end the ai_ops session.
   outputs:
   - path: plugins/ai-ops-governance/commands/work_savepoint.md

@@ -1,9 +1,9 @@
 ---
 title: Guide: AI Workbooks
-version: 1.9.2
+version: 1.10.0
 status: active
 license: Apache-2.0
-last_updated: 2026-06-10
+last_updated: 2026-06-11
 owner: ai_ops
 related:
 - ./guide_markdown_authoring.md
@@ -1026,6 +1026,29 @@ requestor approval.
 **Lifecycle:** Crosscheck handoff tables are `lifecycle: transient`. Once all
 `patch_now` items are resolved and `proposal_seed`/`follow_on_workbook` items
 are logged, the table may be archived with the workbundle.
+
+### Accepted Finding Destination Contract
+
+Every accepted or high-priority finding must name one destination type:
+`canonical_doc`, `template`, `validator`, `config`, `script`, `backlog`, or
+`no_action_with_reason`. The record must include the target path and verified
+placement evidence, or an explicit no-action rationale. A finding retained only
+as workbook prose is not actualized.
+
+### Operator Decision Completeness
+
+Operator decision records require decision, rationale, actor, and date. Empty
+decision or rationale fields remain `pending` and block convergence and
+closeout. Authority PDRs remain governed by
+`00_Admin/specs/spec_policy_decision_record.md`; this rule also applies to
+non-authority operational decisions.
+
+### Iterative Quality Loops
+
+Workbooks with repeated adjudication or quality loops must instantiate
+`01_Resources/templates/workflows/quality_loop_convergence_template.md` and
+declare validator thresholds, zero-tolerance plausibility checks, allowed
+informational residue, maximum loop count, and operator sign-off.
 
 ## 12.3) State Surfaces — Required vs Optional by Tier
 

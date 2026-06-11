@@ -1,10 +1,10 @@
 ---
 title: Handoff Artifact Template
-version: 0.1.0
+version: 0.2.0
 status: stub
 license: Apache-2.0
 created: 2026-03-25
-updated: 2026-03-25
+updated: 2026-06-11
 owner: ai_ops
 lifecycle: transient
 description: >
@@ -51,6 +51,28 @@ handoff:
   notes: >-
     Any additional context that does not fit above.
 ```
+
+## Governed-Repo Proposal Seed (Conditional)
+
+Use this block when a governed repo discovers an ai_ops improvement. Do not
+edit ai_ops canon or backlog from the unrelated governed-repo lane.
+
+```yaml
+proposal_seed:
+  generic_source_class: <governed_repo_audit|execution_friction|closeout_review>
+  owner: <role or team>
+  problem: <self-contained problem statement>
+  recommendation: <proposed ai_ops improvement>
+  target_surfaces:
+    - <generic ai_ops artifact class or repo-relative path>
+  activation_trigger: <condition that justifies ai_ops sandbox intake>
+  authority_boundary: >-
+    This handoff is evidence only and does not authorize canonical ai_ops edits.
+  acknowledgement_state: <pending|received|intake_authorized>
+```
+
+Activation requires both a satisfied trigger and requestor authorization to
+land the seed in an ai_ops sandbox workbundle.
 
 ## Usage Notes
 

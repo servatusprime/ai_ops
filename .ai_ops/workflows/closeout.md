@@ -2,7 +2,7 @@
 description: Finalize a work session with cleanup, lint, commit, and push.
 name: closeout
 kind: workflow
-version: 0.2.1
+version: 0.3.0
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -92,8 +92,19 @@ closeout-specific branching.
    - Promote valuable content to appropriate locations
    - Archive or delete remaining scratchpad content
    - **Default**: If unsure about an item's value, mark it as "Needs Review" and leave it in the scratchpad.
+   - For stabilized workbook lessons, complete the harvest placement checklist:
+     stable rule, canonical target, enforcement target, documentation target,
+     owner, validation, follow-on state, and verified target path/section/version.
+   - "Intended target" without verified placement evidence is incomplete.
 5. If a workbundle exists and a summary is requested, add `work_summary.md`.
-6. Run workbook boundary check before validation/commit:
+6. When promotion or pruning is in scope, require the applicable templates:
+   - `01_Resources/templates/workflows/canonical_promotion_manifest_template.md`
+     for copy/replace/promotion actions;
+   - `01_Resources/templates/workflows/artifact_cleanup_manifest_template.md`
+     for transient cleanup and retention decisions.
+   Do not delete an artifact whose manifest row lacks approval, retention class,
+   rollback treatment, and cleanup dependency.
+7. Run workbook boundary check before validation/commit:
    - primary scope: touched files inside the selected workbook/workbundle path
      (use the scoped `git status`/`git diff --stat` discovery pattern in
      `policy_git_workflow_conventions.md` "Scoped Discovery for Narrow-Lane
@@ -107,21 +118,32 @@ closeout-specific branching.
      schemas), apply the checklist in
      `00_Admin/specs/spec_infrastructure_change_validation_gate.md` and record
      evidence before commit
-7. If `00_Admin/backlog/future_work_registry.yaml` changed, regenerate scorecard:
+8. If `00_Admin/backlog/future_work_registry.yaml` changed, regenerate scorecard:
    `python ai_ops/00_Admin/scripts/generate_future_work_scorecard.py`.
-8. Run configured validation checks in this order:
+9. Run configured validation checks in this order:
+
    - repo-defined validators/checks from the active closeout contract,
    - then configured linters (markdownlint, yamllint, ruff, pre-commit) if present.
    - when local work artifacts under ignored `90_Sandbox/**` or `99_Trash/**`
      paths are in scope, run equivalent direct lint via temp copy, stdin, or
      explicit ignore override and record the strategy in closeout evidence
-9. Evaluate commit gate explicitly:
-   - If required configured checks exist, all must pass before commit.
-   - If no checks are configured, require explicit user confirmation before
-     commit.
-   - If any required check fails, stop closeout and transition to `/work` for
-     remediation.
-10. **Container completion check (Workbundle/Workprogram):**
+
+10. For Level 3+ completed workbooks, run a divergence audit before commit:
+    compare the latest crosscheck, current output state, and later review
+    artifacts. If acceptance was overturned, return to `/work`, resolve the
+    defect, and rerun completion crosscheck.
+11. Verify every operator decision row has decision, rationale, date, and actor;
+    pending rows block closeout and convergence claims.
+12. Evaluate commit gate explicitly:
+
+    - If required configured checks exist, all must pass before commit.
+    - If no checks are configured, require explicit user confirmation before
+      commit.
+    - If any required check fails, stop closeout and transition to `/work` for
+      remediation.
+
+13. **Container completion check (Workbundle/Workprogram):**
+
     - **If inside a Workbundle:**
       - Check if all workbooks in the workbundle are `completed`.
       - If yes, prompt: "All workbooks in this workbundle are complete. Archive the entire workbundle to 99_Trash?"
@@ -129,21 +151,22 @@ closeout-specific branching.
     - **If inside a Workprogram:**
       - Check if all child workbundles/workbooks are `completed` or `archived`.
       - If yes, prompt: "All items in this workprogram are complete. Archive the entire workprogram to 99_Trash?"
-11. Archive completed work artifacts to `99_Trash/`:
+
+14. Archive completed work artifacts to `99_Trash/`:
     - Completed solitary workbook → move to Trash
     - Completed workbundle (all workbooks complete, user confirmed) → move workbundle folder to Trash
     - Completed workprogram (all workbundles complete) → move workprogram folder to Trash
     - Partially complete artifacts → leave in place
-12. After relocation/archive actions, run stale-reference checks on touched
+15. After relocation/archive actions, run stale-reference checks on touched
     docs/indexes and fix or report broken references before staging.
-13. Update approval/validation log evidence required by policy or the active
+16. Update approval/validation log evidence required by policy or the active
     workbook so the shipped commit contains the final archive paths and review
     gate traceability.
-14. Stage changes and generate commit message summary.
-15. Commit with turbo authorization only when the commit gate passed and no
+17. Stage changes and generate commit message summary.
+18. Commit with turbo authorization only when the commit gate passed and no
     explicit user hold was given.
-16. Push to remote.
-17. Confirm closeout complete with summary of changes shipped.
+19. Push to remote.
+20. Confirm closeout complete with summary of changes shipped.
 
 ### External Repo (User)
 

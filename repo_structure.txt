@@ -217,6 +217,8 @@
 |   |   |       |-- invalid_syntax.yaml
 |   |   |       |-- valid_full.yaml
 |   |   |       +-- valid_minimal.yaml
+|   |   |-- test_future_work_registry_lifecycle.py
+|   |   |-- test_governance_seed_contracts.py
 |   |   +-- workflow_smoke_tests.yaml
 |   +-- tooling/
 |       |-- README.md
@@ -254,10 +256,13 @@
 |       |-- scripts/
 |       |   +-- script_template_python.py
 |       +-- workflows/
+|           |-- artifact_cleanup_manifest_template.md
+|           |-- canonical_promotion_manifest_template.md
 |           |-- command_wrapper_template.md
 |           |-- execution_spine_template.md
 |           |-- governed_repo_bootstrap.md
 |           |-- peer_review_template.md
+|           |-- quality_loop_convergence_template.md
 |           |-- rb_template_generic.md
 |           |-- runbundle_pipeline_template.md
 |           |-- runbundle_readme_template.md

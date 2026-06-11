@@ -1,9 +1,9 @@
 ---
 title: Future Work Registry Policy
-version: 0.1.0
+version: 0.2.0
 status: active
 license: Apache-2.0
-updated: 2026-02-01
+updated: 2026-06-11
 ---
 <!-- markdownlint-disable-next-line MD025 -->
 # Future Work Registry Policy
@@ -24,20 +24,28 @@ Valid `status` values for registry entries:
 
 ## Completion and Deletion Rule
 
-The registry is for pending work only. Completed items MUST be removed to keep it lean. Completion is defined as any
-entry that meets either condition:
+The registry is for pending work only. Completed items MUST be removed to keep
+it lean.
 
-- `source_workbook` appears in `00_Admin/logs/log_workbook_run.md`, or
-- `notes` indicates the workbook was trashed (e.g., "Trashed via sandbox cleanup manifest.").
+- `source_workbook` records provenance only. Completion or archival of that
+  workbook MUST NOT be interpreted as completion of the future-work item.
+- Every entry MUST include `completion_workbook`. Use `null` while the item is
+  pending. Set it to the repo-relative workbook path only when that workbook is
+  the execution authority that completes the registered work.
+- An item is complete when its non-null `completion_workbook` appears in
+  `00_Admin/logs/log_workbook_run.md` as completed execution.
 
-When either condition is true, delete the registry entry and rely on the run log for history.
+When the completion condition is true, delete the registry entry in the same
+closeout change and rely on the run log for history. Trashing an originating or
+intake workbook is not completion evidence by itself.
 
 During `/harvest` or closeout, remove or archive completed items as part of pruning.
 
 ## Entry Quality
 
 - Do not keep placeholder items beyond the first template entry.
-- New entries MUST include `source_workbook`, `scope`, `priority`, and `created`.
+- New entries MUST include `source_workbook`, `completion_workbook`, `scope`,
+  `priority`, and `created`.
 
 ## Promotion Hook (Manual)
 

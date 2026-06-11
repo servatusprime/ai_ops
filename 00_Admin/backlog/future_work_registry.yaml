@@ -1,10 +1,10 @@
 ---
 title: future_work_registry
-version: 0.6.0
+version: 0.6.1
 status: active
 owner: ai_ops
 created: 2026-01-07
-updated: '2026-03-25'
+updated: '2026-06-11'
 migration_note: >-
   Most items were moved to wb_governance_hardening_02; selected deferred items
   remain here.
@@ -42,6 +42,7 @@ scorecard_sync:
 #   domain: governance | tooling | validation | documentation | integration | operations
 #   target_repo: ai_ops | governed_repo | both
 #   source_workbook: repo-relative path to originating workbook
+#   completion_workbook: repo-relative execution workbook that completes the item; null while pending
 #   proposed_workbook: repo-relative path to planned workbook (null if not yet proposed)
 #   scope: detailed description of what needs to be done
 #   priority: low | medium | high
@@ -97,6 +98,7 @@ entries:
     target_repo: ai_ops
     source_workbook: >-
       90_Sandbox/ai_workbooks/wb_agent_architecture_evolution_01_2026-03-22/wb_agent_architecture_evolution_01.md
+    completion_workbook: null
     proposed_workbook: null
     scope: >-
       Implement the Director topology: a multi-agent mode where the primary
@@ -144,6 +146,7 @@ entries:
     target_repo: ai_ops
     source_workbook: >-
       90_Sandbox/ai_workbooks/wb_context_routing_agents_order_01_2026-03-14/wb_context_routing_agents_order_01.md
+    completion_workbook: null
     proposed_workbook: null
     scope: >-
       Activate the fast-path conditions and trigger detection contract defined
@@ -199,6 +202,7 @@ entries:
     target_repo: ai_ops
     source_workbook: >-
       99_Trash/wp_command_routing_isolation_01_2026-02-17/wb_command_routing_seed_actualization_02_2026-02-17.md
+    completion_workbook: null
     proposed_workbook: >-
       90_Sandbox/ai_workbooks/wp_command_routing_isolation_01_2026-02-17/wb_authority_guardrail_enforcement_01.md
     scope: >-
@@ -230,6 +234,7 @@ entries:
     target_repo: ai_ops
     source_workbook: >-
       90_Sandbox/ai_workbooks/wp_ai_ops_stack_cli_01_2026-01-21/wb_ai_ops_stack_cli_01_03_governance_and_validation.md
+    completion_workbook: null
     proposed_workbook: >-
       90_Sandbox/ai_workbooks/wb_emergency_autonomy_audit_schemas_01.md
     scope: >-
@@ -257,6 +262,7 @@ entries:
     target_repo: ai_ops
     source_workbook: >-
       90_Sandbox/ai_workbooks/wp_oss_readiness_01_2026-02-26/wb_oss_pre_commit_completions_01.md
+    completion_workbook: null
     proposed_workbook: null
     scope: >-
       Create an `examples/` directory containing sample workbooks, workbundles,
@@ -285,6 +291,7 @@ entries:
     target_repo: ai_ops
     source_workbook: >-
       90_Sandbox/ai_workbooks/wp_oss_readiness_01_2026-02-26/wb_oss_pre_commit_completions_01.md
+    completion_workbook: null
     proposed_workbook: null
     scope: >-
       Write bash equivalents for the setup scripts currently implemented only
@@ -315,6 +322,7 @@ entries:
     target_repo: ai_ops
     source_workbook: >-
       90_Sandbox/ai_workbooks/wp_oss_readiness_01_2026-02-26/_scratchpad_claude_2026-02-26.md
+    completion_workbook: null
     proposed_workbook: null
     scope: >-
       Review whether the numeric scoring contract in the Workbundle Relevance
@@ -345,6 +353,7 @@ entries:
     target_repo: ai_ops
     source_workbook: >-
       99_Trash/wb_platform_governance_uplift_01_2026-04-12/wb_platform_governance_uplift_01.md
+    completion_workbook: null
     proposed_workbook: null
     scope: >-
       Author spec_platform_lane_mapping.md in 00_Admin/specs/. Maps each of the 8
@@ -384,6 +393,7 @@ entries:
     target_repo: ai_ops
     source_workbook: >-
       99_Trash/wb_platform_governance_uplift_01_2026-04-12/wb_platform_governance_uplift_01.md
+    completion_workbook: null
     proposed_workbook: null
     scope: >-
       Author decision_card_template.md in 01_Resources/templates/documents/. Decision Card
@@ -424,6 +434,7 @@ entries:
     domain: governance
     target_repo: ai_ops
     source_workbook: null
+    completion_workbook: null
     proposed_workbook: null
     scope: >-
       Extend Conductor coordination protocols to include cost_governance budget

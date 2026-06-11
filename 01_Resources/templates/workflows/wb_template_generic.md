@@ -3,7 +3,7 @@ title: AI Workbook Template: <short_title>
 id: wb_<topic>_<scope>
 status: planned
 license: Apache-2.0 # keep by default; inherit repo license unless repo policy says otherwise
-version: 0.9.7
+version: 0.10.0
 created: YYYY-MM-DD
 last_updated: 2026-06-10
 owner: ai_ops
@@ -713,6 +713,27 @@ explicitly classified.
 | `Compacted Context` | `<state>` | `<why>` | `<workbundle/workprogram condition>` |
 
 ---
+
+## Feedback, Decision, and Convergence Controls
+
+### Accepted Finding Destination Matrix
+
+| Finding | Priority | Destination Type | Target / Rationale | Owner | Placement Evidence |
+| --- | --- | --- | --- | --- | --- |
+| `<finding>` | `<H/M/L>` | `<canonical_doc/template/validator/config/script/backlog/no_action_with_reason>` | `<path or rationale>` | `<owner>` | `<path:line or pending>` |
+
+### Operator Decision Record
+
+| Decision | Rationale | Actor | Date | Status |
+| --- | --- | --- | --- | --- |
+| `<decision>` | `<required rationale>` | `<operator>` | `<YYYY-MM-DD>` | `<accepted/rework/pending>` |
+
+Empty decision or rationale fields block convergence and closeout.
+
+### Quality Loop Convergence Contract (Conditional)
+
+Use `01_Resources/templates/workflows/quality_loop_convergence_template.md`
+when execution includes iterative quality or adjudication loops.
 
 ## Validation Commands
 

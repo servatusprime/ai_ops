@@ -3,7 +3,7 @@ title: AI Workbook First-Run Template: <short_title>
 id: wb_<topic>_first_run
 status: planned
 license: Apache-2.0
-version: 0.3.3
+version: 0.4.0
 created: YYYY-MM-DD
 last_updated: 2026-06-10
 owner: ai_ops
@@ -350,6 +350,19 @@ If this first-run lane outputs a portable deliverable bundle, include:
 If no portable bundle is produced, record `not_applicable`.
 
 ---
+
+## Feedback, Decision, and Convergence Controls
+
+| Finding | Destination Type | Target / Rationale | Placement Evidence |
+| --- | --- | --- | --- |
+| `<finding>` | `<canonical_doc/template/validator/config/script/backlog/no_action_with_reason>` | `<path or rationale>` | `<path:line or pending>` |
+
+| Decision | Rationale | Actor | Date | Status |
+| --- | --- | --- | --- | --- |
+| `<decision>` | `<required rationale>` | `<operator>` | `<YYYY-MM-DD>` | `<accepted/rework/pending>` |
+
+For iterative first-run quality loops, instantiate
+`quality_loop_convergence_template.md`. Pending decisions block convergence.
 
 ## Validation Commands
 

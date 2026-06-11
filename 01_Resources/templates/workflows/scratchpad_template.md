@@ -1,6 +1,6 @@
 ---
 title: Scratchpad - <topic>
-version: 0.1.0
+version: 0.2.0
 status: active
 license: Apache-2.0
 last_updated: YYYY-MM-DD
@@ -27,9 +27,13 @@ Capture observations, friction points, and decisions during <context>.
 
 > Include this section only when the requestor asks to capture potential future work.
 
-| Candidate | Domain/Category | Benefit | Effort | Readiness                      | Activation Trigger |
-| :-------- | :-------------- | :------ | :----- | :----------------------------- | :----------------- |
-| `<title>` | `<domain>`      | H/M/L   | XS-XL  | ready/partial/blocked/deferred | `<trigger>`        |
+| Candidate | Owner | Problem | Recommendation | Target Surfaces | Benefit | Effort | Readiness | Activation Trigger |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `<title>` | `<role/team>` | `<problem>` | `<recommendation>` | `<paths/classes>` | H/M/L | XS-XL | ready/partial/blocked/deferred | `<trigger>` |
+
+When a governed-repo seed targets ai_ops, promote it via the proposal-seed
+block in `documents/handoff_template.md`. Do not edit the ai_ops registry from
+the unrelated governed-repo lane.
 
 ## Notes (append-only)
 
