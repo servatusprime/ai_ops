@@ -2,7 +2,7 @@
 description: Finalize a work session with cleanup, lint, commit, and push.
 name: closeout
 kind: workflow
-version: 0.2.0
+version: 0.2.1
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -95,8 +95,12 @@ closeout-specific branching.
 5. If a workbundle exists and a summary is requested, add `work_summary.md`.
 6. Run workbook boundary check before validation/commit:
    - primary scope: touched files inside the selected workbook/workbundle path
+     (use the scoped `git status`/`git diff --stat` discovery pattern in
+     `policy_git_workflow_conventions.md` "Scoped Discovery for Narrow-Lane
+     Work" to isolate this from full-repo worktree noise)
    - promoted scope: explicitly promoted destinations documented by the active workbook
-   - out-of-scope: any unrelated touched paths; require explicit confirmation before commit
+   - out-of-scope: any unrelated touched paths (via unscoped `git status -sb`);
+     require explicit confirmation before commit
    - include the scope breakdown in the closeout summary output
    - if touched paths include infrastructure surfaces (`.ai_ops/workflows/**`,
      `00_Admin/scripts/**`, `00_Admin/configs/**`, validator

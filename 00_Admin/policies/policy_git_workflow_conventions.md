@@ -1,8 +1,8 @@
 ---
 title: Git Workflow (monorepo)
-version: 0.1.1
+version: 0.1.2
 status: active
-updated: 2026-03-14
+updated: 2026-06-10
 owner: ai_ops
 license: Apache-2.0
 ---
@@ -23,6 +23,23 @@ link here rather than restating steps.
 ## Tags
 
 - `v0.1.0`, `v0.2.0`, when you version a deliverable.
+
+## Scoped Discovery for Narrow-Lane Work (Optional)
+
+When a workbook/workbundle touches only a small, known file set, broad
+`git status -sb` output (worktree noise, warnings, untracked files across the
+whole repo) can obscure the in-scope signal. Use a path-scoped variant for
+discovery during execution:
+
+```bash
+git status --porcelain -- <path1> <path2> ...
+git diff --stat -- <path1> <path2> ...
+```
+
+- Use the workbook/workbundle's declared scope paths (or its
+  `Outputs and Target Files` list) as `<pathN>`.
+- This is a discovery aid, not a replacement for the unscoped `git status -sb`
+  preflight/staging checks below or for closeout's full-repo boundary check.
 
 ## Commit/Push Steps (Required)
 

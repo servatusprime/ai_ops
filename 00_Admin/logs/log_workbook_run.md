@@ -308,3 +308,25 @@ ai_generated: true
   Workbook archived: 99_Trash/wb_cowork_plugin_build_and_l4_proposal_01_2026-06-05/.
   Manual checks outstanding: Cowork plugin install test; VS Code git
   commit/push stop-approval tests (operator-performed, not automatable).
+
+- 2026-06-10 | wb_authoring_template_uplift_01 (L4) | Completed authoring
+  template/guide uplift from execution lessons. Applied S1–S5 + R1/R2 across 16
+  canonical files: work/run template family (`wb_template_generic`,
+  `wb_template_first_run`, `wb_template_lite`, `rb_template_generic`), guides
+  (`guide_workbooks`, `guide_python_authoring`, `guide_environment_setup`,
+  `guide_naming_conventions`), `policy_git_workflow_conventions`,
+  `context_routing.yaml`, `work.md`/`closeout.md`, future-work registry/scorecard
+  (R1/R2 removed), and `generate_future_work_scorecard.py`. Codex strict+hybrid
+  completion crosscheck + recheck: 6 findings (F-01..F-06) all resolved
+  (portable scorecard `source_registry`, self-consistent naming rule, removed
+  unenforced config key, verification-checklist sweep, affects/16-file
+  traceability, full guide paths). Validation: markdownlint-cli2 0 errors;
+  ruff/py_compile clean; yamllint clean; validate_workflow_frontmatter PASS
+  (13 files); check_workflow_exports_drift --strict 0 drift;
+  run_release_quality_gate --dry-run PASS; validate_repo_rules no findings on
+  in-scope files (non-zero exit is the unrelated, excluded
+  wb_governance_seed_intake_01 draft-status issue). Closeout also normalized 16
+  spec files CRLF→LF per .gitattributes and added the 2026-05-05
+  reverse-crosscheck report. Requestor approval: "commits and push please"
+  (2026-06-10). Workbook archived:
+  99_Trash/wb_authoring_template_uplift_01_2026-06-05/.

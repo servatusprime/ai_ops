@@ -1,9 +1,9 @@
 ---
 title: Guide: Naming Conventions (ai_ops)
-version: 0.1.1
+version: 0.1.2
 status: active
 license: Apache-2.0
-last_updated: 2026-03-24
+last_updated: 2026-06-10
 owner: ai_ops
 related:
   - ../../policies/policy_naming_conventions.md
@@ -261,6 +261,42 @@ Operation prefixes are intent-based and not domain-specific. Use the shortest ve
 - **Manifest tokens:** `${SCHEMA_*}`, `${STYLE_*}` reserved for build-time substitution.
 - **AI Canonical IDs:** match the manifest rules for **layer_source_id** and **canonical_id**.
 
+### 8.1 Naming Hygiene for Durable Scripts, Configs, and Pipeline Docs
+
+`policy.seed_id_in_canonical_docs: forbidden` (`context_routing.yaml`) forbids
+workbundle/seed identifiers in canonical **docs**. The same prohibition
+extends to durable **scripts, configs, and pipeline-docs** destined for canon
+(i.e., artifacts intended to live on as canon, not workbundle-scoped scratch
+artifacts), and adds a prohibition on **project-name tokens** in
+canon-destined artifacts.
+
+Forbidden in canon-destined scripts/configs/pipeline-docs:
+
+- workbundle/seed identifiers (e.g., `wb_*` folder tokens, `fw_*` registry
+  IDs, ad-hoc seed-tracking IDs such as `MG-004`, `RS-018`)
+- project-name tokens (the name of the requesting/governed project or repo)
+
+#### Grep-Guard Pattern (reference, repo-level)
+
+Run before promoting a script/config/pipeline-doc to canon:
+
+```bash
+grep -rEn '\bwb_[a-z0-9_]+\b|\bfw_[0-9]{8}_[0-9]{2}\b|\b[A-Z]{2,4}-[0-9]{3,}\b' \
+  <path_to_canon_destined_file>
+```
+
+Then separately search the file for the governed project/repo's name (and any
+short codenames used during execution).
+
+- A match is not automatically a violation -- review context. A reference to a
+  workbundle in a workbook explaining provenance is normal; the same token
+  left inside a durable script/config/pipeline-doc destined for canon is not.
+- If a match is a leftover seed/project token, remove it before promotion.
+- This is a repo-level reference check, not a per-workbook mandatory step.
+- The check is advisory: it is not config-enforced today. A future repo-level
+  protected-path authority-evidence validator could also cover canon-destined
+  token hygiene; until then this grep-guard remains the reference mechanism.
+
 ---
 
 ## 9) Do & Don't Examples
@@ -287,6 +323,8 @@ Operation prefixes are intent-based and not domain-specific. Use the shortest ve
 - [ ] Dates follow standard pattern
 - [ ] Branch/commit follow conventions
 - [ ] GIS canonical IDs follow `<scope>_<category>_<specific>__<id>`
+- [ ] Canon-destined scripts/configs/pipeline-docs carry no leftover
+  workbundle/seed or project-name tokens (see §8.1 grep-guard)
 
 ---
 

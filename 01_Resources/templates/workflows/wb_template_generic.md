@@ -3,9 +3,9 @@ title: AI Workbook Template: <short_title>
 id: wb_<topic>_<scope>
 status: planned
 license: Apache-2.0 # keep by default; inherit repo license unless repo policy says otherwise
-version: 0.9.6
+version: 0.9.7
 created: YYYY-MM-DD
-last_updated: 2026-03-25
+last_updated: 2026-06-10
 owner: ai_ops
 ai_role: executor
 model_profile: "medium"  # Reasoning level: low | medium | high | maximum. Provider-model mapping is operator-declared. See AGENTS.md Section AI Model Level Reference.
@@ -347,6 +347,15 @@ Must pass before any task execution:
 - [ ] Critical-seed disposition: if workbook actualizes any `critical` priority
   seeds, explicit disposition gate is defined (`actualize_now`,
   `approve_deferral`, `split_scope`)
+- [ ] Regeneration/refresh safety: if this run regenerates accepted outputs,
+  declare which artifacts are accepted and confirm a snapshot + stage +
+  validate + promote sequence before overwriting live accepted outputs (see
+  `00_Admin/guides/authoring/guide_workbooks.md` Regeneration & Refresh Safety pattern); otherwise
+  `not_applicable`
+- [ ] Behavior-parity check: if this run refactors or regenerates an artifact
+  that must preserve behavior, define a parity check vs. an accepted baseline
+  and record the result (see `00_Admin/guides/authoring/guide_workbooks.md` Behavior-Parity pattern);
+  otherwise `not_applicable`
 - [ ] If workbook is newly created in this lane, Selfcheck iteration 0 evidence
       exists (required sections + markdownlint pass)
 - [ ] If any `.ai_ops/workflows/` files are in scope, export drift check is
@@ -481,6 +490,28 @@ Template table:
 | Module | Check Command | Required | Result |
 | --- | --- | --- | --- |
 | `<module_name>` | `python -c "import <module_name>"` | `yes/no` | `pass/fail` |
+
+#### Runtime Environment & External Data Gate (Conditional)
+
+Complete when this workbook depends on a heavy external toolchain (desktop
+GIS/CAD applications, ML model weights, font/locale packs, geodetic/datum
+grids, or similar runtime reference data) beyond standard Python module
+imports.
+
+- [ ] External runtime/reference-data dependencies are listed (grids, fonts,
+  codecs, locale data, model weights, etc.)
+- [ ] Environment-isolation hazards are declared (env-var pinning, sandboxed
+  vs. unsandboxed write constraints, DLL/registration requirements)
+- [ ] Tool version pinning is declared; known version-drift risks are noted
+
+Template table:
+
+| Dependency | Type (data/runtime/tool) | Version/Pin | Isolation Note | Result |
+| --- | --- | --- | --- | --- |
+| `<dependency_name>` | `<type>` | `<version_or_pin>` | `<env-var/sandbox note>` | `pass/fail/n/a` |
+
+If not applicable, write `not_applicable -- no heavy external toolchain
+dependencies`.
 
 #### Offline Dependency Staging Contract (Required when constrained)
 
@@ -899,6 +930,10 @@ Before creating this workbook, verify:
 ### Thrift Check (Optional)
 
 - [ ] Reuse or extend existing guides/templates where possible
+- [ ] Reuse-first capability check: searched for an existing canonical
+  capability/script/tool before authoring a new one; if forking/duplicating,
+  recorded rationale and a consolidation follow-on (see `guide_workbooks.md`
+  Reuse-First Capability Check pattern)
 - [ ] Avoid duplicate definitions; reference canonical sources
 - [ ] Policy locks live in one authority doc; other artifacts reference (not duplicate)
 - [ ] Keep new sections minimal unless complexity requires more

@@ -11,9 +11,9 @@
 # Quick-read contract:
 # - Tier 1 (always read): usage, fallback, reporting, commands, skills, policy.
 
-version: 0.6.0
+version: 0.6.1
 status: active
-updated: 2026-03-15
+updated: 2026-06-10
 owner: ai_ops
 usage:
   resolution_order:
@@ -334,6 +334,12 @@ policy:
     - must_read
     - may_consult
   seed_id_in_canonical_docs: forbidden
+  # The prohibition above is extended, as advisory guidance, to durable
+  # scripts/configs/pipeline-docs and other canon-destined artifacts (and to
+  # project-name tokens) in guide_naming_conventions.md, section "Naming
+  # Hygiene for Durable Scripts, Configs, and Pipeline Docs". That extension is
+  # a repo-level reference check (grep-guard), not a config-enforced rule, so it
+  # is intentionally not expressed as a separate policy key here.
   co_promotion_requirements:
     work_mode_routing:
     - ai_ops/00_Admin/specs/spec_work_mode_direct.md

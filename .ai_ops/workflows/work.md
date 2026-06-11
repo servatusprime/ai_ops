@@ -2,7 +2,7 @@
 description: Signal that repo rules apply and establish work/run context.
 name: work
 kind: workflow
-version: 0.2.2
+version: 0.2.3
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -282,7 +282,10 @@ Before reporting completion in workbook lanes:
 
 1. Finish scoped deliverables.
 2. Complete workbook verification checklist.
-3. Run required validators/lint/tests for touched scope.
+3. Run required validators/lint/tests for touched scope. For narrow-lane
+   workbooks, use the scoped `git status`/`git diff --stat` discovery pattern
+   in `policy_git_workflow_conventions.md` "Scoped Discovery for Narrow-Lane
+   Work" to confirm touched-file scope before validation.
 4. Record command evidence with environment context.
 5. Run selfcheck loop (max 3 iterations) from `AGENTS.md`.
 

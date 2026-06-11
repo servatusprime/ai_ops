@@ -3,9 +3,9 @@ title: AI Workbook First-Run Template: <short_title>
 id: wb_<topic>_first_run
 status: planned
 license: Apache-2.0
-version: 0.3.2
+version: 0.3.3
 created: YYYY-MM-DD
-last_updated: 2026-03-21
+last_updated: 2026-06-10
 owner: ai_ops
 ai_role: executor
 model_profile: "<model_a>:<reasoning_level> | <model_b>:<reasoning_level>"
@@ -167,8 +167,43 @@ cost_governance:  # Work-family: MAY self-impose limits. Run-family: SHOULD popu
 - [ ] `depends_on` and `affects` fields are populated when shared surfaces are touched
 - [ ] Section applicability contract is complete
 - [ ] Rollback approach documented
+- [ ] Regeneration/refresh safety: if this run regenerates accepted outputs,
+  declare which artifacts are accepted and confirm a snapshot + stage +
+  validate + promote sequence before overwriting live accepted outputs (see
+  `00_Admin/guides/authoring/guide_workbooks.md` Regeneration & Refresh Safety pattern); otherwise
+  `not_applicable`
+- [ ] Behavior-parity check: if this run refactors or regenerates an artifact
+  that must preserve behavior, define a parity check vs. an accepted baseline
+  and record the result (see `00_Admin/guides/authoring/guide_workbooks.md` Behavior-Parity pattern);
+  otherwise `not_applicable`
 - [ ] If workbook is newly created in this lane, Selfcheck iteration 0 evidence
       exists (required sections + markdownlint pass)
+
+---
+
+### Runtime Environment & External Data Gate (Conditional)
+
+Complete when this workbook depends on a heavy external toolchain (desktop
+GIS/CAD applications, ML model weights, font/locale packs, geodetic/datum
+grids, or similar runtime reference data) beyond standard Python module
+imports. First-run lanes are common sites for this kind of environment
+surprise (env-var pinning, sandbox vs. unsandboxed write constraints, tool
+version drift), so completing this gate up front reduces recovery-loop churn.
+
+- [ ] External runtime/reference-data dependencies are listed (grids, fonts,
+  codecs, locale data, model weights, etc.)
+- [ ] Environment-isolation hazards are declared (env-var pinning, sandboxed
+  vs. unsandboxed write constraints, DLL/registration requirements)
+- [ ] Tool version pinning is declared; known version-drift risks are noted
+
+Template table:
+
+| Dependency | Type (data/runtime/tool) | Version/Pin | Isolation Note | Result |
+| --- | --- | --- | --- | --- |
+| `<dependency_name>` | `<type>` | `<version_or_pin>` | `<env-var/sandbox note>` | `pass/fail/n/a` |
+
+If not applicable, write `not_applicable -- no heavy external toolchain
+dependencies`.
 
 ---
 

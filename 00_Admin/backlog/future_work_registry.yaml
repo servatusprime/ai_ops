@@ -309,38 +309,6 @@ entries:
       Partial readiness - .sh scripts already exist for most setup paths.
       Identify which .ps1 scripts have no .sh equivalent before scoping.
 
-  - id: fw_20260227_05
-    title: Remediation-lite workbook template variant
-    domain: governance
-    target_repo: ai_ops
-    source_workbook: >-
-      90_Sandbox/ai_workbooks/wp_oss_readiness_01_2026-02-26/_scratchpad_claude_2026-02-26.md
-    proposed_workbook: null
-    scope: >-
-      Create a lighter workbook template variant optimized for bounded
-      remediation work driven by an external review or audit document.
-      Assumes the scope authority lives in the review doc, reducing template
-      boilerplate to: objective, scope reference, execution queue, selfcheck.
-    priority: low
-    benefit: low
-    effort: s
-    readiness: deferred
-    risk_if_deferred: low
-    activation_trigger: >-
-      Next template maintenance pass or when a remediation workbook is authored
-      and the scaffolding overhead is flagged again.
-    next_review: 2026-05-01
-    status: planned
-    owner: ai_ops
-    created: 2026-02-27
-    compacted_context:
-      source: wb_oss_pre_commit_completions_01.md seed S13
-      note: >-
-        Deferred from WB4 pre-commit completions pass. Internal improvement.
-    notes: >-
-      Post-release. Friction observed during OSS readiness session -
-      remediation scope is well-defined externally, templates add overhead.
-
   - id: fw_20260227_07
     title: Review /work numeric scoring contract
     domain: governance
@@ -494,41 +462,3 @@ entries:
     notes: >-
       Seed-level. No urgency. Activate when Conductor protocol sees active
       multi-agent use with cost governance in place.
-
-  - id: fw_20260319_07
-    title: Git-status discovery friction
-    domain: tooling
-    target_repo: ai_ops
-    source_workbook: >-
-      90_Sandbox/ai_workbooks/wb_native_subagent_runtime_delivery_01_2026-03-19/wb_native_subagent_runtime_delivery_01.md
-    proposed_workbook: null
-    scope: >-
-      Find a lighter worktree discovery path for narrow-lane execution.
-      Broad git status output (worktree noise, warnings, untracked files
-      across the whole repo) can obscure the useful execution signal when
-      an agent is working in a narrow lane touching only a small file set.
-      Deliverables: a targeted git-status pattern or wrapper that scopes
-      discovery to the active work paths; optional integration into workflow
-      pre-flight steps.
-    priority: low
-    benefit: low
-    effort: s
-    readiness: deferred
-    risk_if_deferred: low
-    activation_trigger: >-
-      Git-status noise is flagged as obscuring execution signal during a
-      workbundle execution, or a pre-flight step is observed to be reading
-      and discarding large volumes of irrelevant worktree state.
-    next_review: 2026-06-01
-    status: planned
-    owner: ai_ops
-    created: 2026-03-23
-    compacted_context:
-      source: >-
-        wb_native_subagent_runtime_delivery_01 Accumulated Seeds -
-        ai_ops Process Seeds (2026-03-19)
-      note: >-
-        Surfaced during WB-D execution planning as a tooling friction point.
-        No design committed; scope is a targeted git-status approach for
-        narrow lane work.
-    notes: Low urgency. Quality-of-life improvement; not a blocking issue.

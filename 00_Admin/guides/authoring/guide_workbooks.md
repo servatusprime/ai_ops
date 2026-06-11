@@ -1,9 +1,9 @@
 ---
 title: Guide: AI Workbooks
-version: 1.9.1
+version: 1.9.2
 status: active
 license: Apache-2.0
-last_updated: 2026-03-25
+last_updated: 2026-06-10
 owner: ai_ops
 related:
 - ./guide_markdown_authoring.md
@@ -373,6 +373,80 @@ Normative sources:
 - `00_Admin/specs/spec_workbundle_placement_suggestion.md`
 - `00_Admin/specs/spec_workbundle_dependency_tracking.md`
 - `00_Admin/specs/spec_infrastructure_change_validation_gate.md`
+
+## 2.11 Regeneration & Refresh Safety Pattern
+
+When a workbook or runbook **regenerates or refreshes outputs that are already
+accepted** (published deliverables, canonical exports, prior validated
+results), use a **snapshot -> stage -> validate -> promote** sequence instead
+of overwriting the accepted artifact directly.
+
+Pattern:
+
+1. **Snapshot**: copy or otherwise preserve the current accepted artifact
+   before regeneration starts (for example to a `_prior`/`_baseline` path or a
+   tagged commit).
+2. **Stage**: write the regenerated output to a staging location distinct from
+   the accepted path.
+3. **Validate**: run the relevant validation commands (and, where behavior
+   must be preserved, the Behavior-Parity Check in §2.12) against the staged
+   output.
+4. **Promote**: only after validation passes, replace the accepted artifact
+   with the staged output. Record what was promoted and the validation
+   evidence.
+
+If validation fails, the accepted artifact is untouched and the staged output
+is discarded or fixed and re-validated.
+
+This pattern is declared via the conditional "Regeneration/refresh safety"
+readiness-gate line in the workbook/runbook templates. If a run does not
+regenerate any accepted output, record `not_applicable` for that line.
+
+## 2.12 Behavior-Parity Check for Refactors and Regenerations
+
+When a workbook **refactors** an artifact (script, config, pipeline doc) or
+**regenerates** a deliverable that **must preserve behavior**, define and
+record a parity check against an accepted baseline before treating the
+refactor/regeneration as complete.
+
+A parity check compares the new/regenerated artifact's observable behavior or
+output against the accepted baseline -- for example: identical CLI flags and
+exit codes, equivalent config-resolved values, matching row/feature counts, or
+no unexpected diff in a generated report beyond the intended change.
+
+Record:
+
+- the baseline reference (path, commit, or prior accepted output),
+- the parity dimension(s) checked,
+- the result (`pass`/`fail`/`not_applicable` with rationale).
+
+This check is co-located with the Regeneration & Refresh Safety pattern
+(§2.11) -- both are declared via conditional readiness-gate lines and may be
+satisfied together for the same change. If the refactor/regeneration is not
+behavior-preserving by design (for example, an intentional behavior change),
+record `not_applicable` with a one-line rationale referencing the approved
+scope that authorizes the behavior change.
+
+## 2.13 Reuse-First Capability Check (Thrift Check Extension)
+
+Before authoring a new durable script, tool, or automation capability, check
+whether an existing canonical capability already does (or nearly does) the
+job.
+
+- Search for an existing canonical script/tool/module that covers the need
+  (for example under `00_Admin/scripts/`, shared library modules, or other
+  canonical capability locations referenced by `AGENTS.md`).
+- If a canonical capability exists and fits, reuse or extend it instead of
+  forking.
+- If forking or duplicating is genuinely necessary (for example, a
+  governed-repo-local variant with different dependencies), record the
+  rationale and log a consolidation follow-on (future-work entry or workbook
+  task) so the duplication does not silently persist.
+
+This extends the existing optional Thrift Check (which covers reusing
+guides/templates) to runtime **code capabilities**. It directly mitigates
+template/capability drift -- the meta-risk of repeatedly drafting similar
+scripts from scratch instead of converging on one canonical implementation.
 
 ## 3) Naming and file layout
 

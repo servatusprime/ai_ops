@@ -1,9 +1,9 @@
 ---
 title: Guide: Python Authoring
-version: 1.6.0
+version: 1.6.1
 status: active
 license: Apache-2.0
-last_updated: 2026-02-12
+last_updated: 2026-06-10
 owner: ai_ops
 related:
 - 00_Admin/guides/tooling/guide_environment_setup.md
@@ -364,6 +364,39 @@ Offline/limited-network environments:
   - `python -m pip install --no-index --find-links <wheelhouse> <package>`
 - If online install remains allowed, declare mode as `hybrid` and document both
   code paths.
+
+## External Runtime & Reference-Data Dependencies (S1)
+
+Extends the Runtime Dependency Gates above to dependencies that are **not**
+standard Python module imports: heavy external toolchains, runtime reference
+data, and environment-isolation constraints. Repeatable scripts are a common
+site for silent **tool version drift** between runs.
+
+Applies when a script depends on any of:
+
+- desktop GIS/CAD applications or their CLI/COM/SDK bindings,
+- ML model weights, font/locale packs, or geodetic/datum grids,
+- other runtime reference data fetched or cached outside the repo.
+
+If none of the above apply, no extra declaration is needed beyond the standard
+Runtime Dependency Gates.
+
+When applicable, document in the script's header/docs or `CONTRACT` metadata:
+
+- **External runtime/reference-data dependencies**: name each dependency and
+  where it is sourced/cached.
+- **Environment-isolation hazards**: env-var pinning (e.g. `PROJ_LIB`,
+  `GDAL_DATA`), sandboxed vs. unsandboxed write constraints, DLL/registration
+  requirements.
+- **Tool version pinning**: declared version or pin, with known
+  version-drift risks noted.
+
+Use this table form (matches the workbook/runbook "Runtime Environment &
+External Data Gate (Conditional)"):
+
+| Dependency | Type (data/runtime/tool) | Version/Pin | Isolation Note | Result |
+| --- | --- | --- | --- | --- |
+| `<dependency_name>` | `<type>` | `<version_or_pin>` | `<env-var/sandbox note>` | `pass/fail/n/a` |
 
 ## CLI Contract Drift Compatibility (C33)
 

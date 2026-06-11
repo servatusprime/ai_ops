@@ -1,9 +1,9 @@
 ---
 title: guide_environment_setup
-version: 2.0.3
+version: 2.0.4
 status: active
 license: Apache-2.0
-last_updated: 2026-02-28
+last_updated: 2026-06-10
 owner: ai_ops
 related:
   - 00_Admin/guides/architecture/guide_repository_structure.md
@@ -150,6 +150,10 @@ Common patterns for domain tools:
 - Store migrations, configs, and backups in repo; not live data
 - Export environment definitions (`environment.yml`, `requirements.txt`) for reproducibility
 - Use environment variables or `.env` files for local connection settings
+- For scripts depending on heavy external toolchains or runtime reference data
+  (GIS/CAD apps, model weights, font/locale/datum grids), declare
+  dependencies, environment-isolation hazards, and version pins per
+  `guide_python_authoring.md` "External Runtime & Reference-Data Dependencies (S1)"
 
 ---
 

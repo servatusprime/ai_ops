@@ -43,7 +43,7 @@ workflows:
     sha256_12: 5e3e551d96b0
 - workflow: closeout
   source: .ai_ops/workflows/closeout.md
-  source_sha256_12: c9114e05c965
+  source_sha256_12: b08e8cec97b6
   description: Finalize a work session with cleanup, lint, commit, and push.
   outputs:
   - path: plugins/ai-ops-governance/commands/closeout.md
@@ -133,7 +133,7 @@ workflows:
     sha256_12: dcd9fad693c0
 - workflow: work
   source: .ai_ops/workflows/work.md
-  source_sha256_12: ed4d0b5bdc04
+  source_sha256_12: 8fb09163be98
   description: Signal that repo rules apply and establish work/run context.
   outputs:
   - path: plugins/ai-ops-governance/commands/work.md

@@ -1,10 +1,10 @@
 ---
 title: Runbook: <task_title>
 id: rb_<topic>_<scope>
-version: 0.3.2
+version: 0.3.3
 status: active
 license: Apache-2.0
-last_updated: 2026-03-19
+last_updated: 2026-06-10
 owner: ai_ops
 ai_role: executor
 model_profile: "<model_a>:<reasoning_level> | <model_b>:<reasoning_level>"
@@ -185,6 +185,40 @@ See `00_Admin/guides/authoring/guide_workbooks.md` section
 ## Preconditions
 
 - What must be true before execution begins.
+- [ ] Regeneration/refresh safety: if this run regenerates accepted outputs,
+  declare which artifacts are accepted and confirm a snapshot + stage +
+  validate + promote sequence before overwriting live accepted outputs (see
+  `00_Admin/guides/authoring/guide_workbooks.md` Regeneration & Refresh Safety pattern); otherwise
+  `not_applicable`
+- [ ] Behavior-parity check: if this run refactors or regenerates an artifact
+  that must preserve behavior, define a parity check vs. an accepted baseline
+  and record the result (see `00_Admin/guides/authoring/guide_workbooks.md` Behavior-Parity pattern);
+  otherwise `not_applicable`
+
+### Runtime Environment & External Data Gate (Conditional)
+
+Complete when this runbook depends on a heavy external toolchain (desktop
+GIS/CAD applications, ML model weights, font/locale packs, geodetic/datum
+grids, or similar runtime reference data) beyond standard Python module
+imports. Repeatable runs are a common site for tool **version drift** between
+executions, so completing this gate at publication time -- and re-checking the
+`Version/Pin` column on Execution Log changes -- reduces silent deliverable
+degradation.
+
+- [ ] External runtime/reference-data dependencies are listed (grids, fonts,
+  codecs, locale data, model weights, etc.)
+- [ ] Environment-isolation hazards are declared (env-var pinning, sandboxed
+  vs. unsandboxed write constraints, DLL/registration requirements)
+- [ ] Tool version pinning is declared; known version-drift risks are noted
+
+Template table:
+
+| Dependency | Type (data/runtime/tool) | Version/Pin | Isolation Note | Result |
+| --- | --- | --- | --- | --- |
+| `<dependency_name>` | `<type>` | `<version_or_pin>` | `<env-var/sandbox note>` | `pass/fail/n/a` |
+
+If not applicable, write `not_applicable -- no heavy external toolchain
+dependencies`.
 
 ---
 

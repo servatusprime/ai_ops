@@ -27,6 +27,18 @@ def _priority_rank(priority: str) -> int:
     return order.get(priority.lower(), 9)
 
 
+def _relativize(path: Path) -> str:
+    """Emit a repo-root-relative POSIX path so generated output stays portable.
+
+    Falls back to the plain POSIX path when the target is outside the repo root,
+    preventing session-local absolute paths from leaking into the scorecard.
+    """
+    try:
+        return path.resolve().relative_to(_REPO_ROOT).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
 def _read_registry(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as handle:
         data = yaml.safe_load(handle) or {}
@@ -62,7 +74,7 @@ def _render_markdown(registry_path: Path, rows: list[dict[str, Any]]) -> str:
         "version: 0.1.0",
         "status: active",
         f"updated: '{today}'",
-        f"source_registry: {registry_path.as_posix()}",
+        f"source_registry: {_relativize(registry_path)}",
         "generated_by: 00_Admin/scripts/generate_future_work_scorecard.py",
         "---",
         "",

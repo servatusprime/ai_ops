@@ -3,9 +3,9 @@ title: AI Workbook Lite Template: <short_title>
 id: wb_<topic>_<scope>_lite
 status: planned
 license: Apache-2.0
-version: 0.4.3
+version: 0.4.4
 created: YYYY-MM-DD
-last_updated: 2026-03-21
+last_updated: 2026-06-10
 owner: ai_ops
 ai_role: executor
 model_profile: "<model_a>:<reasoning_level> | <model_b>:<reasoning_level>"
@@ -64,6 +64,30 @@ cost_governance:  # Work-family: MAY self-impose limits. Run-family: SHOULD popu
   - `00_Admin/guides/ai_operations/guide_workflows.md`
   - `00_Admin/guides/ai_operations/guide_ai_operations_stack.md`
 - This template captures workbook-profile checks only.
+
+## Remediation-Lite Mode (Optional)
+
+Use this mode when the workbook's scope authority lives in an external
+review/audit document (not a work proposal) and the remediation is bounded.
+Reduces this template's usage to four parts: objective, scope reference,
+execution queue, selfcheck.
+
+- **Objective**: one-line restatement of the remediation goal (top of
+  `Approvals and Decisions` or `Scope and Authority`).
+- **Scope reference**: replace `Approvals and Decisions` content with a single
+  pointer to the external review/audit document and the specific
+  finding(s)/section(s) being remediated; do not restate the external
+  document's findings here.
+- **Execution queue**: use `Ordered Execution Queue` Phase 1 as normal for the
+  remediation steps; Phase 0/N/N+1/N+2 unchanged.
+- **Selfcheck**: `Selfcheck Results` unchanged.
+- Sections not relevant to bounded remediation (e.g., `Placement Decision
+  Record`, `Dependency Impact Contract`, `Infrastructure Change Validation
+  Gate`) -- mark `not_applicable` in the `Section Applicability Contract` with
+  a one-line rationale citing the external doc.
+- If the remediation grows beyond a bounded scope (new unknowns, Level 4
+  touches, multi-phase), escalate to `wb_template_generic.md` or
+  `wb_template_first_run.md`.
 
 ---
 
@@ -173,6 +197,15 @@ cost_governance:  # Work-family: MAY self-impose limits. Run-family: SHOULD popu
 - [ ] Validation commands are identified for touched scope
 - [ ] Section applicability contract is complete
 - [ ] Rollback or safe-stop condition is documented
+- [ ] Regeneration/refresh safety: if this run regenerates accepted outputs,
+  declare which artifacts are accepted and confirm a snapshot + stage +
+  validate + promote sequence before overwriting live accepted outputs (see
+  `00_Admin/guides/authoring/guide_workbooks.md` Regeneration & Refresh Safety pattern); otherwise
+  `not_applicable`
+- [ ] Behavior-parity check: if this run refactors or regenerates an artifact
+  that must preserve behavior, define a parity check vs. an accepted baseline
+  and record the result (see `00_Admin/guides/authoring/guide_workbooks.md` Behavior-Parity pattern);
+  otherwise `not_applicable`
 - [ ] If workbook is newly created in this lane, Selfcheck iteration 0 evidence
       exists (required sections + markdownlint pass)
 
