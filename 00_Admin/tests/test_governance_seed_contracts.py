@@ -46,6 +46,46 @@ class GovernanceSeedContractTests(unittest.TestCase):
         ):
             self.assertIn(name, catalog)
 
+    def test_vs034_promote_forward_contract_fails_closed(self) -> None:
+        """Negative fixture: VS034 fails when promote_forward_contract: is missing."""
+        import os
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            os.makedirs(os.path.join(temp_dir, ".ai_ops", "workflows"), exist_ok=True)
+            os.makedirs(
+                os.path.join(temp_dir, "01_Resources", "templates", "workflows"),
+                exist_ok=True,
+            )
+            Path(
+                os.path.join(temp_dir, ".ai_ops", "workflows", "closeout.md")
+            ).write_text("# closeout\nNo promote-forward contract here.\n", encoding="utf-8")
+            Path(
+                os.path.join(
+                    temp_dir,
+                    "01_Resources",
+                    "templates",
+                    "workflows",
+                    "canonical_promotion_manifest_template.md",
+                )
+            ).write_text("# Template\nNo promote_forward_contract block.\n", encoding="utf-8")
+
+            errors: list[str] = []
+            warnings: list[str] = []
+            VALIDATOR.check_required_contract_content(
+                [
+                    ".ai_ops/workflows/closeout.md::promote_forward_contract:",
+                    "01_Resources/templates/workflows/canonical_promotion_manifest_template.md::promote_forward_contract:",
+                ],
+                errors,
+                warnings,
+                "error",
+                "VS034",
+                temp_dir,
+            )
+            self.assertEqual(2, len(errors))
+            self.assertIn("promote_forward_contract:", errors[0])
+            self.assertIn("promote_forward_contract:", errors[1])
+
     def test_vs034_rejects_empty_or_invalid_contracts(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             errors: list[str] = []

@@ -4,7 +4,7 @@ version: 0.6.1
 status: active
 owner: ai_ops
 created: 2026-01-07
-updated: '2026-06-18'
+updated: '2026-06-19'
 migration_note: >-
   Most items were moved to wb_governance_hardening_02; selected deferred items
   remain here.
@@ -353,7 +353,8 @@ entries:
     target_repo: ai_ops
     source_workbook: >-
       99_Trash/wb_platform_governance_uplift_01_2026-04-12/wb_platform_governance_uplift_01.md
-    completion_workbook: null
+    completion_workbook: >-
+      ai_ops/90_Sandbox/ai_workbooks/wb_platform_lane_mapping_01_2026-06-19/wb_platform_lane_mapping_01.md
     proposed_workbook: >-
       ai_ops/90_Sandbox/ai_workbooks/wb_proposal_seeds_01_2026-06-18/work_proposal_platform_lane_mapping_01.md
     scope: >-
@@ -373,7 +374,7 @@ entries:
       Platform adopter requests lane-to-platform guidance, or a second platform
       integration is underway and the mapping adds material value.
     next_review: 2026-07-01
-    status: planned
+    status: completed
     owner: ai_ops
     created: 2026-04-23
     compacted_context:
@@ -546,3 +547,41 @@ entries:
         Pairs with fw_20260618_01. Both are small, ready validate_repo_rules hardening items.
     notes: >-
       Seeded from the wb_proposal_seeds_01 crosscheck friction-coverage gap (CC review 2026-06-18).
+
+  - id: fw_20260619_01
+    title: RS-073 Promote-Forward Closeout Contract Enforcement
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      ai_ops/90_Sandbox/ai_workbooks/scratchpad_stop_approvals_2026-06-12.md
+    completion_workbook: >-
+      ai_ops/90_Sandbox/ai_workbooks/wb_promote_forward_closeout_contract_01_2026-06-19/wb_promote_forward_closeout_contract_01.md
+    proposed_workbook: >-
+      ai_ops/90_Sandbox/ai_workbooks/wb_proposal_seeds_01_2026-06-18/work_proposal_promote_forward_closeout_contract_01.md
+    scope: >-
+      Extend VS034 marker enforcement: add promote-forward contract clause to
+      .ai_ops/workflows/closeout.md G-PROMO gate; add promote_forward_contract:
+      block to canonical_promotion_manifest_template.md. Enforce prospectively
+      with positive and negative fixtures. Governance-without-teeth gap closed.
+    priority: high
+    benefit: high
+    effort: s
+    readiness: ready
+    risk_if_deferred: high
+    activation_trigger: >-
+      Active governance gap: promote-forward handling not enforced in closeout or
+      manifest template. Any G-PROMO closeout can omit the promote-forward record.
+    next_review: null
+    status: completed
+    owner: ai_ops
+    created: 2026-06-19
+    compacted_context:
+      source: >-
+        RS-073 seed in scratchpad_stop_approvals_2026-06-12.md; work proposal
+        authored in wb_proposal_seeds_01 (2026-06-18); execution approved 2026-06-19.
+      note: >-
+        VS034 config receives two new contract_markers; no validator script change
+        required. Positive fixture: test_vs034_contracts_are_present passes post-edit.
+        Negative fixture: test_vs034_promote_forward_contract_fails_closed added.
+    notes: >-
+      Closed by wb_promote_forward_closeout_contract_01 (2026-06-19).

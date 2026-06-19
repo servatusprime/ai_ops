@@ -48,6 +48,10 @@ Read specs in this order:
 1. `spec_governance_lifecycle.md` - Governance lifecycle map (Before/During/Across) and circuit breaker conditions
 1. `spec_cost_governance.md` - Quantitative cost governance: token budgets, model routing preferences, and alert thresholds
 
+### Priority 5: Platform Integration
+
+1. `spec_platform_lane_mapping.md` - Lane-to-platform mapping (8 lanes x 3 platforms; governance-intent only)
+
 ## Deprecated Specs (Archived to 99_Trash)
 
 Deprecated tombstone specs are not retained in `00_Admin/specs/`. They are

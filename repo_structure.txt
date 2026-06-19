@@ -194,6 +194,7 @@
 |   |   |-- spec_governance_enforcement.md
 |   |   |-- spec_governance_lifecycle.md
 |   |   |-- spec_infrastructure_change_validation_gate.md
+|   |   |-- spec_platform_lane_mapping.md
 |   |   |-- spec_policy_decision_record.md
 |   |   |-- spec_repo_metadata_standard.md
 |   |   |-- spec_repository_indices.md

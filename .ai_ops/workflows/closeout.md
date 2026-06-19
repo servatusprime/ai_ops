@@ -104,6 +104,23 @@ closeout-specific branching.
      for transient cleanup and retention decisions.
    Do not delete an artifact whose manifest row lacks approval, retention class,
    rollback treatment, and cleanup dependency.
+
+   When any promoted canonical artifact is depended-upon by the current batch
+   (i.e., written in this session and consumed by later phases before a
+   standalone commit), agents MUST record a `promote_forward_contract:` block in
+   the canonical promotion manifest for each such artifact:
+
+   - `artifact_path`: repo-relative path of the promoted artifact
+   - `evidence_ref`: path:line or command confirming the artifact is present and
+     valid at the point it is consumed downstream
+   - `rollback_plan`: how to revert if the promotion must be undone
+   - `actor`: the agent or operator who authorized the promote-forward
+   - `approval_authority`: the authority level and gate (e.g., "L4, servatusprime 2026-06-19")
+   - `manifest_sync_batch`: `true` when the manifest sync is included in the
+     same commit batch as the promotion; `false` with a rollback note if deferred
+
+   This requirement applies prospectively. It does not retroactively invalidate
+   promotion records that pre-date this clause.
 7. Run workbook boundary check before validation/commit:
    - primary scope: touched files inside the selected workbook/workbundle path
      (use the scoped `git status`/`git diff --stat` discovery pattern in

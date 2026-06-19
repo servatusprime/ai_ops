@@ -2,7 +2,7 @@
 title: Future Work Scorecard
 version: 0.1.0
 status: active
-updated: '2026-06-18'
+updated: '2026-06-19'
 source_registry: 00_Admin/backlog/future_work_registry.yaml
 generated_by: 00_Admin/scripts/generate_future_work_scorecard.py
 ---
@@ -15,6 +15,7 @@ generated_by: 00_Admin/scripts/generate_future_work_scorecard.py
 <!-- markdownlint-disable MD013 -->
 | ID | Title | Domain | Repo | Priority | Benefit | Effort | Readiness | Deferred Risk | Next Review |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| fw_20260619_01 | RS-073 Promote-Forward Closeout Contract Enforcement | governance | ai_ops | high | high | s | ready | high | - |
 | fw_20260216_01 | Protected-path authority evidence enforcement for workflow edits | governance | ai_ops | medium | high | m | partial | medium | 2026-03-01 |
 | fw_20260227_04 | Bash equivalents for critical PowerShell setup scripts | operations | ai_ops | medium | medium | l | deferred | medium | 2026-04-01 |
 | fw_20260618_01 | Workbook status-vs-checkbox consistency validator | validation | both | medium | medium | s | ready | medium | 2026-07-15 |

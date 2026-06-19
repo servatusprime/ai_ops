@@ -413,6 +413,8 @@ rules:
         - 01_Resources/templates/workflows/quality_loop_convergence_template.md::operator_sign_off
         - 01_Resources/templates/documents/handoff_template.md::Governed-Repo Proposal Seed
         - 01_Resources/templates/documents/handoff_template.md::activation_trigger
+        - ".ai_ops/workflows/closeout.md::promote_forward_contract:"
+        - "01_Resources/templates/workflows/canonical_promotion_manifest_template.md::promote_forward_contract:"
 # Cross-Repo Validation Baseline (ROADMAP - not yet implemented)
 # These rules are planned for future cross-repo validation support.
 # The validator script does not currently parse this section.
