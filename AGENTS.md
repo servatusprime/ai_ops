@@ -871,6 +871,7 @@ If command folders are not installed for your tool, read `.ai_ops/workflows/<com
 - [Runbooks](00_Admin/runbooks/README.md) - operational procedures
 - [CONTRIBUTING.md](CONTRIBUTING.md) - contributor and PR policy
 - `00_Admin/configs/context_routing.yaml` - command-specific always_read lists, guard profiles, and routing fallback policy
+- Decision Card template: `01_Resources/templates/documents/decision_card_template.md` - structured async governance decision surface for L3/L4 gates and circuit breakers
 
 ### Resources
 

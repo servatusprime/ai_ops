@@ -153,7 +153,13 @@ approval_contract:
   approved_at: "2026-04-23T12:00:00-04:00"
 ```
 
-## 7. Change Log
+## 7. Usage Notes
+
+When constructing the async approval message that accompanies an `approval_contract:`
+block, use the Decision Card template to format the operator-facing surface:
+`01_Resources/templates/documents/decision_card_template.md`
+
+## 8. Change Log
 
 - 1.0.1 (2026-05-04): Section 2 - replaced "recommended" with SHOULD per spec language standard (`00_Admin/specs/README.md#spec-characteristics`).
 - 1.0.0 (2026-04-23): Initial spec authored per `wb_platform_governance_uplift_01` Phase 4.

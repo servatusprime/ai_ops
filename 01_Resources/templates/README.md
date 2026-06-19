@@ -63,6 +63,7 @@ Document-type templates for specs, reports, environment config, and project stru
 | `project_directory_template.md` | `documents/project_directory_template.md` | Project initializers | Canonical suitcase layout scaffold | Human/Mixed |
 | `prompt_spec_template.md` | `documents/prompt_spec_template.md` | Prompt authors | Prompt specification scaffold | Mixed |
 | `requirements_matrix_template.md` | `documents/requirements_matrix_template.md` | Spec authors, governance reviewers | Requirements matrix scaffold | Mixed |
+| `decision_card_template.md` | `documents/decision_card_template.md` | Agents, operators | Structured async governance decision card emitted when an authority gate or circuit breaker fires | Mixed |
 | `spec-template.md` | `documents/spec-template.md` | Spec authors | General-purpose spec scaffold | Mixed |
 <!-- markdownlint-enable MD013 -->
 

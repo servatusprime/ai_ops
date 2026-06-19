@@ -4,7 +4,7 @@ version: 0.6.1
 status: active
 owner: ai_ops
 created: 2026-01-07
-updated: '2026-06-11'
+updated: '2026-06-18'
 migration_note: >-
   Most items were moved to wb_governance_hardening_02; selected deferred items
   remain here.
@@ -354,7 +354,8 @@ entries:
     source_workbook: >-
       99_Trash/wb_platform_governance_uplift_01_2026-04-12/wb_platform_governance_uplift_01.md
     completion_workbook: null
-    proposed_workbook: null
+    proposed_workbook: >-
+      ai_ops/90_Sandbox/ai_workbooks/wb_proposal_seeds_01_2026-06-18/work_proposal_platform_lane_mapping_01.md
     scope: >-
       Author spec_platform_lane_mapping.md in 00_Admin/specs/. Maps each of the 8
       canonical lanes (Coordinator, Planner, Researcher, Executor, Builder, Linter,
@@ -393,7 +394,8 @@ entries:
     target_repo: ai_ops
     source_workbook: >-
       99_Trash/wb_platform_governance_uplift_01_2026-04-12/wb_platform_governance_uplift_01.md
-    completion_workbook: null
+    completion_workbook: >-
+      ai_ops/90_Sandbox/ai_workbooks/wb_proposal_seeds_01_2026-06-18/wb_proposal_seeds_01.md
     proposed_workbook: null
     scope: >-
       Author decision_card_template.md in 01_Resources/templates/documents/. Decision Card
@@ -414,7 +416,7 @@ entries:
       and a reusable template would reduce friction, or first external contributor requests
       governance decision documentation guidance.
     next_review: 2026-07-01
-    status: planned
+    status: completed
     owner: ai_ops
     created: 2026-04-23
     compacted_context:
@@ -473,3 +475,74 @@ entries:
     notes: >-
       Seed-level. No urgency. Activate when Conductor protocol sees active
       multi-agent use with cost governance in place.
+
+  - id: fw_20260618_01
+    title: Workbook status-vs-checkbox consistency validator
+    domain: validation
+    target_repo: both
+    source_workbook: >-
+      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/work_packets/wp_wb_gis_workflow_m4_preflight_readiness_01_2026-06-17/review_wb_gis_workflow_m4_preflight_readiness_01_2026-06-18.md
+    completion_workbook: null
+    proposed_workbook: null
+    scope: >-
+      Add a validator check that flags a workbook frontmatter status: completed (or active)
+      whose Status Checklist / Ordered Execution Queue still contains open "[ ]" items that
+      are not explicitly forward-handoff gates. Recurred 3-4x in the governed-repo GIS
+      workprogram (M3, M4 body, M4 preflight) where status was advanced ahead of an un-swept
+      checklist. Candidate home: validate_repo_rules.py (shared ai_ops + governed-repo
+      governance validator) with an allowance annotation for intended forward-handoff items.
+    priority: medium
+    benefit: medium
+    effort: s
+    readiness: ready
+    risk_if_deferred: medium
+    activation_trigger: >-
+      Tracking-surface drift continues to surface in crosschecks, or the next governance
+      validator pass touches validate_repo_rules.
+    next_review: 2026-07-15
+    status: planned
+    owner: ai_ops
+    created: 2026-06-18
+    compacted_context:
+      source: >-
+        Observed repeatedly across the governed-repo GIS workprogram closeouts 2026-06-17/18;
+        not previously seeded (lived only in agent feedback memory).
+      note: >-
+        Pairs with fw_20260618_02 (status-enum enforcement); both harden validate_repo_rules
+        against the tracking/metadata gaps caught manually this session.
+    notes: >-
+      Seeded from the wb_proposal_seeds_01 crosscheck friction-coverage gap (CC review 2026-06-18).
+
+  - id: fw_20260618_02
+    title: Status-enum enforcement in validate_repo_rules
+    domain: validation
+    target_repo: both
+    source_workbook: >-
+      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/work_packets/wp_wb_gis_workflow_m3_layout_execution_pipeline_01_2026-01-14/review_m3_pipeline_health_2026-06-17.md
+    completion_workbook: null
+    proposed_workbook: null
+    scope: >-
+      Enforce the allowed status enum (planned, stub, active, completed, deprecated) in
+      validate_repo_rules.py. In M3, status: candidate (not an allowed value; candidate is a
+      lifecycle value) passed validate_repo_rules exit 0 across the runbundle - the enum is not
+      checked. Add a frontmatter status-value check that fails on out-of-enum values, keeping
+      lifecycle as a separate field.
+    priority: medium
+    benefit: medium
+    effort: xs
+    readiness: ready
+    risk_if_deferred: medium
+    activation_trigger: >-
+      Next validate_repo_rules maintenance pass, or recurrence of status-enum misuse in a review.
+    next_review: 2026-07-15
+    status: planned
+    owner: ai_ops
+    created: 2026-06-18
+    compacted_context:
+      source: >-
+        M3 pipeline health review 2026-06-17 found status: candidate (x6) passing the repo
+        validator; governance-without-teeth gap.
+      note: >-
+        Pairs with fw_20260618_01. Both are small, ready validate_repo_rules hardening items.
+    notes: >-
+      Seeded from the wb_proposal_seeds_01 crosscheck friction-coverage gap (CC review 2026-06-18).

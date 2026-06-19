@@ -352,6 +352,12 @@ Execution mechanics (lifecycle, triggers, state tracking) are defined in:
 
 - `00_Admin/specs/spec_execution_orchestration.md`
 
+When a governance gate or circuit breaker fires mid-execution, agents emit a
+Decision Card to surface the decision to the operator in a structured,
+async-safe format:
+
+- Decision Card template: `01_Resources/templates/documents/decision_card_template.md`
+
 ---
 
 ## Relationship to Domain Capability Frameworks

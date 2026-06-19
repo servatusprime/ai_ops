@@ -163,7 +163,13 @@ policy_decision:
   emitted_by: "Coordinator"
 ```
 
-## 6. Change Log
+## 6. Usage Notes
+
+When surfacing a PDR-qualified decision to an async human operator, use the
+Decision Card template to structure the message:
+`01_Resources/templates/documents/decision_card_template.md`
+
+## 7. Change Log
 
 - 1.0.1 (2026-05-04): Section 4 - added Recording scope note (workbook-level, not decision ledger) and Frontmatter alignment note (authority_held/emitted_by derivation guidance).
 - 1.0.0 (2026-04-23): Initial spec authored per `wb_platform_governance_uplift_01` Phase 3.

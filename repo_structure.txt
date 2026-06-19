@@ -242,6 +242,7 @@
 |       |   |-- hooks_template.json
 |       |   +-- settings_global_template.json
 |       |-- documents/
+|       |   |-- decision_card_template.md
 |       |   |-- env_vars_template.md
 |       |   |-- handoff_template.md
 |       |   |-- harvest_report_template.md

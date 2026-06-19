@@ -134,7 +134,13 @@ downstream platform docs:
 - **Across stage:** Platform should persist session artifacts (workbook, run log) for
   post-execution audit via crosscheck review.
 
-## 5. Change Log
+## 5. Usage Notes
+
+When a circuit breaker fires or a governance gate requires operator input,
+emit a Decision Card to communicate the decision surface:
+`01_Resources/templates/documents/decision_card_template.md`
+
+## 6. Change Log
 
 - 1.0.2 (2026-05-04): Section Scope - replaced "strongly recommended" with SHOULD per spec language standard.
 - 1.0.1 (2026-04-23): Section 2.4 Stale Context - added explicit PDR emission step (patch per crosscheck finding).
