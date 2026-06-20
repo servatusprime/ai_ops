@@ -354,9 +354,9 @@ entries:
     source_workbook: >-
       99_Trash/wb_platform_governance_uplift_01_2026-04-12/wb_platform_governance_uplift_01.md
     completion_workbook: >-
-      ai_ops/90_Sandbox/ai_workbooks/wb_platform_lane_mapping_01_2026-06-19/wb_platform_lane_mapping_01.md
+      ai_ops/99_Trash/governance_seeds_lane_completed_2026-06-19/wb_platform_lane_mapping_01_2026-06-19/wb_platform_lane_mapping_01.md
     proposed_workbook: >-
-      ai_ops/90_Sandbox/ai_workbooks/wb_proposal_seeds_01_2026-06-18/work_proposal_platform_lane_mapping_01.md
+      ai_ops/99_Trash/wb_proposal_seeds_01_2026-06-18_completed_artifacts/work_proposal_platform_lane_mapping_01.md
     scope: >-
       Author spec_platform_lane_mapping.md in 00_Admin/specs/. Maps each of the 8
       canonical lanes (Coordinator, Planner, Researcher, Executor, Builder, Linter,
@@ -555,9 +555,9 @@ entries:
     source_workbook: >-
       ai_ops/90_Sandbox/ai_workbooks/scratchpad_stop_approvals_2026-06-12.md
     completion_workbook: >-
-      ai_ops/90_Sandbox/ai_workbooks/wb_promote_forward_closeout_contract_01_2026-06-19/wb_promote_forward_closeout_contract_01.md
+      ai_ops/99_Trash/governance_seeds_lane_completed_2026-06-19/wb_promote_forward_closeout_contract_01_2026-06-19/wb_promote_forward_closeout_contract_01.md
     proposed_workbook: >-
-      ai_ops/90_Sandbox/ai_workbooks/wb_proposal_seeds_01_2026-06-18/work_proposal_promote_forward_closeout_contract_01.md
+      ai_ops/99_Trash/wb_proposal_seeds_01_2026-06-18_completed_artifacts/work_proposal_promote_forward_closeout_contract_01.md
     scope: >-
       Extend VS034 marker enforcement: add promote-forward contract clause to
       .ai_ops/workflows/closeout.md G-PROMO gate; add promote_forward_contract:
@@ -585,3 +585,49 @@ entries:
         Negative fixture: test_vs034_promote_forward_contract_fails_closed added.
     notes: >-
       Closed by wb_promote_forward_closeout_contract_01 (2026-06-19).
+
+  - id: fw_20260619_02
+    title: Reduce git permission-prompt friction (atomic invocation convention + git rebase allowlist)
+    domain: operations
+    target_repo: both
+    source_workbook: >-
+      ai_ops/90_Sandbox/ai_workbooks/scratchpad_stop_approvals_2026-06-12.md
+    completion_workbook: null
+    proposed_workbook: null
+    scope: >-
+      Reduce permission-prompt friction for routine git work. Two causes observed
+      2026-06-19: (1) agents bundle several commands into one Bash call for
+      efficiency, but the permission matcher keys on the whole command string, so a
+      bundled call (for example "git add ... ; git commit ... ; git push") does not
+      match an atomic Bash(git <verb>:*) allow pattern and prompts even when each
+      verb is individually allowlisted; (2) git rebase is absent from the default
+      allowlist, and divergence integration is routine. Two-part fix: (a) document
+      an atomic single-command git-invocation convention in agent operating
+      guidance (one allowlisted command per Bash call for git mutations) so the
+      allowlist is actually leveraged; (b) add Bash(git rebase:*) to the default
+      permission allowlist template, or split integration into allowlisted steps.
+      Benefits all agents and platforms.
+    priority: medium
+    benefit: medium
+    effort: s
+    readiness: ready
+    risk_if_deferred: low
+    activation_trigger: >-
+      Recurring permission prompts during multi-step git operations (commit/push/
+      rebase) despite the verbs being allowlisted.
+    next_review: 2026-08-01
+    status: planned
+    owner: ai_ops
+    created: 2026-06-19
+    compacted_context:
+      source: >-
+        Observed 2026-06-19 during cross-repo closeouts: bundled git Bash calls and
+        an un-allowlisted git rebase prompted the operator even though commit/push
+        were allowlisted. Operator asked to capture as a cross-agent seed, not a
+        private agent memo.
+      note: >-
+        Pairs with the stop-approvals inventory. The convention half is agent
+        operating guidance; the allowlist half is a settings/template change.
+    notes: >-
+      Seeded from the 2026-06-19 stop-approval correction; applies to any agent
+      doing git work under a permission allowlist.
