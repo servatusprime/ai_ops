@@ -574,6 +574,110 @@ def check_status_field_values(
             )
 
 
+def _open_checklist_items(body: str) -> List[str]:
+    """Return text after '- [ ] ' for each open checkbox outside fenced code blocks."""
+    items: List[str] = []
+    in_fence = False
+    for line in body.splitlines():
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        stripped = line.strip()
+        if stripped.startswith("- [ ] "):
+            items.append(stripped[6:].strip())
+    return items
+
+
+def _parse_checklist_allowance(fm_text: str) -> Dict[str, Any] | None:
+    """Parse a 'checklist_allowance:' mapping from raw front-matter text (R-6).
+
+    Returns None when absent; otherwise kind/target_artifact/rationale (str|None)
+    and open_items (list). Minimal two-space-indented block parser.
+    """
+    lines = fm_text.splitlines()
+    start = None
+    for idx, line in enumerate(lines):
+        if line.startswith("checklist_allowance:"):
+            start = idx
+            break
+    if start is None:
+        return None
+    result: Dict[str, Any] = {"kind": None, "target_artifact": None, "rationale": None, "open_items": []}
+    in_open = False
+    for line in lines[start + 1:]:
+        if line.strip() == "":
+            continue
+        if len(line) - len(line.lstrip()) == 0:
+            break  # next top-level key ends the block
+        stripped = line.strip()
+        if in_open and stripped.startswith("- "):
+            result["open_items"].append(stripped[2:].strip().strip('"').strip("'"))
+            continue
+        in_open = False
+        if stripped.startswith("kind:"):
+            result["kind"] = stripped.split(":", 1)[1].strip()
+        elif stripped.startswith("target_artifact:"):
+            result["target_artifact"] = stripped.split(":", 1)[1].strip()
+        elif stripped.startswith("rationale:"):
+            result["rationale"] = stripped.split(":", 1)[1].strip()
+        elif stripped.startswith("open_items:"):
+            in_open = True
+    return result
+
+
+def check_status_vs_checklist(files: List[str], errors: List[str], rule_id: str) -> None:
+    """VS035: status completed/active must not carry unexplained open checklist/queue
+    items. A fail-closed forward-handoff allowance (R-6) exempts only exact listed items."""
+    enforced = {"completed", "active"}
+    for path in files:
+        text = read_text(path)
+        fm, body = split_front_matter(text)
+        status = fm.get("status")
+        if status not in enforced:
+            continue
+        open_items = _open_checklist_items(body)
+        if not open_items:
+            continue
+        fm_text = ""
+        if text.startswith("---"):
+            end_idx = text.find("\n---", 3)
+            if end_idx != -1:
+                fm_text = text[3:end_idx]
+        allowance = _parse_checklist_allowance(fm_text)
+        exempt: set = set()
+        if allowance is not None:
+            a_errs: List[str] = []
+            wb_id = fm.get("id")
+            if allowance["kind"] != "forward_handoff":
+                a_errs.append(f"unsupported kind '{allowance['kind']}'")
+            if not allowance["target_artifact"]:
+                a_errs.append("missing target_artifact")
+            elif wb_id and allowance["target_artifact"] != wb_id:
+                a_errs.append(f"unknown target_artifact '{allowance['target_artifact']}'")
+            if not allowance["rationale"]:
+                a_errs.append("empty rationale")
+            oi = allowance["open_items"]
+            if len(oi) != len(set(oi)):
+                a_errs.append("duplicate open_items entries")
+            for it in oi:
+                if it not in open_items:
+                    a_errs.append(f"listed allowance item is not an open checkbox: '{it}'")
+            if a_errs:
+                for ae in a_errs:
+                    errors.append(f"{rule_id}: {path}: invalid checklist_allowance: {ae}")
+                continue
+            exempt = set(oi)
+        unexplained = [it for it in open_items if it not in exempt]
+        if unexplained:
+            sample = "; ".join(unexplained[:3])
+            errors.append(
+                f"{rule_id}: {path}: status '{status}' with {len(unexplained)} "
+                f"unexplained open checklist item(s): {sample}"
+            )
+
+
 def check_workflow_routing_contract(
     files: List[str],
     errors: List[str],
@@ -697,7 +801,7 @@ def check_prefix_in_dir(dir_path: str, prefix: str, warnings: List[str], rule_id
 
 
 def check_workbook_prefix(base_dir: str, warnings: List[str]) -> None:
-    for root, _, files in os.walk(base_dir):
+    for root, dirs, files in os.walk(base_dir):
         if (
             "wp_" in os.path.basename(root)
             or "wb_" in os.path.basename(root)
@@ -705,6 +809,7 @@ def check_workbook_prefix(base_dir: str, warnings: List[str]) -> None:
             or "backlog" in root
             or "outputs" in root
         ):
+            dirs[:] = []
             continue
         for name in files:
             if not name.endswith(".md"):
@@ -1458,6 +1563,8 @@ def main() -> int:
             _allow = list(params.get("allow_repo_names", ["ai_ops"]))
             _work_repos = read_local_work_repo_names(repo_root)
             check_workbook_related_refs(paths, warnings, rule_id, _allow, _work_repos)
+        elif rule_id == "VS035":
+            check_status_vs_checklist(paths, errors, rule_id)
 
     if errors:
         print("Validator errors:")

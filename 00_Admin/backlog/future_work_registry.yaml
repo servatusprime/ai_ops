@@ -483,7 +483,7 @@ entries:
     target_repo: both
     source_workbook: >-
       <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/work_packets/wp_wb_gis_workflow_m4_preflight_readiness_01_2026-06-17/review_wb_gis_workflow_m4_preflight_readiness_01_2026-06-18.md
-    completion_workbook: null
+    completion_workbook: 90_Sandbox/ai_workbooks/wb_validate_repo_rules_integrity_repair_01_2026-06-22/wb_validate_repo_rules_integrity_repair_01.md
     proposed_workbook: null
     scope: >-
       Add a validator check that flags a workbook frontmatter status: completed (or active)
@@ -501,7 +501,7 @@ entries:
       Tracking-surface drift continues to surface in crosschecks, or the next governance
       validator pass touches validate_repo_rules.
     next_review: 2026-07-15
-    status: planned
+    status: completed
     owner: ai_ops
     created: 2026-06-18
     compacted_context:
@@ -520,7 +520,7 @@ entries:
     target_repo: both
     source_workbook: >-
       <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/work_packets/wp_wb_gis_workflow_m3_layout_execution_pipeline_01_2026-01-14/review_m3_pipeline_health_2026-06-17.md
-    completion_workbook: null
+    completion_workbook: 90_Sandbox/ai_workbooks/wb_validate_repo_rules_integrity_repair_01_2026-06-22/wb_validate_repo_rules_integrity_repair_01.md
     proposed_workbook: null
     scope: >-
       Enforce the allowed status enum (planned, stub, active, completed, deprecated) in
@@ -536,7 +536,7 @@ entries:
     activation_trigger: >-
       Next validate_repo_rules maintenance pass, or recurrence of status-enum misuse in a review.
     next_review: 2026-07-15
-    status: planned
+    status: completed
     owner: ai_ops
     created: 2026-06-18
     compacted_context:

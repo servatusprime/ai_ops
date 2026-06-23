@@ -166,6 +166,8 @@
 |   |   |-- cleanup_sandbox.ps1
 |   |   |-- cleanup_trash.ps1
 |   |   |-- diagnose_file_locks.ps1
+|   |   |-- fixtures/
+|   |   |   +-- run_validate_repo_rules_fixtures.py
 |   |   |-- generate_future_work_scorecard.py
 |   |   |-- generate_repo_structure.ps1
 |   |   |-- generate_repo_structure.py

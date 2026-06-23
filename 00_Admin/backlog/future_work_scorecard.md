@@ -2,7 +2,7 @@
 title: Future Work Scorecard
 version: 0.1.0
 status: active
-updated: '2026-06-19'
+updated: '2026-06-22'
 source_registry: 00_Admin/backlog/future_work_registry.yaml
 generated_by: 00_Admin/scripts/generate_future_work_scorecard.py
 ---
