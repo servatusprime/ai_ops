@@ -2,7 +2,7 @@
 description: Conduct a structured peer review of work.
 name: crosscheck
 kind: workflow
-version: 0.2.0
+version: 0.2.1
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -135,7 +135,11 @@ review-local defaults and workflow-specific deltas.
 8. Build an evidence ledger first (paths, line refs, command outputs) before writing findings.
 9. Apply direction-specific passes:
    - **Top-down**: verify task completion and acceptance criteria.
-   - **Bottom-up**: inventory changed files (staged + unstaged), map each file to authorized scope, flag untraced edits.
+   - **Bottom-up**: inventory changed files (staged + unstaged) using an
+     unscoped changed-files sweep when source control is available; map each
+     file to authorized scope; reconcile the returned changed-files declaration
+     when one exists; flag untraced edits. An unexplained out-of-scope file is
+     blocking until attributed, not a note.
      If git is unavailable (for example `claude_app` surface), base the
      inventory on the workbook's Ordered Execution Queue and evidence ledger
      rather than staged diff.
@@ -158,11 +162,21 @@ review-local defaults and workflow-specific deltas.
     - In `ai_ops` scope, flag concrete governed-repo names/paths as findings.
     - In governed-repo scope, verify ai_ops governance references are
       repo-relative and not machine-local absolute paths.
-13. Classify each finding by enforcement type:
+13. Apply cross-surface evidence discipline:
+    - Confirm suspected file-state defects against the authoritative file or
+      runtime surface before recording a blocking finding.
+    - If a shell, mount, cache, fetch, or portable validator fails, record the
+      failed surface, canonical command or endpoint, owning retry surface, and
+      whether canonical re-validation is owed.
+    - Do not treat portable substitute findings as governed findings unless
+      the substitute matches the canonical validator contract or the finding is
+      separately verified on the owning surface.
+    - See `00_Admin/specs/spec_cross_surface_coordination.md`.
+14. Classify each finding by enforcement type:
     - `code_enforced`
     - `doc_only`
     - `process_gap`
-14. Mark each recommendation with disposition:
+15. Mark each recommendation with disposition:
     - `patch_now` (in-scope and actionable)
     - `proposal_seed` (good idea, not yet authorized)
     - `follow_on_workbook` (approved next-lane execution)
@@ -172,7 +186,7 @@ review-local defaults and workflow-specific deltas.
       incomplete and blocks completion.
     - Verify destination evidence identifies the target path or the explicit
       no-action rationale; workbook prose alone is not placement evidence.
-15. Run an explicit **four-axis** review on all touched artifacts:
+16. Run an explicit **four-axis** review on all touched artifacts:
 
     **Clarity axis** — Can a cold-start agent follow inputs, steps, and outputs
     without inference? Are required paths explicit? Are ambiguous terms
@@ -193,32 +207,32 @@ review-local defaults and workflow-specific deltas.
     policies, and upstream guides — not duplicated in downstream operational
     docs. Check for downstream governance that should be consolidated upstream.
     See `peer_review_template.md` `Governance Pass (Upstream Placement)`.
-16. Run a streamlining pass on touched docs:
+17. Run a streamlining pass on touched docs:
     - identify avoidable internal cycle burden (extra read hops/retracing),
     - confirm moved content has explicit landing zone,
     - confirm no dead references were introduced.
-17. For workbook/workbundle/workprogram scope, run a placement/shape pass:
+18. For workbook/workbundle/workprogram scope, run a placement/shape pass:
     - verify whether the current body of work still fits the chosen control
       artifact,
     - flag unnecessary sibling workbook/workbundle proliferation as
       `process_gap`,
       - recommend consolidation or workprogram escalation when thresholds are
       crossed.
-18. Apply review timing patterns:
+19. Apply review timing patterns:
     - Design review: before implementation starts
     - Mid-execution review: at phase boundaries
     - Completion review: before closeout
-19. For Level 3+ canonical promotion reviews:
+20. For Level 3+ canonical promotion reviews:
     - list every applicable runbook gate by name,
     - map each gate to workbook evidence,
     - sample representative promoted content when it encodes judgment,
     - reject generic assertions such as "gate coverage confirmed".
-20. Verify operator decision rows contain decision, rationale, date, and actor.
+21. Verify operator decision rows contain decision, rationale, date, and actor.
     Empty decision or rationale fields remain pending and block convergence.
-21. For completed workbooks, compare the latest crosscheck verdict with current
+22. For completed workbooks, compare the latest crosscheck verdict with current
     outputs and any later review artifacts. If later evidence overturns
     acceptance, require remediation and a new completion crosscheck.
-22. If inline comments used, remove them before lint/commit.
+23. If inline comments used, remove them before lint/commit.
 <!-- markdownlint-enable MD029 -->
 
 ### External Repo (User)
@@ -269,6 +283,9 @@ explicitly limited to mechanical validation output.
 - Findings are scoped to provided artifacts and context.
 - Do not expand scope or introduce new requirements without approval.
 - Do not rely on `git diff --staged` only; use both staged and unstaged changes for bottom-up coverage.
+- Do not close bottom-up review without reconciling the complete changed-files
+  declaration against an unscoped changed-files sweep when source control is
+  available.
 - Do not leave inline comments in canonical documents.
 - Do not require workbundle context in external repos.
 - Do not assume command folders exist; if missing, read `.ai_ops/workflows/crosscheck.md` manually.

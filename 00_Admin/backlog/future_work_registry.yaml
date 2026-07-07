@@ -4,7 +4,7 @@ version: 0.6.1
 status: active
 owner: ai_ops
 created: 2026-01-07
-updated: '2026-06-19'
+updated: '2026-07-07'
 migration_note: >-
   Most items were moved to wb_governance_hardening_02; selected deferred items
   remain here.
@@ -34,7 +34,7 @@ prune_note_2026_06_23: >-
   Pruned actualized entries fw_20260618_01 (status-vs-checkbox validator) and
   fw_20260618_02 (status-enum enforcement). Both delivered by
   wb_validate_repo_rules_integrity_repair_01 on 2026-06-23 (ai_ops 121c548 +
-  governed-repo twin re_stack 02ee91a): VS003 enum enforcement confirmed live,
+  governed-repo twin <governed_repo> 02ee91a): VS003 enum enforcement confirmed live,
   VS035 status-vs-checklist + R-6 fail-closed forward-handoff schema implemented
   in both validator twins (fixtures 25/25), governed-repo parse_config no-op
   repaired. Surfaced repo-wide backlog tracked as governed-repo seed RS-077.

@@ -4,9 +4,9 @@ id: spec_async_approval_contract
 module: admin
 status: active
 license: Apache-2.0
-version: 1.0.1
+version: 1.0.2
 created: 2026-04-23
-updated: 2026-05-05
+updated: 2026-07-07
 owner: ai_ops
 ai_generated: true
 spec_archetype: output_contract_spec
@@ -159,7 +159,23 @@ When constructing the async approval message that accompanies an `approval_contr
 block, use the Decision Card template to format the operator-facing surface:
 `01_Resources/templates/documents/decision_card_template.md`
 
+### 7.1 Blanket Approval Granularity
+
+When approval is requested for a set of items, the approval surface MUST state
+the approval granularity:
+
+- all listed items approved as one set,
+- only non-gated items approved,
+- named subset approved, or
+- named items remain hard-gated.
+
+A blanket approval can satisfy per-item approval only when the listed items are
+inside the declared scope and the approval text makes that set boundary clear.
+Commit, push, unresolved holds, runtime/network checks, and scope expansion
+remain separate gates unless the approval contract names them explicitly.
+
 ## 8. Change Log
 
+- 1.0.2 (2026-07-07): Added blanket approval granularity rules for set-based and per-item gates.
 - 1.0.1 (2026-05-04): Section 2 - replaced "recommended" with SHOULD per spec language standard (`00_Admin/specs/README.md#spec-characteristics`).
 - 1.0.0 (2026-04-23): Initial spec authored per `wb_platform_governance_uplift_01` Phase 4.

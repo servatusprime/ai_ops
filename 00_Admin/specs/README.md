@@ -40,6 +40,7 @@ Read specs in this order:
 1. `spec_workbundle_placement_suggestion.md` - Placement scoring and decision-echo contract
 1. `spec_infrastructure_change_validation_gate.md` - Infrastructure-touching validation gate
 1. `spec_context_routing_runtime.md` - Target-state runtime design for context_routing.yaml
+1. `spec_cross_surface_coordination.md` - Cross-surface state, source-control, and validation coordination
 
 ### Priority 4: Output Contract Layer
 

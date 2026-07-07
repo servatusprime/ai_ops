@@ -192,6 +192,7 @@
 |   |   |-- spec_async_approval_contract.md
 |   |   |-- spec_context_routing_runtime.md
 |   |   |-- spec_cost_governance.md
+|   |   |-- spec_cross_surface_coordination.md
 |   |   |-- spec_execution_orchestration.md
 |   |   |-- spec_governance_enforcement.md
 |   |   |-- spec_governance_lifecycle.md

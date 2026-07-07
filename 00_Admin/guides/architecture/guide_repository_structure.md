@@ -1,9 +1,9 @@
 ---
 title: Guide: Repository Structure (ai_ops)
-version: 0.2.2
+version: 0.2.3
 status: active
 license: Apache-2.0
-last_updated: 2026-03-14
+last_updated: 2026-07-07
 owner: ai_ops
 ---
 
@@ -195,6 +195,21 @@ This guide defines repository structure only. Naming rules are centralized in:
 - `00_Admin/guides/architecture/guide_naming_conventions.md`
 
 Use that guide as the single source for prefixes, date formats, operation-class verbs, and branch/commit patterns.
+
+### 5.1 Artifact Classification Before Promotion
+
+Before promoting workbook outputs into durable repository locations, classify
+each artifact as one of:
+
+- `workbook_evidence`
+- `canonical_code`
+- `canonical_config`
+- `operational_delivery`
+
+Only `workbook_evidence` may carry workbook, workpacket, milestone, or run
+tokens in its filename. Canonical code, canonical config, and operational
+delivery artifacts use stable domain/export names. See
+`00_Admin/specs/spec_repo_metadata_standard.md` for the metadata field contract.
 
 ---
 

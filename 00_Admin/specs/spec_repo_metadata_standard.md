@@ -4,9 +4,9 @@ id: spec_repo_metadata_standard
 module: admin
 status: active
 license: Apache-2.0
-version: 0.1.4
+version: 0.1.5
 created: 2025-12-02
-updated: 2026-05-05
+updated: 2026-07-07
 owner: ai_ops
 ai_generated: true
 spec_archetype: governance_spec
@@ -85,6 +85,26 @@ Quoting and brackets are not required for simple scalar owner values.
   `license`, `claude`, `codex`, `exports`
 - Validation lane:
   `00_Admin/scripts/validate_workflow_frontmatter.py`
+
+### 3.6 Promotion Artifact Classification
+
+Promotion records and closeout evidence SHOULD classify each output before it
+moves from workbook scope into durable repository locations.
+
+Allowed `artifact_class` values:
+
+- `workbook_evidence`: run-scoped proof, review, scratchpad, workbook, or
+  packet artifact.
+- `canonical_code`: durable source code, scripts, packages, or executable
+  logic.
+- `canonical_config`: durable YAML, JSON, TOML, manifest, profile, or validator
+  configuration.
+- `operational_delivery`: exported reports, maps, bundles, PDFs, spreadsheets,
+  or other user-facing deliverables.
+
+Naming rule: only `workbook_evidence` may carry workbook, workpacket, milestone,
+or run tokens in the filename. Canonical code, canonical config, and operational
+delivery artifacts use stable domain/export names.
 
 ---
 

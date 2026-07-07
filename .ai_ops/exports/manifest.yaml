@@ -43,7 +43,7 @@ workflows:
     sha256_12: 5e3e551d96b0
 - workflow: closeout
   source: .ai_ops/workflows/closeout.md
-  source_sha256_12: c1de97bc50db
+  source_sha256_12: 16e4b866ead8
   description: Finalize a work session with cleanup, lint, commit, and push.
   outputs:
   - path: plugins/ai-ops-governance/commands/closeout.md
@@ -54,7 +54,7 @@ workflows:
     sha256_12: bbb22cf94532
 - workflow: crosscheck
   source: .ai_ops/workflows/crosscheck.md
-  source_sha256_12: 23dcbecf523e
+  source_sha256_12: 40e1d363be60
   description: Conduct a structured peer review of work.
   outputs:
   - path: plugins/ai-ops-governance/commands/crosscheck.md
@@ -133,7 +133,7 @@ workflows:
     sha256_12: dcd9fad693c0
 - workflow: work
   source: .ai_ops/workflows/work.md
-  source_sha256_12: 8fb09163be98
+  source_sha256_12: 77386fe5e991
   description: Signal that repo rules apply and establish work/run context.
   outputs:
   - path: plugins/ai-ops-governance/commands/work.md

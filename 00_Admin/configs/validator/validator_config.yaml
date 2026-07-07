@@ -415,6 +415,20 @@ rules:
         - 01_Resources/templates/documents/handoff_template.md::activation_trigger
         - ".ai_ops/workflows/closeout.md::promote_forward_contract:"
         - "01_Resources/templates/workflows/canonical_promotion_manifest_template.md::promote_forward_contract:"
+        - "00_Admin/specs/spec_cross_surface_coordination.md::Changed-Files Containment"
+        - "00_Admin/specs/spec_cross_surface_coordination.md::Closeout Scope Manifest"
+        - "00_Admin/specs/spec_cross_surface_coordination.md::Surface-Bound Validation Evidence"
+        - ".ai_ops/workflows/work.md::Intake Classification and Boundary Statement"
+        - ".ai_ops/workflows/work.md::resume-delta block"
+        - ".ai_ops/workflows/crosscheck.md::unscoped changed-files sweep"
+        - ".ai_ops/workflows/crosscheck.md::cross-surface evidence discipline"
+        - ".ai_ops/workflows/closeout.md::closeout scope manifest"
+        - ".ai_ops/workflows/closeout.md::completion-claim parity"
+        - ".ai_ops/workflows/closeout.md::promotion-record parity"
+        - "01_Resources/templates/workflows/peer_review_template.md::Returning Surface Changed-Files Declaration"
+        - "01_Resources/templates/workflows/peer_review_template.md::Unresolved External Evidence"
+        - "AGENTS.md::blanket or standing approval"
+        - "00_Admin/specs/spec_async_approval_contract.md::Blanket Approval Granularity"
   - id: VS035
     enabled: true
     paths:

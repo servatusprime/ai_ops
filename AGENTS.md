@@ -1,9 +1,9 @@
 ---
 title: Agents Start Here
-version: 3.5.6
+version: 3.5.7
 status: active
 license: Apache-2.0
-last_updated: 2026-03-24
+last_updated: 2026-07-07
 owner: ai_ops
 description: Bootstrap and authority contract for AI agents operating in ai_ops.
 related:
@@ -205,6 +205,13 @@ all actions within approved scope. If scope changes, stop and ask.
 
 Workbook creation approval does not authorize workbook execution. Treat these
 as separate gates.
+
+A blanket or standing approval advances the explicitly approved non-gated scope
+as a set. It does not dissolve hard gates that were reserved separately:
+canonical writes outside the approved surface, runtime/network checks, unresolved
+holds, commit, and push still require the approval contract or decision card to
+name them. If a workbook asks for per-item approval, the decision surface must
+say whether the operator approved all listed items or only the non-gated subset.
 
 When an L3/L4 gate is reached and the operator is not synchronously present, use the
 async approval contract (PARK): save context, emit REQUIRE_APPROVAL PDR, resume when

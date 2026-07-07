@@ -2,7 +2,7 @@
 description: Signal that repo rules apply and establish work/run context.
 name: work
 kind: workflow
-version: 0.2.3
+version: 0.2.4
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -123,6 +123,39 @@ Use the `resume_same_scope` fast path only when all are true:
 
 If any condition is unknown or false, use `fresh_bootstrap` or `recenter`.
 Do not force heavy topology/routing rereads when `resume_same_scope` is valid.
+
+For any resumed or multi-surface run, write a resume-delta block before
+changing state surfaces or advancing completion claims:
+
+- prior claimed state,
+- live evidence checked,
+- deltas found and corrected,
+- validators or checks rerun or owed,
+- gates still open.
+
+If prior claims and live evidence disagree, repair stale wording before moving
+the run forward. See `00_Admin/specs/spec_cross_surface_coordination.md`.
+
+## Intake Classification and Boundary Statement (Mandatory)
+
+Before execution, classify the request as one of:
+
+- `design_reference`
+- `execution`
+- `execution_resume`
+- `validation`
+- `state_sync`
+- `approval_gate`
+
+Then state the gated boundary for the run:
+
+- lanes/actions that may run inline under the current approval,
+- lanes/actions that remain hard-gated,
+- whether canonical writes, runtime/network checks, commit/push, or unresolved
+  holds require separate approval.
+
+For `execution_resume`, name which previously gated phases are now authorized
+and which stop conditions remain hard-gated regardless of blanket approval.
 
 ## Pre-Write Authority Guard (Mandatory)
 
@@ -249,8 +282,9 @@ If missing, patch workbook structure before execution and record evidence.
 8. If artifact is a workbook, run Workbook Preflight Gate.
 9. If a new workbook/runbook/spine/pipeline is being created, run Execution
    Topology and Delegation Gate before writing the artifact body.
-10. Execute scoped tasks under authority guard and thrift gate.
-11. Use `spec_work_mode_direct.md` for direct-mode specifics.
+10. Record intake classification and gated boundary statement.
+11. Execute scoped tasks under authority guard and thrift gate.
+12. Use `spec_work_mode_direct.md` for direct-mode specifics.
 
 ### Governed Mode (External Repo via ai_ops)
 
@@ -264,9 +298,10 @@ If missing, patch workbook structure before execution and record evidence.
 8. If artifact is a workbook, run Workbook Preflight Gate.
 9. If a new workbook/runbook/spine/pipeline is being created, run Execution
    Topology and Delegation Gate before writing the artifact body.
-10. Read `customizations.validation_policy.governed_mode` from `.ai_ops/local/config.yaml`.
-11. Apply ai_ops governance to target repo execution and validations using the selected policy.
-12. Use `spec_work_mode_governed.md` for governed-mode specifics.
+10. Record intake classification and gated boundary statement.
+11. Read `customizations.validation_policy.governed_mode` from `.ai_ops/local/config.yaml`.
+12. Apply ai_ops governance to target repo execution and validations using the selected policy.
+13. Use `spec_work_mode_governed.md` for governed-mode specifics.
 
 ### Standalone Mode
 
@@ -302,6 +337,7 @@ If checks fail, keep workbook active, fix, and rerun.
 - `00_Admin/specs/spec_work_mode_direct.md`
 - `00_Admin/specs/spec_work_mode_governed.md`
 - `00_Admin/specs/spec_work_focus_recenter.md`
+- `00_Admin/specs/spec_cross_surface_coordination.md`
 - `00_Admin/specs/spec_workbundle_placement_suggestion.md`
 - `00_Admin/guides/ai_operations/guide_work_programs.md`
 - `00_Admin/guides/ai_operations/guide_workflows.md`

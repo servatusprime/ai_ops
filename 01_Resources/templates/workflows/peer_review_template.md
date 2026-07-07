@@ -1,6 +1,6 @@
 ---
 title: Crosscheck Review - <subject>
-version: 0.4.0
+version: 0.4.1
 status: active
 license: Apache-2.0
 created: YYYY-MM-DD
@@ -80,10 +80,27 @@ Use this section for `bottom-up` and `hybrid` reviews. Keep it concise.
 - Total files changed: N
 - Traced to workbook tasks/scope: N
 - Untraced changes: N
+- Returning surface declared complete changed-files list: yes/no/not_applicable
+- Unscoped changed-files sweep reconciled: yes/no/not_available
 
 ### Untraced Changes (Requires Justification)
 
 1. `<path/to/file.md>` - Reason: <why change is acceptable or remediation needed>
+
+### Returning Surface Changed-Files Declaration
+
+| Surface/Return | Declared Complete List | Reconciled Against Sweep | Gaps |
+| --- | --- | --- | --- |
+| `<surface or return artifact>` | `<yes/no/not_applicable>` | `<yes/no/not_available>` | `<none or gap>` |
+
+### Unresolved External Evidence
+
+Use when a fetch, runtime check, or canonical validator is bound to another
+surface.
+
+| Item | Canonical Command/Endpoint | Current Surface | Owning Retry Surface | Substitute Run | Canonical Re-Validation Owed |
+| --- | --- | --- | --- | --- | --- |
+| `<item>` | `<command or endpoint>` | `<surface>` | `<surface>` | `<none or command + divergence>` | `<yes/no>` |
 
 ### VS025 Disposition (If Applicable)
 
