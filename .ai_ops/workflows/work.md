@@ -2,7 +2,7 @@
 description: Signal that repo rules apply and establish work/run context.
 name: work
 kind: workflow
-version: 0.2.4
+version: 0.2.5
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -112,6 +112,15 @@ contract.
 5. Apply canonical bootstrap guard BRG-01:
    if bootstrap requirements are missing or unverifiable, apply
    `fresh_bootstrap` tier (read `AGENTS.md`) before lane steps.
+
+### Run-Family Graph Hook
+
+When scope creates, changes, resolves, or migrates a runprogram, runbundle, or
+runbook, load `spec_artifact_graph_identity.md`,
+`spec_run_family_composition.md`, and `run_family_registry.yaml` on demand.
+Resolve affected declared consumers before a shared-artifact write; name one
+merge owner and require a validation receipt or operator-approved disposition
+for each consumer. Generated registry/graph views never grant write authority.
 
 ## Resume Contract (Mandatory)
 

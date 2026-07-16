@@ -1,0 +1,78 @@
+schema_version: 0.1.0
+artifacts:
+- artifact_id: runprogram-cycle
+  artifact_kind: runprogram
+  canonical_home: 00_Admin/runbooks/run_program_cycle/manifest.yaml
+  artifact_version: 1.0.0
+  interface_version: '1'
+  lifecycle: active
+  steward: ai_ops
+  content_sha256: '4444444444444444444444444444444444444444444444444444444444444444'
+- artifact_id: runbundle-cycle
+  artifact_kind: runbundle
+  canonical_home: 00_Admin/runbooks/rnb_cycle/manifest.yaml
+  artifact_version: 1.0.0
+  interface_version: '1'
+  lifecycle: active
+  steward: ai_ops
+  content_sha256: '5555555555555555555555555555555555555555555555555555555555555555'
+- artifact_id: runbook-cycle
+  artifact_kind: runbook
+  canonical_home: 00_Admin/runbooks/rb_cycle.md
+  artifact_version: 1.0.0
+  interface_version: '1'
+  lifecycle: active
+  steward: ai_ops
+  content_sha256: '6666666666666666666666666666666666666666666666666666666666666666'
+consumes:
+- consumer_id: runprogram-cycle
+  provider_id: runbundle-cycle
+  version_constraint: 1.0.0
+  interface_constraint: '1'
+  parameter_profile: cycle-program
+  route_order: 0
+  optional: false
+  gates:
+  - gate-runprogram-cycle-runbundle-cycle
+  entry_artifacts:
+  - input-runprogram-cycle-runbundle-cycle
+  exit_artifacts:
+  - output-runprogram-cycle-runbundle-cycle
+  idempotency:
+    key_fields:
+    - run_instance_id
+    replay_safe: true
+- consumer_id: runbundle-cycle
+  provider_id: runbook-cycle
+  version_constraint: 1.0.0
+  interface_constraint: '1'
+  parameter_profile: cycle-bundle
+  route_order: 0
+  optional: false
+  gates:
+  - gate-runbundle-cycle-runbook-cycle
+  entry_artifacts:
+  - input-runbundle-cycle-runbook-cycle
+  exit_artifacts:
+  - output-runbundle-cycle-runbook-cycle
+  idempotency:
+    key_fields:
+    - run_instance_id
+    replay_safe: true
+- consumer_id: runbook-cycle
+  provider_id: runprogram-cycle
+  version_constraint: 1.0.0
+  interface_constraint: '1'
+  parameter_profile: illegal-cycle-edge
+  route_order: 0
+  optional: false
+  gates:
+  - gate-runbook-cycle-runprogram-cycle
+  entry_artifacts:
+  - input-runbook-cycle-runprogram-cycle
+  exit_artifacts:
+  - output-runbook-cycle-runprogram-cycle
+  idempotency:
+    key_fields:
+    - run_instance_id
+    replay_safe: true

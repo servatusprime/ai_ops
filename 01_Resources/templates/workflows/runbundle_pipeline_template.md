@@ -1,15 +1,16 @@
 ---
 title: Runbundle Pipeline Template
 id: rnb_<bundle_name>_<nn>
-version: 0.2.2
+version: 0.3.0
 status: active
 license: Apache-2.0
 created: 2026-02-18
-updated: 2026-03-21
+updated: 2026-07-16
 owner: ai_ops
 related:
   - 00_Admin/guides/ai_operations/guide_workflows.md
   - 00_Admin/guides/ai_operations/guide_parallel_execution.md
+  - 00_Admin/specs/spec_run_family_composition.md
 lifecycle: transient
 primary_axis: execution
 execution_mode: sequential
@@ -45,13 +46,16 @@ Describe what this runbundle pipeline executes and why it exists.
 ## Authority Source
 
 - Local execution queue authority: this pipeline file.
-- Parent gate authority (if program-scoped): `../../execution_spine.md`.
-- Conflict rule: parent spine wins where applicable.
+- Membership authority: `<path/to/runbundle_manifest.yaml>`.
+- Optional consumer/gate authority: `<consumer_id>` / `<resolved_spine_path>`.
+- Conflict rule: the explicitly referenced spine governs its gates; directory
+  ancestry never grants authority.
 
 ## Inputs
 
+- `<path/to/runbundle_manifest.yaml>`
+- `00_Admin/runbooks/run_family_registry.yaml`
 - `<input_1>`
-- `<input_2>`
 
 ## Preconditions
 
@@ -68,9 +72,9 @@ Describe what this runbundle pipeline executes and why it exists.
 
 ## Ordered Execution Queue
 
-1. `runbooks/rb_<step_00>.md`
-1. `runbooks/rb_<step_01>.md`
-1. `runbooks/rb_<step_02>.md`
+1. `rb_<step_00>` -> `<resolved-canonical-home>`
+1. `rb_<step_01>` -> `<resolved-canonical-home>`
+1. `rb_<step_02>` -> `<resolved-canonical-home>`
 
 ## Batch Sequence Contract (Optional)
 
@@ -115,5 +119,6 @@ markdownlint <changed_paths>
 ## References
 
 - `README.md`
-- `../../README.md` (if program-scoped)
-- `../../execution_spine.md` (if program-scoped)
+- `<path/to/runbundle_manifest.yaml>`
+- `00_Admin/runbooks/run_family_registry.yaml`
+- `<resolved_spine_path>` (if an explicit consumer supplies gate authority)

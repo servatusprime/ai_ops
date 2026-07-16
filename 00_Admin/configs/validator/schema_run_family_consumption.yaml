@@ -1,0 +1,140 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:ai-ops:schema:run-family-consumption:0.1.0
+title: Run-Family Consumption Graph
+description: >-
+  Validation contract for stable run-family identities and explicit
+  consumer-owned composition edges. Reverse edges are prohibited.
+type: object
+additionalProperties: false
+required: [schema_version, artifacts, consumes]
+properties:
+  schema_version:
+    const: "0.1.0"
+  artifacts:
+    type: array
+    minItems: 1
+    items:
+      $ref: "#/$defs/artifact"
+  consumes:
+    type: array
+    items:
+      $ref: "#/$defs/consumes_edge"
+$defs:
+  stable_id:
+    type: string
+    pattern: '^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$'
+  exact_semver:
+    type: string
+    pattern: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$'
+  version_constraint:
+    type: string
+    pattern: '^(?:(?:>=|<=|>|<|==|=)?[0-9]+(?:\.[0-9]+){0,2})(?:,(?:>=|<=|>|<|==|=)?[0-9]+(?:\.[0-9]+){0,2})*$'
+  interface_version:
+    type: string
+    pattern: '^(0|[1-9][0-9]*)(?:\.(0|[1-9][0-9]*)){0,2}$'
+  repo_path:
+    type: string
+    minLength: 1
+    pattern: '^(?![A-Za-z]:[\/])(?![\/])(?!.*(?:^|[\/])\.\.(?:[\/]|$)).+$'
+  sha256:
+    type: string
+    pattern: '^[a-f0-9]{64}$'
+  artifact:
+    type: object
+    additionalProperties: false
+    required:
+      - artifact_id
+      - artifact_kind
+      - canonical_home
+      - artifact_version
+      - interface_version
+      - lifecycle
+      - steward
+      - content_sha256
+    properties:
+      artifact_id:
+        $ref: "#/$defs/stable_id"
+      artifact_kind:
+        enum: [runprogram, runbundle, runbook]
+      canonical_home:
+        $ref: "#/$defs/repo_path"
+      artifact_version:
+        $ref: "#/$defs/exact_semver"
+      interface_version:
+        $ref: "#/$defs/interface_version"
+      lifecycle:
+        enum: [planned, stub, active, deprecated]
+      steward:
+        $ref: "#/$defs/stable_id"
+      content_sha256:
+        $ref: "#/$defs/sha256"
+  consumes_edge:
+    type: object
+    additionalProperties: false
+    required:
+      - consumer_id
+      - provider_id
+      - version_constraint
+      - interface_constraint
+      - parameter_profile
+      - route_order
+      - optional
+      - gates
+      - entry_artifacts
+      - exit_artifacts
+      - idempotency
+    properties:
+      consumer_id:
+        $ref: "#/$defs/stable_id"
+      provider_id:
+        $ref: "#/$defs/stable_id"
+      version_constraint:
+        $ref: "#/$defs/version_constraint"
+      interface_constraint:
+        $ref: "#/$defs/interface_version"
+      parameter_profile:
+        $ref: "#/$defs/stable_id"
+      route_order:
+        type: integer
+        minimum: 0
+      optional:
+        type: boolean
+      gates:
+        type: array
+        items:
+          type: string
+      entry_artifacts:
+        type: array
+        items:
+          type: string
+      exit_artifacts:
+        type: array
+        items:
+          type: string
+      idempotency:
+        type: object
+        additionalProperties: false
+        required: [key_fields, replay_safe]
+        properties:
+          key_fields:
+            type: array
+            minItems: 1
+            items:
+              type: string
+          replay_safe:
+            type: boolean
+      retry:
+        type: object
+x-ai-ops-invariants:
+  - artifact_id is unique
+  - canonical_home is unique
+  - canonical_home exists and content_sha256 matches
+  - consumer_id and provider_id resolve to artifacts
+  - legal directions are runprogram_to_runbundle and runbundle_to_runbook
+  - consumes is owned by the consumer canonical artifact
+  - consumed_by is derived and must not appear in authoritative input
+  - graph is acyclic
+  - duplicate canonical implementations and copied forks are rejected
+  - version_constraint may be exact or a comma-separated comparator range evaluated against the sole resolved provider
+  - interface_constraint is compatible with provider interface_version
+  - edge gates, entry and exit artifacts, and idempotency are explicit; retry is explicit when applicable

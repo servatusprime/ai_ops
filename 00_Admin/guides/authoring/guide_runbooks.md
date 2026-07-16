@@ -1,9 +1,9 @@
 ---
 title: Guide: Runbooks
-version: 1.0.7
+version: 1.1.1
 status: active
 license: Apache-2.0
-last_updated: 2026-03-19
+last_updated: 2026-07-16
 owner: ai_ops
 related:
 - ./guide_markdown_authoring.md
@@ -42,8 +42,9 @@ Runbooks MUST NOT:
 ## 2) Naming and location
 
 - Prefix: `rb_`
-- Location: `00_Admin/runbooks/` (repo-level) or module-specific runbooks under `02_Modules/<module>/docs/runbooks/` if
-  used.
+- Location: one repo-owned `00_Admin/runbooks/` home or one module-owned
+  `02_Modules/<module>/docs/runbooks/` home. Do not retain a second legacy
+  location or discovery path.
 - Use lower_snake_case names (e.g., `rb_repo_health_review.md`).
 - Terminology note: use `runprogram` in prose, but keep folder paths as `run_program_<program_id>/` until a dedicated
   naming-refactor workbook says otherwise.
@@ -53,10 +54,13 @@ Runbooks MUST NOT:
 Runbundles group related runbooks the way Workbundles group workbooks, but they are distinct artifact types.
 
 - Folder naming: `rnb_<bundle_name>/`
-- Location (when a Runprogram exists): `run_program_<program_id>/run_bundles/rnb_<bundle_name>/`
-- Location (when no Runprogram exists): `00_Admin/runbooks/rnb_<bundle_name>/` or
-  `02_Modules/<module>/docs/runbooks/rnb_<bundle_name>/`
-- Required contents: `README.md` (bundle purpose and inventory) + runbooks for that bundle
+- Canonical home: one neutral repo- or module-owned `rnb_<bundle_name>/`
+  location. A program-contained candidate must be affirmed as the sole
+  canonical home or moved in the adoption batch; it cannot remain as a second
+  compatibility location.
+- Required contents: `README.md` plus a colocated `manifest.yaml`; structured
+  frontmatter is not a substitute for run-family graph authority. Runbooks MAY
+  live outside the bundle and are referenced by stable ID and resolved path.
 
 Runbundles are optional and should be used when runbooks are frequently executed together.
 
@@ -86,8 +90,11 @@ rnb_<bundle_name>/
 
 Queue rule:
 
-- Runbundle pipelines SHOULD reference local runbooks using `runbooks/rb_<step>.md`.
-- Parent-relative queue entries (`../rb_*.md`) are legacy and should be normalized when touching a bundle.
+- Runbundle pipelines SHOULD reference runbooks by stable ID and a path resolved
+  from the consumer manifest. Local `runbooks/rb_<step>.md` remains valid when
+  it is the runbook's canonical home.
+- Parent-relative entries MUST be replaced with stable ID/path references in
+  the same migration batch; they are not a standing compatibility surface.
 
 ## 2.2) Runprogram Pipeline (Optional)
 
@@ -97,8 +104,9 @@ Runprogram pipelines are optional execution-queue artifacts for sequencing multi
 - Suggested file pattern: `runprogram_pipeline_<nn>.md`
 - Keep governance commitments in the runprogram execution spine when one exists; use pipeline artifacts for execution
   queueing and gate visibility.
-- Keep runprogram root focused on governance/program artifacts; runbook execution files should remain inside each
-  `run_bundles/rnb_*` folder.
+- Keep runprogram roots focused on orchestration. Shared runbundle and runbook
+  implementations remain in their neutral canonical homes and are consumed by
+  reference.
 
 Template starters:
 
@@ -127,6 +135,20 @@ Use this lane for `rb_`, `rnb_`, and `run_program_*` artifacts:
    - target repo run artifacts MUST be path-correct for the target repo root.
 
 Promotion should be driven by reuse and stability evidence, not by artifact age.
+
+### Shared Run-Family Authoring Contract
+
+Before changing a shared runbook or runbundle, resolve all declared consumers,
+assess interface compatibility, name one merge owner, and require a validation
+receipt or operator-approved disposition for every affected consumer. Never
+copy an implementation merely to satisfy a second parent. Update all consumers
+atomically. Contract v0.1 rejects aliases. A blocked consumer requires a
+separately approved Level-4 contract version with executable bridge and hard
+removal enforcement; prose or operator exception alone creates no valid alias.
+
+A `<governed_repo>` adoption lane inventories current artifacts, assigns stable
+IDs/homes, classifies copies and aliases, updates consumers, and retains local
+profiles and run evidence separately from shared definitions.
 
 ## 3) Required sections
 

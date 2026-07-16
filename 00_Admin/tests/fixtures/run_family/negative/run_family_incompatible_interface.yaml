@@ -1,0 +1,36 @@
+schema_version: 0.1.0
+artifacts:
+- artifact_id: runprogram-interface
+  artifact_kind: runprogram
+  canonical_home: 00_Admin/runbooks/run_program_interface/manifest.yaml
+  artifact_version: 1.0.0
+  interface_version: '1'
+  lifecycle: active
+  steward: ai_ops
+  content_sha256: '7777777777777777777777777777777777777777777777777777777777777777'
+- artifact_id: runbundle-interface
+  artifact_kind: runbundle
+  canonical_home: 00_Admin/runbooks/rnb_interface/manifest.yaml
+  artifact_version: 1.0.0
+  interface_version: '2'
+  lifecycle: active
+  steward: ai_ops
+  content_sha256: '8888888888888888888888888888888888888888888888888888888888888888'
+consumes:
+- consumer_id: runprogram-interface
+  provider_id: runbundle-interface
+  version_constraint: 1.0.0
+  interface_constraint: '1'
+  parameter_profile: incompatible-interface
+  route_order: 0
+  optional: false
+  gates:
+  - gate-runprogram-interface-runbundle-interface
+  entry_artifacts:
+  - input-runprogram-interface-runbundle-interface
+  exit_artifacts:
+  - output-runprogram-interface-runbundle-interface
+  idempotency:
+    key_fields:
+    - run_instance_id
+    replay_safe: true

@@ -1,0 +1,67 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:ai-ops:schema:run-family-context-pack:0.1.0
+title: Derived Run-Family Context Pack
+type: object
+additionalProperties: false
+required:
+  - context_pack_version
+  - authority
+  - root_consumer_id
+  - resolution_lock_sha256
+  - required_reads
+  - selected_artifact_ids
+  - resolved_interfaces
+  - required_gates
+  - source_digest
+properties:
+  context_pack_version:
+    const: "0.1.0"
+  authority:
+    const: derived_non_authoritative
+  root_consumer_id:
+    type: string
+    minLength: 1
+  resolution_lock_sha256:
+    type: string
+    pattern: '^[a-f0-9]{64}$'
+  required_reads:
+    type: array
+    items:
+      $ref: "#/$defs/read"
+  selected_artifact_ids:
+    type: array
+    minItems: 1
+    items:
+      type: string
+  resolved_interfaces:
+    type: object
+    additionalProperties:
+      type: string
+  required_gates:
+    type: array
+    items:
+      type: string
+  source_digest:
+    type: string
+    pattern: '^[a-f0-9]{64}$'
+$defs:
+  read:
+    type: object
+    additionalProperties: false
+    required: [path, artifact_id, rationale, content_sha256]
+    properties:
+      path:
+        type: string
+      artifact_id:
+        type: string
+      rationale:
+        enum: [root_consumer, direct_provider, transitive_provider]
+      content_sha256:
+        type: string
+        pattern: '^[a-f0-9]{64}$'
+x-ai-ops-invariants:
+  - required_reads are minimal transitive closure for the selected route
+  - required_reads and selected_artifact_ids are deterministically sorted
+  - every read is backed by the referenced resolution lock
+  - resolved interfaces and required gates match the referenced resolution lock
+  - context pack is routing evidence and never grants execution authority

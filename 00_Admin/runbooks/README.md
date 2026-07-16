@@ -1,10 +1,10 @@
 ---
 title: Runbooks Index
-version: 2.1.0
+version: 2.2.0
 status: active
 license: Apache-2.0
 created: 2026-01-13
-updated: 2026-02-23
+updated: 2026-07-16
 owner: ai_ops
 description: Index for runbooks under 00_Admin/runbooks
 ---
@@ -27,6 +27,19 @@ Runbooks are reusable execution workflows. They live in `00_Admin/runbooks/` and
 | `rb_workflow_frontmatter_validation_01.md` | Validate `.ai_ops/workflows` frontmatter contract | `/lint`, release-quality gate |
 | `rb_packet_relocation_01.md` | Safe workbundle move/copy/verify/remove flow | Workbook-triggered utility |
 
+## Run-Family Discovery
+
+Runprograms, runbundles, and runbooks compose through stable IDs and
+consumer-owned `consumes` references. Read
+`00_Admin/specs/spec_artifact_graph_identity.md` first, then
+`00_Admin/specs/spec_run_family_composition.md`.
+
+`run_family_registry.yaml` is the generated machine index of resolved IDs and
+canonical homes. This README remains the human navigation surface and is
+mechanically checked against that registry. The registry and generated graph
+views are derived; colocated run-family manifests remain the only machine
+authority for graph-addressable run-family identity and outgoing edges.
+
 ## Usage
 
 Runbooks are invoked by slash commands defined in `.ai_ops/workflows/`. When a user runs
@@ -48,3 +61,4 @@ See `wb_ai_ops_stack_cli_01_07_command_gap_closeout.md` Task 8.1b for rationale.
 - Use `rb_` as the canonical prefix per `00_Admin/guides/architecture/guide_naming_conventions.md`.
 - Runbooks should be model-agnostic (any AI agent can execute them).
 - Add new runbooks here and keep this list updated.
+- Keep the run-family navigation section aligned with the generated registry.

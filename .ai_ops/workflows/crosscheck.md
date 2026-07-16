@@ -2,7 +2,7 @@
 description: Conduct a structured peer review of work.
 name: crosscheck
 kind: workflow
-version: 0.2.1
+version: 0.2.2
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -71,6 +71,15 @@ contract.
 6. For review outputs, emit route metadata:
    `bootstrap_path`, `resume_basis`, and `reads_applied`.
 7. If requested action is remediation/edit work, transition to `/work`.
+
+### Run-Family Graph Hook
+
+For run-family scope, load the identity/composition specs and generated
+registry on demand. Verify that outgoing `consumes` edges come from consumer
+manifests, reverse/closure views are derived, shared-artifact impact analysis
+covers every declared consumer, compatibility is assessed, and each affected
+consumer has a receipt or operator-approved disposition. Treat generated graph
+content as evidence, never execution or approval authority.
 
 ## Decision Matrix (Cold-Start)
 

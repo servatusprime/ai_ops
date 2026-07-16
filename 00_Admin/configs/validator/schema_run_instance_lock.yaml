@@ -1,0 +1,116 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:ai-ops:schema:run-instance-lock:0.1.0
+title: Run-Instance Resolution Lock
+type: object
+additionalProperties: false
+required:
+  - lock_version
+  - authority
+  - run_instance_id
+  - root_consumer_id
+  - source_manifest_sha256
+  - resolved_artifacts
+  - resolved_edges
+  - selected_route
+  - gates
+  - parameter_bindings
+  - receipt_references
+  - lock_sha256
+properties:
+  lock_version:
+    const: "0.1.0"
+  authority:
+    const: derived_resolution_evidence
+  run_instance_id:
+    type: string
+    minLength: 1
+  root_consumer_id:
+    type: string
+    minLength: 1
+  source_manifest_sha256:
+    $ref: "#/$defs/sha256"
+  resolved_artifacts:
+    type: array
+    minItems: 1
+    items:
+      $ref: "#/$defs/resolved_artifact"
+  resolved_edges:
+    type: array
+    items:
+      $ref: "#/$defs/resolved_edge"
+  selected_route:
+    type: array
+    minItems: 1
+    items:
+      type: string
+  gates:
+    type: array
+    items:
+      type: string
+  parameter_bindings:
+    type: object
+  receipt_references:
+    type: array
+    items:
+      type: string
+  lock_sha256:
+    $ref: "#/$defs/sha256"
+$defs:
+  sha256:
+    type: string
+    pattern: '^[a-f0-9]{64}$'
+  resolved_artifact:
+    type: object
+    additionalProperties: false
+    required:
+      - artifact_id
+      - artifact_kind
+      - canonical_home
+      - artifact_version
+      - interface_version
+      - content_sha256
+    properties:
+      artifact_id:
+        type: string
+      artifact_kind:
+        enum: [runprogram, runbundle, runbook]
+      canonical_home:
+        type: string
+      artifact_version:
+        type: string
+      interface_version:
+        type: string
+      content_sha256:
+        $ref: "#/$defs/sha256"
+  resolved_edge:
+    type: object
+    additionalProperties: false
+    required:
+      - consumer_id
+      - provider_id
+      - artifact_version
+      - interface_version
+      - parameter_profile
+      - route_order
+    properties:
+      consumer_id:
+        type: string
+      provider_id:
+        type: string
+      artifact_version:
+        type: string
+      interface_version:
+        type: string
+      parameter_profile:
+        type: string
+      route_order:
+        type: integer
+        minimum: 0
+x-ai-ops-invariants:
+  - resolved_artifacts and resolved_edges are deterministically sorted
+  - each exact version path and content hash matches canonical source
+  - lock_sha256 is computed over canonical serialization excluding lock_sha256
+  - parameter bindings are fully materialized and contain no hidden defaults
+  - selected_route is the deterministic execution order for resolved_artifacts
+  - gates and receipt_references are explicit and contain no parent defaults
+  - lock is evidence and never changes source authority

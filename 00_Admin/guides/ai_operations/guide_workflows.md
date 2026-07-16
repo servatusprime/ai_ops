@@ -1,9 +1,9 @@
 ---
 title: Guide: Workflows
-version: 1.1.1
+version: 1.2.1
 status: active
 license: Apache-2.0
-last_updated: 2026-03-19
+last_updated: 2026-07-16
 owner: ai_ops
 related:
 - ./guide_ai_operations_stack.md
@@ -105,6 +105,19 @@ Workflow -> Workbook (single-use, committed) -> Workbundle -> Workprogram
 Runbundles provide the same grouping function for runbooks that Workbundles provide for workbooks, but they are not
 interchangeable (different artifact types and locations).
 
+### Run-Family Logical Composition
+
+Run-family membership is reference-based. A runprogram consumer manifest
+declares runbundle IDs; a runbundle consumer manifest declares runbook IDs.
+Each shared artifact retains one neutral canonical home and MAY have multiple
+consumers. Directory placement is a storage choice, not membership authority.
+
+Use `00_Admin/runbooks/run_family_registry.yaml` for machine discovery and
+`00_Admin/runbooks/README.md` for mechanically checked human navigation.
+Resolve exact versions, paths, profiles, hashes, and gates into a run-instance
+lock before execution. See `spec_artifact_graph_identity.md` and
+`spec_run_family_composition.md` for normative rules.
+
 ## Pipeline Artifacts (Execution Queue)
 
 Pipeline artifacts are optional execution-queue files used to sequence books and bundles without changing governance
@@ -146,6 +159,10 @@ Placement and naming:
   - location: runprogram root
   - pattern: `runprogram_pipeline_<nn>.md`
   - template: `01_Resources/templates/workflows/runprogram_pipeline_template.md`
+
+Pipeline queue entries SHOULD use stable artifact IDs plus manifest-resolved
+paths. Parent-relative paths are compatibility data only and MUST NOT be hidden
+authority defaults.
 
 Minimum section contract for pipeline artifacts:
 
@@ -289,10 +306,10 @@ Related specs for extended enforcement patterns:
 - Workprograms and Runprograms keep only program-level artifacts at the program root
   (spec/spine/registry/README).
 
-Legacy note: older workprograms may use `wp_<program_id>_<YYYY-MM-DD>/`.
-New workprograms SHOULD use `work_program_<program_id>/`. Workbundles SHOULD
-use the canonical `wb_` prefix. If migrating legacy paths, use a dedicated
-refactor workbook.
+Workprograms MUST use `work_program_<program_id>/`; `wp_` directories are
+migration inputs, not valid steady-state locations. A migration MUST update all
+consumers and remove the old discovery path in the same governed batch.
+Workbundles MUST use the canonical `wb_` prefix.
 
 Naming decision rule:
 

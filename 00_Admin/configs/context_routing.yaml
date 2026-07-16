@@ -11,9 +11,9 @@
 # Quick-read contract:
 # - Tier 1 (always read): usage, fallback, reporting, commands, skills, policy.
 
-version: 0.6.1
+version: 0.7.0
 status: active
-updated: 2026-06-10
+updated: 2026-07-16
 owner: ai_ops
 usage:
   resolution_order:
@@ -153,6 +153,9 @@ commands:
       - ai_ops/00_Admin/specs/spec_work_mode_direct.md
       - ai_ops/00_Admin/specs/spec_work_mode_governed.md
       - ai_ops/00_Admin/specs/spec_work_focus_recenter.md
+      - ai_ops/00_Admin/specs/spec_artifact_graph_identity.md
+      - ai_ops/00_Admin/specs/spec_run_family_composition.md
+      - ai_ops/00_Admin/runbooks/run_family_registry.yaml
       skip_unless_referenced:
       - ai_ops/00_Admin/guides/ai_operations/guide_multi_agent_coordination.md
       - ai_ops/00_Admin/guides/ai_operations/guide_parallel_execution.md
@@ -207,6 +210,9 @@ commands:
     - ai_ops/01_Resources/templates/workflows/peer_review_template.md
     read_on_demand:
     - ai_ops/00_Admin/guides/authoring/guide_workbooks.md
+    - ai_ops/00_Admin/specs/spec_artifact_graph_identity.md
+    - ai_ops/00_Admin/specs/spec_run_family_composition.md
+    - ai_ops/00_Admin/runbooks/run_family_registry.yaml
   closeout:
     family: action
     guard_profile:
@@ -215,6 +221,10 @@ commands:
     always_read:
     - ai_ops/AGENTS.md
     - ai_ops/.ai_ops/workflows/closeout.md
+    read_on_demand:
+    - ai_ops/00_Admin/specs/spec_artifact_graph_identity.md
+    - ai_ops/00_Admin/specs/spec_run_family_composition.md
+    - ai_ops/00_Admin/runbooks/run_family_registry.yaml
   work_status:
     family: status
     guard_profile:

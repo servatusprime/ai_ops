@@ -1,0 +1,70 @@
+lock_version: 0.1.0
+authority: derived_resolution_evidence
+run_instance_id: fixture-run-001
+root_consumer_id: runprogram-alpha
+source_manifest_sha256: '1111111111111111111111111111111111111111111111111111111111111111'
+resolved_artifacts:
+- artifact_id: runprogram-alpha
+  artifact_kind: runprogram
+  canonical_home: 00_Admin/runbooks/run_program_alpha/manifest.yaml
+  artifact_version: 1.0.0
+  interface_version: '1'
+  content_sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+- artifact_id: runbundle-shared
+  artifact_kind: runbundle
+  canonical_home: 00_Admin/runbooks/rnb_shared/manifest.yaml
+  artifact_version: 1.2.0
+  interface_version: '1'
+  content_sha256: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+- artifact_id: runbook-shared
+  artifact_kind: runbook
+  canonical_home: 00_Admin/runbooks/rb_shared.md
+  artifact_version: 2.0.0
+  interface_version: '2'
+  content_sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+resolved_edges:
+- consumer_id: runbundle-shared
+  provider_id: runbook-shared
+  artifact_version: 2.0.0
+  interface_version: '2'
+  parameter_profile: shared-book-profile
+  route_order: 0
+  optional: false
+  gates:
+  - gate-runbundle-shared-runbook-shared
+  entry_artifacts:
+  - input-runbundle-shared-runbook-shared
+  exit_artifacts:
+  - output-runbundle-shared-runbook-shared
+  idempotency:
+    key_fields:
+    - run_instance_id
+    replay_safe: true
+- consumer_id: runprogram-alpha
+  provider_id: runbundle-shared
+  artifact_version: 1.2.0
+  interface_version: '1'
+  parameter_profile: alpha-shared-profile
+  route_order: 0
+  optional: false
+  gates:
+  - gate-runprogram-alpha-runbundle-shared
+  entry_artifacts:
+  - input-runprogram-alpha-runbundle-shared
+  exit_artifacts:
+  - output-runprogram-alpha-runbundle-shared
+  idempotency:
+    key_fields:
+    - run_instance_id
+    replay_safe: true
+parameter_bindings: {}
+lock_sha256: '2222222222222222222222222222222222222222222222222222222222222222'
+selected_route:
+- runprogram-alpha
+- runbundle-shared
+- runbook-shared
+gates:
+- gate-runbundle-shared-runbook-shared
+- gate-runprogram-alpha-runbundle-shared
+receipt_references:
+- evidence/fixture-run-001/run_receipt.yaml

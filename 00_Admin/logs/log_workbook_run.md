@@ -346,3 +346,31 @@ ai_generated: true
   found no personal-name content, machine-local paths, or CRLF text artifacts.
   Workbook remains in its sandbox workbundle pending an explicit closeout and
   archive decision. No commit or push was performed.
+
+- 2026-07-16 | wb_run_family_graph_architecture_uplift_01 (L4) | Canonicalized
+  run-family composition as an ID-addressed graph over one canonical home per
+  artifact, executed by Director run `director-run-family-graph-001` against an
+  operator-approved 58-path exact delta map. Shipped two new specs
+  (`spec_artifact_graph_identity`, `spec_run_family_composition`), six validator
+  schemas, a resolver/validator/view-generator trio, VS036 dispatch, 12
+  tests/fixtures promoted from the Track B proof with field names preserved,
+  four derived non-authoritative views, and amendments to three guides, four
+  templates, three specs, `AGENTS.md`, `context_routing.yaml`, and three
+  workflows. Independent crosscheck ran four rounds (design, mid-execution,
+  completion); round 4 returned no blocking finding, and its three cleanup items
+  (independence attribution, alias-contract contradiction, fixture-proven
+  evidence class) were remediated. Closeout found three defects that prior
+  validation missed: five ruff errors in new scripts, CRLF emitted by the view
+  generator (fixed at source with `newline="\n"`), and two future-work rows whose
+  folded YAML scalars produced unresolvable `source_workbook` paths; all fixed.
+  Validation: ruff clean; 54 tracked YAML files yamllint-clean; 16/16 run-family
+  tests; 3/3 registry lifecycle tests; view drift, export drift, and
+  `git diff --check` clean; repo validator errors zero (pre-existing VS022/VS008
+  warnings only). Release-quality gate reports FAIL solely on gitignored
+  third-party `.cache/npm` node_modules and another bundle's sandbox file; the
+  shipping surface is clean and the operator approved on that evidence. Scope
+  reconciled exactly: 52 changed files, none outside the approved map or
+  `affects`. Commit and push approved by requestor (servatusprime) on 2026-07-16
+  after change-summary review. Enforcement is forward-looking: ai_ops holds zero
+  live run-family manifests, so the first live validation occurs at
+  governed-repository adoption.

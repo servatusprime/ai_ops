@@ -1,10 +1,10 @@
 ---
 title: future_work_registry
-version: 0.6.1
+version: 0.6.4
 status: active
 owner: ai_ops
 created: 2026-01-07
-updated: '2026-07-07'
+updated: '2026-07-16'
 migration_note: >-
   Most items were moved to wb_governance_hardening_02; selected deferred items
   remain here.
@@ -38,6 +38,10 @@ prune_note_2026_06_23: >-
   VS035 status-vs-checklist + R-6 fail-closed forward-handoff schema implemented
   in both validator twins (fixtures 25/25), governed-repo parse_config no-op
   repaired. Surfaced repo-wide backlog tracked as governed-repo seed RS-077.
+prune_note_2026_07_16: >-
+  Pruned completed entries fw_20260423_01, fw_20260423_02, and
+  fw_20260619_01. Their completion workbooks remain the history authority;
+  this registry retains pending work only.
 scorecard_sync:
   required: true
   scorecard_file: 00_Admin/backlog/future_work_scorecard.md
@@ -107,7 +111,8 @@ entries:
     source_workbook: >-
       90_Sandbox/ai_workbooks/wb_agent_architecture_evolution_01_2026-03-22/wb_agent_architecture_evolution_01.md
     completion_workbook: null
-    proposed_workbook: null
+    proposed_workbook: >-
+      90_Sandbox/ai_workbooks/wb_ai_first_operating_model_uplift_review_01_2026-07-13/wb_track_b_director_graph_sandbox_proof_01.md
     scope: >-
       Implement the Director topology: a multi-agent mode where the primary
       session agent spawns Coordinator subagents per project. Requires:
@@ -116,20 +121,21 @@ entries:
       topology changes this assumption for the spawned Coordinator role;
       (2) delegation contract documenting how the Director hands off scope to
       a Coordinator subagent and what the return contract is;
-      (3) AGENTS.md Director topology entry promoted from design note to
-      canonical spec;
+      (3) promote the successful Track B Director graph proof into an
+      implementation-ready Director successor contract;
       (4) spec_subagent_file.md Coordinator section;
       (5) crew config and profile updates in 02_Modules/01_agent_profiles/ if
       Director becomes a named topology preset.
-    priority: low
+    priority: medium
     benefit: medium
     effort: l
-    readiness: deferred
-    risk_if_deferred: low
+    readiness: partial
+    risk_if_deferred: medium
     activation_trigger: >-
-      Requestor confirms Director topology is needed for a specific use case,
-      or multi-project orchestration becomes a recurring operational need.
-    next_review: 2026-06-01
+      Track B proof evidence is complete enough for a promotion decision and
+      the requestor authorizes the separate canonical Director implementation
+      workbook. The proof workbook is a prerequisite, not completion authority.
+    next_review: 2026-08-15
     status: planned
     owner: ai_ops
     created: 2026-03-23
@@ -144,9 +150,9 @@ entries:
         Coordinator is the primary session agent. Director topology introduces
         a spawned Coordinator role that would need its own agent file.
     notes: >-
-      No urgency. Current single-agent and hybrid topologies cover all
-      documented use cases. Director topology adds value only for parallel
-      multi-project orchestration scenarios.
+      Director dogfood is now an active governance dependency. Keep this lane
+      separate from the run-family architecture uplift: the latter may consume
+      Director proof evidence but must not silently promote the topology.
 
   - id: fw_20260315_01
     title: Session-state infrastructure for context routing fast-path evaluation
@@ -177,6 +183,9 @@ entries:
       (updated Step 2), validate_repo_rules.py and validator_config.yaml (new
       VS rule for session-state injection), and spec_context_routing_runtime.md
       (retire to 99_Trash once fully migrated).
+      Persistent machine-queryable portfolio graph state also belongs in this
+      infrastructure lane; the run-family architecture uplift must not create
+      a committed portfolio-state graph as a substitute.
     priority: low
     benefit: medium
     effort: xl
@@ -186,7 +195,7 @@ entries:
       A stateful session context mechanism becomes available (e.g., Claude Code
       adds native session memory, an MCP server for ai_ops state tracking is
       built, or equivalent tooling enables cross-turn state evaluation).
-    next_review: 2026-06-01
+    next_review: 2026-10-01
     status: planned
     owner: ai_ops
     created: 2026-03-15
@@ -355,117 +364,33 @@ entries:
       note: Policy discussion, not a build task. Deferred from WB4 scope.
     notes: Not a build task. Requires requestor decision on scoring contract value.
 
-  - id: fw_20260423_01
-    title: G-5 Lane-to-Platform Mapping Spec
-    domain: governance
-    target_repo: ai_ops
-    source_workbook: >-
-      99_Trash/wb_platform_governance_uplift_01_2026-04-12/wb_platform_governance_uplift_01.md
-    completion_workbook: >-
-      ai_ops/99_Trash/governance_seeds_lane_completed_2026-06-19/wb_platform_lane_mapping_01_2026-06-19/wb_platform_lane_mapping_01.md
-    proposed_workbook: >-
-      ai_ops/99_Trash/wb_proposal_seeds_01_2026-06-18_completed_artifacts/work_proposal_platform_lane_mapping_01.md
-    scope: >-
-      Author spec_platform_lane_mapping.md in 00_Admin/specs/. Maps each of the 8
-      canonical lanes (Coordinator, Planner, Researcher, Executor, Builder, Linter,
-      Reviewer, Closer) to concrete platform instantiation guidance for OpenClaw,
-      Dispatch/Managed Agents, and Claude Code. Includes a mapping table (8 lanes x 3
-      platforms), per-platform notes, and Quick Reference. Governance intent only;
-      not a runtime router; non-harness boundary applies. See Phase 7 in source workbook
-      for full spec structure and mapping table draft.
-    priority: low
-    benefit: medium
-    effort: s
-    readiness: ready
-    risk_if_deferred: low
-    activation_trigger: >-
-      Platform adopter requests lane-to-platform guidance, or a second platform
-      integration is underway and the mapping adds material value.
-    next_review: 2026-07-01
-    status: completed
-    owner: ai_ops
-    created: 2026-04-23
-    compacted_context:
-      source: >-
-        wb_platform_governance_uplift_01 Phase 7 (deferred per D-E=B, 2026-04-23);
-        P3 priority in Cordum analysis
-      note: >-
-        Full spec structure and mapping table content is already drafted in the source
-        workbook Phase 7 tasks. Ready to execute when activated. Non-harness boundary
-        must be verified: this is a conceptual mapping doc, not a runtime router.
-    notes: >-
-      Deferred to keep wb_platform_governance_uplift_01 focused on P1/P2 governance
-      core (PDR, async approval, lifecycle, cost governance). No urgency.
-
-  - id: fw_20260423_02
-    title: G-6 Decision Card Template and Pointer Additions
-    domain: governance
-    target_repo: ai_ops
-    source_workbook: >-
-      99_Trash/wb_platform_governance_uplift_01_2026-04-12/wb_platform_governance_uplift_01.md
-    completion_workbook: >-
-      ai_ops/90_Sandbox/ai_workbooks/wb_proposal_seeds_01_2026-06-18/wb_proposal_seeds_01.md
-    proposed_workbook: null
-    scope: >-
-      Author decision_card_template.md in 01_Resources/templates/documents/. Decision Card
-      is a lightweight template for capturing a single governance decision: context, options
-      considered, resolution, and rationale. Required pointer additions at 6 locations:
-      spec_policy_decision_record.md (pointer to template), spec_async_approval_contract.md
-      (pointer to template), spec_governance_lifecycle.md (pointer to template),
-      guide_ai_operations_stack.md (pointer to template), AGENTS.md Phase 9.7 (pointer to
-      template), and 01_Resources/templates/README.md (catalog entry). See Phase 8 in source
-      workbook for full template structure and pointer location details.
-    priority: low
-    benefit: low
-    effort: s
-    readiness: ready
-    risk_if_deferred: low
-    activation_trigger: >-
-      Decision-card pattern is observed being used informally (inline YAML in workbooks)
-      and a reusable template would reduce friction, or first external contributor requests
-      governance decision documentation guidance.
-    next_review: 2026-07-01
-    status: completed
-    owner: ai_ops
-    created: 2026-04-23
-    compacted_context:
-      source: >-
-        wb_platform_governance_uplift_01 Phase 8 (deferred per D-E=B, 2026-04-23);
-        P4 priority in Cordum analysis; D-D resolved as template-only + 6 pointers
-      note: >-
-        Template structure and all 6 pointer locations are already specified in the source
-        workbook Phase 8 tasks. Ready to execute when activated. Phase 9.7 (AGENTS.md
-        Decision Card pointer) is also deferred and must be included in the same execution.
-    notes: >-
-      Deferred to keep wb_platform_governance_uplift_01 focused on P1/P2 governance
-      core. P4 priority; execute when the pattern is actively needed.
-
   - id: fw_20260504_01
-    title: Subagent Budget Governance in Conductor Protocols
+    title: Subagent Budget Governance in Coordination and Director Protocols
     domain: governance
     target_repo: ai_ops
-    source_workbook: null
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wb_ai_first_operating_model_uplift_review_01_2026-07-13/wb_track_b_director_graph_sandbox_proof_01.md
     completion_workbook: null
     proposed_workbook: null
     scope: >-
-      Extend Conductor coordination protocols to include cost_governance budget
-      assignment for spawned subagents. When a lead agent spawns subagents, it
+      Extend coordination and Director successor protocols to include
+      cost_governance budget assignment for spawned subagents. When a lead
+      agent spawns subagents, it
       should be able to pass a workpacket_token_budget derived from the parent
       session budget. Covers: protocol for budget inheritance/delegation, how
       subagent PDR emissions surface budget warnings back to the Coordinator,
       and whether budget-exceeded PARK from a subagent halts the parent or only
-      that subagent lane. May require a new spec section or Conductor runbook
-      addition. Frontier models (high-tier) SHOULD set meaningful subagent
-      budgets when spawning execution lanes.
+      that subagent lane. May require a new spec section or coordination/
+      Director protocol addition. Frontier models (high-tier) SHOULD set
+      meaningful subagent budgets when spawning execution lanes.
     priority: medium
     benefit: medium
     effort: m
-    readiness: seed
+    readiness: deferred
     risk_if_deferred: low
     activation_trigger: >-
-      Conductor protocol is actively used for multi-agent coordination and
-      subagent cost overruns are observed, or cost_governance adoption in
-      run-family artifacts reaches sufficient maturity to warrant delegation rules.
+      Director-team proof is successful and either subagent budget pressure is
+      observed or cost-governance maturity warrants delegation rules.
     next_review: 2026-08-01
     status: planned
     owner: ai_ops
@@ -482,47 +407,9 @@ entries:
         budget delegation is the natural next step once parent-level budgets are
         established.
     notes: >-
-      Seed-level. No urgency. Activate when Conductor protocol sees active
-      multi-agent use with cost governance in place.
-
-
-  - id: fw_20260619_01
-    title: RS-073 Promote-Forward Closeout Contract Enforcement
-    domain: governance
-    target_repo: ai_ops
-    source_workbook: >-
-      ai_ops/90_Sandbox/ai_workbooks/scratchpad_stop_approvals_2026-06-12.md
-    completion_workbook: >-
-      ai_ops/99_Trash/governance_seeds_lane_completed_2026-06-19/wb_promote_forward_closeout_contract_01_2026-06-19/wb_promote_forward_closeout_contract_01.md
-    proposed_workbook: >-
-      ai_ops/99_Trash/wb_proposal_seeds_01_2026-06-18_completed_artifacts/work_proposal_promote_forward_closeout_contract_01.md
-    scope: >-
-      Extend VS034 marker enforcement: add promote-forward contract clause to
-      .ai_ops/workflows/closeout.md G-PROMO gate; add promote_forward_contract:
-      block to canonical_promotion_manifest_template.md. Enforce prospectively
-      with positive and negative fixtures. Governance-without-teeth gap closed.
-    priority: high
-    benefit: high
-    effort: s
-    readiness: ready
-    risk_if_deferred: high
-    activation_trigger: >-
-      Active governance gap: promote-forward handling not enforced in closeout or
-      manifest template. Any G-PROMO closeout can omit the promote-forward record.
-    next_review: null
-    status: completed
-    owner: ai_ops
-    created: 2026-06-19
-    compacted_context:
-      source: >-
-        RS-073 seed in scratchpad_stop_approvals_2026-06-12.md; work proposal
-        authored in wb_proposal_seeds_01 (2026-06-18); execution approved 2026-06-19.
-      note: >-
-        VS034 config receives two new contract_markers; no validator script change
-        required. Positive fixture: test_vs034_contracts_are_present passes post-edit.
-        Negative fixture: test_vs034_promote_forward_contract_fails_closed added.
-    notes: >-
-      Closed by wb_promote_forward_closeout_contract_01 (2026-06-19).
+      Deferred until operational Director evidence can support a concrete budget
+      contract. Keep distinct from both run-family graph composition and the
+      Director topology promotion decision.
 
   - id: fw_20260619_02
     title: Reduce git permission-prompt friction (atomic invocation convention + git rebase allowlist)
@@ -569,3 +456,141 @@ entries:
     notes: >-
       Seeded from the 2026-06-19 stop-approval correction; applies to any agent
       doing git work under a permission allowlist.
+
+  - id: fw_20260716_01
+    title: Advanced run-family version resolution and migration automation
+    domain: tooling
+    target_repo: both
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wb_run_family_graph_architecture_uplift_01_2026-07-16/wb_run_family_graph_architecture_uplift_01.md
+    completion_workbook: null
+    proposed_workbook: null
+    scope: >-
+      Add general semantic-version range solving, competing-version selection,
+      automated compatibility migration planning, and alias-sunset automation
+      after real multi-version consumers demonstrate the need.
+    priority: medium
+    benefit: medium
+    effort: l
+    readiness: deferred
+    risk_if_deferred: low
+    activation_trigger: >-
+      A real runprogram or runbundle cannot resolve dependencies using exact
+      versions and declared interface compatibility, or two supported versions
+      must coexist.
+    next_review: 2026-10-15
+    status: deferred
+    owner: ai_ops
+    created: 2026-07-16
+    compacted_context:
+      source: >-
+        wb_run_family_graph_architecture_uplift_01 Phase 4 staging decision
+      note: >-
+        The initial uplift implements stable identity, exact artifact versions,
+        interface compatibility, deterministic closure, and run receipts. It
+        intentionally stops short of package-manager-style resolution.
+    notes: >-
+      Activate only on concrete multi-version evidence. The run-family uplift
+      must not leave basic compatibility unenforced under cover of this deferral.
+
+  - id: fw_20260716_02
+    title: Document R-6 and narrow VS035 active-state enforcement
+    domain: validation
+    target_repo: both
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wb_run_family_graph_architecture_uplift_01_2026-07-16/wb_run_family_graph_architecture_uplift_01.md
+    completion_workbook: null
+    proposed_workbook: null
+    scope: >-
+      Document the fail-closed R-6 `checklist_allowance` contract in an
+      authoritative workbook/governance spec and redesign or narrow VS035's
+      `active`-status branch so a correctly active workbook paused at a declared
+      downstream gate does not require perpetual verbatim allowance maintenance.
+      Preserve strict completed-state enforcement and fail-closed validation.
+      Reconcile `validate_repo_rules.py`, validator configuration, workbook
+      templates/guidance, fixtures, and governed-repo validator parity through a
+      separately approved Level-4 workbook. The proposed 44-item allowance in
+      the source workbundle is an interim operator decision surface, not the
+      durable contract.
+    priority: high
+    benefit: high
+    effort: m
+    readiness: ready
+    risk_if_deferred: high
+    activation_trigger: >-
+      The operator approves a dedicated Level-4 workbook for R-6 documentation
+      and VS035 active-state redesign, or another correctly active workbook is
+      blocked by unexplained-open-item enforcement at a declared gate.
+    next_review: 2026-08-01
+    status: planned
+    owner: ai_ops
+    created: 2026-07-16
+    compacted_context:
+      source: >-
+        run-family graph uplift Claude round-3 finding C-02 and proposed VS035
+        checklist allowance for director-run-family-graph-001
+      note: >-
+        VS035 currently documents R-6 only in Python, and this run is the first
+        active gated workbook to exercise the branch. The workbook correctly
+        remained active and did not self-authorize the allowance.
+    notes: >-
+      Keep this separate from the run-family canonical uplift. Interim allowance
+      approval does not complete or supersede this future-work item.
+
+  - id: fw_20260716_03
+    title: Make Director approval delegation efficient and measurable
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wb_run_family_graph_architecture_uplift_01_2026-07-16/wb_run_family_graph_architecture_uplift_01.md
+    completion_workbook: null
+    proposed_workbook: >-
+      90_Sandbox/ai_workbooks/
+      wb_ai_first_operating_model_uplift_review_01_2026-07-13/
+      wb_director_approval_delegation_efficiency_01.md
+    scope: >-
+      Define a machine-verifiable approval receipt issued by the user-facing
+      root context that Coordinator and worker approval reviewers can consume
+      without restating or inferring authority. Specify an explicit
+      root-authorized merge fallback for runtimes that cannot propagate Level-4
+      approval. Add Director burden and benefit measures covering time and
+      coordination cycles to first canonical change, duplicate gate attempts,
+      operator interruptions, context rereads, resume success, prevented scope
+      or authority violations, review defects found, and rework avoided.
+      Reconcile the applicable governance policy/spec, `/work` and Director
+      guides, charter/approval/return templates, validator enforcement,
+      fixtures, and protocol evidence. Include simplification and sunset rules
+      so controls without a demonstrated failure mode or measurable net benefit
+      are automated, narrowed, or removed. Define per-role model routing so the
+      strongest model is reserved for low-volume Director decisions and
+      independent Level-4 review, while capable lower-cost models own routine
+      Coordinator and worker execution. Measure Director body-execution rate,
+      escalation rate, model/token/cost by role, and quality-adjusted rework.
+    priority: high
+    benefit: high
+    effort: m
+    readiness: ready
+    risk_if_deferred: high
+    activation_trigger: >-
+      Activate after director-run-family-graph-001 closeout, or immediately if
+      another Director run repeats a child-context approval rejection.
+    next_review: 2026-08-01
+    status: planned
+    owner: ai_ops
+    created: 2026-07-16
+    compacted_context:
+      source: >-
+        Director dogfood run director-run-family-graph-001 operating-model
+        feedback and operator burden-control direction
+      note: >-
+        Three child-context approval rejections delayed canonical execution
+        after one explicit operator approval. Root-merge fallback preserved
+        authority and progress, but the protocol is not yet efficient enough
+        for promotion without approval propagation and burden measurement.
+        The current Codex collaboration runtime does not expose per-child model
+        selection, so this run cannot validate the intended strong-root and
+        lower-cost-worker model topology.
+    notes: >-
+      Treat protocol compliance as evidence, not success. Promotion requires a
+      measured net benefit over Coordinator-only execution and no duplicate
+      approval requests for one declared batch.

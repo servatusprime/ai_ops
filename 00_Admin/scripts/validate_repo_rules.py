@@ -1298,6 +1298,66 @@ def check_related_paths(files: List[str], warnings: List[str]) -> None:
             warnings.append(f"VS014: {path} related path not repo-relative: {rel}")
 
 
+def check_run_family_graph_contract(
+    params: Dict[str, Any], repo_root: str, errors: List[str]
+) -> None:
+    """VS036: enforce canonical run-family validation and derived-view parity."""
+    validator_script = os.path.join(
+        repo_root,
+        params.get("validator_script", "00_Admin/scripts/validate_run_family_graph.py"),
+    )
+    generator_script = os.path.join(
+        repo_root,
+        params.get("generator_script", "00_Admin/scripts/generate_run_family_views.py"),
+    )
+    registry = os.path.join(
+        repo_root,
+        params.get("registry", "00_Admin/runbooks/run_family_registry.yaml"),
+    )
+    runbooks_readme = os.path.join(
+        repo_root,
+        params.get("runbooks_readme", "00_Admin/runbooks/README.md"),
+    )
+    commands = (
+        [
+            sys.executable,
+            validator_script,
+            "--discover",
+            "--repo-root",
+            repo_root,
+            "--check-files",
+            "--registry",
+            registry,
+            "--runbooks-readme",
+            runbooks_readme,
+        ],
+        [
+            sys.executable,
+            generator_script,
+            "--repo-root",
+            repo_root,
+            "--check",
+        ],
+    )
+    labels = ("contract", "derived-view drift")
+    for label, command in zip(labels, commands, strict=True):
+        try:
+            result = subprocess.run(
+                command,
+                cwd=repo_root,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            errors.append(f"VS036: {label} check could not run: {exc}")
+            continue
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout or "no output").strip()
+            errors.append(f"VS036: {label} check failed: {detail}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -1565,6 +1625,8 @@ def main() -> int:
             check_workbook_related_refs(paths, warnings, rule_id, _allow, _work_repos)
         elif rule_id == "VS035":
             check_status_vs_checklist(paths, errors, rule_id)
+        elif rule_id == "VS036":
+            check_run_family_graph_contract(rule.get("params", {}), repo_root, errors)
 
     if errors:
         print("Validator errors:")

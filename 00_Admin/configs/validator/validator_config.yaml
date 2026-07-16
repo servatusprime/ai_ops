@@ -433,6 +433,19 @@ rules:
     enabled: true
     paths:
       - 90_Sandbox/ai_workbooks/**/wb_*.md
+  - id: VS036
+    enabled: true
+    paths:
+      - 00_Admin/runbooks/run_family_registry.yaml
+      - 02_Modules/**/metadata/run_family_registry.yaml
+      - 02_Modules/**/docs/runbooks/**/manifest.yaml
+      - 00_Admin/tests/fixtures/run_family/**/*.yaml
+    params:
+      severity: error
+      validator_script: 00_Admin/scripts/validate_run_family_graph.py
+      generator_script: 00_Admin/scripts/generate_run_family_views.py
+      registry: 00_Admin/runbooks/run_family_registry.yaml
+      runbooks_readme: 00_Admin/runbooks/README.md
 # Cross-Repo Validation Baseline (ROADMAP - not yet implemented)
 # These rules are planned for future cross-repo validation support.
 # The validator script does not currently parse this section.

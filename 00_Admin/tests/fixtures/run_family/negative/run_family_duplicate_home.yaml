@@ -1,0 +1,19 @@
+schema_version: 0.1.0
+artifacts:
+- artifact_id: runbundle-one
+  artifact_kind: runbundle
+  canonical_home: 00_Admin/runbooks/rnb_shared/manifest.yaml
+  artifact_version: 1.0.0
+  interface_version: '1'
+  lifecycle: active
+  steward: ai_ops
+  content_sha256: '1111111111111111111111111111111111111111111111111111111111111111'
+- artifact_id: runbundle-two
+  artifact_kind: runbundle
+  canonical_home: 00_Admin/runbooks/rnb_shared/manifest.yaml
+  artifact_version: 1.0.0
+  interface_version: '1'
+  lifecycle: active
+  steward: ai_ops
+  content_sha256: '2222222222222222222222222222222222222222222222222222222222222222'
+consumes: []

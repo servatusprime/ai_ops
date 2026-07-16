@@ -1,9 +1,9 @@
 ---
 title: ai_ops
-version: 0.3.1
+version: 0.4.0
 status: active
 license: Apache-2.0
-last_updated: 2026-03-13
+last_updated: 2026-07-16
 owner: ai_ops
 description: AI-first governance layer for structured human-agent execution.
 related:
@@ -76,6 +76,11 @@ ai_ops **is not**:
    - Naming families: `workbook -> workbundle -> workprogram` and
      `runbook -> runbundle -> runprogram`.
    - Program artifacts are pipeline-level orchestration files over book/bundle artifacts.
+   - Run-family arrows describe logical composition, not exclusive filesystem
+     parentage: shared runbooks and runbundles retain one canonical home and
+     may have multiple consumers. See the
+     [run-family composition spec](00_Admin/specs/spec_run_family_composition.md)
+     and [runbooks index](00_Admin/runbooks/README.md).
 5. **Builds verification into the workflow**
    - Selfcheck loops, crosschecks, and validator/runbook patterns reduce drift.
    - Eight named design tests must pass before any new artifact type or process

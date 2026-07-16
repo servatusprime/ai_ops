@@ -1,0 +1,75 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:ai-ops:schema:run-family-registry:0.1.0
+title: Derived Run-Family Registry
+type: object
+additionalProperties: false
+required:
+  - registry_version
+  - authority
+  - authoritative_source
+  - generated_by
+  - source_digest
+  - artifacts
+properties:
+  registry_version:
+    const: "0.1.0"
+  authority:
+    const: derived_non_authoritative
+  authoritative_source:
+    const: colocated_run_family_manifest
+  generated_by:
+    type: string
+    const: 00_Admin/scripts/generate_run_family_views.py
+  source_digest:
+    type: string
+    pattern: '^[a-f0-9]{64}$'
+  artifacts:
+    type: array
+    items:
+      $ref: "#/$defs/registry_artifact"
+$defs:
+  registry_artifact:
+    type: object
+    additionalProperties: false
+    required:
+      - artifact_id
+      - artifact_kind
+      - canonical_home
+      - artifact_version
+      - interface_version
+      - lifecycle
+      - steward
+      - content_sha256
+      - consumes
+      - consumed_by
+    properties:
+      artifact_id:
+        type: string
+      artifact_kind:
+        enum: [runprogram, runbundle, runbook]
+      canonical_home:
+        type: string
+      artifact_version:
+        type: string
+      interface_version:
+        type: string
+      lifecycle:
+        enum: [planned, stub, active, deprecated]
+      steward:
+        type: string
+      content_sha256:
+        type: string
+        pattern: '^[a-f0-9]{64}$'
+      consumes:
+        type: array
+        items:
+          type: string
+      consumed_by:
+        type: array
+        items:
+          type: string
+x-ai-ops-invariants:
+  - artifacts are sorted by artifact_id
+  - consumes and consumed_by are sorted and unique
+  - every registry row is reproducible from authoritative source artifacts
+  - registry content never overrides canonical artifact metadata

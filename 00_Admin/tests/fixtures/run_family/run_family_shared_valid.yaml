@@ -1,0 +1,111 @@
+schema_version: 0.1.0
+artifacts:
+- artifact_id: runprogram-alpha
+  artifact_kind: runprogram
+  canonical_home: 00_Admin/runbooks/run_program_alpha/manifest.yaml
+  artifact_version: 1.0.0
+  interface_version: '1'
+  lifecycle: active
+  steward: ai_ops
+  content_sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+- artifact_id: runprogram-beta
+  artifact_kind: runprogram
+  canonical_home: 00_Admin/runbooks/run_program_beta/manifest.yaml
+  artifact_version: 1.0.0
+  interface_version: '1'
+  lifecycle: active
+  steward: ai_ops
+  content_sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+- artifact_id: runbundle-shared
+  artifact_kind: runbundle
+  canonical_home: 00_Admin/runbooks/rnb_shared/manifest.yaml
+  artifact_version: 1.2.0
+  interface_version: '1'
+  lifecycle: active
+  steward: ai_ops
+  content_sha256: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+- artifact_id: runbundle-secondary
+  artifact_kind: runbundle
+  canonical_home: 00_Admin/runbooks/rnb_secondary/manifest.yaml
+  artifact_version: 1.0.0
+  interface_version: '1'
+  lifecycle: active
+  steward: ai_ops
+  content_sha256: dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+- artifact_id: runbook-shared
+  artifact_kind: runbook
+  canonical_home: 00_Admin/runbooks/rb_shared.md
+  artifact_version: 2.0.0
+  interface_version: '2'
+  lifecycle: active
+  steward: ai_ops
+  content_sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+consumes:
+- consumer_id: runprogram-alpha
+  provider_id: runbundle-shared
+  version_constraint: '>=1.2,<2'
+  interface_constraint: '1'
+  parameter_profile: alpha-shared-profile
+  route_order: 0
+  optional: false
+  gates:
+  - gate-runprogram-alpha-runbundle-shared
+  entry_artifacts:
+  - input-runprogram-alpha-runbundle-shared
+  exit_artifacts:
+  - output-runprogram-alpha-runbundle-shared
+  idempotency:
+    key_fields:
+    - run_instance_id
+    replay_safe: true
+- consumer_id: runprogram-beta
+  provider_id: runbundle-shared
+  version_constraint: '>=1.2,<2'
+  interface_constraint: '1'
+  parameter_profile: beta-shared-profile
+  route_order: 0
+  optional: false
+  gates:
+  - gate-runprogram-beta-runbundle-shared
+  entry_artifacts:
+  - input-runprogram-beta-runbundle-shared
+  exit_artifacts:
+  - output-runprogram-beta-runbundle-shared
+  idempotency:
+    key_fields:
+    - run_instance_id
+    replay_safe: true
+- consumer_id: runbundle-secondary
+  provider_id: runbook-shared
+  version_constraint: '>=2,<3'
+  interface_constraint: '2'
+  parameter_profile: secondary-book-profile
+  route_order: 0
+  optional: false
+  gates:
+  - gate-runbundle-secondary-runbook-shared
+  entry_artifacts:
+  - input-runbundle-secondary-runbook-shared
+  exit_artifacts:
+  - output-runbundle-secondary-runbook-shared
+  idempotency:
+    key_fields:
+    - run_instance_id
+    replay_safe: true
+- consumer_id: runbundle-shared
+  provider_id: runbook-shared
+  version_constraint: '>=2,<3'
+  interface_constraint: '2'
+  parameter_profile: shared-book-profile
+  route_order: 0
+  optional: false
+  gates:
+  - gate-runbundle-shared-runbook-shared
+  entry_artifacts:
+  - input-runbundle-shared-runbook-shared
+  exit_artifacts:
+  - output-runbundle-shared-runbook-shared
+  idempotency:
+    key_fields:
+    - run_instance_id
+    replay_safe: true

@@ -1,0 +1,152 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:ai-ops:schema:run-family-manifest:0.1.0
+title: Authoritative Run-Family Consumer Manifest
+type: object
+additionalProperties: false
+required:
+  - manifest_version
+  - artifact_id
+  - artifact_kind
+  - canonical_home
+  - artifact_version
+  - interface_version
+  - lifecycle
+  - steward
+  - content_sha256
+  - consumes
+  - parameter_profiles
+properties:
+  manifest_version:
+    const: "0.1.0"
+  artifact_id:
+    type: string
+    pattern: '^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$'
+  artifact_kind:
+    enum: [runprogram, runbundle, runbook]
+  canonical_home:
+    type: string
+    pattern: '^(?![A-Za-z]:[\/])(?![\/])(?!.*(?:^|[\/])\.\.(?:[\/]|$)).+$'
+  artifact_version:
+    type: string
+    pattern: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$'
+  interface_version:
+    type: string
+    pattern: '^(0|[1-9][0-9]*)(?:\.(0|[1-9][0-9]*)){0,2}$'
+  lifecycle:
+    enum: [planned, stub, active, deprecated]
+  steward:
+    type: string
+    pattern: '^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$'
+  content_sha256:
+    type: string
+    pattern: '^[a-f0-9]{64}$'
+  consumes:
+    type: array
+    items:
+      $ref: "#/$defs/consumer_edge"
+  parameter_profiles:
+    type: object
+    additionalProperties:
+      type: object
+  entry_artifacts:
+    type: array
+    items:
+      type: string
+  exit_artifacts:
+    type: array
+    items:
+      type: string
+  gates:
+    type: array
+    items:
+      type: string
+  idempotency:
+    type: object
+    additionalProperties: false
+    required: [key_fields, replay_safe]
+    properties:
+      key_fields:
+        type: array
+        minItems: 1
+        items:
+          type: string
+      replay_safe:
+        type: boolean
+allOf:
+  - if:
+      properties:
+        artifact_kind:
+          const: runbook
+    then:
+      properties:
+        consumes:
+          maxItems: 0
+$defs:
+  consumer_edge:
+    type: object
+    additionalProperties: false
+    required:
+      - consumer_id
+      - provider_id
+      - version_constraint
+      - interface_constraint
+      - parameter_profile
+      - route_order
+      - optional
+      - gates
+      - entry_artifacts
+      - exit_artifacts
+      - idempotency
+    properties:
+      consumer_id:
+        type: string
+      provider_id:
+        type: string
+      version_constraint:
+        type: string
+        pattern: '^(?:(?:>=|<=|>|<|==|=)?[0-9]+(?:\.[0-9]+){0,2})(?:,(?:>=|<=|>|<|==|=)?[0-9]+(?:\.[0-9]+){0,2})*$'
+      interface_constraint:
+        type: string
+        pattern: '^(0|[1-9][0-9]*)(?:\.(0|[1-9][0-9]*)){0,2}$'
+      parameter_profile:
+        type: string
+      route_order:
+        type: integer
+        minimum: 0
+      optional:
+        type: boolean
+      gates:
+        type: array
+        items:
+          type: string
+      entry_artifacts:
+        type: array
+        items:
+          type: string
+      exit_artifacts:
+        type: array
+        items:
+          type: string
+      idempotency:
+        type: object
+        additionalProperties: false
+        required: [key_fields, replay_safe]
+        properties:
+          key_fields:
+            type: array
+            minItems: 1
+            items:
+              type: string
+          replay_safe:
+            type: boolean
+      retry:
+        type: object
+x-ai-ops-invariants:
+  - consumer_id equals local artifact_id
+  - consumes is authoritative only in this consumer manifest
+  - runprogram consumes only runbundle
+  - runbundle consumes only runbook
+  - route_order is unique within a consumer
+  - parameter_profile resolves in local parameter_profiles
+  - version_constraint may be exact or a comparator range evaluated against the sole resolved provider
+  - edge gates, entry and exit artifacts, and idempotency are explicit; retry is explicit when applicable

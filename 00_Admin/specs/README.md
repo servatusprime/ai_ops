@@ -1,10 +1,10 @@
 ---
 title: Specs Index
-version: 1.3.0
+version: 1.4.0
 status: active
 license: Apache-2.0
 created: 2025-12-19
-updated: 2026-05-05
+updated: 2026-07-16
 owner: ai_ops
 description: Canonical list of specs in priority reading order
 ---
@@ -28,6 +28,8 @@ Read specs in this order:
 
 ### Priority 2: Artifact Patterns
 
+1. `spec_artifact_graph_identity.md` - Shared stable identity, canonical-home, and edge-authority rules
+1. `spec_run_family_composition.md` - Runprogram/runbundle/runbook consumption and resolution rules
 1. `spec_workbook_structure.md` - Workbook structure and execution pattern
 1. `spec_runbook_structure.md` - Runbook structure and governance
 1. `spec_workflow_structure.md` - Workflow intent patterns and generation rules

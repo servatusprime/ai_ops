@@ -1,14 +1,15 @@
 ---
 title: Runbundle README Template
-version: 0.2.2
+version: 0.3.0
 status: active
 license: Apache-2.0
 created: 2026-02-01
-updated: 2026-03-06
+updated: 2026-07-16
 owner: ai_ops
 related:
   - 00_Admin/guides/ai_operations/guide_workflows.md
   - 00_Admin/guides/ai_operations/guide_ai_ops_vocabulary.md
+  - 00_Admin/specs/spec_run_family_composition.md
 description: Template for runbundle README files.
 ---
 
@@ -25,22 +26,30 @@ Briefly describe why this runbundle exists and what it executes.
 
 ## Contents
 
+| Runbook ID | Resolved Canonical Home | Constraint | Profile | Purpose |
+| --- | --- | --- | --- | --- |
+| `rb_<runbook_id>` | `<repo-relative-path>` | `<version_constraint>` | `<parameter_profile>` | Primary runbook |
+
+Companion files:
+
 | File | Purpose |
 | --- | --- |
-| `runbooks/rb_<runbook_id>.md` | Primary runbook |
 | `rnb_<bundle_name>_<nn>.md` | Local queue artifact (optional) |
 | `_scratchpad_<agent>_<YYYY-MM-DD>.md` | Notes (optional) |
+
+The consumer manifest owns outgoing `consumes` edges. This table is a human
+projection. A runbook may be consumed by multiple runbundles without copying.
 
 ## Execution Strategy
 
 | Artifact | Mode | Model Tier | Isolation | Actor | Notes |
 | --- | --- | --- | --- | --- | --- |
-| `rb_<runbook_id>` | subagent | low (haiku) | none | executor | bounded, repeatable |
+| `rb_<runbook_id>` | subagent | low | none | Executor | bounded, repeatable |
 | `Manual step` | operator | n/a | n/a | requestor | human-only gate |
 
 **Modes:** `direct` (current session), `subagent` (spawned agent), `operator` (human action)
 
-**Model tiers:** `low` (haiku-class), `medium` (sonnet-class), `high` (opus-class)
+**Model tiers:** portable `low`, `medium`, or `high` capability levels
 
 **Isolation:** `none`, `worktree` (isolated git worktree), `venv`, `container`
 
@@ -81,12 +90,15 @@ Batch-sequenced parallel guidance:
 
 ## Authority Source
 
-- Parent authority (if program-scoped): `../../execution_spine.md`
+- Membership authority: `<path/to/runbundle_manifest.yaml>`
+- Optional consumer/gate authority: `<consumer_id>` / `<resolved_spine_path>`
 - Local queue artifact: `rnb_<bundle_name>_<nn>.md`
-- Conflict rule: parent spine wins where applicable.
+- Conflict rule: the explicitly referenced spine governs its gates; directory
+  ancestry never grants authority.
 
 ## CSCC Preflight
 
+- [ ] Consumer manifest IDs, constraints, profiles, and resolved homes are valid.
 - [ ] Runbook path and companion artifacts are valid.
 - [ ] Parent program references are valid (if present).
 - [ ] Compacted context source is known (runbundle README or runbook body if standalone).

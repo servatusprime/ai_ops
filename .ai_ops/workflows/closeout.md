@@ -2,7 +2,7 @@
 description: Finalize a work session with cleanup, lint, commit, and push.
 name: closeout
 kind: workflow
-version: 0.3.1
+version: 0.3.2
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -60,6 +60,14 @@ contract.
    and `reads_applied`.
 5. If requested action is outside closeout scope or requires canonical
    remediation edits, transition to `/work`.
+
+### Run-Family Graph Hook
+
+For run-family changes, load the identity/composition specs and generated
+registry on demand. Closeout MUST confirm registry and graph parity, generated-
+view non-authority, exact run-instance lock/receipt linkage, and a validation
+receipt or operator-approved disposition for every affected declared consumer.
+Missing fan-out evidence blocks completion and returns the lane to `/work`.
 
 ## Decision Matrix (Cold-Start)
 

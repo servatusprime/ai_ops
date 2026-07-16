@@ -1,15 +1,16 @@
 ---
 title: Runprogram Pipeline Template
 id: runprogram_pipeline_<nn>
-version: 0.2.2
+version: 0.3.0
 status: active
 license: Apache-2.0
 created: 2026-02-18
-updated: 2026-03-21
+updated: 2026-07-16
 owner: ai_ops
 related:
   - 00_Admin/guides/ai_operations/guide_workflows.md
   - 00_Admin/guides/ai_operations/guide_parallel_execution.md
+  - 00_Admin/specs/spec_run_family_composition.md
 lifecycle: transient
 primary_axis: execution
 execution_mode: sequential
@@ -51,7 +52,8 @@ Describe what this runprogram pipeline orchestrates and why it exists.
 ## Inputs
 
 - `README.md`
-- `run_bundles/` inventory
+- `<path/to/runprogram_manifest.yaml>`
+- `00_Admin/runbooks/run_family_registry.yaml`
 - Optional: `execution_spine.md` and registry artifacts
 
 ## Preconditions
@@ -75,13 +77,14 @@ Describe what this runprogram pipeline orchestrates and why it exists.
 
 ## Ordered Execution Queue
 
-1. `run_bundles/rnb_<bundle_01>/README.md`
-1. `run_bundles/rnb_<bundle_02>/README.md`
-1. `run_bundles/rnb_<bundle_03>/README.md`
+1. `rnb_<bundle_01>` -> `<resolved-canonical-home>/README.md`
+1. `rnb_<bundle_02>` -> `<resolved-canonical-home>/README.md`
+1. `rnb_<bundle_03>` -> `<resolved-canonical-home>/README.md`
 
 Note:
 
-- Keep runprogram queue entries at bundle README level.
+- Keep queue entries at stable runbundle ID plus resolved README path.
+- Membership and route order come from the consumer manifest.
 - Bundle-internal runbook ordering belongs in each bundle's local
   `rnb_<bundle_name>_<nn>.md` queue artifact.
 
@@ -129,4 +132,5 @@ markdownlint <changed_paths>
 
 - `README.md`
 - `execution_spine.md` (if present)
-- `runbooks_registry.md` (if present)
+- `00_Admin/runbooks/run_family_registry.yaml`
+- `<path/to/runprogram_manifest.yaml>`

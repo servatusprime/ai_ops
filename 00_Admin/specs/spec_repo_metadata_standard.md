@@ -4,7 +4,7 @@ id: spec_repo_metadata_standard
 module: admin
 status: active
 license: Apache-2.0
-version: 0.1.5
+version: 0.2.0
 created: 2025-12-02
 updated: 2026-07-07
 owner: ai_ops
@@ -86,7 +86,24 @@ Quoting and brackets are not required for simple scalar owner values.
 - Validation lane:
   `00_Admin/scripts/validate_workflow_frontmatter.py`
 
-### 3.6 Promotion Artifact Classification
+### 3.6 Run-Family Identity and Consumer Manifests
+
+Graph-addressable runbooks, runbundles, and runprograms MUST declare, in
+frontmatter or a colocated manifest: `artifact_id`, `artifact_kind`,
+`canonical_home`, `artifact_version`, `interface_version`, `lifecycle`, and
+`steward`. Existing `id`, `version`, and `owner` values MAY supply the same
+semantics when a schema maps them without ambiguity.
+
+For artifacts participating in the run-family composition graph,
+`spec_run_family_composition.md` narrows this generic choice: a colocated
+`manifest.yaml` is required and is the only machine authority.
+
+Runprogram and runbundle consumer manifests own outgoing `consumes` edges and
+MUST conform to `spec_run_family_composition.md`. Module discovery SHOULD point
+from `02_Modules/<module>/metadata/module.yaml`; modules are not required to
+duplicate identity records in that pointer.
+
+### 3.7 Promotion Artifact Classification
 
 Promotion records and closeout evidence SHOULD classify each output before it
 moves from workbook scope into durable repository locations.
@@ -173,5 +190,7 @@ license fields are contract metadata, not a substitute legal file.
 
 ## Change Log
 
+- 0.2.0 (2026-07-16): Added run-family identity, consumer-manifest, and
+  module-pointer metadata contracts.
 - 0.1.4 (2026-05-05): Metadata normalized to declare spec_archetype.
   Existing version history remains in Git history and prior frontmatter dates.

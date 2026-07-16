@@ -1,0 +1,29 @@
+context_pack_version: 0.1.0
+authority: derived_non_authoritative
+root_consumer_id: runprogram-alpha
+resolution_lock_sha256: '2222222222222222222222222222222222222222222222222222222222222222'
+required_reads:
+- path: 00_Admin/runbooks/run_program_alpha/manifest.yaml
+  artifact_id: runprogram-alpha
+  rationale: root_consumer
+  content_sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+- path: 00_Admin/runbooks/rnb_shared/manifest.yaml
+  artifact_id: runbundle-shared
+  rationale: direct_provider
+  content_sha256: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+- path: 00_Admin/runbooks/rb_shared.md
+  artifact_id: runbook-shared
+  rationale: transitive_provider
+  content_sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+selected_artifact_ids:
+- runbook-shared
+- runbundle-shared
+- runprogram-alpha
+source_digest: '3333333333333333333333333333333333333333333333333333333333333333'
+resolved_interfaces:
+  runbook-shared: '2'
+  runbundle-shared: '1'
+  runprogram-alpha: '1'
+required_gates:
+- gate-runbundle-shared-runbook-shared
+- gate-runprogram-alpha-runbundle-shared

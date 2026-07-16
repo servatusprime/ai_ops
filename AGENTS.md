@@ -1,9 +1,9 @@
 ---
 title: Agents Start Here
-version: 3.5.7
+version: 3.6.0
 status: active
 license: Apache-2.0
-last_updated: 2026-07-07
+last_updated: 2026-07-16
 owner: ai_ops
 description: Bootstrap and authority contract for AI agents operating in ai_ops.
 related:
@@ -876,6 +876,7 @@ If command folders are not installed for your tool, read `.ai_ops/workflows/<com
 - [Specs](00_Admin/specs/README.md) - formal requirements and validation schemas; read in priority order per README
 - [Policies](00_Admin/policies/README.md) - hard rules and constraints
 - [Runbooks](00_Admin/runbooks/README.md) - operational procedures
+- [Run-Family Architecture](00_Admin/specs/spec_run_family_composition.md) - stable-ID composition and generated registry discovery; read the shared identity spec first
 - [CONTRIBUTING.md](CONTRIBUTING.md) - contributor and PR policy
 - `00_Admin/configs/context_routing.yaml` - command-specific always_read lists, guard profiles, and routing fallback policy
 - Decision Card template: `01_Resources/templates/documents/decision_card_template.md` - structured async governance decision surface for L3/L4 gates and circuit breakers

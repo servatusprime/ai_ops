@@ -1,0 +1,103 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:ai-ops:schema:run-receipt:0.1.0
+title: Run-Family Execution Receipt
+type: object
+additionalProperties: false
+required:
+  - receipt_version
+  - authority
+  - run_instance_id
+  - root_consumer_id
+  - resolution_lock_sha256
+  - context_pack_sha256
+  - started_at
+  - completed_at
+  - outcome
+  - inputs
+  - gates
+  - validations
+  - affected_consumers
+  - outputs
+properties:
+  receipt_version:
+    const: "0.1.0"
+  authority:
+    const: execution_evidence_non_authoritative
+  run_instance_id:
+    type: string
+    minLength: 1
+  root_consumer_id:
+    type: string
+    minLength: 1
+  resolution_lock_sha256:
+    $ref: "#/$defs/sha256"
+  context_pack_sha256:
+    $ref: "#/$defs/sha256"
+  started_at:
+    type: string
+    format: date-time
+  completed_at:
+    type: string
+    format: date-time
+  outcome:
+    enum: [pass, fail, blocked, cancelled]
+  inputs:
+    type: array
+    items:
+      $ref: "#/$defs/output"
+  gates:
+    type: array
+    items:
+      type: string
+  validations:
+    type: array
+    items:
+      $ref: "#/$defs/validation"
+  affected_consumers:
+    type: array
+    items:
+      $ref: "#/$defs/consumer_disposition"
+  outputs:
+    type: array
+    items:
+      $ref: "#/$defs/output"
+$defs:
+  sha256:
+    type: string
+    pattern: '^[a-f0-9]{64}$'
+  validation:
+    type: object
+    additionalProperties: false
+    required: [validator_id, result, evidence_ref]
+    properties:
+      validator_id:
+        type: string
+      result:
+        enum: [pass, fail, not_applicable]
+      evidence_ref:
+        type: string
+  consumer_disposition:
+    type: object
+    additionalProperties: false
+    required: [consumer_id, disposition, evidence_ref]
+    properties:
+      consumer_id:
+        type: string
+      disposition:
+        enum: [validated, operator_approved_exception, not_affected]
+      evidence_ref:
+        type: string
+  output:
+    type: object
+    additionalProperties: false
+    required: [path, content_sha256]
+    properties:
+      path:
+        type: string
+      content_sha256:
+        $ref: "#/$defs/sha256"
+x-ai-ops-invariants:
+  - completed_at is not earlier than started_at
+  - pass requires every required validation to pass
+  - affected-consumer closure is complete or explicitly dispositioned
+  - receipt is immutable evidence and never overrides canonical definitions

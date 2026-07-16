@@ -1,14 +1,15 @@
 ---
 title: Runprogram README Template
-version: 0.2.2
+version: 0.3.0
 status: active
 license: Apache-2.0
 created: 2026-02-01
-updated: 2026-03-06
+updated: 2026-07-16
 owner: ai_ops
 related:
   - 00_Admin/guides/ai_operations/guide_workflows.md
   - 00_Admin/guides/ai_operations/guide_ai_ops_vocabulary.md
+  - 00_Admin/specs/spec_run_family_composition.md
 description: Template for runprogram README files.
 ---
 
@@ -25,27 +26,25 @@ Briefly describe why this runprogram exists and what it coordinates.
 
 ## Runbundles
 
-| Runbundle | Purpose | Status |
-| --- | --- | --- |
-| `rnb_<bundle_name>/` | <short description> | <status> |
+| Runbundle ID | Resolved Canonical Home | Constraint | Profile | Status |
+| --- | --- | --- | --- | --- |
+| `rnb_<bundle_id>` | `<repo-relative-path>` | `<version_constraint>` | `<parameter_profile>` | `<status>` |
 
-Runbundle layout expectation (recommended):
-
-- `rnb_<bundle>/README.md`
-- `rnb_<bundle>/rnb_<bundle>_<nn>.md` (optional local pipeline)
-- `rnb_<bundle>/runbooks/rb_*.md`
+The colocated consumer manifest owns this runprogram's outgoing `consumes`
+edges. This table is a human projection and MUST match the manifest. A
+runbundle may be consumed by multiple runprograms without being copied.
 
 ## Execution Strategy
 
 | Artifact | Mode | Model Tier | Isolation | Actor | Notes |
 | --- | --- | --- | --- | --- | --- |
-| `rnb_<bundle_01>` | subagent | low (haiku) | none | executor | bounded, repeatable |
-| `rnb_<bundle_02>` | subagent | medium (sonnet) | worktree | executor | writes to shared surface |
+| `rnb_<bundle_01>` | subagent | low | none | Executor | bounded, repeatable |
+| `rnb_<bundle_02>` | subagent | medium | worktree | Executor | writes to shared surface |
 | `Manual step` | operator | n/a | n/a | requestor | human-only gate |
 
 **Modes:** `direct` (current session), `subagent` (spawned agent), `operator` (human action)
 
-**Model tiers:** `low` (haiku-class), `medium` (sonnet-class), `high` (opus-class)
+**Model tiers:** portable `low`, `medium`, or `high` capability levels
 
 **Isolation:** `none`, `worktree` (isolated git worktree), `venv`, `container`
 
@@ -86,12 +85,14 @@ Batch-sequenced parallel guidance:
 
 ## Authority Source
 
+- Membership authority: `<path/to/runprogram_manifest.yaml>`
 - Sequence/gate authority (if present): `execution_spine.md`
 - Queue mirror (optional): `runprogram_pipeline_<nn>.md`
 - Conflict rule: spine wins; pipeline is synced after spine updates.
 
 ## CSCC Preflight
 
+- [ ] Consumer manifest IDs, constraints, profiles, and resolved homes are valid.
 - [ ] Runprogram README/spine/pipeline references are valid.
 - [ ] Runbundle inventory reflects current execution scope.
 - [ ] Compacted context source is known (runprogram or runbundle README).

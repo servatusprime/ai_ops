@@ -1,7 +1,7 @@
 ---
 artifact_type: source
 status: active
-updated: 2026-05-04
+updated: 2026-07-16
 moved_from: 00_Admin/context/decision_ledger.md
 moved_date: 2026-01-11
 ---
@@ -58,6 +58,13 @@ This ledger records irreversible, cross-cutting governance decisions. Entries ar
   `00_Admin/specs/spec_policy_decision_record.md`, making governance decisions observable
   and auditable. Formalizes the implicit decision requirement of the Explicit Authority
   Gate Model.
+- **Run-Family Composition Uses Shared Stable Identity** (2026-07-16; approved
+  by requestor) - Runprograms, runbundles, and runbooks compose through
+  consumer-owned, many-to-many `consumes` edges over one canonical identity/home
+  per artifact. Filesystem placement indicates stewardship, not exclusive
+  ownership; reverse views are derived. Governed by
+  `spec_artifact_graph_identity.md` and `spec_run_family_composition.md` and
+  approved through Director run `director-run-family-graph-001`.
 
 ## How to Propose a New Entry
 

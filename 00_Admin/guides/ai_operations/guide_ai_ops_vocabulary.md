@@ -1,14 +1,16 @@
 ---
 title: Guide: AI Ops Vocabulary
-version: 1.0.5
+version: 1.1.1
 status: active
 license: Apache-2.0
-last_updated: 2026-03-13
+last_updated: 2026-07-16
 owner: ai_ops
 related:
 - ./guide_ai_operations_stack.md
 - ./guide_contracts.md
 - ./guide_workflows.md
+- ../../specs/spec_artifact_graph_identity.md
+- ../../specs/spec_run_family_composition.md
 promoted_from: 90_Sandbox/AI_Operations_Drafts/guide_ai_ops_vocabulary.md
 ---
 
@@ -127,6 +129,26 @@ Program/book/bundle nuance:
 - `*program` = pipeline-level orchestration artifact (coordinates `*bundle` and `*book` artifacts).
 - `*bundle` = grouping container folder for a run/work execution scope.
 - `*book` = primary executable markdown artifact for a scoped run/work commitment.
+
+Run-family graph terms:
+
+- **Canonical home** = the single repo-relative implementation path for a
+  stable artifact identity; it communicates stewardship, not exclusive use.
+- **Consumer manifest** = the authority for a runprogram's or runbundle's
+  outgoing `consumes` references.
+- **Run-family registry** = a generated machine index of stable IDs and
+  resolved homes; it is a derived view, not authority.
+- **Run-instance lock** = exact resolved IDs, versions, paths, parameters,
+  hashes, routes, and gates for one execution.
+- **Compatibility alias** = unsupported in run-family contract v0.1. A future
+  named-consumer bridge requires a separately approved Level-4 contract version
+  with executable non-authority and hard-removal enforcement; prose approval
+  alone cannot create one.
+
+A runbundle is a logical grouping as well as a folder artifact. Different
+runprograms MAY consume the same runbundle, and different runbundles MAY
+consume the same runbook. Physical nesting is optional and never establishes
+exclusive ownership.
 
 Scratchpads are append-only companion notes stored inside workbundles. They capture observations, friction points,
 and decisions during execution. Use `_scratchpad_<agent>_<date>.md` naming. They are transient and archived with

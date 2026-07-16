@@ -1,0 +1,39 @@
+receipt_version: 0.1.0
+authority: execution_evidence_non_authoritative
+run_instance_id: fixture-run-001
+root_consumer_id: runprogram-alpha
+resolution_lock_sha256: '2222222222222222222222222222222222222222222222222222222222222222'
+context_pack_sha256: '3333333333333333333333333333333333333333333333333333333333333333'
+started_at: '2026-07-16T12:00:00-04:00'
+completed_at: '2026-07-16T12:01:00-04:00'
+outcome: pass
+validations:
+- validator_id: validate_run_family_graph
+  result: pass
+  evidence_ref: evidence/run_family_validation.json
+affected_consumers:
+- consumer_id: runbundle-secondary
+  disposition: validated
+  evidence_ref: evidence/runbundle_secondary.json
+- consumer_id: runbundle-shared
+  disposition: validated
+  evidence_ref: evidence/runbundle_shared.json
+- consumer_id: runprogram-alpha
+  disposition: validated
+  evidence_ref: evidence/runprogram_alpha.json
+- consumer_id: runprogram-beta
+  disposition: validated
+  evidence_ref: evidence/runprogram_beta.json
+outputs:
+- path: evidence/fixture-run-001/result.yaml
+  content_sha256: '4444444444444444444444444444444444444444444444444444444444444444'
+inputs:
+- path: inputs/fixture-run-001.yaml
+  content_sha256: '5555555555555555555555555555555555555555555555555555555555555555'
+gates:
+- gate_id: gate-runbundle-shared-runbook-shared
+  result: pass
+  evidence_ref: evidence/gates/runbundle_shared.json
+- gate_id: gate-runprogram-alpha-runbundle-shared
+  result: pass
+  evidence_ref: evidence/gates/runprogram_alpha.json

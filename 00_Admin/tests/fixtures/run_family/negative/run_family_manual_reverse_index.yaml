@@ -1,0 +1,14 @@
+schema_version: 0.1.0
+artifacts:
+- artifact_id: runbook-reverse
+  artifact_kind: runbook
+  canonical_home: 00_Admin/runbooks/rb_reverse.md
+  artifact_version: 1.0.0
+  interface_version: '1'
+  lifecycle: active
+  steward: ai_ops
+  content_sha256: '9999999999999999999999999999999999999999999999999999999999999999'
+consumes: []
+consumed_by:
+  runbook-reverse:
+  - runbundle-invented
