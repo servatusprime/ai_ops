@@ -43,7 +43,7 @@ workflows:
     sha256_12: 5e3e551d96b0
 - workflow: closeout
   source: .ai_ops/workflows/closeout.md
-  source_sha256_12: 16e4b866ead8
+  source_sha256_12: c020330479bc
   description: Finalize a work session with cleanup, lint, commit, and push.
   outputs:
   - path: plugins/ai-ops-governance/commands/closeout.md
@@ -110,7 +110,7 @@ workflows:
     sha256_12: 5c9050ad6aef
 - workflow: profiles
   source: .ai_ops/workflows/profiles.md
-  source_sha256_12: f0fd8b601307
+  source_sha256_12: 0635053a4362
   description: Manage rider/crew profile source data and regenerate deterministic
     derivative behavior files.
   outputs:
@@ -144,7 +144,7 @@ workflows:
     sha256_12: 79ffc08c02fc
 - workflow: work_savepoint
   source: .ai_ops/workflows/work_savepoint.md
-  source_sha256_12: 032d40bab227
+  source_sha256_12: c95860ff8521
   description: Commit and push active work as a savepoint, then end the ai_ops session.
   outputs:
   - path: plugins/ai-ops-governance/commands/work_savepoint.md

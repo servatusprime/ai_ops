@@ -46,7 +46,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Run canonical release-quality checks (schema/validator, export drift, "
-            "lint, and profile regeneration dry-run)."
+            "lint, and profile derivative drift checking)."
         )
     )
     parser.add_argument(
@@ -120,12 +120,17 @@ def main() -> int:
             )
         )
 
-    profile_cmd = [python_exe, "00_Admin/scripts/regenerate_profiles.py", "--dry-run"]
+    profile_cmd = [
+        python_exe,
+        "00_Admin/scripts/regenerate_profiles.py",
+        "--check",
+        "--tracked-only",
+    ]
     if args.profile:
         profile_cmd.extend(["--profile", args.profile])
     if args.model_family:
         profile_cmd.extend(["--model-family", args.model_family])
-    checks.append(("profiles-dry-run", profile_cmd))
+    checks.append(("profiles-derivative-drift", profile_cmd))
 
     failures: List[Tuple[str, int]] = []
     for name, cmd in checks:

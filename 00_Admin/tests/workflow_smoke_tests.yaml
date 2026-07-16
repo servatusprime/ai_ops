@@ -130,7 +130,7 @@ tests:
 
   - id: smoke_work_savepoint
     workflow: /work_savepoint
-    description: Checkpoint for later resumption
+    description: Non-publishing checkpoint for later resumption
     preconditions:
       - Active work context exists
     inputs:
@@ -139,9 +139,13 @@ tests:
       - Checkpoint confirmation
       - Compacted context updated (if applicable)
       - Resume instructions provided
+      - Scoped change summary with include, related_scope_requires_confirmation, and exclude buckets
+      - Explicit statement that no staging, commit, push, PR creation, or global Git configuration occurred
     failure_indicators:
       - Agent continues working after pause
       - Agent loses context state
+      - Workflow stages, commits, pushes, creates a PR, or changes global Git configuration
+      - Scope drift is automatically included in a future publication set
 
   - id: smoke_customize
     workflow: /customize

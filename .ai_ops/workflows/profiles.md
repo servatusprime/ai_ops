@@ -142,6 +142,7 @@ contract.
 9. Invoke regeneration script:
    - `python 00_Admin/scripts/regenerate_profiles.py`
    - optional model family: `python 00_Admin/scripts/regenerate_profiles.py --model-family <family>`
+   - validate tracked derivatives without writing: `python 00_Admin/scripts/regenerate_profiles.py --check --tracked-only`
 10. Report:
 
 - files regenerated

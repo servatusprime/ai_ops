@@ -79,8 +79,8 @@ Best fit:
 <!-- Managed by ai_ops /profiles -->
 <!--
 Managed by ai_ops /profiles
-generated_at: 2026-04-12T15:30:56Z
-source_hash: 5fb80f32367f
+generated_at: 2026-04-12T00:00:00Z
+source_hash: a6c5c7bb2d72
 role: ai-ops-linter
 profile_id: anchor
 crew_preset: default

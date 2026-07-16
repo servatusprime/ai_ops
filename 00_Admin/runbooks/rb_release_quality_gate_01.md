@@ -19,7 +19,7 @@ Provide one canonical command path for pre-closeout quality validation of:
 2. Workflow frontmatter contract validation.
 3. Workflow export drift.
 4. Lint pipeline (no-fix mode).
-5. Profile regeneration determinism check (dry-run).
+5. Profile derivative drift check (non-writing `--check --tracked-only`).
 
 ## When to Run
 
@@ -59,4 +59,5 @@ python 00_Admin/scripts/run_release_quality_gate.py --dry-run
 ## Notes
 
 - This runbook does not commit or push.
-- The profiles lane runs `regenerate_profiles.py --dry-run` and does not write files.
+- The profiles lane runs `regenerate_profiles.py --check --tracked-only` and
+  fails when tracked derivatives drift without writing files.

@@ -173,8 +173,13 @@ closeout-specific branching.
 14. Evaluate commit gate explicitly:
 
     - If required configured checks exist, all must pass before commit.
-    - If no checks are configured, require explicit user confirmation before
-      commit.
+    - Require an explicit operator approval that names the final `include` set,
+      the change summary, and the commit action before every commit, whether or
+      not configured checks exist.
+    - Require a separate explicit operator approval before every push or PR
+      creation; commit approval does not imply publication approval.
+    - If no checks are configured, record that fact in the approval packet;
+      absence of checks never relaxes the approval requirement.
     - If any required check fails, stop closeout and transition to `/work` for
       remediation.
 

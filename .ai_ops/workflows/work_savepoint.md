@@ -39,9 +39,9 @@ exports:
 
 ## Purpose
 
-Commit and push active work as a savepoint, then end the ai_ops session.
-Default behavior is commit + push with a `savepoint:` prefix message. Pass
-`--no-commit` to end the session without committing.
+Prepare a scoped savepoint for later resumption, then end the ai_ops session.
+Default behavior does not stage, commit, or push. Publication is a separate,
+explicitly approved `/closeout` action.
 
 ## Inputs and Preconditions
 
@@ -70,9 +70,11 @@ contract.
 
 ### Steps: Direct Mode
 
-- No active artifacts and `--no-commit` not passed: end the ai_ops_session with no commit.
-- `--no-commit` flag present: end the ai_ops_session without committing; skip Steps 4–6 below.
-- Active workbundle/workbook/runbundle/runprogram/runbook with uncommitted changes: proceed with commit + push.
+- No active artifacts: end the ai_ops session with no publication action.
+- `--no-commit` is accepted as a compatibility spelling and has no additional
+  effect; savepoints never commit or push.
+- Active workbundle/workbook/runbundle/runprogram/runbook with uncommitted
+  changes: prepare a scoped change summary and resume instructions only.
 
 1. **Repo-Root Resolution**: Resolve the target repository root before any git operations.
    - Resolve `target_repo` from: explicit user scope → active artifact `repo` field → `.ai_ops/local/config.yaml` `workspace.work_repos` list.
@@ -80,8 +82,9 @@ contract.
    - **Unregistered repos**: if `target_repo` cannot be resolved from active artifacts or `work_repos`, require explicit user-provided path. Stop and ask if none given.
    - **Windows**: `git rev-parse --show-toplevel` returns POSIX-style paths (`/c/path/to/repo`). Normalize to forward-slash absolute path for all `git -C` calls.
    - Run `git -C <target_repo> rev-parse --show-toplevel` to confirm repo access and establish `repo_root`.
-     - If it fails with `dubious ownership`: run `git config --global --add safe.directory <target_repo>` and
-       re-run. Record `safe_directory_applied: true`. If the re-run also fails, stop and report.
+     - If it fails with `dubious ownership`, stop and request explicit approval
+       for any machine-global trust change. Do not run `git config --global`
+       from a savepoint flow.
      - On success: capture output as `repo_root`. Record `safe_directory_applied: false`.
    - All subsequent git commands MUST use `-C <repo_root>` or run from `<repo_root>`.
    - Emit `target_repo`, `repo_root`, `git_root`, `ops_stack_root`, `safe_directory_applied` in output.
@@ -102,20 +105,19 @@ contract.
      and never interpret ambiguous or permission-denied status output as clean.
 3. **Identify scope**: Run `git -C <repo_root> status` to confirm which files have changes.
    - `warning: unable to access '.../.config/git/ignore': Permission denied` is a non-blocking environment warning. Report it explicitly; do not treat ambiguous output as a clean tree.
-   - If changed files include paths not covered by any artifact in `work_state.active_artifacts`, report `artifact_scope_drift: true` and `drift_paths: [...]`. Include drifted paths in the savepoint commit unless the requestor explicitly excludes them.
-4. **Stage changes**: Never stage `.ai_ops/local/**` (always machine-local). Stage all tracked files in `<repo_root>` that are in scope, unless explicitly excluded by repo-level `.gitignore` or policy. Do NOT assume `90_Sandbox/` is gitignored — verify per target repo.
-5. **Commit**: Create a commit with message `savepoint: <brief description of active work>`.
-6. **Push**: Push the commit to the remote branch.
-   - If push fails with `remote: error: GH006`, `protected branch`, or `remote rejected`: emit `push_escalation: pr_required` — create a PR against `<default_branch>` instead. Do not retry push.
-   - If push fails with `does not have permission`, `authentication failed`, or `403`: emit `push_escalation: auth_failure` — stop and report credentials issue.
-   - If push fails for any other reason: record exit code and first 10 lines of stderr as `push_escalation: unknown` — stop and report.
-   - On success: record `push_escalation: none`.
-7. **Report**: Confirm commit hash, branch, push status, and any warnings.
+   - If changed files include paths not covered by any artifact in `work_state.active_artifacts`, report `artifact_scope_drift: true` and `drift_paths: [...]`. Do not stage or include drifted paths automatically.
+4. **Publication Stop Gate**: Do not stage, commit, push, create a PR, or alter
+   Git configuration. Classify changed paths as `include`,
+   `related_scope_requires_confirmation`, or `exclude` for a later `/closeout`.
+5. **Report**: Emit the scoped change summary, three-bucket classification,
+   validation status, unresolved evidence, and exact resume entry point.
+   `/closeout` may publish only after its explicit approval and validation gates
+   are satisfied.
 8. **End session**: Work context in `.ai_ops/local/work_state.yaml` persists
    (artifacts remain in_progress). Note how to resume.
 
-- Multiple active artifacts: ask which context to include in the savepoint message; then proceed.
-  - **Default**: Savepoint **All Active** contexts in a single commit.
+- Multiple active artifacts: ask which context the checkpoint summarizes; do
+  not infer a publication scope.
 
 ### Steps: Governed Mode
 
