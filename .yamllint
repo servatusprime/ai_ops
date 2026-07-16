@@ -1,7 +1,12 @@
 extends: default
+# Ignore scope: intentionally-invalid fixtures, staged deletions, and
+# tool/vendor caches. 90_Sandbox is deliberately NOT ignored: work artifacts
+# there are linted per the /closeout sandbox-lint contract.
 ignore: |
   **/00_Admin/tests/fixtures/manifests/invalid_syntax.yaml
   **/99_Trash/**
+  .cache/**
+  **/node_modules/**
 rules:
   line-length:
     max: 120

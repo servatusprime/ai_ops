@@ -462,7 +462,7 @@ entries:
     domain: tooling
     target_repo: both
     source_workbook: >-
-      90_Sandbox/ai_workbooks/wb_run_family_graph_architecture_uplift_01_2026-07-16/wb_run_family_graph_architecture_uplift_01.md
+      99_Trash/wb_run_family_graph_architecture_uplift_01_2026-07-16/wb_run_family_graph_architecture_uplift_01.md
     completion_workbook: null
     proposed_workbook: null
     scope: >-
@@ -498,7 +498,7 @@ entries:
     domain: validation
     target_repo: both
     source_workbook: >-
-      90_Sandbox/ai_workbooks/wb_run_family_graph_architecture_uplift_01_2026-07-16/wb_run_family_graph_architecture_uplift_01.md
+      99_Trash/wb_run_family_graph_architecture_uplift_01_2026-07-16/wb_run_family_graph_architecture_uplift_01.md
     completion_workbook: null
     proposed_workbook: null
     scope: >-
@@ -542,7 +542,7 @@ entries:
     domain: governance
     target_repo: ai_ops
     source_workbook: >-
-      90_Sandbox/ai_workbooks/wb_run_family_graph_architecture_uplift_01_2026-07-16/wb_run_family_graph_architecture_uplift_01.md
+      99_Trash/wb_run_family_graph_architecture_uplift_01_2026-07-16/wb_run_family_graph_architecture_uplift_01.md
     completion_workbook: null
     proposed_workbook: >-
       90_Sandbox/ai_workbooks/

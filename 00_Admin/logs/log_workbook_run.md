@@ -373,4 +373,23 @@ ai_generated: true
   `affects`. Commit and push approved by requestor (servatusprime) on 2026-07-16
   after change-summary review. Enforcement is forward-looking: ai_ops holds zero
   live run-family manifests, so the first live validation occurs at
-  governed-repository adoption.
+  governed-repository adoption. Workbook archived:
+  99_Trash/wb_run_family_graph_architecture_uplift_01_2026-07-16/. Durable
+  records retained on tracked surfaces: this entry, the decision-ledger row, and
+  future-work rows fw_20260716_01/02/03 (source_workbook repointed to the
+  archive path).
+
+- 2026-07-16 | lint scope repair (L2) | Follow-on to the run-family closeout.
+  `.yamllint` ignored intentionally-invalid fixtures and `99_Trash/**` but not
+  tool/vendor caches, so `run_release_quality_gate.py` failed on third-party
+  `.cache/npm` node_modules and could not pass on any machine with an npx cache
+  present. Added `.cache/**` and `**/node_modules/**` to the ignore list;
+  `90_Sandbox/**` remains deliberately linted per the /closeout sandbox-lint
+  contract. Also normalized one stale CRLF file and regenerated the Track B
+  proof views, which had drifted because the run-family commit changed
+  `context_routing.yaml` and three workflow sources that the Track B generator
+  consumes — an affected-consumer regression that current enforcement could not
+  detect, since the run-family registry holds zero live manifests. Validation:
+  release-quality gate PASS (first green); Track B verifier
+  `[OK] Director contract and fresh graph proof verified`; yamllint zero errors;
+  ruff clean. Approved by requestor (servatusprime) 2026-07-16.
