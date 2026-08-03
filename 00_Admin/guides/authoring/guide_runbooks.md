@@ -3,7 +3,7 @@ title: Guide: Runbooks
 version: 1.1.1
 status: active
 license: Apache-2.0
-last_updated: 2026-07-16
+last_updated: 2026-07-22
 owner: ai_ops
 related:
 - ./guide_markdown_authoring.md
@@ -163,7 +163,8 @@ Include these sections (headings may vary, but content is required):
 7. Validation commands
 8. Outputs
 9. Postconditions
-10. Validation or checks (tests, validators, or evidence required)
+10. Validation or checks (tests, validators, or evidence required; acceptance
+    evidence must be capable of observing the claim it supports)
 11. Verification checklist
 
 Runbooks MUST include a short Planning Outputs section: assumptions, risks, success criteria, and a planning checklist.
@@ -243,7 +244,7 @@ Execution topology routing fields:
 
 - `execution_topology`: `single_agent`, `multi_agent`, or `hybrid`
 - `activated_lanes`: canonical lanes active for the run
-- `delegation_policy`: `none`, `explicit_only`, `conditional`, or `proactive_allowed`
+- `delegation_policy`: `none`, `explicit_only`, `coordinator_judgment`, `conditional`, or `proactive_allowed`
 - `convergence_profile`: named review/rework loop posture
 - `parallel_coordination_id`: conditional coordination identifier when sibling
   active artifacts may run concurrently

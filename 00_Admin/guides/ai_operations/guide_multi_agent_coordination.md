@@ -1,10 +1,10 @@
 ---
 title: Guide: Multi-Agent Coordination
-version: 0.1.2
-status: stub
+version: 0.2.0
+status: active
 license: Apache-2.0
 created: 2026-01-24
-last_updated: 2026-03-24
+last_updated: 2026-07-22
 owner: ai_ops
 ai_agent_applicability: conditional
 related:
@@ -21,7 +21,7 @@ enabling parallel execution.
 
 In ai_ops multi-agent runs, agents are assigned canonical lanes -- Coordinator, Planner, Executor, Builder,
 Reviewer, Researcher, Closer, Linter -- per the **Crew Model**. See
-`00_Admin/guides/architecture/guide_design_and_philosophy.md` Sec.The Crew Model. The lock and conflict rules
+`00_Admin/guides/architecture/guide_design_and_philosophy.md` Sec.The Crew Model. The write-coordination rules
 in this guide apply regardless of which lane an agent holds.
 
 ## AI Agent Applicability
@@ -30,94 +30,70 @@ in this guide apply regardless of which lane an agent holds.
 - Explicit triggers: user requests parallel execution or multi-agent coordination
 - Implicit triggers: more than one active agent or overlapping shared files
 
-## Lock Mechanisms
+## Write Coordination Model
 
-### File-Level Locks
+ai_ops has **no runtime lock service**. There is no daemon, no lock file
+consumer, and no process that can prevent a second agent from writing a file.
+Any rule that depends on acquiring, refreshing, or expiring a lock is therefore
+unenforceable, and unenforceable rules are not governance.
 
-When a workbook specifies `execution_mode: parallel_with_locks` and `lock_scope: file`:
+Coordination is achieved structurally instead, by making conflicts impossible
+rather than detecting them after the fact.
 
-- Agent MUST acquire lock on file before editing
-- Lock includes file path and agent identifier
-- Lock TTL (Time To Live): 30 minutes default
-- Lock refresh: Every 10 minutes if work continues
-- Lock release: Immediately after file write completes
+### Rule 1: Disjoint Write Targets by Default
 
-### Lock Storage
+Assign every concurrent lane a write target that no other lane touches. This is
+the primary and preferred mechanism. Identify all output paths at the start of
+execution planning, before any lane is dispatched.
 
-Locks stored in: `.aiops_session/locks.yaml`
+### Rule 2: Named Merge Owner When Overlap Is Unavoidable
 
-Session state is stored in `.aiops_session/session.yaml` (schema applies to this file).
+If two lanes genuinely must write the same path:
 
-Format:
+1. Name **one** merge owner -- a single lane that owns the final content.
+2. Sequence the writes explicitly: one lane writes, then hands off.
+3. Record the merge owner in the execution artifact before dispatch, not after
+   a conflict appears.
 
-```yaml
-locks:
-  - file: 00_Admin/guides/example.md
-    agent_id: claude_session_abc123
-    acquired: 2026-01-24T10:30:00Z
-    ttl_expires: 2026-01-24T11:00:00Z
-    workbook: wb_example_01
-```
+Do not rely on filesystem atomic writes to prevent corruption; enforce
+sequencing at the workflow level.
 
-### Lock Acquisition
+### Rule 3: Delegated Writes Declare Their Target
 
-Lock acquisition steps:
+Every delegated write declares a single `write_target` path in its task brief.
+A delegated lane may not write outside its declared target.
 
-1. Check if a valid lock exists for the file.
-2. If the same agent holds it, refresh the lock.
-3. If another agent holds it, stop and report conflict.
-4. If no valid lock exists, create one with TTL.
+Hash or promotion evidence is required **only** when the runtime actually
+isolates the child write root -- for example `isolation: worktree`, where the
+child writes to a separate checkout and its output must be verified before
+promotion. When agents share one authoritative checkout, requiring hash
+promotion adds ceremony without adding safety, and is not required.
 
-## Conflict Handling
+### Conflict Handling
 
-### Scenario 1: Lock Acquisition Failure
-
-**Situation**: Agent A tries to edit file locked by Agent B
-
-**Behavior**:
-
-1. Agent A detects lock held by Agent B
-2. Agent A logs conflict to `00_Admin/logs/log_workbook_run.md`
-3. Agent A suggests to user:
-   - Wait for lock release (check TTL expiry time)
-   - Contact Agent B's operator to coordinate
-   - Override lock if Agent B session terminated (requires human approval)
-
-### Scenario 2: Lock Expiry During Work
-
-**Situation**: Agent A's lock expires while still working
-
-**Behavior**:
-
-1. Agent A attempts to refresh lock every 10 minutes
-2. If refresh fails (another agent acquired), Agent A:
-   - Stops editing
-   - Logs conflict
-   - Reports to user: "Lock lost during work, changes not saved"
-   - Suggests manual merge or retry
-
-### Scenario 3: Simultaneous Lock Requests
-
-**Situation**: Agent A and Agent B request same file lock simultaneously
-
-**Behavior**:
-
-- First lock write wins (filesystem atomic write)
-- Loser detects lock exists, backs off
-- Exponential backoff: 1s, 2s, 4s, then report conflict
+Because conflicts are prevented structurally, there is no lock-conflict
+protocol. If two agents are found writing the same path, that is a planning
+defect: stop, record it in the execution artifact, assign a merge owner, and
+re-sequence. Never auto-merge.
 
 ## Coordination Patterns
 
-### Pattern 1: Shared Files Declaration
+### Pattern 1: Overlapping Write Target with a Merge Owner
 
-Workbook declares files that may conflict:
+Workbook declares a path more than one lane must write, and names the single
+lane that owns the merge:
 
 ```yaml
 shared_files:
-  - 00_Admin/configs/validator/validator_config.yaml
   - 00_Admin/guides/authoring/guide_workbooks.md
-lock_scope: file
+merge_owner: Executor   # one named lane owns final content
+write_sequence:
+  - Executor            # writes first
+  - Reviewer            # then hands off
 ```
+
+`lock_scope` is retained as compatibility-only frontmatter metadata. It records
+intent and does not permit, coordinate, or enforce concurrent writes.
 
 ### Pattern 2: No-Conflict Execution
 
@@ -162,53 +138,12 @@ Declare this constraint in the `do_not_delegate_when` block of the
 
 Reference: `fw_20260319_04` governance seed.
 
-## Lock Cleanup
-
-### Manual Cleanup
-
-If lock file corrupted or stale locks present:
-
-```bash
-cat .aiops_session/locks.yaml
-```
-
-To remove a specific lock entry, edit `.aiops_session/locks.yaml` with human approval.
-
-Emergency-only full lock reset command (requires human approval):
-
-```bash
-rm .aiops_session/locks.yaml
-```
-
-### Automatic Cleanup
-
-On session start, agent checks for expired locks:
-
-- If lock TTL expired > 1 hour, automatically remove
-- If lock TTL expired < 1 hour, warn user before removing
-
-## Conflict Resolution Workflow
-
-1. **Detect**: Agent detects lock conflict or merge conflict
-2. **Log**: Record conflict in `00_Admin/logs/log_workbook_run.md`
-3. **Notify**: Report to user with context (which file, which agents, what work)
-4. **Options**:
-   - Wait: User decides to wait for lock release
-   - Coordinate: User contacts other agent's operator
-   - Override: User approves lock override (Level 4 decision)
-   - Abort: User aborts current agent's work
-
 ## Safe Defaults
 
-- Default lock TTL: 30 minutes (prevents indefinite locks)
-- Default lock refresh interval: 10 minutes
-- Default conflict behavior: Stop and report (never auto-merge)
-- Default coordination mode: Pessimistic locking (acquire before edit)
-
-## Future Enhancements
-
-- Optimistic locking (edit first, merge on conflict)
-- Agent-to-agent messaging (direct coordination without human mediation)
+- Default coordination mode: disjoint write targets.
+- Default conflict behavior: stop and report; never auto-merge.
+- Default merge ownership: unset. If two lanes need one path, naming an owner is
+  a required planning step, not a runtime fallback.
 
 ## References
 

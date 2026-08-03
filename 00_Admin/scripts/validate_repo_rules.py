@@ -627,6 +627,93 @@ def _parse_checklist_allowance(fm_text: str) -> Dict[str, Any] | None:
     return result
 
 
+def _parse_validation_evidence(fm_text: str) -> Tuple[str | None, List[Dict[str, str]], List[str]]:
+    """Parse the opt-in work-family validation contract from raw front matter.
+
+    This deliberately avoids the flat scalar parser and ``yaml.safe_load``.
+    The work-family contract is a small, strict block parser modeled on R-6:
+    ``validation_contract`` is a top-level scalar and ``validations`` contains
+    two-space list entries with four-space scalar fields.
+    """
+    lines = fm_text.splitlines()
+    contract: str | None = None
+    contract_seen = False
+    block_starts: List[int] = []
+    for idx, line in enumerate(lines):
+        if re.match(r"^validation_contract\s*:", line):
+            if contract_seen:
+                return contract, [], ["duplicate validation_contract"]
+            contract_seen = True
+            value = line.split(":", 1)[1].strip().strip('"').strip("'")
+            # Preserve the distinction between an absent marker and a present
+            # marker with an empty value.  The caller intentionally skips the
+            # opt-in subcheck when the marker is absent, but a present malformed
+            # marker must fail closed.
+            contract = value
+        elif re.match(r"^validations\s*:", line):
+            block_starts.append(idx)
+
+    if not contract_seen:
+        return None, [], []
+    if contract != "work_validation_v1":
+        return contract, [], ["unsupported or missing validation_contract 'work_validation_v1'"]
+    if len(block_starts) != 1:
+        return contract, [], ["missing or duplicate validations block"]
+
+    allowed = {"validator_id", "required", "result", "evidence_ref"}
+    entries: List[Dict[str, str]] = []
+    errors: List[str] = []
+    current: Dict[str, str] | None = None
+    def add_field(target: Dict[str, str], key: str, value: str) -> None:
+        if key not in allowed:
+            errors.append(f"unknown validation field '{key}'")
+        elif key in target:
+            errors.append(f"duplicate validation field '{key}'")
+        else:
+            target[key] = value.strip().strip('"').strip("'")
+
+    for line in lines[block_starts[0] + 1 :]:
+        if not line.strip():
+            continue
+        if len(line) - len(line.lstrip()) == 0:
+            break  # the next top-level front-matter key ends the block
+        if re.match(r"^  -(?:\s+(.*))?$", line):
+            if current is not None:
+                entries.append(current)
+            current = {}
+            inline = re.match(r"^  -\s+(\S[^:]*):\s*(.*)$", line)
+            if inline:
+                add_field(current, inline.group(1).strip(), inline.group(2))
+            elif line.strip() != "-":
+                errors.append("malformed validation list entry")
+            continue
+        field = re.match(r"^    ([A-Za-z0-9_]+)\s*:\s*(.*)$", line)
+        if field and current is not None:
+            add_field(current, field.group(1), field.group(2))
+            continue
+        errors.append("malformed validations block indentation or entry")
+
+    if current is not None:
+        entries.append(current)
+    if not entries:
+        errors.append("missing validation entries")
+    for index, entry in enumerate(entries, start=1):
+        missing = sorted(allowed - set(entry))
+        if missing:
+            errors.append(f"validation entry {index} missing field(s): {', '.join(missing)}")
+        if entry.get("required") not in {"true", "false"}:
+            errors.append(f"validation entry {index} required must be true or false")
+        if entry.get("result") not in {"pass", "fail", "not_applicable"}:
+            errors.append(f"validation entry {index} has unsupported result")
+        if not entry.get("validator_id"):
+            errors.append(f"validation entry {index} validator_id is empty")
+        if not entry.get("evidence_ref"):
+            errors.append(f"validation entry {index} evidence_ref is empty")
+        if entry.get("required") == "true" and entry.get("result") != "pass":
+            errors.append(f"validation entry {index} required result is not pass")
+    return contract, entries, errors
+
+
 def check_status_vs_checklist(files: List[str], errors: List[str], rule_id: str) -> None:
     """VS035: status completed/active must not carry unexplained open checklist/queue
     items. A fail-closed forward-handoff allowance (R-6) exempts only exact listed items."""
@@ -638,44 +725,49 @@ def check_status_vs_checklist(files: List[str], errors: List[str], rule_id: str)
         if status not in enforced:
             continue
         open_items = _open_checklist_items(body)
-        if not open_items:
-            continue
         fm_text = ""
         if text.startswith("---"):
             end_idx = text.find("\n---", 3)
             if end_idx != -1:
                 fm_text = text[3:end_idx]
-        allowance = _parse_checklist_allowance(fm_text)
-        exempt: set = set()
-        if allowance is not None:
-            a_errs: List[str] = []
-            wb_id = fm.get("id")
-            if allowance["kind"] != "forward_handoff":
-                a_errs.append(f"unsupported kind '{allowance['kind']}'")
-            if not allowance["target_artifact"]:
-                a_errs.append("missing target_artifact")
-            elif wb_id and allowance["target_artifact"] != wb_id:
-                a_errs.append(f"unknown target_artifact '{allowance['target_artifact']}'")
-            if not allowance["rationale"]:
-                a_errs.append("empty rationale")
-            oi = allowance["open_items"]
-            if len(oi) != len(set(oi)):
-                a_errs.append("duplicate open_items entries")
-            for it in oi:
-                if it not in open_items:
-                    a_errs.append(f"listed allowance item is not an open checkbox: '{it}'")
-            if a_errs:
-                for ae in a_errs:
-                    errors.append(f"{rule_id}: {path}: invalid checklist_allowance: {ae}")
-                continue
-            exempt = set(oi)
-        unexplained = [it for it in open_items if it not in exempt]
-        if unexplained:
-            sample = "; ".join(unexplained[:3])
-            errors.append(
-                f"{rule_id}: {path}: status '{status}' with {len(unexplained)} "
-                f"unexplained open checklist item(s): {sample}"
-            )
+        if open_items:
+            allowance = _parse_checklist_allowance(fm_text)
+            exempt: set = set()
+            if allowance is not None:
+                a_errs: List[str] = []
+                wb_id = fm.get("id")
+                if allowance["kind"] != "forward_handoff":
+                    a_errs.append(f"unsupported kind '{allowance['kind']}'")
+                if not allowance["target_artifact"]:
+                    a_errs.append("missing target_artifact")
+                elif wb_id and allowance["target_artifact"] != wb_id:
+                    a_errs.append(f"unknown target_artifact '{allowance['target_artifact']}'")
+                if not allowance["rationale"]:
+                    a_errs.append("empty rationale")
+                oi = allowance["open_items"]
+                if len(oi) != len(set(oi)):
+                    a_errs.append("duplicate open_items entries")
+                for it in oi:
+                    if it not in open_items:
+                        a_errs.append(f"listed allowance item is not an open checkbox: '{it}'")
+                if a_errs:
+                    for ae in a_errs:
+                        errors.append(f"{rule_id}: {path}: invalid checklist_allowance: {ae}")
+                else:
+                    exempt = set(oi)
+            unexplained = [it for it in open_items if it not in exempt]
+            if unexplained:
+                sample = "; ".join(unexplained[:3])
+                errors.append(
+                    f"{rule_id}: {path}: status '{status}' with {len(unexplained)} "
+                    f"unexplained open checklist item(s): {sample}"
+                )
+
+        if status == "completed":
+            contract, _entries, validation_errors = _parse_validation_evidence(fm_text)
+            if contract is not None and validation_errors:
+                for ve in validation_errors:
+                    errors.append(f"{rule_id}: {path}: invalid validation evidence: {ve}")
 
 
 def check_workflow_routing_contract(

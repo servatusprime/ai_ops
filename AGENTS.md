@@ -3,7 +3,7 @@ title: Agents Start Here
 version: 3.6.0
 status: active
 license: Apache-2.0
-last_updated: 2026-07-16
+last_updated: 2026-07-22
 owner: ai_ops
 description: Bootstrap and authority contract for AI agents operating in ai_ops.
 related:
@@ -467,13 +467,17 @@ Before executing Level 3+ work, confirm:
 
 ## Role Reference
 
-The default single-agent baseline:
+The baseline lane sequence:
 
 - `Coordinator -> Executor -> Reviewer`
 
-Additional lanes activate only when the task shape requires them.
+Additional lanes activate only when the task shape requires them. These are
+behavioral responsibilities carried by one agent unless an artifact explicitly
+declares delegation; they are not an agent-staffing plan.
 
-Single-agent baseline:
+Baseline lane sequence, drawn as a single-agent run (one agent carrying all
+three lanes). The same sequence is valid when a lane is delegated; the diagram
+shows lane order, not an agent count:
 
 ```mermaid
 %%{init: {
@@ -565,6 +569,11 @@ flowchart LR
 
 See `## AI Model Level Reference` below for per-lane reasoning level defaults and variation conditions.
 
+The `Permission Mode` and `Max Turns` columns describe **delegated** lane
+execution. In a `single_agent` run there is no subagent for them to bind to:
+the lead's permission mode comes from the session environment and no turn cap
+applies, exactly as the Coordinator row indicates.
+
 **Profile behavioral parameters** - Professional sliders that generate behavioral prose in lane
 profiles and directly affect agent behavior (source of truth:
 `02_Modules/01_agent_profiles/generated/single_agent_profile_map.md`):
@@ -596,10 +605,10 @@ Riders are NOT per-lane defaults - see **Rider Archetypes** below.
 
 **Execution topology and delegation:**
 
-- **Single agent:** one agent sequences through all activated lanes in its own context -- this is the standard mode. Efficiency comes from task calibration: the right model level and behavioral parameters for the work shape, minimizing context overhead. Delegating a lane to a specialized subagent is a Coordinator judgment call, made when specialization meaningfully improves outcome or reduces token overhead.
-- **Multi-agent / hybrid:** the lead agent must declare the activated lanes, delegation policy, and return contracts in the execution artifact. ai_ops does not assume delegation by default.
+- **Single agent:** one agent sequences through all activated lanes in its own context. Efficiency comes from task calibration: the right model level and behavioral parameters for the work shape, minimizing context overhead. Delegating a lane to a specialized subagent is a Coordinator judgment call, made when specialization meaningfully improves outcome or reduces token overhead.
+- **Multi-agent / hybrid:** for material delegation -- write-capable, shared-state, authority-sensitive, long-running, or independently resumable -- the lead agent must declare the activated lanes, delegation policy, and return contracts in the execution artifact before dispatch. Delegation is never implicit, but it is equally never discouraged: a bounded read-only sidecar needs only a concise return to the lead.
 - **Remote Control:** a local Claude Code session reachable from multiple surfaces (terminal, browser, phone) via `claude remote-control`. This is a surface extension -- one session, one conversation. Topology and lane contracts are unchanged; the same authority rules apply.
-- **Selective subagent rule:** use delegated workers only for bounded sidecar tasks where delegation is more efficient than keeping the work local.
+- **Selective subagent rule:** delegate when a bounded sidecar produces a better net outcome than keeping the work local -- typically better evidence, or lower total context cost. This is a judgment criterion, not a restriction toward local work: neither local nor delegated execution is normatively preferred.
 - **Lead-agent responsibility:** the lead agent owns sequencing, architecture judgment, final integration, and the packaging of task brief, context, permission/tool envelope, skill surface, and return contract for any child task.
 - **Lane calibration:** `/profiles` configures the primary agent's behavioral posture. Runtime subagent files and generated presets are derivative surfaces; they do not replace canonical lanes.
 
@@ -613,24 +622,32 @@ The governing rule: **a topology uses lanes; a lane is not a topology.** All 8 l
 
 | Topology | Description |
 | --- | --- |
-| `single_agent` | One agent handles all activated lanes sequentially. Default. |
+| `single_agent` | One agent handles all activated lanes sequentially. |
 | `multi_agent` | Lead agent delegates lane-bounded tasks to worker subagents. |
 | `hybrid` | Mix of local and delegated lanes; lead agent retains some lanes directly. |
-| `remote_control` | Single-conversation session controlled from multiple surfaces. Topology and lanes unchanged. |
 
-**Director topology -- design note (not yet implemented):**
+Remote Control is not a topology. It is a control-surface attribute: it changes
+how a session is reached, not how many agents run or how they relate. See the
+Remote Control bullet above.
 
-A Director pattern is achievable within one primary session: the Director (primary agent) spawns Coordinator subagents per project, keeping multiple Coordinators active in parallel for concurrent work streams. Each Coordinator manages its own project's lane sequence and spawns worker subagents as needed.
+**Initial routing value vs operating policy.** `execution_topology` is an
+artifact-routing field that a cold-start agent reads to parse an artifact
+unambiguously; where a schema requires an initial value, `single_agent` is the
+cheap default initialization. It is **not** an operating-policy preference.
+`delegation_policy` governs actual execution: under
+`delegation_policy: coordinator_judgment` the lead decides per task whether
+local work or a bounded sidecar has the better net benefit, and neither
+single-agent nor multi-agent execution is normatively preferred.
 
-```text
-Primary session (Director)
-  |-- Coordinator subagent [needs Agent tool] <- Project A
-  |   `-- Executor, Reviewer, ...
-  `-- Coordinator subagent [needs Agent tool] <- Project B
-      `-- Executor, Reviewer, ...
-```
+Legal `delegation_policy` values are `none`, `explicit_only`,
+`coordinator_judgment`, `conditional`, and `proactive_allowed`; see
+`00_Admin/guides/authoring/guide_workbooks.md` for their definitions.
 
-This requires a Coordinator native agent file with the `Agent` tool -- a deliberate design exception to the current rule that Coordinator has no native agent file. Implementation is deferred to a dedicated workbook.
+**Lanes are responsibilities, not agents.** `activated_lanes` declares which
+behavioral contracts are in scope for a run. In a `single_agent` topology the
+listed lanes imply no subagents, no handoff artifacts, and no separate turns --
+one agent carries all of them in its own context. Delegation exists only when
+an artifact declares it.
 
 ---
 
@@ -720,6 +737,12 @@ resumption and post-execution review without requiring chat history.
 
 ### Shared Access
 
+The diagram below shows lanes as distinct **participants** to illustrate that
+all of them read and write the same shared surface. It is not a staffing chart:
+in a `single_agent` run one agent occupies every lane shown, and the "shared"
+state is shared across time and across cold-start resumption, not across
+concurrent agents.
+
 ```mermaid
 %%{init: {'theme':'base','themeVariables': {
   'darkMode': true,
@@ -793,14 +816,22 @@ flowchart TB
 | Bundle level | Workbundle README.md | Shared across all books in the bundle |
 | Local only | .ai_ops/local/work_state.yaml (gitignored) | Machine-local; never committed; not a shared artifact |
 
-### Update Cadence
+### Update Triggers
 
-Update compacted context at every:
+Compacted-context updates are **event-driven, not cadence-driven**. Update it
+when, and only when, one of these materially changes:
 
-1. Lane handoff (Coordinator to Executor, Executor to Reviewer/Linter, etc.)
-2. Phase completion (end of each workbook phase)
-3. Scope change or new dependency discovered
-4. Validation result (pass/fail finding requiring action)
+1. Disposition of the active work (what state it is now in)
+2. Next required gate, or the next owner when ownership actually leaves the
+   current agent (a lane change inside one agent is not a change of owner)
+3. Scope, or a newly discovered dependency
+4. An actionable validation finding (a pass/fail result that requires action)
+
+A lane transition that happens inside one agent's own context is not by itself
+a trigger: if an Executor-to-Reviewer shift changes none of the four items
+above, no update is required. Record material state, not narration. The goal is
+that a cold-start agent can recover disposition, next owner, gate, and evidence
+from this one surface -- not that every transition leaves a trace.
 
 ---
 

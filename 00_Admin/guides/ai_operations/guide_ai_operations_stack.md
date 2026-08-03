@@ -3,7 +3,7 @@ title: "Guide: ai_ops"
 version: 2.3.5
 status: active
 license: Apache-2.0
-last_updated: 2026-03-13
+last_updated: 2026-07-22
 owner: ai_ops
 related:
   - ./guide_ai_ops_vocabulary.md
@@ -224,10 +224,6 @@ lanes are in scope -- it does not determine the topology.
 
 For the canonical topology table and topology/lane concepts, see `AGENTS.md`
 section `### Topology and Lane Concepts`.
-
-**Director topology (design note, not yet implemented):** A Director pattern
-allows one primary session to spawn Coordinator subagents per project for
-concurrent work streams. See `AGENTS.md Section Topology and Lane Concepts`.
 
 ### Lane Extensibility
 

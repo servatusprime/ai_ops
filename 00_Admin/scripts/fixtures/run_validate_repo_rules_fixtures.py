@@ -49,8 +49,22 @@ def _tmp(text: str) -> str:
     return path
 
 
-def wb(status: str, body: str, allowance: str = "") -> str:
-    return f"---\ntitle: T\nid: wb_fix_01\nstatus: {status}\n{allowance}---\n\n# Title\n\n{body}\n"
+def wb(status: str, body: str, allowance: str = "", validation: str = "") -> str:
+    return f"---\ntitle: T\nid: wb_fix_01\nstatus: {status}\n{allowance}{validation}---\n\n# Title\n\n{body}\n"
+
+
+def validation_block(*entries: tuple[str, bool, str, str], contract: str = "work_validation_v1") -> str:
+    lines = [f"validation_contract: {contract}", "validations:"]
+    for validator_id, required, result, evidence_ref in entries:
+        lines.extend(
+            [
+                f"  - validator_id: {validator_id}",
+                f"    required: {'true' if required else 'false'}",
+                f"    result: {result}",
+                f"    evidence_ref: {evidence_ref}",
+            ]
+        )
+    return "\n".join(lines) + "\n"
 
 
 def run_vs035(mod, text: str) -> list[str]:
@@ -92,7 +106,66 @@ def main() -> int:
     check("VS035 stub + open item -> exempt", not run_vs035(mod, wb("stub", "- [ ] do thing")))
     check("VS035 completed + all checked -> pass", not run_vs035(mod, wb("completed", "- [x] done")))
 
-    # 4. R-6 forward-handoff allowance: exact pass + every failure mode
+    # 4. C-02 opt-in validation evidence contract
+    passing = validation_block(("repo_rules", True, "pass", "evidence.md"))
+    failing = validation_block(("repo_rules", True, "fail", "evidence.md"))
+    multi = validation_block(
+        ("repo_rules", True, "pass", "evidence.md"),
+        ("markdownlint", False, "fail", "evidence.md"),
+    )
+    check("C-02 unmarked completed + closed -> pass", not run_vs035(mod, wb("completed", "- [x] done")))
+    check("C-02 marked required pass -> pass", not run_vs035(mod, wb("completed", "- [x] done", validation=passing)))
+    check("C-02 marked required fail -> fail", bool(run_vs035(mod, wb("completed", "- [x] done", validation=failing))))
+    check(
+        "C-02 marker without validation block -> fail",
+        bool(run_vs035(mod, wb("completed", "- [x] done", validation="validation_contract: work_validation_v1\n"))),
+    )
+    check(
+        "C-02 empty validation marker -> fail",
+        bool(run_vs035(mod, wb("completed", "- [x] done", validation="validation_contract:\n"))),
+    )
+    check(
+        "C-02 multiple entries + non-required fail -> pass",
+        not run_vs035(mod, wb("completed", "- [x] done", validation=multi)),
+    )
+    malformed = (
+        "validation_contract: work_validation_v1\nvalidations:\n"
+        "  - validator_id: repo_rules\n"
+        "    required: true\n"
+        "    result: pass\n"
+        "    result: fail\n"
+        "    evidence_ref: evidence.md\n"
+    )
+    check("C-02 duplicate field -> fail", bool(run_vs035(mod, wb("completed", "- [x] done", validation=malformed))))
+    missing_field = (
+        "validation_contract: work_validation_v1\nvalidations:\n"
+        "  - validator_id: repo_rules\n"
+        "    required: true\n"
+        "    result: pass\n"
+    )
+    check("C-02 missing field -> fail", bool(run_vs035(mod, wb("completed", "- [x] done", validation=missing_field))))
+    unknown_field = validation_block(("repo_rules", True, "pass", "evidence.md")) + "    extra: nope\n"
+    check("C-02 unknown field -> fail", bool(run_vs035(mod, wb("completed", "- [x] done", validation=unknown_field))))
+    unmarked_failure = (
+        "validations:\n  - validator_id: repo_rules\n"
+        "    required: true\n    result: fail\n    evidence_ref: evidence.md\n"
+    )
+    check(
+        "C-02 unmarked failed evidence -> pass",
+        not run_vs035(mod, wb("completed", "- [x] done", validation=unmarked_failure)),
+    )
+    wrong_contract = validation_block(("repo_rules", True, "pass", "evidence.md"), contract="work_validation_v2")
+    check(
+        "C-02 unsupported contract -> fail",
+        bool(run_vs035(mod, wb("completed", "- [x] done", validation=wrong_contract))),
+    )
+    unsupported = validation_block(("repo_rules", True, "not_applicable", "evidence.md"))
+    check(
+        "C-02 required not_applicable -> fail",
+        bool(run_vs035(mod, wb("completed", "- [x] done", validation=unsupported))),
+    )
+
+    # 5. R-6 forward-handoff allowance: exact pass + every failure mode
     good = (
         "checklist_allowance:\n  kind: forward_handoff\n  target_artifact: wb_fix_01\n"
         "  open_items:\n    - do thing\n  rationale: ownership moves to M5\n"
@@ -136,7 +209,7 @@ def main() -> int:
         bool(run_vs035(mod, wb("completed", "- [ ] do thing\n- [ ] other thing", over_broad))),
     )
 
-    # 5. config parse + empty-rules fail-closed guard
+    # 6. config parse + empty-rules fail-closed guard
     check("live config parses >0 rules", len(mod.parse_config(CONFIG).get("rules", [])) > 0)
     empty_cfg = _tmp("version: 0\nrules:\n")
     try:

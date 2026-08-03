@@ -1,10 +1,10 @@
 ---
 title: future_work_registry
-version: 0.6.4
+version: 0.6.8
 status: active
 owner: ai_ops
 created: 2026-01-07
-updated: '2026-07-16'
+updated: '2026-08-03'
 migration_note: >-
   Most items were moved to wb_governance_hardening_02; selected deferred items
   remain here.
@@ -42,6 +42,34 @@ prune_note_2026_07_16: >-
   Pruned completed entries fw_20260423_01, fw_20260423_02, and
   fw_20260619_01. Their completion workbooks remain the history authority;
   this registry retains pending work only.
+prune_note_2026_08_01: >-
+  Pruned superseded Director topology/approval entries fw_20260323_01 and
+  fw_20260716_03 after the lead-managed uplift recorded their resolutions and
+  retained only the C-20 sunset principle. Pruned fw_20260721_01 because Track
+  A delivered deterministic profile generation and non-writing drift checks in
+  commit 9ba8498; its execution workbook is complete. The Conductor and
+  Director bundles are historical evidence and no longer active dependencies.
+intake_note_2026_08_03: >-
+  Scheduled two deferred items surfaced by the portfolio completion review so
+  they are tracked rather than lost with their source workbooks:
+  fw_20260803_01 (VS035 work-family adoption/evolution: B-1 template adoption,
+  B-3 migration, D-4 veracity) and fw_20260803_02 (governed-repo front-matter
+  YAML hygiene, the FC-2 constraint). Both are planned/un-triggered; registry
+  entries were chosen over a follow-on workbook because the items are
+  revisit-on-evidence, not scoped for execution. Also completed lifecycle
+  cleanup finding L-02 by removing the empty Conductor source directory left in
+  90_Sandbox after its bundle was archived to 99_Trash.
+closeout_note_2026_08_03: >-
+  Operator granted G-ACCEPT (commit/push withheld) on the lead-managed uplift and
+  the VS035 C-02 control. Both bundles were completed and archived to 99_Trash as
+  accepted-pending-commit evidence, with work_summary.md records. Reset
+  fw_20260716_02 completion_workbook/proposed_workbook to null: the C-02
+  completed-status sub-slice routed there was delivered, but the entry's own
+  scope (authoritative R-6 documentation and VS035 active-state redesign) remains
+  open. Greenlit fw_20260803_01 into the new wb_vs035_evolution_01 bundle
+  (proposed_workbook set); fw_20260803_02 stays routed to a governed-repo
+  session. A log_workbook_run.md entry is owed when the accepted canonical
+  changes are committed.
 scorecard_sync:
   required: true
   scorecard_file: 00_Admin/backlog/future_work_scorecard.md
@@ -56,6 +84,9 @@ scorecard_sync:
 #   source_workbook: repo-relative path to originating workbook
 #   completion_workbook: repo-relative execution workbook that completes the item; null while pending
 #   proposed_workbook: repo-relative path to planned workbook (null if not yet proposed)
+#   resolution: (optional) why a non-null completion_workbook resolved the item, used when the
+#     resolution was supersession rather than delivery; the entry is deleted at closeout per the
+#     Completion and Deletion Rule once completion_workbook appears in log_workbook_run.md
 #   scope: detailed description of what needs to be done
 #   priority: low | medium | high
 #   benefit: low | medium | high
@@ -104,56 +135,6 @@ scorecard_schema:
     - medium
     - low
 entries:
-  - id: fw_20260323_01
-    title: Director Topology implementation
-    domain: governance
-    target_repo: ai_ops
-    source_workbook: >-
-      90_Sandbox/ai_workbooks/wb_agent_architecture_evolution_01_2026-03-22/wb_agent_architecture_evolution_01.md
-    completion_workbook: null
-    proposed_workbook: >-
-      90_Sandbox/ai_workbooks/wb_ai_first_operating_model_uplift_review_01_2026-07-13/wb_track_b_director_graph_sandbox_proof_01.md
-    scope: >-
-      Implement the Director topology: a multi-agent mode where the primary
-      session agent spawns Coordinator subagents per project. Requires:
-      (1) Coordinator native agent file - DQ-12 revisit; currently absent by
-      design because Coordinator is the primary agent, not a subagent; Director
-      topology changes this assumption for the spawned Coordinator role;
-      (2) delegation contract documenting how the Director hands off scope to
-      a Coordinator subagent and what the return contract is;
-      (3) promote the successful Track B Director graph proof into an
-      implementation-ready Director successor contract;
-      (4) spec_subagent_file.md Coordinator section;
-      (5) crew config and profile updates in 02_Modules/01_agent_profiles/ if
-      Director becomes a named topology preset.
-    priority: medium
-    benefit: medium
-    effort: l
-    readiness: partial
-    risk_if_deferred: medium
-    activation_trigger: >-
-      Track B proof evidence is complete enough for a promotion decision and
-      the requestor authorizes the separate canonical Director implementation
-      workbook. The proof workbook is a prerequisite, not completion authority.
-    next_review: 2026-08-15
-    status: planned
-    owner: ai_ops
-    created: 2026-03-23
-    compacted_context:
-      source: >-
-        wb_agent_architecture_evolution_01 EA-10 design note (2026-03-23);
-        DQ-12 revisit identified as prerequisite
-      note: >-
-        EA-10 documented the Director topology as a design-only note and
-        explicitly deferred implementation. DQ-12 must be resolved first:
-        current design intentionally omits a Coordinator subagent file because
-        Coordinator is the primary session agent. Director topology introduces
-        a spawned Coordinator role that would need its own agent file.
-    notes: >-
-      Director dogfood is now an active governance dependency. Keep this lane
-      separate from the run-family architecture uplift: the latter may consume
-      Director proof evidence but must not silently promote the topology.
-
   - id: fw_20260315_01
     title: Session-state infrastructure for context routing fast-path evaluation
     domain: integration
@@ -220,8 +201,7 @@ entries:
     source_workbook: >-
       99_Trash/wp_command_routing_isolation_01_2026-02-17/wb_command_routing_seed_actualization_02_2026-02-17.md
     completion_workbook: null
-    proposed_workbook: >-
-      90_Sandbox/ai_workbooks/wp_command_routing_isolation_01_2026-02-17/wb_authority_guardrail_enforcement_01.md
+    proposed_workbook: null
     scope: >-
       Add machine-checkable protected-path authority controls for
       `.ai_ops/workflows/**` edits, including approval-evidence markers and
@@ -229,12 +209,12 @@ entries:
     priority: medium
     benefit: high
     effort: m
-    readiness: partial
+    readiness: deferred
     risk_if_deferred: medium
     activation_trigger: >-
       Requestor approves expansion from workflow guardrails to policy/config +
       validator-backed enforcement.
-    next_review: 2026-03-01
+    next_review: 2026-10-01
     status: planned
     owner: ai_ops
     created: 2026-02-16
@@ -243,7 +223,10 @@ entries:
       note: >-
         Seed actualization implemented workflow-level guardrails; machine-level
         enforcement remains pending by design.
-    notes: Split-scope follow-on from health follow-up seed actualization lane.
+    notes: >-
+      Split-scope follow-on from the health seed. No active proposal is present;
+      activate only after a concrete protected-path authority failure and a
+      separately approved validator scope.
 
   - id: fw_20260125_01
     title: Audit event schemas for Emergency Autonomy
@@ -252,8 +235,7 @@ entries:
     source_workbook: >-
       90_Sandbox/ai_workbooks/wp_ai_ops_stack_cli_01_2026-01-21/wb_ai_ops_stack_cli_01_03_governance_and_validation.md
     completion_workbook: null
-    proposed_workbook: >-
-      90_Sandbox/ai_workbooks/wb_emergency_autonomy_audit_schemas_01.md
+    proposed_workbook: null
     scope: >-
       Define audit_event_emergency_autonomy.yaml and audit_event_setup.yaml
       schemas for logging emergency actions.
@@ -264,14 +246,16 @@ entries:
     risk_if_deferred: low
     activation_trigger: >-
       Emergency Autonomy Protocol is adopted and logging contract is finalized.
-    next_review: 2026-03-01
+    next_review: 2026-10-01
     status: planned
     owner: ai_ops
     created: 2026-01-25
     compacted_context:
       source: wb_ai_ops_stack_cli_01_03_governance_and_validation.md
       note: Deferred from WB-03 deliverable manifest.
-    notes: Deferred pending protocol activation.
+    notes: >-
+      Retain as a low-priority deferred seed; no Emergency Autonomy protocol or
+      logging contract is currently adopted.
 
   - id: fw_20260227_03
     title: Add examples/ directory with sample artifacts
@@ -293,7 +277,7 @@ entries:
     activation_trigger: >-
       Post-release; first external contributor or usage question signals
       what examples are most needed.
-    next_review: 2026-04-01
+    next_review: 2026-10-01
     status: planned
     owner: ai_ops
     created: 2026-02-27
@@ -322,7 +306,7 @@ entries:
     risk_if_deferred: medium
     activation_trigger: >-
       First non-Windows contributor files a setup issue or pull request.
-    next_review: 2026-04-01
+    next_review: 2026-10-01
     status: planned
     owner: ai_ops
     created: 2026-02-27
@@ -355,7 +339,7 @@ entries:
     activation_trigger: >-
       Next governance review cycle or when /work intent-level scoring is
       observed to produce inconsistent placement decisions.
-    next_review: 2026-06-01
+    next_review: 2026-10-01
     status: planned
     owner: ai_ops
     created: 2026-02-27
@@ -365,33 +349,28 @@ entries:
     notes: Not a build task. Requires requestor decision on scoring contract value.
 
   - id: fw_20260504_01
-    title: Subagent Budget Governance in Coordination and Director Protocols
+    title: Bounded subagent budget guidance for discretionary delegation
     domain: governance
     target_repo: ai_ops
     source_workbook: >-
-      90_Sandbox/ai_workbooks/wb_ai_first_operating_model_uplift_review_01_2026-07-13/wb_track_b_director_graph_sandbox_proof_01.md
+      99_Trash/wb_ai_first_operating_model_uplift_review_01_2026-07-13/wb_track_b_director_graph_sandbox_proof_01.md
     completion_workbook: null
     proposed_workbook: null
     scope: >-
-      Extend coordination and Director successor protocols to include
-      cost_governance budget assignment for spawned subagents. When a lead
-      agent spawns subagents, it
-      should be able to pass a workpacket_token_budget derived from the parent
-      session budget. Covers: protocol for budget inheritance/delegation, how
-      subagent PDR emissions surface budget warnings back to the Coordinator,
-      and whether budget-exceeded PARK from a subagent halts the parent or only
-      that subagent lane. May require a new spec section or coordination/
-      Director protocol addition. Frontier models (high-tier) SHOULD set
-      meaningful subagent budgets when spawning execution lanes.
+      If ordinary Coordinator-led execution shows recurring token or cost
+      pressure, add a small model-neutral budget hint to discretionary
+      subagent/sidecar briefs. Keep inheritance, warnings, and stop behavior
+      optional and task-scoped; do not create a Director protocol, per-run
+      budget ledger, or mandatory topology.
     priority: medium
     benefit: medium
     effort: m
     readiness: deferred
     risk_if_deferred: low
     activation_trigger: >-
-      Director-team proof is successful and either subagent budget pressure is
-      observed or cost-governance maturity warrants delegation rules.
-    next_review: 2026-08-01
+      A measured delegation run shows recurring budget pressure that a compact
+      task-scoped hint can reduce without adding ceremony.
+    next_review: 2026-10-01
     status: planned
     owner: ai_ops
     created: 2026-05-04
@@ -407,9 +386,9 @@ entries:
         budget delegation is the natural next step once parent-level budgets are
         established.
     notes: >-
-      Deferred until operational Director evidence can support a concrete budget
-      contract. Keep distinct from both run-family graph composition and the
-      Director topology promotion decision.
+      Director topology evidence was consumed and did not justify a budget
+      contract. Retain only as a conditional, low-ceremony follow-on for
+      coordinator_judgment delegation.
 
   - id: fw_20260619_02
     title: Reduce git permission-prompt friction (atomic invocation convention + git rebase allowlist)
@@ -493,6 +472,12 @@ entries:
       Activate only on concrete multi-version evidence. The run-family uplift
       must not leave basic compatibility unenforced under cover of this deferral.
 
+  # 2026-08-01: fw_20260716_02 is the active C-02 validation lane. Its dedicated
+  # proposal and execution workbook are approved and G-EXEC-authorized; the
+  # empty-marker enforcement, artifact metadata, and derivative/state fixes
+  # passed the strict remediation recheck. G-ACCEPT remains operator-gated, and
+  # the broader active-state/R-6 redesign remains this entry's own scope.
+
   - id: fw_20260716_02
     title: Document R-6 and narrow VS035 active-state enforcement
     domain: validation
@@ -521,8 +506,8 @@ entries:
       The operator approves a dedicated Level-4 workbook for R-6 documentation
       and VS035 active-state redesign, or another correctly active workbook is
       blocked by unexplained-open-item enforcement at a declared gate.
-    next_review: 2026-08-01
-    status: planned
+    next_review: 2026-09-01
+    status: active
     owner: ai_ops
     created: 2026-07-16
     compacted_context:
@@ -534,63 +519,229 @@ entries:
         active gated workbook to exercise the branch. The workbook correctly
         remained active and did not self-authorize the allowance.
     notes: >-
-      Keep this separate from the run-family canonical uplift. Interim allowance
-      approval does not complete or supersede this future-work item.
+      Keep this separate from the run-family canonical uplift. The C-02
+      completed-state sub-slice originally routed here (mid-execution CC-01) was
+      delivered and G-ACCEPTed 2026-08-03 via the VS035 execution workbook
+      (archived to 99_Trash); that closed only the completed-status consistency
+      path. This entry's own scope -- authoritative R-6 documentation and the
+      VS035 active-state redesign -- remains open, so completion_workbook and
+      proposed_workbook are reset to null. Interim allowance approval does not
+      complete or supersede this item.
 
-  - id: fw_20260716_03
-    title: Make Director approval delegation efficient and measurable
+  - id: fw_20260721_02
+    title: Delegation capability parity and installed-surface verification
     domain: governance
     target_repo: ai_ops
     source_workbook: >-
-      99_Trash/wb_run_family_graph_architecture_uplift_01_2026-07-16/wb_run_family_graph_architecture_uplift_01.md
+      99_Trash/wb_lead_managed_execution_uplift_01_2026-07-20/wb_lead_managed_execution_uplift_01.md
     completion_workbook: null
-    proposed_workbook: >-
-      90_Sandbox/ai_workbooks/
-      wb_ai_first_operating_model_uplift_review_01_2026-07-13/
-      wb_director_approval_delegation_efficiency_01.md
+    proposed_workbook: wb_delegation_capability_parity_01
     scope: >-
-      Define a machine-verifiable approval receipt issued by the user-facing
-      root context that Coordinator and worker approval reviewers can consume
-      without restating or inferring authority. Specify an explicit
-      root-authorized merge fallback for runtimes that cannot propagate Level-4
-      approval. Add Director burden and benefit measures covering time and
-      coordination cycles to first canonical change, duplicate gate attempts,
-      operator interruptions, context rereads, resume success, prevented scope
-      or authority violations, review defects found, and rework avoided.
-      Reconcile the applicable governance policy/spec, `/work` and Director
-      guides, charter/approval/return templates, validator enforcement,
-      fixtures, and protocol evidence. Include simplification and sunset rules
-      so controls without a demonstrated failure mode or measurable net benefit
-      are automated, narrowed, or removed. Define per-role model routing so the
-      strongest model is reserved for low-volume Director decisions and
-      independent Level-4 review, while capable lower-cost models own routine
-      Coordinator and worker execution. Measure Director body-execution rate,
-      escalation rate, model/token/cost by role, and quality-adjusted rework.
+      Candidate C-18, routed out of the lead-managed execution uplift. Represent
+      delegation-relevant runtime support as a small truthful capability state
+      and verify installed wrapper parity where it affects a delegation
+      decision, so a lead does not assume unsupported runtime capability. Keep
+      the capability record small and capability-oriented. No per-run capability
+      dossier and no static provider aliases.
+    priority: medium
+    benefit: medium
+    effort: m
+    readiness: partial
+    risk_if_deferred: medium
+    activation_trigger: >-
+      Requestor authorizes the named independent workbook, or a delegation
+      decision is made on an unverified runtime capability assumption.
+    next_review: 2026-08-15
+    status: planned
+    owner: ai_ops
+    created: 2026-07-21
+    notes: >-
+      Routed, not deferred by neglect. Approved 2026-07-21 as out of scope for
+      the core uplift because setup/export and platform-capability verification
+      form an independent substrate.
+  - id: fw_20260721_03
+    title: Remove Director-receipt dependency from run-family adoption handoff
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      99_Trash/wb_lead_managed_execution_uplift_01_2026-07-20/wb_lead_managed_execution_uplift_01.md
+    completion_workbook: null
+    proposed_workbook: wb_run_family_adoption_handoff_de_director_01
+    scope: >-
+      Candidate C-21, routed out of the lead-managed execution uplift. The
+      governed-repo run-family adoption handoff currently names a Director
+      protocol receipt as an activation condition. Replace that prerequisite
+      with accepted canonical run-family evidence, required consumer validation,
+      and the ordinary approval gates, so a retired experiment does not block a
+      useful adoption path. Do not reopen graph architecture.
+    priority: medium
+    benefit: medium
+    effort: s
+    readiness: ready
+    risk_if_deferred: medium
+    activation_trigger: >-
+      Requestor authorizes the bounded change after its exact source artifact
+      and authority disposition are confirmed.
+    next_review: 2026-08-15
+    status: planned
+    owner: ai_ops
+    created: 2026-07-21
+    notes: >-
+      Routed, not deferred by neglect. Director provenance is retained in
+      decision_ledger.md and log_workbook_run.md; this item removes only the
+      blocking receipt dependency.
+
+  - id: fw_20260726_01
+    title: Runprogram wiring audit as a scoped health gate
+    domain: validation
+    target_repo: both
+    source_workbook: >-
+      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/
+      work_packets/wp_gis_runprogram_thrift_and_resource_audit_01_2026-07-20/
+      wb_gis_runprogram_thrift_and_resource_audit_01.md
+    completion_workbook: null
+    proposed_workbook: null
+    scope: >-
+      Extend the governed health orchestration so a selected runprogram scope
+      invokes that runprogram's registered static wiring validator before
+      reporting the run-family healthy. The initial reference implementation is
+      `validate_due_diligence_runner_templates.py` in the governed GIS module:
+      it validates RB-1 through RB-6 runner-template presence, mandatory step
+      order, executable resolution, and critical entry/exit handoffs. It must
+      catch the concrete regressions that escaped the 2026-07-24 health sweep:
+      a declared layer-removal profile never called by RB-4, a controller
+      refresh path that cannot overwrite an in-use atlas GeoPackage, missing
+      fetch/presentation-profile inputs, and RB-5 lineage consuming an
+      ambiguous rather than RB-4 live-theme receipt. Generalize the health hook
+      through an explicit validator registration/discovery field; do not
+      hard-code a GIS command into generic ai_ops health logic. The health lane
+      remains read-only: a wiring failure is reported with affected milestone,
+      missing or misordered step, and broken handoff; remediation routes to
+      `/work`. Add negative fixtures for omitted cleanup, wrong seed/override
+      order, missing RB-5 atlas rebuild, and disconnected receipts. Keep this
+      static audit distinct from a materialized live run, QGIS visual review,
+      or project acceptance, which remain downstream execution gates. Expand
+      the registration contract beyond step presence/order: a cartographic
+      runbundle must also prove that each declared reusable style authority is
+      consumed by an application step, that its project mapping covers the
+      declared required compatible roles, and that any apply-time style values
+      are sourced from (or parity-checked against) the same canonical contract
+      used by the validator. The 2026-07-26 Maple replay exposed both gaps:
+      RB-4 called the seed-transfer tool but its mapping carried only one of
+      seven Judas-established compatible authorities, and the soil no-data
+      values applied by the tuning helper drifted from the values validated in
+      `cartographic_conventions.yaml`. Report these as wiring/application
+      parity failures, not successful health merely because executables and
+      receipts exist. Negative fixtures must include an under-covered mapping,
+      a style catalog/profile authority that is never consumed, and divergent
+      apply-versus-validate values. Extend the generic registration contract
+      for imagery-dependent runbundles: verify a receipted source is consumed
+      by a local-materialization step, the output raster is bound into every
+      declared imagery theme, and the gate runs before layout/export. Include
+      an asset-neutrality audit for canonical templates/configuration/docs so
+      named seed projects, jurisdiction palettes, layer names, and project
+      paths cannot leak from a seed into reusable runprogram controls. The
+      audit must derive its project identifiers from the governed project root
+      or registered inventory rather than baking those names into ai_ops.
     priority: high
     benefit: high
     effort: m
     readiness: ready
     risk_if_deferred: high
     activation_trigger: >-
-      Activate after director-run-family-graph-001 closeout, or immediately if
-      another Director run repeats a child-context approval rejection.
-    next_review: 2026-08-01
+      Any health review covering a runprogram/runbundle family, or a future
+      finding where declared validators and files exist but the build path does
+      not apply or hand off the required control.
+    next_review: 2026-08-15
     status: planned
     owner: ai_ops
-    created: 2026-07-16
+    created: 2026-07-26
     compacted_context:
       source: >-
-        Director dogfood run director-run-family-graph-001 operating-model
-        feedback and operator burden-control direction
+        Governed GIS runprogram wiring remediation, 2026-07-26
       note: >-
-        Three child-context approval rejections delayed canonical execution
-        after one explicit operator approval. Root-merge fallback preserved
-        authority and progress, but the protocol is not yet efficient enough
-        for promotion without approval propagation and burden measurement.
-        The current Codex collaboration runtime does not expose per-child model
-        selection, so this run cannot validate the intended strong-root and
-        lower-cost-worker model topology.
+        The comprehensive health report correctly found structural graph gaps
+        but did not execute the runprogram-specific wiring validator. Later
+        Maple Grove traces proved that JSON/template validity alone missed an
+        unwired cleanup/atlas-refresh path, incomplete compatible-style
+        transfer coverage, and a duplicate apply-time soil palette that had
+        drifted from the canonical validator contract.
     notes: >-
-      Treat protocol compliance as evidence, not success. Promotion requires a
-      measured net benefit over Coordinator-only execution and no duplicate
-      approval requests for one declared batch.
+      Requires a dedicated approved ai_ops implementation workbook because it
+      changes shared health behavior and validator registration. Preserve
+      generic governed-repo discovery; the initial GIS validator is evidence,
+      not the generic health contract itself.
+  - id: fw_20260803_01
+    title: VS035 work-family status-integrity adoption and evolution
+    domain: validation
+    target_repo: both
+    source_workbook: >-
+      99_Trash/wb_vs035_status_integrity_enforcement_01_2026-07-22/wb_vs035_status_integrity_execution_01.md
+    completion_workbook: null
+    proposed_workbook: >-
+      90_Sandbox/ai_workbooks/wb_vs035_evolution_01_2026-08-03/README.md
+    scope: >-
+      Follow-on evolution of the opt-in C-02 completed-status evidence control
+      delivered under fw_20260716_02. Three deferred decisions, each requiring
+      its own evidence and approval: (1) B-1 template adoption -- whether
+      wb_template_generic.md and wb_template_lite.md should ship the
+      validation_contract work_validation_v1 marker so new workbooks adopt the
+      subcheck by default; (2) B-3 mandatory adoption/migration -- whether
+      existing and future completed workbooks must carry the validation block,
+      which requires a migration pass over the roughly 20 governed-repo completed
+      workbooks; (3) D-4 veracity enforcement -- whether the validator should
+      re-run required checks rather than trust a recorded result, closing the
+      self-consistency-versus-veracity gap the C-02 control intentionally left
+      open. Keep each sub-decision separately scoped; do not bundle migration or
+      veracity into a template-adoption change.
+    priority: medium
+    benefit: medium
+    effort: m
+    readiness: partial
+    risk_if_deferred: low
+    activation_trigger: >-
+      Operator greenlights template adoption (B-1), or a false-completion case
+      recurs that the current opt-in consistency control cannot catch (motivating
+      B-3 or D-4).
+    next_review: 2026-10-01
+    status: planned
+    owner: ai_ops
+    created: 2026-08-03
+    notes: >-
+      Provenance: VS035 execution workbook Deferred Work table and the
+      2026-08-01 remediation recheck L-01. The C-02 consistency control is
+      shipped and opt-in; this entry tracks its adoption breadth and optional
+      strengthening so the deferred options are not lost.
+  - id: fw_20260803_02
+    title: Governed-repo workbook front-matter YAML hygiene
+    domain: documentation
+    target_repo: governed_repo
+    source_workbook: >-
+      99_Trash/wb_vs035_status_integrity_enforcement_01_2026-07-22/work_proposal_vs035_status_integrity_enforcement_01.md
+    completion_workbook: null
+    proposed_workbook: null
+    scope: >-
+      Roughly 52 percent (59 of 114) of governed-repo workbooks under
+      90_Sandbox/ai_workbooks/**/wb_*.md fail strict yaml.safe_load on their
+      front matter, almost all from unquoted colon-bearing titles (mapping
+      values are not allowed here). The flat validator parser tolerates this
+      today, but it blocks any future move to strict YAML parsing (FC-2 in the
+      VS035 proposal) and is a latent correctness risk. Scope: quote or fix the
+      offending titles in a bounded governed-repo hygiene pass; do not change the
+      validator parser as part of this item.
+    priority: low
+    benefit: medium
+    effort: m
+    readiness: ready
+    risk_if_deferred: medium
+    activation_trigger: >-
+      A validator change requires strict YAML front-matter parsing, or a
+      governed-repo cleanup session is scheduled.
+    next_review: 2026-10-01
+    status: planned
+    owner: ai_ops
+    created: 2026-08-03
+    notes: >-
+      Provenance: VS035 proposal FC-2 constraint (measured 2026-07-23). This is
+      a governed-repo hygiene item; execute in its owning governed-repo
+      session, not from ai_ops.

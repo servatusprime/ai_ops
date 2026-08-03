@@ -3,7 +3,7 @@ title: Guide: AI Workbooks
 version: 1.10.0
 status: active
 license: Apache-2.0
-last_updated: 2026-06-11
+last_updated: 2026-07-22
 owner: ai_ops
 related:
 - ./guide_markdown_authoring.md
@@ -177,6 +177,37 @@ NOT proceed to Phase 1. The Phase 0 Ambiguity Stop Gate (task 0.5) enforces this
 See templates: `01_Resources/templates/workflows/wb_template_lite.md`,
 `01_Resources/templates/workflows/wb_template_generic.md`,
 `01_Resources/templates/workflows/wb_template_first_run.md`.
+
+## 2.0.2 Completed-status validation evidence (B-1)
+
+The first work-family status-integrity release is explicitly opt-in. A
+workbook may opt into the evidence subcheck by adding this flat front-matter
+marker:
+
+```yaml
+validation_contract: work_validation_v1
+validations:
+  - validator_id: validate_repo_rules
+    required: true
+    result: pass
+    evidence_ref: 00_Admin/logs/log_workbook_run.md
+```
+
+The raw `validations:` block is parsed by the validator's dedicated block
+parser; it is not parsed by the generic flat front-matter helper or by
+`yaml.safe_load`. Each entry uses exactly `validator_id`, `required`, `result`,
+and `evidence_ref`. `result` reuses the run-receipt vocabulary
+`pass | fail | not_applicable`. Duplicate, missing, unknown, empty, or malformed
+fields fail closed. A required entry passes only with `result: pass`;
+`not_applicable` is valid only for a non-required entry.
+
+For the first release, a completed workbook without the marker remains outside
+this new evidence subcheck and retains the existing VS035 checklist and R-6
+behavior. A completed workbook with the marker must provide a valid block and
+all required entries must pass. This control checks consistency between a
+workbook's completion claim and its self-recorded evidence; it does not prove
+that the recorded validator result is truthful. Mandatory migration of legacy
+completed workbooks is a separate decision and is not implied by this marker.
 
 ## 2.1 Capability-Gated Execution
 
@@ -517,7 +548,7 @@ activated_lanes:
   - Coordinator
   - Executor
   - Reviewer
-delegation_policy: none | explicit_only | conditional | proactive_allowed
+delegation_policy: none | explicit_only | coordinator_judgment | conditional | proactive_allowed
 convergence_profile: iterative_convergence_minimal | iterative_convergence_standard | <custom>
 parallel_coordination_id: <string-or-omit>
 ```
@@ -525,11 +556,15 @@ parallel_coordination_id: <string-or-omit>
 Rules:
 
 - `execution_topology` declares whether the run stays in one lead agent,
-  explicitly uses subagents, or mixes both patterns.
+  explicitly uses subagents, or mixes both patterns. It is an initial routing
+  value for cold-start parsing, not an operating-policy preference; where a
+  schema requires a value, `single_agent` is the cheap initialization.
 - `activated_lanes` declares only the canonical lanes actually participating in
   this run. It is not an inventory of every lane ai_ops knows about.
 - `delegation_policy` describes how child work may be spawned. It is not a
-  permission override.
+  permission override. Under `coordinator_judgment` the lead decides per task
+  whether local work or a bounded sidecar has the better net benefit; neither
+  single-agent nor multi-agent execution is normatively preferred.
 - `convergence_profile` names the review/rework loop posture for the lane.
 - `parallel_coordination_id` is conditional. Use it only when sibling active
   artifacts may run concurrently and need a shared coordination identifier.
@@ -545,10 +580,11 @@ Canonical lanes:
 - `Linter`
 - `Closer`
 
-Single-agent default:
+Baseline lane sequence:
 
 - Use `Coordinator -> Executor -> Reviewer` unless the task shape clearly
-  requires additional lanes.
+  requires additional lanes. This is a lane baseline, not a topology
+  preference; `delegation_policy` governs whether any lane is delegated.
 
 ### `role_assignments` (optional; compatibility field)
 
@@ -600,6 +636,13 @@ Rules:
 - Keep model tiers to `low`, `medium`, or `high`.
 - Add a one-line `Delegation Brief:` directly below the delegated step so the
   task objective, boundaries, and expected output shape travel with the step.
+- The brief names the canonical tool or script the lane is expected to use, or
+  states that no canonical capability covers the need (see the Reuse-First
+  Capability Check). This prevents a delegated lane from reimplementing an
+  existing tool with divergent semantics. It introduces no second tool registry
+  or wrapper policy.
+- If the delegated step writes, the brief declares a single `write_target`
+  path, and a `merge_owner` when overlap with another lane is unavoidable.
 - Do not embed provider-specific runtime vocabulary in canonical templates or
   workbook guidance.
 - Put surface-specific delegation recipes in skills, governed-repo runbooks,
@@ -642,9 +685,8 @@ execution_topology_contract:
     - "Reviewer -> Executor"
   escalation_loopbacks:
     - "Any ambiguity -> Requestor"
-  surface_interpretation_notes:
-    codex: "<explicit delegation expectation>"
-    claude: "<auto-delegation constraint>"
+  write_target: "<single path a delegated write may touch>"
+  merge_owner: "<one named lane, only when overlap is unavoidable>"
 ```
 
 Rules:
@@ -894,6 +936,11 @@ Workbook authors MUST ensure every execution workbook includes:
 - explicit pre-execution readiness gate,
 - ordered execution queue,
 - verification checklist,
+- acceptance evidence capable of observing the claim it supports: a structural
+  or existence check does not substantiate a semantic or output-appearance
+  claim, and a claim about rendered or visual output requires evidence that can
+  actually observe that output. This applies to acceptance claims only; it does
+  not impose visual review on non-visual work,
 - selfcheck results table,
 - requestor review gate.
 - initial-draft selfcheck evidence row (iteration `0`) when the workbook is new
@@ -948,7 +995,6 @@ constraints carry forward, and what is still open.
 
 **When to use:**
 
-- Director-to-Coordinator dispatch (replaces full state re-read).
 - Coordinator-to-Executor phase handoff within a multi-phase workbook.
 - Workbundle closeout hand-off to a follow-on workbundle or workprogram.
 - Any lane transition where the next agent would otherwise need to read 3+
@@ -1070,25 +1116,33 @@ Status table, `work_state.yaml` active artifacts entry, and harvest/plan docs.
 
 ### Normative Rules
 
-- Agents MUST update required surfaces on every phase transition.
+- Agents MUST update required surfaces when a **material** change occurs:
+  disposition, next owner, next required gate, scope, or an actionable
+  validation finding. A phase transition that changes none of those -- for
+  example an internal Executor-to-Reviewer shift inside one agent's own
+  context -- requires no update. This matches the event-driven rule in
+  `AGENTS.md` Context Management; do not reintroduce a per-transition cadence.
   Optional surfaces MAY be updated at agent discretion.
 - Required surfaces are the minimum signal set for resumption and crosscheck. Omitting
   them creates context gaps that increase cold-start overhead.
 - `work_state.yaml` is always required because it is the single canonical active-artifact
   index. Update it on activation, on status change, and on closeout.
 - The bundle README Status table is required for all workbundle tiers because it provides
-  the Director/operator at-a-glance view without reading individual workbooks.
+  the operator at-a-glance view without reading individual workbooks.
 - Harvest docs and plan docs are optional because they are supplementary artifacts —
   their absence does not block resumption.
 
 ### Update Cadence
 
-Required surfaces MUST be updated at these triggers:
+Required surfaces MUST be updated at these material triggers:
 
 1. Workbook/workbundle activated (status: planned → active)
-2. Phase completion (workbook phase checkbox swept, frontmatter version bumped)
+2. Phase completion **that changes disposition, next owner, or the next
+   required gate** — a phase whose completion changes none of those needs no
+   update
 3. Scope change or new dependency discovered
-4. Completion / closeout (status: active → completed)
+4. An actionable validation finding (a result requiring action)
+5. Completion / closeout (status: active → completed)
 
 Optional surfaces SHOULD be updated at the same triggers when they exist.
 
@@ -1132,7 +1186,7 @@ separate checkpoint file is needed.
 No re-authorization is required for a restart after interruption. The original
 delegation scope, authority level, and workbook design decisions apply unchanged
 to the resumed or restarted lane. The resuming agent does not need a new dispatch
-from the Coordinator or Director tier unless the scope has changed.
+from the Coordinator unless the scope has changed.
 
 ### Merge Behavior
 

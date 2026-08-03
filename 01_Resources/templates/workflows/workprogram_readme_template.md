@@ -4,7 +4,7 @@ version: 0.2.2
 status: active
 license: Apache-2.0
 created: 2026-02-01
-updated: 2026-03-06
+updated: '2026-07-22'
 owner: ai_ops
 related:
   - 00_Admin/guides/ai_operations/guide_workflows.md
@@ -75,8 +75,9 @@ Batch-sequenced parallel guidance:
 
 - For staged execution with parallel batches, define explicit batch gates in
   `execution_spine.md` or `workprogram_pipeline_<nn>.md`.
-- Books within a batch may run in parallel when `execution_mode` and
-  `shared_files/lock_scope` permit it.
+- Books within a batch may run in parallel when their write targets are
+  disjoint. If two books must write the same path, name a single merge owner
+  and sequence the writes.
 - Rule: batch `NN+1` starts only after all required books in batch `NN` pass
   their completion gates.
 

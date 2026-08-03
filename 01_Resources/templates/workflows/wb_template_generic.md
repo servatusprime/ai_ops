@@ -5,18 +5,18 @@ status: planned
 license: Apache-2.0 # keep by default; inherit repo license unless repo policy says otherwise
 version: 0.10.0
 created: YYYY-MM-DD
-last_updated: 2026-06-10
+last_updated: 2026-07-22
 owner: ai_ops
 ai_role: executor
 model_profile: "medium"  # Reasoning level: low | medium | high | maximum. Provider-model mapping is operator-declared. See AGENTS.md Section AI Model Level Reference.
 authority_level: 3
 execution_mode: parallel_safe
-execution_topology: single_agent  # single_agent | multi_agent | hybrid
+execution_topology: single_agent  # initial routing value, not an operating preference: single_agent | multi_agent | hybrid
 activated_lanes:  # List canonical lane names. Add Planner, Researcher, Builder, Linter, Closer as needed.
   - Coordinator
   - Executor
   - Reviewer
-delegation_policy: explicit_only  # explicit_only | coordinator_judgment | open
+delegation_policy: coordinator_judgment  # none | explicit_only | coordinator_judgment | conditional | proactive_allowed
 convergence_profile: iterative_convergence_minimal
 parallel_coordination_id: null  # Set only when sibling active artifacts must coordinate early
 depends_on: []
@@ -64,10 +64,15 @@ cost_governance:  # Work-family: MAY self-impose limits. Run-family: SHOULD popu
   single-run execution work.
 - NOTE: Authority fit is Level 3 baseline and Level 4-touching work when
   paired with approved work proposal rationale.
-- NOTE: `execution_topology` defaults to `single_agent`. For multi-agent
-  or hybrid runs, change to `multi_agent` or `hybrid`, expand `activated_lanes`,
-  and fill out the full `Execution Topology Contract` block with spawn criteria,
-  delegation contracts, and per-lane return shapes. See AGENTS.md Section Role Reference.
+- NOTE: `execution_topology` initializes to `single_agent` so a cold-start agent
+  can parse the artifact unambiguously. It is not an operating preference.
+  `delegation_policy: coordinator_judgment` governs execution: the lead decides
+  per task whether local work or a bounded sidecar has the better net benefit.
+  A bounded read-only sidecar needs no topology change and no durable dispatch
+  record. Only material delegation -- write-capable, shared-state,
+  authority-sensitive, long-running, or independently resumable -- requires
+  changing `execution_topology` and filling the expanded contract block.
+  See AGENTS.md Section Role Reference.
 - NOTE: Keep delegation guidance surface-agnostic in canonical templates. Use
   canonical lane names such as `Researcher`, `Planner`, `Executor`,
   `Reviewer`, `Linter`, or `Closer`; do not
@@ -130,10 +135,26 @@ Use this section to declare the execution/delegation contract near the top of
 the artifact. Frontmatter handles early routing; this block handles auditable
 task shaping.
 
+**Minimum contract.** This is the whole contract until delegation is actually
+chosen, whichever topology the run ends up using. Fill this and stop:
+
 ```yaml
 execution_topology_contract:
   lead_lane: Coordinator
   task_brief: "<one-line mission for the lead lane>"
+  stop_conditions:
+    - "<what halts the run and requires the requestor>"
+```
+
+**Expand only for material delegation** -- write-capable, shared-state,
+authority-sensitive, long-running, or independently resumable. A bounded
+read-only sidecar (for example a Researcher evidence sweep or an independent
+Reviewer pass) runs under `coordinator_judgment` with no topology change and no
+entry below. Add only the keys the actual delegation needs:
+
+```yaml
+execution_topology_contract:
+  # ...default keys above, plus:
   spawn_criteria:
     - "<when delegation is justified>"
   do_not_delegate_when:
@@ -156,13 +177,12 @@ execution_topology_contract:
       - "<skill>"
   lane_return_contracts:
     Reviewer: "<expected return shape>"
+  write_target: "<single path a delegated write may touch>"
+  merge_owner: "<one named lane, only when overlap is unavoidable>"
   standard_loopbacks:
     - "Reviewer -> Executor"
   escalation_loopbacks:
     - "Any ambiguity -> Requestor"
-  surface_interpretation_notes:
-    codex: "<explicit delegation expectation>"
-    claude: "<auto-delegation constraint>"
 ```
 
 Rules:

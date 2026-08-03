@@ -133,7 +133,7 @@ workflows:
     sha256_12: dcd9fad693c0
 - workflow: work
   source: .ai_ops/workflows/work.md
-  source_sha256_12: 2750bf299633
+  source_sha256_12: e3385271e5a3
   description: Signal that repo rules apply and establish work/run context.
   outputs:
   - path: plugins/ai-ops-governance/commands/work.md

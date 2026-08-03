@@ -134,7 +134,10 @@ If any condition is unknown or false, use `fresh_bootstrap` or `recenter`.
 Do not force heavy topology/routing rereads when `resume_same_scope` is valid.
 
 For any resumed or multi-surface run, write a resume-delta block before
-changing state surfaces or advancing completion claims:
+changing state surfaces or advancing completion claims. Write it to the
+existing state surface -- the workbook Execution Notes, or the workbundle
+README when the bundle coordinates the run -- as one block per resume, not one
+per phase. Do not create a new file or ledger for it:
 
 - prior claimed state,
 - live evidence checked,

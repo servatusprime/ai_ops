@@ -16,7 +16,7 @@ activated_lanes:  # List canonical lane names. Add Planner, Researcher, Builder,
   - Coordinator
   - Executor
   - Reviewer
-delegation_policy: explicit_only  # explicit_only | coordinator_judgment | open
+delegation_policy: coordinator_judgment  # none | explicit_only | coordinator_judgment | conditional | proactive_allowed
 convergence_profile: iterative_convergence_minimal
 parallel_coordination_id: null
 depends_on: []

@@ -4,7 +4,7 @@ version: 0.4.1
 status: active
 license: Apache-2.0
 created: 2026-02-21
-last_updated: 2026-03-19
+last_updated: 2026-07-22
 owner: ai_ops
 description: >
   Consolidated design philosophy and principles for ai_ops. Human-audience
@@ -367,11 +367,6 @@ flowchart LR
 (how many agents, how connected, what surface). A *lane* defines the behavioral
 contract for a type of work. A topology uses lanes; a lane is not a topology.
 See `AGENTS.md §Topology and Lane Concepts` for the canonical definition.
-
-**Director topology (design note, not yet implemented):** A Director pattern
-allows one primary session to spawn Coordinator subagents per project for
-concurrent work streams. Implementation deferred -- requires a Coordinator
-native agent file with the `Agent` tool. See `AGENTS.md §Topology and Lane Concepts`.
 
 ### Riders: behavioral archetypes
 

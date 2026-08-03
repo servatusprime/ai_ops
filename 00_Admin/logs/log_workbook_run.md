@@ -373,11 +373,21 @@ ai_generated: true
   `affects`. Commit and push approved by requestor (servatusprime) on 2026-07-16
   after change-summary review. Enforcement is forward-looking: ai_ops holds zero
   live run-family manifests, so the first live validation occurs at
-  governed-repository adoption. Workbook archived:
-  99_Trash/wb_run_family_graph_architecture_uplift_01_2026-07-16/. Durable
-  records retained on tracked surfaces: this entry, the decision-ledger row, and
-  future-work rows fw_20260716_01/02/03 (source_workbook repointed to the
-  archive path).
+  governed-repository adoption. Durable records retained on tracked surfaces:
+  this entry, the decision-ledger row, and future-work rows
+  fw_20260716_01/02/03.
+
+  Archive correction (2026-07-16, same day): the bundle was archived to
+  99_Trash and then restored to
+  90_Sandbox/ai_workbooks/wb_run_family_graph_architecture_uplift_01_2026-07-16/
+  by requestor approval. The archive was premature: the bundle's
+  governed-repository adoption handoff is a living deliverable whose consumer in
+  `<governed_repo>` had not yet consumed it, and the move broke five
+  required-context references in that consumer. The closeout stale-reference
+  sweep checked ai_ops tracked files only and did not cover the governed repo.
+  Re-archive after the governed-repository adoption completes. Note for that closeout: `90_Sandbox/**` is gitignored, so a
+  cross-repo prerequisite living there is unresolvable on any other machine;
+  the handoff needs a durable tracked home before adoption is portable.
 
 - 2026-07-16 | lint scope repair (L2) | Follow-on to the run-family closeout.
   `.yamllint` ignored intentionally-invalid fixtures and `99_Trash/**` but not
@@ -393,3 +403,31 @@ ai_generated: true
   release-quality gate PASS (first green); Track B verifier
   `[OK] Director contract and fresh graph proof verified`; yamllint zero errors;
   ruff clean. Approved by requestor (servatusprime) 2026-07-16.
+
+- 2026-08-01 | ai_ops lifecycle cleanup (L4) | Reconciled the sandbox and
+  machine-local active state against live evidence. Track A safety remediation
+  is complete: commit `9ba8498` contains the checkpoint-first savepoint/
+  closeout gates and deterministic profile `--check`; profile regeneration and
+  the release-quality gate pass on the current checkout. Removed stale active
+  state entries for five already-archived governance bundles and for the
+  consumed Conductor/Director trials; moved those two trial bundles to
+  `99_Trash` as historical evidence. Pruned superseded Director future-work
+  rows `fw_20260323_01` and `fw_20260716_03`, and actualized profile row
+  `fw_20260721_01`; regenerated the scorecard (13 rows, byte parity verified).
+  Track B, the lead-managed uplift, and C-02 remain active at their declared
+  gates. No future implementation, commit, or push was performed.
+
+- 2026-08-03 | lead-managed execution uplift + VS035 C-02 closeout (L4) |
+  Both accepted workbundles reached G-ACCEPT and were archived to `99_Trash`;
+  their canonical changes are included in this commit. The lead-managed
+  uplift delivered the approved Coordinator/thrift/context/governance changes
+  across the 23-file canonical surface; the routed C-02 lane added fail-closed
+  completed-status validation evidence enforcement, fixtures, and authoring
+  guidance. The future-work registry and generated scorecard were synchronized
+  (15 rows); the registry was normalized to LF after the generator exposed
+  CRLF hygiene drift. Validation: repo validator 0 errors (baseline VS008/
+  VS022 warnings only), 28/28 VS035/R-6 fixtures pass, profile derivatives
+  match, workflow export drift 0, ruff clean, markdownlint clean, yamllint
+  clean, and release-quality gate PASS. The remaining `wb_vs035_evolution_01`
+  bundle is intentionally left planned and decision-gated for B-1/B-3/D-4; it
+  is not part of this closeout.

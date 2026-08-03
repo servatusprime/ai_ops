@@ -3,7 +3,7 @@ title: Guide: Workflows
 version: 1.2.1
 status: active
 license: Apache-2.0
-last_updated: 2026-07-16
+last_updated: 2026-07-22
 owner: ai_ops
 related:
 - ./guide_ai_operations_stack.md
@@ -517,8 +517,9 @@ Do not continue execution until this checklist is complete.
 - Scratchpads may be used for ai_ops development and active `/work` sessions; they are temporary and must be
   distilled into canonical artifacts or future work entries.
 - **Repo artifacts** (guides/specs/templates/logs) are the only long-lived records.
-- Coordinator agents should update the active artifact note field in work_state.yaml on each phase transition
-  to maintain a live Director-readable status.
+- Coordinator agents should update the active artifact note field in work_state.yaml when the disposition,
+  next owner, gate, scope, or an actionable validation finding changes, so the status stays operator-readable
+  without per-transition churn.
 
 ## Reference Thrift Rule
 

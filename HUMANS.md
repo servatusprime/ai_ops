@@ -3,7 +3,7 @@ title: HUMANS - Start Here
 version: 1.1.1
 status: active
 license: Apache-2.0
-last_updated: 2026-03-13
+last_updated: 2026-07-22
 owner: ai_ops
 description: Human-oriented onboarding and command reference for ai_ops.
 related:
@@ -708,7 +708,9 @@ this repo:
 
 ### Lane Reference
 
-The default single-agent baseline is `Coordinator -> Executor -> Reviewer`.
+The baseline lane sequence is `Coordinator -> Executor -> Reviewer`. It is a
+lane baseline, not a topology preference; `delegation_policy` governs whether
+any lane is delegated.
 Additional lanes activate when the task shape requires them. Builder is invoked
 as needed -- not every run requires a dedicated Builder pass.
 
@@ -758,16 +760,11 @@ Model levels: 1 = Low, 2 = Medium, 3 = High, 4 = Maximum (extended thinking / ma
 
 **Agent topology:**
 
-- **Single agent:** one agent sequences through all activated lanes in its own context. This is the default.
+- **Single agent:** one agent sequences through all activated lanes in its own context. Where a schema requires an initial `execution_topology` value this is the cheap initialization, but it is not an operating-policy preference -- `delegation_policy` governs whether work is delegated.
 - **Multi-agent:** Coordinator spawns dedicated subagents for selected lanes and orchestrates handoffs.
 - **Remote Control:** one local Claude Code session reachable from multiple surfaces (terminal, browser, phone). Topology and lane contracts are unchanged.
 
 A *topology* defines how agents are connected. A *lane* defines what the agent is doing. These are independent: `activated_lanes` in a workbook declares which lanes are in scope, not which topology is used.
-
-**Director topology (design note, not yet implemented):** A Director pattern allows
-one primary session to spawn Coordinator subagents per project, keeping multiple
-Coordinators active in parallel for concurrent work streams. See
-`AGENTS.md §Topology and Lane Concepts` for the design note.
 
 ### Supported tool surfaces
 

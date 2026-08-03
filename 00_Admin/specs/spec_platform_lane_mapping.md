@@ -6,7 +6,7 @@ status: active
 license: Apache-2.0
 version: 1.0.0
 created: 2026-06-19
-updated: 2026-06-19
+updated: '2026-07-22'
 owner: ai_ops
 ai_generated: true
 spec_archetype: governance_spec
@@ -124,7 +124,6 @@ instantiation surface on each platform. The mapping is governance-intent only.
 | --- | --- | --- |
 | Native lane-boundary enforcement | All | No platform natively enforces ai_ops lane boundaries. Enforcement is behavioral (session prompt instructions + agent reasoning), not runtime-enforced. |
 | Closer gate automation | Dispatch, OpenClaw | The operator-gated push step (Claude Code: explicit `git push` instruction) may require a manual handoff pattern in automated platforms. Platform integration runbooks MUST define this gate explicitly. |
-| Director topology | All | The Director pattern (Director spawns Coordinator subagents) is not yet implemented on any platform. See `AGENTS.md ## Director topology -- design note`. |
 
 ## Related References
 
