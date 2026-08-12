@@ -368,6 +368,7 @@ Use this table to classify an artifact before writing or classifying a path.
 | Runbundle | Execution | persistent | bundle |
 | Runbook | Execution | persistent | book |
 | Pipeline | Execution | persistent | book |
+| Execution Control Graph | Execution | persistent | program |
 | Module | Execution | persistent | support |
 | Tool / Script | Execution | persistent | support |
 | Contract | Verification | persistent | support |
@@ -385,6 +386,7 @@ Use this table to classify an artifact before writing or classifying a path.
 | Policy | Meta | persistent | support |
 | Template | Meta | persistent | support |
 | Catalog | Meta | persistent | support |
+| Derived View (graph/registry/index) | Meta | persistent | support |
 
 **Durability:** `run-scoped` = ephemeral per-execution artifact; `persistent` = standing reference artifact.
 
@@ -393,6 +395,12 @@ Use this table to classify an artifact before writing or classifying a path.
 - Mixed responsibility is prohibited. Each artifact serves exactly one primary axis.
 - Reference direction flows left to right: Intent -> Commitment -> Execution -> Verification.
 - Meta may inform any axis. Authority increases downstream.
+- Derived views (graphs, registries, indexes) are non-authoritative projections;
+  they never grant identity, ownership, or execution authority. A derived view is
+  never a control surface.
+- The Execution Control Graph is authored and authoritative for run-family routing
+  only (see `00_Admin/specs/spec_execution_control_graph.md`); it is distinct from
+  derived views and from the work-family execution spine.
 
 ### Quality Axes
 

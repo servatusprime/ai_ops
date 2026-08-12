@@ -4,9 +4,9 @@ id: spec_repository_indices
 module: admin
 status: active
 license: Apache-2.0
-version: 0.2.0
+version: 0.3.0
 created: 2026-01-15
-updated: 2026-07-16
+updated: 2026-08-11
 owner: ai_ops
 ai_generated: true
 spec_archetype: governance_spec
@@ -63,6 +63,26 @@ contract. The following are derived:
 mechanically checked against the derived registry. Neither the human index nor a
 graph view may become an independent source for IDs, homes, or `consumes` edges.
 
+A derived view is never a control surface: routing, gates, loops, and escalation
+for run-family execution live in the authored, per-runprogram execution control
+graph (`spec_execution_control_graph.md`), not in these derived views. For a
+cold-start, capacity-constrained (CSCC) agent, the bounded read-unit is the
+resolver context pack plus run-instance lock for the specific run, not the whole
+repo-wide graph.
+
+**Minimum root documents (three levels).** Each run-family home exposes exactly
+two root surfaces, both derived and neither hand-authored as an inventory: a
+generated machine index (`run_family_registry.yaml`) and a human-navigation
+README that projects it and is mechanically parity-checked against it. The
+pattern repeats at three levels: repo root
+(`00_Admin/runbooks/run_family_registry.yaml` + `00_Admin/runbooks/README.md`),
+steward/module root (optional
+`02_Modules/<module>/metadata/run_family_registry.yaml` + module README), and
+each artifact folder (its `manifest.yaml` + its own README). Root guidance
+references canon rather than restating it. Governed repos MUST follow the same
+three-level pattern. Template:
+`01_Resources/templates/workflows/run_family_index_readme_template.md`.
+
 ## 4. Update Protocol
 
 1. Update the canonical index first.
@@ -89,6 +109,10 @@ Validators SHOULD confirm:
 
 ## Change Log
 
+- 0.3.0 (2026-08-11): Added the run-family control-graph vs derived-view
+  boundary, the CSCC context-pack read-unit, and the three-level minimum
+  root-documents contract (generated index + parity-checked README at repo,
+  steward, and artifact levels; governed repos included).
 - 0.2.0 (2026-07-16): Added derived run-family registry, graph-view, and
   human-index parity contracts.
 - 0.1.0 (2026-05-05): Metadata normalized to declare spec_archetype.

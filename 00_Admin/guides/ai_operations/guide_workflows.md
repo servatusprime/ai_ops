@@ -125,7 +125,7 @@ authority.
 
 Boundary rule:
 
-- **Execution spine** remains the governance/commitment authority for sequencing gates.
+- **Execution spine** is the governance/commitment authority for sequencing gates in the work-family; for run-family runprograms the colocated `execution_graph.yaml` is the control authority.
 - **Pipeline artifacts** are operational queue views for run execution.
 - If both exist, update spine first, then align pipeline artifacts.
 
@@ -258,7 +258,9 @@ Keep these boundaries tight to avoid overlap:
 <!-- markdownlint-disable MD013 -->
 
 If you need to pick one place for content, use this table. Recommended read order: Planning Outputs -> Program Spec ->
-Execution Spine.
+Execution Spine. This table describes the **work-family** spine; a run-family
+runprogram uses the authored execution control graph (`execution_graph.yaml`,
+`spec_execution_control_graph.md`) in place of the spine.
 
 ## Governance Boundary Reinforcement
 
@@ -289,12 +291,12 @@ Related specs for extended enforcement patterns:
 
 ## Placement Rules
 
-- Runbundles live inside a Runprogram when one exists, under
-  `run_program_<program_id>/run_bundles/rnb_<bundle_name>/` (with the bundle README plus its runbooks).
-  If no Runprogram exists, runbundles MAY live alongside runbooks in
-  `00_Admin/runbooks/` or `02_Modules/<module>/docs/runbooks/`.
-- For scalable runbundles, keep runbooks inside the bundle at
-  `runbooks/rb_*.md` and keep queue entries local to the bundle.
+- Runbundles use a neutral repo- or module-owned home (`rnb_<bundle_name>/`),
+  never nested under a consuming runprogram; a runprogram consumes them by
+  stable ID. Home by steward at the broadest scope covering all consumers.
+- Home runbooks folder-per-artifact (each `rb_*/manifest.yaml`) at a neutral
+  steward home and reference them by stable ID; do not nest flat `rb_*.md`
+  under a consuming bundle (see `guide_run_programs.md` File Organization).
 
 - Workbundles live inside a Workprogram when one exists, under
   `work_program_<program_id>/work_packets/wb_<id>_<YYYY-MM-DD>/`.
@@ -303,8 +305,10 @@ Related specs for extended enforcement patterns:
 - Workprograms live under `90_Sandbox/ai_workbooks/work_program_<program_id>/`.
 - Runprograms live under `00_Admin/runbooks/run_program_<program_id>/` or
   `02_Modules/<module>/docs/runbooks/run_program_<program_id>/`.
-- Workprograms and Runprograms keep only program-level artifacts at the program root
-  (spec/spine/registry/README).
+- Workprograms keep only program-level artifacts at the program root
+  (spec/spine/registry/README). Runprograms keep
+  `manifest.yaml`/`execution_graph.yaml`/registry/README; they use the execution
+  control graph, not a spine.
 
 Workprograms MUST use `work_program_<program_id>/`; `wp_` directories are
 migration inputs, not valid steady-state locations. A migration MUST update all
@@ -629,9 +633,9 @@ Rule:
 | Single execution run | Workbook | Inline Planning Outputs if no plan | `90_Sandbox/ai_workbooks/wb_<id>.md` or workbundle |
 | Workbook needs companions | Workbundle | README + workbook + required companions | `work_program_<id>/work_packets/wb_<id>_<YYYY-MM-DD>/` (or top-level if no program) |
 | Reusable procedure | Runbook | Preconditions + postconditions + checklist | `00_Admin/runbooks/rb_<id>.md` |
-| Informal runbook grouping | Runbundle | README + runbooks | `run_program_<id>/run_bundles/rnb_<bundle_name>/` (or top-level if no program) |
+| Grouped runbooks | Runbundle | README + `manifest.yaml` + runbooks | neutral `rnb_<bundle_name>/` home (never under a consumer) |
 | Coordinated multi-workbook | Workprogram | Workbook Planning Outputs + Spec + Spine + Registry + README | `90_Sandbox/ai_workbooks/work_program_<program_id>/` |
-| Coordinated multi-runbook | Runprogram | Spec + Spine + Registry + README | `00_Admin/runbooks/run_program_<program_id>/` |
+| Coordinated multi-runbook | Runprogram | `manifest.yaml` + `execution_graph.yaml` + Registry + README | `00_Admin/runbooks/run_program_<program_id>/` |
 <!-- markdownlint-enable MD013 -->
 <!-- markdownlint-disable MD013 -->
 

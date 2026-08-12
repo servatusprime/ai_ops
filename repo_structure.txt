@@ -66,10 +66,14 @@
 |   |   |-- setup_contract.yaml
 |   |   +-- validator/
 |   |       |-- schema_aiops_session.yaml
+|   |       |-- schema_execution_graph.yaml
+|   |       |-- schema_execution_graph_run_state.yaml
 |   |       |-- schema_execution_state.yaml
 |   |       |-- schema_run_family_consumption.yaml
 |   |       |-- schema_run_family_context_pack.yaml
+|   |       |-- schema_run_family_intake_receipt.yaml
 |   |       |-- schema_run_family_manifest.yaml
+|   |       |-- schema_run_family_provider_receipt.yaml
 |   |       |-- schema_run_family_registry.yaml
 |   |       |-- schema_run_instance_lock.yaml
 |   |       |-- schema_run_receipt.yaml
@@ -210,6 +214,7 @@
 |   |   |-- spec_context_routing_runtime.md
 |   |   |-- spec_cost_governance.md
 |   |   |-- spec_cross_surface_coordination.md
+|   |   |-- spec_execution_control_graph.md
 |   |   |-- spec_execution_orchestration.md
 |   |   |-- spec_governance_enforcement.md
 |   |   |-- spec_governance_lifecycle.md
@@ -240,6 +245,9 @@
 |   |   |   |   |-- valid_full.yaml
 |   |   |   |   +-- valid_minimal.yaml
 |   |   |   +-- run_family/
+|   |   |       |-- execution_graph_run_state_valid.yaml
+|   |   |       |-- execution_graph_valid.yaml
+|   |   |       |-- intake_receipt_valid.yaml
 |   |   |       |-- negative/
 |   |   |       |   |-- run_family_copied_fork.yaml
 |   |   |       |   |-- run_family_cycle.yaml
@@ -247,6 +255,7 @@
 |   |   |       |   |-- run_family_incompatible_interface.yaml
 |   |   |       |   |-- run_family_manual_reverse_index.yaml
 |   |   |       |   +-- run_family_missing_home.yaml
+|   |   |       |-- provider_receipt_valid.yaml
 |   |   |       |-- run_family_context_pack_valid.yaml
 |   |   |       |-- run_family_shared_valid.yaml
 |   |   |       |-- run_instance_lock_valid.yaml
@@ -295,11 +304,14 @@
 |           |-- artifact_cleanup_manifest_template.md
 |           |-- canonical_promotion_manifest_template.md
 |           |-- command_wrapper_template.md
+|           |-- execution_graph_template.yaml
 |           |-- execution_spine_template.md
 |           |-- governed_repo_bootstrap.md
 |           |-- peer_review_template.md
 |           |-- quality_loop_convergence_template.md
 |           |-- rb_template_generic.md
+|           |-- run_family_index_readme_template.md
+|           |-- run_family_manifest_template.yaml
 |           |-- runbundle_pipeline_template.md
 |           |-- runbundle_readme_template.md
 |           |-- runprogram_pipeline_template.md

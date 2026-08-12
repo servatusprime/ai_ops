@@ -1,0 +1,68 @@
+# Run-Family Consumer Manifest -- the machine authority for a runprogram,
+# runbundle, or runbook's identity and outgoing `consumes` edges.
+# Colocate as `manifest.yaml` in the artifact's own folder (folder-per-artifact).
+# Contract: 00_Admin/specs/spec_run_family_composition.md +
+#           00_Admin/specs/spec_artifact_graph_identity.md
+# Schema:   00_Admin/configs/validator/schema_run_family_manifest.yaml
+# Validate: validate_run_family_graph.py --discover --check-files
+# NOTE: this is a schema-SHAPED starter. Replace every <...> placeholder and the
+# zero content_sha256 with real values before it validates against the schema
+# (artifact_id/steward must match `^[a-z][a-z0-9]*([-_][a-z0-9]+)*$`).
+#
+# Legal edges: runprogram -> runbundle -> runbook (acyclic). A consumer owns its
+# outgoing `consumes` edges. Reverse edges ("who consumes this") are DERIVED in
+# the generated registry -- never hand-maintained here.
+# Home an artifact by its STEWARD, never under a consumer; shared artifacts get a
+# neutral home at the broadest steward covering all consumers, referenced by ID.
+
+# ---------------------------------------------------------------------------
+# RUNPROGRAM (consumes runbundles)
+# ---------------------------------------------------------------------------
+manifest_version: "0.1.0"
+artifact_id: run_program_<program_id>
+artifact_kind: runprogram
+canonical_home: <repo-relative path to this artifact's canonical file>
+artifact_version: 0.1.0
+interface_version: "1.0.0"
+lifecycle: active            # planned | stub | active | deprecated
+steward: <steward_id>        # who maintains this artifact (not a consumer)
+# content_sha256 = sha256 of the canonical_home file; tooling-populated.
+content_sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+parameter_profiles: {}
+consumes:
+  - consumer_id: run_program_<program_id>
+    provider_id: rnb_<bundle_id>
+    version_constraint: ">=0.1.0"
+    interface_constraint: "1"          # compatible with the provider's interface_version
+    parameter_profile: default
+    route_order: 1
+    optional: false
+    gates: []
+    entry_artifacts: [<entry_artifact>]
+    exit_artifacts: [<exit_artifact>]
+    idempotency:
+      key_fields: [run_instance_id]
+      replay_safe: true
+# Control flow (routing, modes, loops, escalation, receipts) is NOT declared
+# here -- it lives in the colocated `execution_graph.yaml`
+# (spec_execution_control_graph.md). Keep this manifest to composition only.
+
+# ---------------------------------------------------------------------------
+# RUNBUNDLE (consumes runbooks) -- same shape; artifact_kind: runbundle,
+# artifact_id: rnb_<bundle_id>, provider_id points at rb_<runbook_id>.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# RUNBOOK (consumes nothing) -- leaf artifact.
+# ---------------------------------------------------------------------------
+# manifest_version: "0.1.0"
+# artifact_id: rb_<runbook_id>
+# artifact_kind: runbook
+# canonical_home: <repo-relative path>
+# artifact_version: 0.1.0
+# interface_version: "1.0.0"
+# lifecycle: active
+# steward: <steward_id>
+# content_sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+# parameter_profiles: {}
+# consumes: []          # runbooks MUST declare an empty consumes list

@@ -1,0 +1,89 @@
+graph_version: "0.1.0"
+authority: authored_control_surface
+scope: runprogram
+owner_id: run_program_demo
+reasoning_owner: Coordinator
+nodes:
+  - id: intake
+    kind: agentic
+    interface:
+      produces: [admitted_pair, admission_receipt]
+      binding: resolved_per_run
+    onboarding:
+      required_context_pack: [README.md, manifest.yaml]
+    handoff:
+      return_contract: admission_receipt + disposition_table
+      write_scope: intake/**
+    gate: all items dispositioned
+  - id: reconcile
+    kind: agentic
+    interface:
+      consumes: [admitted_pair]
+      produces: [reconciled_pair]
+      binding: resolved_per_run
+    onboarding:
+      required_context_pack: [manifest.yaml]
+    handoff:
+      return_contract: reconciled_pair + residual_report
+      write_scope: reconcile/** only
+    gate: vertical residual within tolerance
+  - id: normalize
+    kind: deterministic
+    interface:
+      consumes: [reconciled_pair]
+      produces: [normalized_pair]
+      binding: resolved_per_run
+    determinism:
+      idempotent: true
+      content_hashed: true
+  - id: accept
+    kind: operator
+    interface:
+      consumes: [normalized_pair]
+      produces: [accepted_pair]
+      binding: resolved_per_run
+    gate: operator accepts vertical and visual evidence
+edges:
+  - from: intake
+    to: reconcile
+    condition: all items dispositioned
+    entry_evidence: admitted_pair present
+    exit_evidence: reconciled_pair accepted
+    receipt_contract: runbundle_edge_receipt_v1
+    checkpoint: before_edge_and_after_receipt
+    critical: true
+  - from: reconcile
+    to: reconcile
+    condition: re-run reconciliation
+    loop:
+      condition: vertical residual exceeds tolerance
+      max_cycles: 3
+      on_exceed:
+        escalate_to: operator
+  - from: reconcile
+    to: normalize
+    condition: residual within tolerance
+  - from: normalize
+    to: accept
+    condition: normalized outputs ready
+
+routes:
+  - route_id: intake_main
+    sequence:
+      - node: intake
+        order: 1
+      - node: reconcile
+        order: 2
+        profile: profile_establishment
+      - node: normalize
+        order: 3
+      - node: accept
+        order: 4
+  - route_id: constraints
+    depends_on_route: intake_main
+    sequence:
+      - node: reconcile
+        order: 1
+        profile: project_validation
+      - node: accept
+        order: 2

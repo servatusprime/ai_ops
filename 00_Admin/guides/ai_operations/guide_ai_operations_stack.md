@@ -259,7 +259,8 @@ handoff, execution, and review.
 - Reference documents by path; do not inline large materials.
 
 Workprograms SHOULD reference their workbooks/workbundles by path or ID and include an Execution
-Spine. Runprograms SHOULD reference their runbooks by path or ID and include an Execution Spine.
+Spine. Runprograms SHOULD reference their runbooks by path or ID and include an execution control
+graph (`execution_graph.yaml`); runprograms do not use a spine.
 
 **Compacted Context placement:**
 
@@ -294,7 +295,8 @@ compacted_context:
     date: YYYY-MM-DD
   references:
     workbook_path: <path>
-    execution_spine: <path>    # if used
+    execution_spine: <path>    # work-family, if used
+    execution_graph: <path>    # run-family runprograms
     specs: []                  # file paths
     contracts: []              # file paths
 ```

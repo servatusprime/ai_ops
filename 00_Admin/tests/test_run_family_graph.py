@@ -182,6 +182,340 @@ class RunFamilyGraphTests(unittest.TestCase):
                 graph, receipt, {"runbook-shared"}
             )
 
+    def test_provider_receipt_valid_passes(self):
+        receipt = load(FIXTURES / "provider_receipt_valid.yaml")
+        self.assertIsNone(validator.validate_provider_receipt(receipt))
+
+    def test_provider_receipt_negatives_fail(self):
+        base = load(FIXTURES / "provider_receipt_valid.yaml")
+
+        incomplete = {**base}
+        del incomplete["substantiated_by"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "missing fields: substantiated_by"
+        ):
+            validator.validate_provider_receipt(incomplete)
+
+        bad_capability = {**base, "validated_capabilities": [{"capability": "x"}]}
+        with self.assertRaisesRegex(
+            validator.ContractError, r"capability\[0\] needs capability and evidence_ref"
+        ):
+            validator.validate_provider_receipt(bad_capability)
+
+        bad_authority = {**base, "authority": "canonical"}
+        with self.assertRaisesRegex(
+            validator.ContractError, "authority must be derived_non_authoritative"
+        ):
+            validator.validate_provider_receipt(bad_authority)
+
+    def test_intake_receipt_valid_passes(self):
+        receipt = load(FIXTURES / "intake_receipt_valid.yaml")
+        self.assertIsNone(validator.validate_intake_receipt(receipt))
+
+    def test_intake_receipt_negatives_fail(self):
+        no_disposition = load(FIXTURES / "intake_receipt_valid.yaml")
+        del no_disposition["items"][0]["disposition"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "disposition must be one of"
+        ):
+            validator.validate_intake_receipt(no_disposition)
+
+        no_provenance = load(FIXTURES / "intake_receipt_valid.yaml")
+        del no_provenance["items"][0]["provenance"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "missing provenance"
+        ):
+            validator.validate_intake_receipt(no_provenance)
+
+        admitted_no_evidence = load(FIXTURES / "intake_receipt_valid.yaml")
+        del admitted_no_evidence["items"][0]["evidence_ref"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "requires evidence_ref"
+        ):
+            validator.validate_intake_receipt(admitted_no_evidence)
+
+    def test_execution_graph_valid_passes(self):
+        graph = load(FIXTURES / "execution_graph_valid.yaml")
+        self.assertIsNone(validator.validate_execution_graph(graph))
+
+    def test_execution_graph_negatives_fail(self):
+        no_owner = load(FIXTURES / "execution_graph_valid.yaml")
+        del no_owner["reasoning_owner"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "missing fields: reasoning_owner"
+        ):
+            validator.validate_execution_graph(no_owner)
+
+        agentic_no_pack = load(FIXTURES / "execution_graph_valid.yaml")
+        del agentic_no_pack["nodes"][0]["onboarding"]
+        with self.assertRaisesRegex(
+            validator.ContractError, r"\(agentic\) needs a non-empty"
+        ):
+            validator.validate_execution_graph(agentic_no_pack)
+
+        det_no_hash = load(FIXTURES / "execution_graph_valid.yaml")
+        det_no_hash["nodes"][2]["determinism"]["content_hashed"] = False
+        with self.assertRaisesRegex(
+            validator.ContractError, r"\(deterministic\) must declare"
+        ):
+            validator.validate_execution_graph(det_no_hash)
+
+        unbounded_loop = load(FIXTURES / "execution_graph_valid.yaml")
+        del unbounded_loop["edges"][1]["loop"]["max_cycles"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "needs max_cycles"
+        ):
+            validator.validate_execution_graph(unbounded_loop)
+
+        bad_escalation = load(FIXTURES / "execution_graph_valid.yaml")
+        bad_escalation["edges"][1]["loop"]["on_exceed"]["escalate_to"] = "reviewer"
+        with self.assertRaisesRegex(
+            validator.ContractError, "reasoning_owner or operator"
+        ):
+            validator.validate_execution_graph(bad_escalation)
+
+        undeclared_cycle = load(FIXTURES / "execution_graph_valid.yaml")
+        undeclared_cycle["edges"].append(
+            {"from": "accept", "to": "intake", "condition": "restart"}
+        )
+        with self.assertRaisesRegex(
+            validator.ContractError, "undeclared cycle"
+        ):
+            validator.validate_execution_graph(undeclared_cycle)
+
+        unknown_node = load(FIXTURES / "execution_graph_valid.yaml")
+        unknown_node["edges"][0]["to"] = "ghost"
+        with self.assertRaisesRegex(
+            validator.ContractError, "unknown node id: ghost"
+        ):
+            validator.validate_execution_graph(unknown_node)
+
+        composition_leak = load(FIXTURES / "execution_graph_valid.yaml")
+        composition_leak["nodes"][0]["consumes"] = ["something"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "must not carry composition/identity"
+        ):
+            validator.validate_execution_graph(composition_leak)
+
+        agentic_no_gate = load(FIXTURES / "execution_graph_valid.yaml")
+        del agentic_no_gate["nodes"][1]["gate"]
+        with self.assertRaisesRegex(
+            validator.ContractError, r"\(agentic\) must declare a gate"
+        ):
+            validator.validate_execution_graph(agentic_no_gate)
+
+        agentic_no_handoff = load(FIXTURES / "execution_graph_valid.yaml")
+        del agentic_no_handoff["nodes"][1]["handoff"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "must declare handoff.return_contract"
+        ):
+            validator.validate_execution_graph(agentic_no_handoff)
+
+        duplicate_id = load(FIXTURES / "execution_graph_valid.yaml")
+        duplicate_id["nodes"][1]["id"] = "intake"
+        with self.assertRaisesRegex(
+            validator.ContractError, "node id is duplicated: intake"
+        ):
+            validator.validate_execution_graph(duplicate_id)
+
+        bad_checkpoint = load(FIXTURES / "execution_graph_valid.yaml")
+        bad_checkpoint["edges"][0]["checkpoint"] = "whenever"
+        with self.assertRaisesRegex(
+            validator.ContractError, "checkpoint must be one of"
+        ):
+            validator.validate_execution_graph(bad_checkpoint)
+
+        empty_evidence = load(FIXTURES / "execution_graph_valid.yaml")
+        empty_evidence["edges"][0]["entry_evidence"] = "  "
+        with self.assertRaisesRegex(
+            validator.ContractError, "entry_evidence must be a non-empty string"
+        ):
+            validator.validate_execution_graph(empty_evidence)
+
+        empty_owner = load(FIXTURES / "execution_graph_valid.yaml")
+        empty_owner["owner_id"] = ""
+        with self.assertRaisesRegex(
+            validator.ContractError, "owner_id must be a non-empty string"
+        ):
+            validator.validate_execution_graph(empty_owner)
+
+        agentic_no_write_scope = load(FIXTURES / "execution_graph_valid.yaml")
+        del agentic_no_write_scope["nodes"][0]["handoff"]["write_scope"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "must declare handoff.write_scope"
+        ):
+            validator.validate_execution_graph(agentic_no_write_scope)
+
+        extra_graph_field = load(FIXTURES / "execution_graph_valid.yaml")
+        extra_graph_field["foo"] = "bar"
+        with self.assertRaisesRegex(
+            validator.ContractError, "graph has unsupported fields: foo"
+        ):
+            validator.validate_execution_graph(extra_graph_field)
+
+        extra_node_field = load(FIXTURES / "execution_graph_valid.yaml")
+        extra_node_field["nodes"][0]["foo"] = "bar"
+        with self.assertRaisesRegex(
+            validator.ContractError, "node .* has unsupported fields: foo"
+        ):
+            validator.validate_execution_graph(extra_node_field)
+
+        extra_edge_field = load(FIXTURES / "execution_graph_valid.yaml")
+        extra_edge_field["edges"][0]["foo"] = "bar"
+        with self.assertRaisesRegex(
+            validator.ContractError, "edge .* has unsupported fields: foo"
+        ):
+            validator.validate_execution_graph(extra_edge_field)
+
+        critical_missing_control = load(FIXTURES / "execution_graph_valid.yaml")
+        del critical_missing_control["edges"][0]["checkpoint"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "is critical .* and must declare: checkpoint"
+        ):
+            validator.validate_execution_graph(critical_missing_control)
+
+        route_ghost = load(FIXTURES / "execution_graph_valid.yaml")
+        route_ghost["routes"][0]["sequence"][0]["node"] = "ghost"
+        with self.assertRaisesRegex(
+            validator.ContractError, "route .* references unknown node: ghost"
+        ):
+            validator.validate_execution_graph(route_ghost)
+
+        bad_depends = load(FIXTURES / "execution_graph_valid.yaml")
+        bad_depends["routes"][1]["depends_on_route"] = "nope"
+        with self.assertRaisesRegex(
+            validator.ContractError, "depends_on_route references unknown route: nope"
+        ):
+            validator.validate_execution_graph(bad_depends)
+
+        dup_route = load(FIXTURES / "execution_graph_valid.yaml")
+        dup_route["routes"][1]["route_id"] = "intake_main"
+        with self.assertRaisesRegex(
+            validator.ContractError, "route_id is duplicated: intake_main"
+        ):
+            validator.validate_execution_graph(dup_route)
+
+    def test_execution_graph_nested_parity_rejected(self):
+        base = load(FIXTURES / "execution_graph_valid.yaml")
+        cases = [
+            (lambda d: d["nodes"][0]["interface"].__setitem__("foo", "x"), "interface has unsupported"),
+            (lambda d: d["nodes"][0]["handoff"].__setitem__("foo", "x"), "handoff has unsupported"),
+            (lambda d: d["nodes"][2]["determinism"].__setitem__("foo", "x"), "determinism has unsupported"),
+            (lambda d: d["nodes"][0]["onboarding"].__setitem__("foo", "x"), "onboarding has unsupported"),
+            (lambda d: d["edges"][1]["loop"].__setitem__("foo", "x"), "loop has unsupported"),
+            (lambda d: d["edges"][1]["loop"]["on_exceed"].__setitem__("foo", "x"), "on_exceed has unsupported"),
+            (lambda d: d["edges"][0].__setitem__("critical", "true"), "critical must be a boolean"),
+            (lambda d: d["routes"][0].__setitem__("foo", "x"), "route .* has unsupported"),
+            (lambda d: d["routes"][0]["sequence"][0].__setitem__("foo", "x"), "step has unsupported"),
+            (lambda d: d["routes"][0].__setitem__("depends_on_route", "intake_main"), "cannot depend on itself"),
+            (lambda d: d["routes"][0]["sequence"][1].__setitem__("order", 1), "duplicate step order"),
+        ]
+        for mutate, message in cases:
+            with self.subTest(message=message):
+                graph = load(FIXTURES / "execution_graph_valid.yaml")
+                mutate(graph)
+                with self.assertRaisesRegex(validator.ContractError, message):
+                    validator.validate_execution_graph(graph)
+        self.assertIsNone(validator.validate_execution_graph(base))
+
+    def test_run_state_nested_parity_rejected(self):
+        graph = load(FIXTURES / "execution_graph_valid.yaml")
+        counter_extra = load(FIXTURES / "execution_graph_run_state_valid.yaml")
+        counter_extra["loop_counters"][0]["foo"] = "x"
+        with self.assertRaisesRegex(validator.ContractError, "loop_counter.* has unsupported"):
+            validator.validate_execution_graph_run_state(counter_extra, graph)
+        bad_receipt = load(FIXTURES / "execution_graph_run_state_valid.yaml")
+        bad_receipt["handoff_receipts"].append(123)
+        with self.assertRaisesRegex(validator.ContractError, "handoff_receipts must be non-empty"):
+            validator.validate_execution_graph_run_state(bad_receipt, graph)
+
+    def test_canonical_execution_graph_template_validates(self):
+        template = load(
+            ADMIN.parent
+            / "01_Resources/templates/workflows/execution_graph_template.yaml"
+        )
+        self.assertIsNone(validator.validate_execution_graph(template))
+
+    def test_execution_graph_run_state_valid_passes(self):
+        state = load(FIXTURES / "execution_graph_run_state_valid.yaml")
+        graph = load(FIXTURES / "execution_graph_valid.yaml")
+        self.assertIsNone(validator.validate_execution_graph_run_state(state, graph))
+        # standalone (no graph) still validates shape
+        self.assertIsNone(validator.validate_execution_graph_run_state(state))
+
+    def test_execution_graph_run_state_negatives_fail(self):
+        graph = load(FIXTURES / "execution_graph_valid.yaml")
+
+        running_no_current = load(FIXTURES / "execution_graph_run_state_valid.yaml")
+        del running_no_current["current_node"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "status running needs current_node"
+        ):
+            validator.validate_execution_graph_run_state(running_no_current, graph)
+
+        wrong_hash = load(FIXTURES / "execution_graph_run_state_valid.yaml")
+        wrong_hash["graph_sha256"] = "0" * 64
+        with self.assertRaisesRegex(
+            validator.ContractError, "does not match the supplied graph"
+        ):
+            validator.validate_execution_graph_run_state(wrong_hash, graph)
+
+        loop_exceeds = load(FIXTURES / "execution_graph_run_state_valid.yaml")
+        loop_exceeds["loop_counters"][0]["count"] = 9
+        with self.assertRaisesRegex(
+            validator.ContractError, "exceeded max_cycles"
+        ):
+            validator.validate_execution_graph_run_state(loop_exceeds, graph)
+
+        ghost_node = load(FIXTURES / "execution_graph_run_state_valid.yaml")
+        ghost_node["current_node"] = "ghost"
+        with self.assertRaisesRegex(
+            validator.ContractError, "current_node is not a graph node"
+        ):
+            validator.validate_execution_graph_run_state(ghost_node, graph)
+
+        owner_mismatch = load(FIXTURES / "execution_graph_run_state_valid.yaml")
+        owner_mismatch["owner_id"] = "run_program_other"
+        with self.assertRaisesRegex(
+            validator.ContractError, "owner_id .* does not match graph owner_id"
+        ):
+            validator.validate_execution_graph_run_state(owner_mismatch, graph)
+
+        empty_state_owner = load(FIXTURES / "execution_graph_run_state_valid.yaml")
+        empty_state_owner["owner_id"] = ""
+        with self.assertRaisesRegex(
+            validator.ContractError, "owner_id must be a non-empty string"
+        ):
+            validator.validate_execution_graph_run_state(empty_state_owner)
+
+        extra_state_field = load(FIXTURES / "execution_graph_run_state_valid.yaml")
+        extra_state_field["foo"] = "bar"
+        with self.assertRaisesRegex(
+            validator.ContractError, "run-state has unsupported fields: foo"
+        ):
+            validator.validate_execution_graph_run_state(extra_state_field, graph)
+
+    def test_standalone_validator_cli_routes(self):
+        script = SCRIPTS / "validate_run_family_graph.py"
+        for arg, fixture in (
+            ("--execution-graph", "execution_graph_valid.yaml"),
+            ("--provider-receipt", "provider_receipt_valid.yaml"),
+            ("--intake-receipt", "intake_receipt_valid.yaml"),
+        ):
+            with self.subTest(arg=arg):
+                result = subprocess.run(
+                    [sys.executable, str(script), arg, str(FIXTURES / fixture)],
+                    check=False, capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+        # no source and no standalone arg -> contract error (exit 1)
+        empty = subprocess.run(
+            [sys.executable, str(script)], check=False,
+            capture_output=True, text=True,
+        )
+        self.assertEqual(empty.returncode, 1)
+        self.assertIn("supply a composition source", empty.stderr)
+
     def test_registry_readme_parity_fails(self):
         registry = {
             "artifacts": [
@@ -386,6 +720,10 @@ class RunFamilyGraphTests(unittest.TestCase):
             "schema_run_instance_lock.yaml",
             "schema_run_family_context_pack.yaml",
             "schema_run_receipt.yaml",
+            "schema_run_family_provider_receipt.yaml",
+            "schema_run_family_intake_receipt.yaml",
+            "schema_execution_graph.yaml",
+            "schema_execution_graph_run_state.yaml",
         ):
             schema = load(ADMIN / "configs" / "validator" / name)
             self.assertTrue(schema["$schema"].endswith("2020-12/schema"))

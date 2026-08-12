@@ -75,6 +75,8 @@ Template starters:
 - `01_Resources/templates/workflows/rb_template_generic.md`
 - `01_Resources/templates/workflows/runbundle_readme_template.md`
 - `01_Resources/templates/workflows/runbundle_pipeline_template.md`
+- `01_Resources/templates/workflows/run_family_manifest_template.yaml`
+- `01_Resources/templates/workflows/run_family_index_readme_template.md`
 
 Recommended internal layout for scalable runbundles:
 
@@ -96,13 +98,40 @@ Queue rule:
 - Parent-relative entries MUST be replaced with stable ID/path references in
   the same migration batch; they are not a standing compatibility surface.
 
+### Intake / admission provider runbundles
+
+When a runbundle accepts heterogeneous or variable inputs (consultant packages,
+vendor exports, mixed formats) and normalizes them for downstream consumers, it
+is an **intake/admission provider** and its README MUST include an Intake /
+Admission Contract (see
+`01_Resources/templates/workflows/runbundle_readme_template.md`). The contract
+requires:
+
+- source immutability and a provenance snapshot (originals preserved; inventory
+  of names, paths, sizes, hashes, and timestamps; freeze/hash before
+  conversion);
+- a format/capability matrix naming every anticipated input class and its read
+  path;
+- a per-item admission disposition (`admitted`, `conversion_required`,
+  `reference_only`, `quarantine`, `unsupported`, `blocked`); and
+- an admission receipt so **nothing disappears silently** -- an unsupported or
+  rejected input is a named finding, never an omission.
+
+The admission receipt is machine-checkable: its shape is
+`00_Admin/configs/validator/schema_run_family_intake_receipt.yaml` and
+`validate_run_family_graph.py --intake-receipt <path>` rejects missing
+dispositions, missing provenance, or admitted/converted items without admission
+evidence. This keeps a shared intake provider reusable across consumers: each
+consumer binds to the normalized outputs and the disposition contract, not to
+one project's raw package.
+
 ## 2.2) Runprogram Pipeline (Optional)
 
 Runprogram pipelines are optional execution-queue artifacts for sequencing multiple runbundles in one runprogram.
 
 - Suggested artifact location: `run_program_<program_id>/`
 - Suggested file pattern: `runprogram_pipeline_<nn>.md`
-- Keep governance commitments in the runprogram execution spine when one exists; use pipeline artifacts for execution
+- Keep governance commitments in the runprogram execution control graph (`execution_graph.yaml`); use pipeline artifacts for execution
   queueing and gate visibility.
 - Keep runprogram roots focused on orchestration. Shared runbundle and runbook
   implementations remain in their neutral canonical homes and are consumed by
@@ -193,12 +222,12 @@ Planning Outputs placement (required):
 - [ ] Success criteria defined
 ```
 
-When program artifacts exist, recommended read order is: Program Spec -> Execution Spine -> Runbook Planning Outputs.
+When program artifacts exist, recommended read order is: Program Spec -> execution control graph (runprograms) or Execution Spine (workprograms) -> Runbook Planning Outputs.
 
 Verification checklist failure handling:
 
 - If the checklist fails, stop execution.
-- Record blockers in the runbundle README or runprogram execution spine (if applicable).
+- Record blockers in the runbundle README or runprogram execution control graph (if applicable).
 - Fix blockers before reporting completion.
 
 Validation Commands placement (required):
@@ -219,13 +248,31 @@ python 00_Admin/scripts/validate_repo_rules.py --config 00_Admin/configs/validat
 ````
 `````
 
+### Evidence adequacy
+
+Acceptance evidence MUST be capable of **observing the claim it supports**.
+Match the evidence tier to what the step actually asserts:
+
+| Claim type | Adequate evidence | Structural check alone |
+| --- | --- | --- |
+| Existence / structure / schema / counts | file/path check, parser pass, schema validation, count match | sufficient |
+| Correctness of a computed value | command output + expected value, or a validator with a pass threshold | sufficient if the validator observes the value |
+| Usability / appearance / runtime behavior | live/rendered evidence: screenshot, named-view capture, loaded-layer confirmation, or operator disposition | **not** sufficient -- supporting only |
+
+Rule: structural or metadata checks (the file exists, the XML parses, the
+renderer metadata is present) are **supporting evidence only** for any claim
+about usability, appearance, or runtime behavior. Those claims require repeatable
+live/operator evidence. Record the evidence tier alongside the result so a
+reviewer can tell a structural pass from an observed one. Narrative-only
+evidence is never acceptable (see `spec_runbook_structure.md`).
+
 ## 4) Authoring rules
 
 - Follow the markdown authoring rules and linting in `guide_markdown_authoring.md`.
 - Keep line length to 120 chars for prose.
 - Use `1.` for all ordered list items.
 - Keep assumptions and commitments explicit and separate.
-- If part of a program, include links to the spec, execution spine, and registry.
+- If part of a program, include links to the spec, the program's control surface (runprogram `execution_graph.yaml` or workprogram `execution_spine.md`), and registry.
 - If a handoff is expected, include a compacted context block per
   `00_Admin/guides/ai_operations/guide_ai_operations_stack.md`.
 - Before drafting, scan 2-3 similar runbooks and match their depth; keep MVP scope unless a gap is proven.
@@ -255,8 +302,10 @@ Runbooks should keep the same two-layer pattern as workbooks:
 - an early `execution_topology_contract` YAML block for the authoritative
   execution/delegation contract
 
-Books and runbooks own the full execution contract. Spines and pipelines only
-carry coordination summaries and references to child execution artifacts.
+Books and runbooks own their own execution contract. Program-level control
+surfaces -- the run-family execution control graph (authoritative for routing
+and gates) and the work-family spine/pipelines -- carry coordination across
+artifacts; they do not restate a book's internal contract.
 
 `model_profile` usage:
 

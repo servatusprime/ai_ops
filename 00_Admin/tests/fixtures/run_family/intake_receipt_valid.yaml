@@ -1,0 +1,20 @@
+receipt_version: "0.1.0"
+authority: derived_non_authoritative
+provider_id: runbundle-consultant-intake
+source_snapshot:
+  package_sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  inventory_ref: reports/run/intake-inventory-001.json
+items:
+  - name: existing_ground.xml
+    disposition: admitted
+    provenance:
+      source_path: consultant/existing_ground.xml
+      content_sha256: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      size_bytes: 10485760
+    evidence_ref: reports/run/tin-validation-001.json
+  - name: legacy_site.bak
+    disposition: quarantine
+    provenance:
+      source_path: consultant/legacy_site.bak
+      content_sha256: "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      size_bytes: 2048

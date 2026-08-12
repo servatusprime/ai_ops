@@ -1,0 +1,15 @@
+state_version: "0.1.0"
+authority: derived_run_state_non_authoritative
+owner_id: run_program_demo
+graph_ref: run_program_demo/execution_graph.yaml
+graph_sha256: "636f0743d7e38e7b5afc8a49c7f4050966d568fba021c59c825a663cf8fde548"
+run_instance_id: run-demo-0001
+status: running
+current_node: reconcile
+completed_nodes: [intake]
+loop_counters:
+  - edge: reconcile->reconcile
+    count: 1
+handoff_receipts:
+  - reports/run/intake-receipt-0001.json
+updated_at: "2026-08-11T00:00:00Z"

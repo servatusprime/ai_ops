@@ -214,9 +214,8 @@ rules:
         - workbooks_registry.md
       required_runprogram_files:
         - README.md
-        - execution_spine.md
-        - spec_*.md
-        - runbooks_registry.md
+        - manifest.yaml
+        - execution_graph.yaml
   - id: VS020
     enabled: true
     paths:

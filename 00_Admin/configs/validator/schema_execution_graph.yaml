@@ -1,0 +1,173 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:ai-ops:schema:execution-control-graph:0.1.0
+title: Execution Control Graph
+type: object
+additionalProperties: false
+required:
+  - graph_version
+  - authority
+  - scope
+  - owner_id
+  - reasoning_owner
+  - nodes
+  - edges
+properties:
+  graph_version:
+    const: "0.1.0"
+  authority:
+    const: authored_control_surface
+  scope:
+    enum: [runprogram, runbundle]
+  owner_id:
+    # stable artifact_id of the runprogram/runbundle this graph controls;
+    # binds the graph by ID (not path) so it survives folder moves
+    type: string
+    minLength: 1
+  reasoning_owner:
+    type: string
+    minLength: 1
+  nodes:
+    type: array
+    minItems: 1
+    items:
+      $ref: "#/$defs/node"
+  edges:
+    type: array
+    items:
+      $ref: "#/$defs/edge"
+  routes:
+    # optional named routes for multi-route programs; the graph (not the
+    # manifest route_order) is the authority for multi-route sequencing
+    type: array
+    items:
+      $ref: "#/$defs/route"
+$defs:
+  route:
+    type: object
+    additionalProperties: false
+    required: [route_id, sequence]
+    properties:
+      route_id: {type: string, minLength: 1}
+      depends_on_route: {type: string, minLength: 1}
+      sequence:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          additionalProperties: false
+          required: [node, order]
+          properties:
+            node: {type: string, minLength: 1}
+            order: {type: integer, minimum: 1}
+            profile: {type: string, minLength: 1}
+  node:
+    type: object
+    additionalProperties: false
+    required: [id, kind, interface]
+    properties:
+      id:
+        type: string
+        minLength: 1
+      kind:
+        enum: [deterministic, agentic, operator]
+      interface:
+        type: object
+        additionalProperties: false
+        required: [binding]
+        properties:
+          consumes:
+            type: array
+            items: {type: string, minLength: 1}
+          produces:
+            type: array
+            items: {type: string, minLength: 1}
+          binding:
+            const: resolved_per_run
+      determinism:
+        type: object
+        additionalProperties: false
+        required: [idempotent, content_hashed]
+        properties:
+          idempotent: {type: boolean}
+          content_hashed: {type: boolean}
+      onboarding:
+        type: object
+        additionalProperties: false
+        required: [required_context_pack]
+        properties:
+          required_context_pack:
+            type: array
+            minItems: 1
+            items: {type: string, minLength: 1}
+      handoff:
+        type: object
+        additionalProperties: false
+        required: [return_contract, write_scope]
+        properties:
+          return_contract: {type: string, minLength: 1}
+          write_scope: {type: string, minLength: 1}
+      gate:
+        type: string
+      executor_ref:
+        # optional pointer to the runbook/script/tool that executes the node
+        type: string
+        minLength: 1
+    allOf:
+      # deterministic nodes must declare idempotency + content hashing
+      - if:
+          properties: {kind: {const: deterministic}}
+        then:
+          required: [determinism]
+      # agentic nodes must be gated, hand off evidence, and carry a CSCC pack
+      - if:
+          properties: {kind: {const: agentic}}
+        then:
+          required: [onboarding, gate, handoff]
+  edge:
+    type: object
+    additionalProperties: false
+    required: [from, to, condition]
+    properties:
+      from: {type: string, minLength: 1}
+      to: {type: string, minLength: 1}
+      condition: {type: string, minLength: 1}
+      # Optional transition (handoff) controls, adopted from governed-repo
+      # edge-controls. Advisory-shaped but validated when present.
+      entry_evidence: {type: string, minLength: 1}
+      exit_evidence: {type: string, minLength: 1}
+      receipt_contract: {type: string, minLength: 1}
+      checkpoint:
+        # when a resumable run-state checkpoint is written for this transition
+        enum: [none, before_edge, after_receipt, before_edge_and_after_receipt]
+      critical:
+        # a critical edge is fail-closed: it MUST carry the full control set
+        type: boolean
+      loop:
+        type: object
+        additionalProperties: false
+        required: [condition, max_cycles, on_exceed]
+        properties:
+          condition: {type: string, minLength: 1}
+          max_cycles: {type: integer, minimum: 1}
+          on_exceed:
+            type: object
+            additionalProperties: false
+            required: [escalate_to]
+            properties:
+              escalate_to:
+                enum: [reasoning_owner, operator]
+    allOf:
+      # a critical (fail-closed) edge MUST carry the full control set
+      - if:
+          properties:
+            critical: {const: true}
+          required: [critical]
+        then:
+          required: [entry_evidence, exit_evidence, receipt_contract, checkpoint]
+x-ai-ops-invariants:
+  - authored control surface; authoritative for routing/gates/loops only
+  - never mints identity or consumes composition edges (those stay in manifest.yaml)
+  - exactly one reasoning_owner owns end-to-end reasoning
+  - every loop is bounded by max_cycles and escalates to reasoning_owner or operator
+  - node interface binding is resolved per run; inputs/outputs are not rigidly enumerated
+  - acyclic except where an edge is explicitly declared a loop

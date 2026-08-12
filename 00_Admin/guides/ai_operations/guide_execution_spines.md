@@ -17,8 +17,11 @@ related:
 
 ## Purpose and scope
 
-An **Execution Spine** is the canonical sequencing and checkpoint artifact for a Workprogram or Runprogram. It unifies
-the order of operations, dependencies, and validation gates.
+An **Execution Spine** is the canonical sequencing and checkpoint artifact for a **Workprogram** -- a work-family,
+ephemeral program artifact. It unifies the order of operations, dependencies, and validation gates.
+
+Runprograms do not use a spine. A run-family program's control surface is the authored execution control graph
+(`execution_graph.yaml`); see `00_Admin/specs/spec_execution_control_graph.md`.
 
 ## Where it lives
 

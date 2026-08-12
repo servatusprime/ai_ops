@@ -431,3 +431,167 @@ ai_generated: true
   clean, and release-quality gate PASS. The remaining `wb_vs035_evolution_01`
   bundle is intentionally left planned and decision-gated for B-1/B-3/D-4; it
   is not part of this closeout.
+
+- 2026-08-10 | run-family canon uplift (L3 + L4) | Governing artifact:
+  `90_Sandbox/ai_workbooks/wb_runfamily_canon_uplift_01_2026-08-10/wb_01_runfamily_canon_uplift_2026-08-10.md`
+  (a lane separate from the GIS 3D-marketing planning bundle, which remains
+  planning-only and was used only as evidence source). Patched six tracked
+  canonical files with reusable run-family patterns surfaced by that planning
+  work: intake/admission contract, source immutability, staged identity
+  preservation, evidence-adequacy tiers (`runbundle_readme_template.md`,
+  `runprogram_readme_template.md`, `rb_template_generic.md`,
+  `guide_runbooks.md`); a stale-guide rewrite (`guide_run_programs.md`,
+  stub->active); and an optional Provider Suitability Receipt in
+  `spec_run_family_composition.md` (0.1.1->0.2.0, L4). Full L3 set + the L4
+  spec change + the sandbox evidence-bundle improvements were explicitly
+  approved by the requestor (servatusprime) 2026-08-10. A Codex+Sol strict
+  mid-execution crosscheck (`crosscheck_review_gis_3d_marketing_runprogram_definition_2026-08-10.md`)
+  returned blocking findings; the three verified technical defects were fixed
+  in-delta -- edge-direction terminology (F-08), edge field `interface_version`
+  -> `interface_constraint` per the manifest schema (F-09), and template
+  manifest-filename placeholders -> colocated `manifest.yaml` (F-06). Process
+  findings F-01..F-04 were adjudicated as mis-scoped (the crosscheck audited the
+  planning bundle, not this uplift workbook); this ledger entry closes the
+  F-03/F-11 durable-traceability gap. Per the requestor's no-follow-on-workbook
+  directive, F-05/F-07 were fixed in-lane with real enforcement rather than
+  deferred: added `schema_run_family_provider_receipt.yaml` and
+  `schema_run_family_intake_receipt.yaml`, `validate_provider_receipt()` /
+  `validate_intake_receipt()` in `validate_run_family_graph.py` (new
+  `--provider-receipt` / `--intake-receipt` args), fixtures, and unit tests;
+  and corrected the pre-existing spec edge prose to `interface_constraint`.
+  Validation: repo validator 0 errors (baseline VS008/VS022 warnings only),
+  markdownlint clean on all changed paths, and `test_run_family_graph.py` 20/20
+  pass (four new receipt cases). Commit and push are NOT performed; held for
+  explicit requestor instruction.
+
+- 2026-08-10 | run-family execution control graph (L3 + L4) | Same governing
+  workbook. Operator approved (servatusprime) a per-runprogram authored
+  **execution control graph** as the run-family control surface, distinct from
+  the derived non-authoritative view, and directed promotion. Greenfield: zero
+  spine instances / zero runprograms exist. Promoted new canon:
+  `00_Admin/specs/spec_execution_control_graph.md`,
+  `00_Admin/configs/validator/schema_execution_graph.yaml`,
+  `01_Resources/templates/workflows/execution_graph_template.yaml`, plus
+  `validate_execution_graph()` + `--execution-graph` in
+  `validate_run_family_graph.py` with a fixture and eight negative test cases.
+  Contract: deterministic/agentic/operator node kinds, one reasoning owner,
+  per-node CSCC onboarding pack, handoff scope, per-run I/O binding, bounded
+  loops with escalation to owner/operator, undeclared-cycle rejection, and no
+  identity/composition leakage. Classified graphs in the `AGENTS.md` inventory
+  (Execution Control Graph; Derived View) with "a view is never a control
+  surface" principles; noted the boundary + CSCC context-pack read-unit in
+  `spec_repository_indices`. Repointed `guide_run_programs` and
+  `runprogram_readme_template` to `execution_graph.yaml`, added a Graph-surfaces
+  section (authored vs derived + derived-view regeneration how-to), and scoped
+  the execution spine to the work-family in `guide_execution_spines` and
+  `execution_spine_template` (work-family behavior otherwise unchanged).
+  Validation: repo validator 0 errors, run-family discover/check pass, 22/22
+  tests, ruff + yamllint + markdownlint clean. Commit and push are NOT
+  performed; held for explicit requestor instruction.
+
+- 2026-08-11 | run-family uplift completion-crosscheck remediation (L3 + L4) |
+  Same governing workbook. Independent Codex + Sol completion crosscheck
+  returned blocking; F-01..F-07 remediated in-lane, F-08 accepted (no live
+  runprogram). Fixes: reconciled the workbook (full 22+ file `affects.artifacts`,
+  swept queue/verification, added bundle README + `work_state.yaml`
+  registration); repaired the execution-graph template (missing `reconcile`
+  node) with a validating regression test; relaxed the validator parser so
+  `--execution-graph`/`--provider-receipt`/`--intake-receipt` run standalone;
+  enforced agentic gate + handoff and duplicate-node-id rejection; added the
+  resumable run-instance state contract (`schema_execution_graph_run_state.yaml`
+  with `validate_execution_graph_run_state()`, the `--execution-graph-state`
+  route, and optional node `executor_ref`; spec bumped); retired the runprogram
+  spine in
+  enforcement and docs (VS019 now requires `execution_graph.yaml` + `manifest.yaml`
+  for runprograms; runprogram-spine references purged from three guides;
+  work-family spine unchanged); de-duplicated the GIS evidence README.
+  Validation: repo validator 0 errors, run-family discover/check pass,
+  `test_run_family_graph.py` 26/26, ruff + yamllint + markdownlint clean. Commit
+  and push are NOT performed; held for explicit requestor instruction.
+
+- 2026-08-11 | run-family file-organization + templates + governed-repo
+  follow-on (L3 + L4) | Same governing workbook. (1) Graph refinement: added required
+  `owner_id` (stable-ID binding) to the execution graph and run-state so the
+  graph is a satellite of its owner and path-move-safe; spec 0.1.2;
+  schema/validator/template/fixtures updated; 26/26 tests. (2) File-organization
+  architecture made explicit for ai_ops and governed repos: File Organization
+  section in `guide_run_programs.md` (folder-per-artifact, single `manifest.yaml`
+  discovery, home-by-steward, `canonical_home` binding, minimum root documents);
+  normative rules in `spec_run_family_composition.md` (0.2.1) and the three-level
+  minimum root-documents contract in `spec_repository_indices.md` (0.3.0). (3)
+  New templates seeded from the working governed-repo runprogram:
+  `run_family_manifest_template.yaml` (schema-shaped starter, composition-only) and
+  `run_family_index_readme_template.md`. (4) Created a governed-repo planning
+  packet `wp_gis_runprogram_ai_first_alignment_01_2026-08-11` (planning-only)
+  scoping the runprogram migration and the bidirectional ai_ops additions;
+  registered in machine-local work state. Validation: repo validator 0 errors,
+  discover/check pass, 26/26 tests, ruff plus yamllint plus markdownlint clean
+  across ai_ops and the governed-repo packet. Commit and push are NOT performed;
+  held for requestor.
+
+- 2026-08-11 | execution-graph edge-controls fold-in (L4) | Same governing
+  workbook. Adopted the governed-repo edge-controls vocabulary into the ai_ops
+  execution control graph as enforced optional edge fields: `entry_evidence`,
+  `exit_evidence`, `receipt_contract`, and a `checkpoint` policy (`none`,
+  `before_edge`, `after_receipt`, `before_edge_and_after_receipt`). Dropped the
+  governed-repo `present_unvalidated` state marker in favor of validation;
+  `mode`, `loop_policy`, and `stop_escalation` were already covered by
+  `node.kind`, `loop.max_cycles`, and the escalation terminus. Updated
+  `schema_execution_graph.yaml`, `validate_run_family_graph.py`, the template,
+  fixtures (graph hash regenerated), and negative tests; `spec_execution_control_graph.md`
+  0.1.2 to 0.1.3. The governed-repo planning workbook Phase 6 and its
+  adopt-vs-defer decision are marked resolved. Validation: repo validator 0
+  errors, discover/check pass, 26/26 tests, ruff plus yamllint plus markdownlint
+  clean. Commit and push are NOT performed; held for requestor.
+
+- 2026-08-11 | follow-up completion-crosscheck remediation (L4) | Same governing
+  workbook. Second independent Codex plus Sol crosscheck returned blocking;
+  F-01..F-06 remediated in-lane, F-07 accepted (no live runprogram). Closed
+  fail-open validator gaps: run-state `owner_id` must be non-empty and equal the
+  graph's; agentic nodes must declare `handoff.write_scope`; unsupported
+  top-level/node/edge/run-state fields are rejected (schema/runtime parity);
+  negative tests added; `spec_execution_control_graph.md` 0.1.3 to 0.1.4. Purged
+  runprogram-spine and consumer-contained-runbundle references from
+  `runbundle_readme_template`, `runprogram_readme_template`, `guide_runbooks`,
+  `guide_workflows`, and `guide_file_placement` (work-family spine unchanged).
+  Narrowed the discovery prose to "uniform `manifest.yaml` under approved homes"
+  and softened the manifest starter from "schema-conformant" to "schema-shaped".
+  Reconciled the governing workbook to the full three-lane scope (frontmatter
+  0.2.0, intake/topology/cold-start/queue/status/selfcheck) and added an
+  eight-row 2026-08-11 L4 decision table. Validation: repo validator 0 errors,
+  discover/check pass, 26/26 tests, ruff plus yamllint plus markdownlint clean.
+  Commit and push are NOT performed; held for requestor.
+
+- 2026-08-11 | governed design-crosscheck resolution C-01/C-02 (L4) | Same
+  governing workbook. A governed-repo design crosscheck of the alignment
+  planning workbook exposed two ai_ops contract gaps; both resolved in ai_ops.
+  C-01 (multi-route): the execution control graph is now the authority for
+  multi-route sequencing via an optional `routes` block (named routes, per-route
+  node `profile`, `depends_on_route`); manifest edge route/queue order demoted to
+  a single-route convenience (`spec_execution_control_graph.md` 0.1.5,
+  `spec_run_family_composition.md` 0.2.2). C-02 (fail-open edge controls): added
+  `critical: true` edges that require the full transition-control set so a
+  migration cannot drop controls silently. Updated schema, validator (route
+  validation plus critical-edge enforcement), template, fixtures (graph hash
+  regenerated), guide, and negative tests. The governed planning packet marks
+  both open decisions resolved. Validation: repo validator 0 errors,
+  discover/check pass, 26/26 tests, ruff plus yamllint plus markdownlint clean.
+  Commit and push are NOT performed; held for requestor.
+
+- 2026-08-11 | rerun-2 completion-crosscheck remediation (L4) | Same governing
+  workbook. Third completion re-review returned blocking on two criticals plus
+  two high; F-01..F-04 remediated in-lane, F-05 accepted (no live runprogram).
+  F-02 (nested parity): added a `_reject_unsupported` runtime mirror of the
+  schemas' nested `additionalProperties: false` for interface, determinism,
+  onboarding, handoff, loop, on_exceed, route, route step, and run-state
+  loop_counter; plus boolean-`critical`, self-dependent-route,
+  duplicate-step-order, and non-string `handoff_receipts` checks. Adversarial
+  probe: 13/13 previously-accepted malformed cases now rejected; nested-parity
+  regression tests added (28/28). F-01: added `guide_workflows.md` and
+  `guide_file_placement.md` to declared scope and reworded the topology write
+  target. F-03: workbook status planned -> completed (commit is a release gate,
+  not execution completeness); purged six-target language; added a multi-route
+  L4 decision row. F-04: reconciled `guide_workflows.md`. Corrected an invalid
+  `status` enum in the reviewer's own rerun-2 file. Validation: repo validator 0
+  errors, discover/check pass, 28/28 tests, ruff plus yamllint plus markdownlint
+  clean. Commit and push are NOT performed; held for requestor.

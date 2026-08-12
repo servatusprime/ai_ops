@@ -30,6 +30,7 @@ Read specs in this order:
 
 1. `spec_artifact_graph_identity.md` - Shared stable identity, canonical-home, and edge-authority rules
 1. `spec_run_family_composition.md` - Runprogram/runbundle/runbook consumption and resolution rules
+1. `spec_execution_control_graph.md` - Authored run-family execution control graph (routing/handoffs/loops/escalation)
 1. `spec_workbook_structure.md` - Workbook structure and execution pattern
 1. `spec_runbook_structure.md` - Runbook structure and governance
 1. `spec_workflow_structure.md` - Workflow intent patterns and generation rules

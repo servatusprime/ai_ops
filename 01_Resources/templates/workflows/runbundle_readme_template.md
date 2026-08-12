@@ -40,6 +40,53 @@ Companion files:
 The consumer manifest owns outgoing `consumes` edges. This table is a human
 projection. A runbook may be consumed by multiple runbundles without copying.
 
+## Intake / Admission Contract (Conditional)
+
+Complete this section when the runbundle is an **intake or admission provider**:
+it accepts heterogeneous or variable inputs (consultant packages, vendor
+exports, mixed formats) and normalizes them for downstream consumers. Omit it
+for runbundles whose inputs are fixed and homogeneous.
+
+An intake provider MUST make admission explicit and lossless in the audit sense:
+every received item resolves to exactly one disposition and **nothing
+disappears silently**.
+
+- **Source immutability and provenance snapshot.** Preserve originals unmodified.
+  Record an inventory that preserves original names, relative paths, sizes,
+  content hashes, and timestamps where available, plus package relationships
+  (xrefs, sidecars, dependencies). Freeze and hash the received package before
+  any conversion.
+- **Format / capability matrix.** For each anticipated input class, declare how
+  it is read, what capability or tool it requires, and whether that capability
+  is verified. Unsupported or partially supported formats are named, not
+  skipped.
+- **Admission disposition (per item).** Every inventoried item receives one
+  disposition:
+
+  | Disposition | Meaning |
+  | --- | --- |
+  | `admitted` | Read and normalized as authoritative for its role. |
+  | `conversion_required` | Usable only after a pinned, receipted conversion. |
+  | `reference_only` | Retained as context/evidence; never authoritative geometry or data. |
+  | `quarantine` | Held for review (ambiguous currency, backups, unexplained conflicts). |
+  | `unsupported` | No admission path yet; a future adapter is required. |
+  | `blocked` | A dependency or gate prevents admission until resolved. |
+
+- **Admission receipt.** The run MUST emit a receipt stating what was read, what
+  was converted, what was retained only as evidence, what was quarantined, and
+  what remains blocked. The receipt is run evidence and stays separate from the
+  reusable definition (see `spec_run_family_composition.md`). Its canonical shape
+  is `00_Admin/configs/validator/schema_run_family_intake_receipt.yaml`, enforced
+  by `validate_run_family_graph.py --intake-receipt <path>`, which rejects a
+  receipt with an item missing a disposition, missing provenance, or an
+  admitted/converted item with no admission evidence.
+
+Format-capability matrix starter:
+
+| Input class | Read path / capability | Capability verified | Default disposition |
+| --- | --- | --- | --- |
+| `<class>` | `<tool_or_parser>` | `yes/no/conditional` | `<disposition>` |
+
 ## Execution Strategy
 
 | Artifact | Mode | Model Tier | Isolation | Actor | Notes |
@@ -90,11 +137,14 @@ Batch-sequenced parallel guidance:
 
 ## Authority Source
 
-- Membership authority: `<path/to/runbundle_manifest.yaml>`
-- Optional consumer/gate authority: `<consumer_id>` / `<resolved_spine_path>`
+- Membership authority: colocated `manifest.yaml` (the run-family discovery name;
+  do not use a `runbundle_manifest.yaml` variant)
+- Optional control authority: the consuming runprogram's `execution_graph.yaml`
+  (or this runbundle's own `execution_graph.yaml` when it branches). Runbundles
+  do not use a work-family execution spine.
 - Local queue artifact: `rnb_<bundle_name>_<nn>.md`
-- Conflict rule: the explicitly referenced spine governs its gates; directory
-  ancestry never grants authority.
+- Conflict rule: the control graph governs control flow; directory ancestry
+  never grants authority.
 
 ## CSCC Preflight
 
