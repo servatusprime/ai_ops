@@ -1,6 +1,7 @@
 graph_version: 0.1.0
 authority: derived_non_authoritative
 generated_by: 00_Admin/scripts/generate_run_family_views.py
+generator_version: 0.2.0
 source_digest: 77de409a834ab74858f3e80bb920c82b21dcbc3bda65ff0deb491319b25de12c
 graph_kind: governance_routing_graph
 scope: run_family_workflow_spec_validator_projection

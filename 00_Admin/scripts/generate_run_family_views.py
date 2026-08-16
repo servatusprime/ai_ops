@@ -24,6 +24,27 @@ DEFAULT_TARGETS = {
     "artifact_dependency_graph": Path("00_Admin/reports/generated/graphs/artifact_dependency_graph.yaml"),
     "governance_routing_graph": Path("00_Admin/reports/generated/graphs/governance_routing_graph.yaml"),
 }
+GENERATOR_VERSION = "0.2.0"
+REGISTRY_VERSION = "0.2.0"
+GENERATOR_SCRIPT = "00_Admin/scripts/generate_run_family_views.py"
+
+
+def generator_provenance(repo_root: Path | None) -> tuple[str, str]:
+    """Return provenance that resolves from both ai_ops and governed roots."""
+    if repo_root is not None:
+        current_root = Path(__file__).resolve().parents[2]
+        if repo_root.resolve() != current_root:
+            sibling_ai_ops = repo_root.resolve().parent / "ai_ops"
+            provenance_target = (
+                sibling_ai_ops
+                / "00_Admin/scripts/generate_run_family_views.py"
+            )
+            if not provenance_target.is_file():
+                raise ValueError(
+                    "governed-root generator provenance requires a resolvable sibling ai_ops generator"
+                )
+            return "../" + "ai_ops/00_Admin/scripts/generate_run_family_views.py", GENERATOR_VERSION
+    return GENERATOR_SCRIPT, GENERATOR_VERSION
 
 
 def render_yaml(value: dict[str, Any]) -> str:
@@ -165,10 +186,12 @@ def build_governance_routing_view(repo_root: Path) -> dict[str, Any]:
         "validator_rule": vs036 or {},
         "workflow_hashes": workflow_hashes,
     })
+    generated_by, generator_version = generator_provenance(repo_root)
     return {
         "graph_version": "0.1.0",
         "authority": "derived_non_authoritative",
-        "generated_by": "00_Admin/scripts/generate_run_family_views.py",
+        "generated_by": generated_by,
+        "generator_version": generator_version,
         "source_digest": source_digest,
         "graph_kind": "governance_routing_graph",
         "scope": "run_family_workflow_spec_validator_projection",
@@ -193,11 +216,13 @@ def build_views(
         consumes[edge["consumer_id"]].append(edge["provider_id"])
         consumed_by[edge["provider_id"]].append(edge["consumer_id"])
     source_digest = digest(normalized)
+    generated_by, generator_version = generator_provenance(repo_root)
     registry = {
-        "registry_version": "0.1.0",
+        "registry_version": REGISTRY_VERSION,
         "authority": "derived_non_authoritative",
         "authoritative_source": "colocated_run_family_manifest",
-        "generated_by": "00_Admin/scripts/generate_run_family_views.py",
+        "generated_by": generated_by,
+        "generator_version": generator_version,
         "source_digest": source_digest,
         "artifacts": [
             {
@@ -234,7 +259,8 @@ def build_views(
     common = {
         "graph_version": "0.1.0",
         "authority": "derived_non_authoritative",
-        "generated_by": "00_Admin/scripts/generate_run_family_views.py",
+        "generated_by": generated_by,
+        "generator_version": generator_version,
         "source_digest": source_digest,
     }
     return {

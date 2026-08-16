@@ -383,6 +383,13 @@
 |       +-- tests/
 |           |-- .gitkeep
 |           +-- test_template_module_smoke.py
+|-- 90_Sandbox/
+|   +-- ai_workbooks/
+|       +-- wb_runfamily_generator_determinism_01_2026-08-16/
+|           |-- README.md
+|           |-- review_runfamily_generator_determinism_sol_recheck_2026-08-16.md
+|           |-- validation_receipt_2026-08-16.md
+|           +-- wb_runfamily_generator_determinism_01_2026-08-16.md
 |-- AGENTS.md
 |-- CHANGELOG.md
 |-- CLAUDE.md

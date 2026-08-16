@@ -23,12 +23,13 @@ VERSION_CONSTRAINT = re.compile(
 )
 INTERFACE_VERSION = re.compile(r"^(0|[1-9][0-9]*)(?:\.(0|[1-9][0-9]*)){0,2}$")
 SHA256 = re.compile(r"^[a-f0-9]{64}$")
+REGISTRY_VERSION = "0.2.0"
 KINDS = {"runprogram", "runbundle", "runbook"}
 DIRECTIONS = {
     ("runprogram", "runbundle"),
     ("runbundle", "runbook"),
 }
-ARTIFACT_REQUIRED = {
+ARTIFACT_REQUIRED_ORDER = (
     "artifact_id",
     "artifact_kind",
     "canonical_home",
@@ -37,7 +38,8 @@ ARTIFACT_REQUIRED = {
     "lifecycle",
     "steward",
     "content_sha256",
-}
+)
+ARTIFACT_REQUIRED = frozenset(ARTIFACT_REQUIRED_ORDER)
 EDGE_REQUIRED = {
     "consumer_id",
     "provider_id",
@@ -53,6 +55,22 @@ EDGE_REQUIRED = {
 }
 ROOT_ALLOWED = {"schema_version", "artifacts", "consumes", "parameter_profiles"}
 ARTIFACT_ALLOWED = set(ARTIFACT_REQUIRED)
+MANIFEST_ALLOWED = {
+    "manifest_version",
+    *ARTIFACT_REQUIRED,
+    "consumes",
+    "parameter_profiles",
+    "entry_artifacts",
+    "exit_artifacts",
+    "gates",
+    "idempotency",
+}
+MANIFEST_REQUIRED = {
+    "manifest_version",
+    *ARTIFACT_REQUIRED,
+    "consumes",
+    "parameter_profiles",
+}
 EDGE_ALLOWED = set(EDGE_REQUIRED) | {"retry"}
 RECEIPT_VERSION = "0.1.0"
 DERIVED_NON_AUTHORITATIVE = "derived_non_authoritative"
@@ -67,6 +85,9 @@ PROVIDER_RECEIPT_REQUIRED = {
     "known_limits",
     "substantiated_by",
 }
+PROVIDER_RECEIPT_ALLOWED = set(PROVIDER_RECEIPT_REQUIRED)
+PROVIDER_CAPABILITY_ALLOWED = {"capability", "evidence_ref"}
+PROVIDER_EVIDENCE_ALLOWED = {"kind", "ref"}
 INTAKE_RECEIPT_REQUIRED = {
     "receipt_version",
     "authority",
@@ -74,6 +95,10 @@ INTAKE_RECEIPT_REQUIRED = {
     "source_snapshot",
     "items",
 }
+INTAKE_RECEIPT_ALLOWED = set(INTAKE_RECEIPT_REQUIRED)
+INTAKE_SOURCE_SNAPSHOT_ALLOWED = {"package_sha256", "inventory_ref"}
+INTAKE_ITEM_ALLOWED = {"name", "disposition", "provenance", "evidence_ref"}
+INTAKE_PROVENANCE_ALLOWED = {"source_path", "content_sha256", "size_bytes"}
 ADMISSION_DISPOSITIONS = {
     "admitted",
     "conversion_required",
@@ -83,6 +108,14 @@ ADMISSION_DISPOSITIONS = {
     "blocked",
 }
 ADMISSION_EVIDENCE_REQUIRED = {"admitted", "conversion_required"}
+
+
+def _nonempty_string(value: Any) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def _nonnegative_integer(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
 GRAPH_VERSION = "0.1.0"
 CONTROL_AUTHORITY = "authored_control_surface"
 EXECUTION_GRAPH_REQUIRED = {
@@ -322,12 +355,23 @@ def validate_provider_receipt(receipt: dict[str, Any]) -> None:
     evidence and never mints identity or redefines an interface.
     """
     errors: list[str] = []
+    unsupported = sorted(set(receipt) - PROVIDER_RECEIPT_ALLOWED)
+    if unsupported:
+        errors.append(
+            "provider receipt has unsupported fields: " + ", ".join(unsupported)
+        )
     missing = sorted(PROVIDER_RECEIPT_REQUIRED - receipt.keys())
     if missing:
         errors.append("provider receipt missing fields: " + ", ".join(missing))
-    if receipt.get("receipt_version") not in (None, RECEIPT_VERSION):
+    if "receipt_version" in receipt and (
+        not isinstance(receipt["receipt_version"], str)
+        or receipt["receipt_version"] != RECEIPT_VERSION
+    ):
         errors.append(f"provider receipt_version must be {RECEIPT_VERSION}")
-    if "authority" in receipt and receipt["authority"] != DERIVED_NON_AUTHORITATIVE:
+    if "authority" in receipt and (
+        not isinstance(receipt["authority"], str)
+        or receipt["authority"] != DERIVED_NON_AUTHORITATIVE
+    ):
         errors.append(
             f"provider receipt authority must be {DERIVED_NON_AUTHORITATIVE}"
         )
@@ -336,6 +380,17 @@ def validate_provider_receipt(receipt: dict[str, Any]) -> None:
         isinstance(interface, str) and INTERFACE_VERSION.fullmatch(interface)
     ):
         errors.append("provider receipt interface_version is invalid")
+    if "provider_id" in receipt and (
+        not isinstance(receipt["provider_id"], str) or not receipt["provider_id"].strip()
+    ):
+        errors.append("provider receipt provider_id must be a non-empty string")
+    for field in ("entry_artifacts", "exit_artifacts", "known_limits"):
+        value = receipt.get(field)
+        if value is not None and (
+            not isinstance(value, list)
+            or any(not isinstance(item, str) or not item.strip() for item in value)
+        ):
+            errors.append(f"provider receipt {field} must be a string array")
     exits = receipt.get("exit_artifacts")
     if isinstance(exits, list) and not exits:
         errors.append("provider receipt exit_artifacts is empty")
@@ -344,10 +399,17 @@ def validate_provider_receipt(receipt: dict[str, Any]) -> None:
         if not capabilities:
             errors.append("provider receipt validated_capabilities is empty")
         for index, cap in enumerate(capabilities):
+            if isinstance(cap, dict):
+                unsupported_cap = sorted(set(cap) - PROVIDER_CAPABILITY_ALLOWED)
+                if unsupported_cap:
+                    errors.append(
+                        f"provider receipt capability[{index}] has unsupported "
+                        "fields: " + ", ".join(unsupported_cap)
+                    )
             if (
                 not isinstance(cap, dict)
-                or not cap.get("capability")
-                or not cap.get("evidence_ref")
+                or not _nonempty_string(cap.get("capability"))
+                or not _nonempty_string(cap.get("evidence_ref"))
             ):
                 errors.append(
                     f"provider receipt capability[{index}] needs "
@@ -357,10 +419,18 @@ def validate_provider_receipt(receipt: dict[str, Any]) -> None:
         errors.append("provider receipt validated_capabilities must be a list")
     substantiated = receipt.get("substantiated_by")
     if isinstance(substantiated, dict):
+        unsupported_evidence = sorted(
+            set(substantiated) - PROVIDER_EVIDENCE_ALLOWED
+        )
+        if unsupported_evidence:
+            errors.append(
+                "provider receipt substantiated_by has unsupported fields: "
+                + ", ".join(unsupported_evidence)
+            )
         if substantiated.get("kind") not in {
             "run_instance_lock",
             "run_receipt",
-        } or not substantiated.get("ref"):
+        } or not _nonempty_string(substantiated.get("ref")):
             errors.append(
                 "provider receipt substantiated_by needs kind "
                 "(run_instance_lock|run_receipt) and ref"
@@ -380,21 +450,42 @@ def validate_intake_receipt(receipt: dict[str, Any]) -> None:
     items must cite admission evidence.
     """
     errors: list[str] = []
+    unsupported = sorted(set(receipt) - INTAKE_RECEIPT_ALLOWED)
+    if unsupported:
+        errors.append(
+            "intake receipt has unsupported fields: " + ", ".join(unsupported)
+        )
     missing = sorted(INTAKE_RECEIPT_REQUIRED - receipt.keys())
     if missing:
         errors.append("intake receipt missing fields: " + ", ".join(missing))
-    if receipt.get("receipt_version") not in (None, RECEIPT_VERSION):
+    if "receipt_version" in receipt and (
+        not isinstance(receipt["receipt_version"], str)
+        or receipt["receipt_version"] != RECEIPT_VERSION
+    ):
         errors.append(f"intake receipt_version must be {RECEIPT_VERSION}")
-    if "authority" in receipt and receipt["authority"] != DERIVED_NON_AUTHORITATIVE:
+    if "authority" in receipt and (
+        not isinstance(receipt["authority"], str)
+        or receipt["authority"] != DERIVED_NON_AUTHORITATIVE
+    ):
         errors.append(
             f"intake receipt authority must be {DERIVED_NON_AUTHORITATIVE}"
         )
+    if "provider_id" in receipt and not _nonempty_string(receipt["provider_id"]):
+        errors.append("intake receipt provider_id must be a non-empty string")
     snapshot = receipt.get("source_snapshot")
     if isinstance(snapshot, dict):
+        unsupported_snapshot = sorted(
+            set(snapshot) - INTAKE_SOURCE_SNAPSHOT_ALLOWED
+        )
+        if unsupported_snapshot:
+            errors.append(
+                "intake receipt source_snapshot has unsupported fields: "
+                + ", ".join(unsupported_snapshot)
+            )
         package = snapshot.get("package_sha256")
         if not isinstance(package, str) or not SHA256.fullmatch(package):
             errors.append("intake receipt source_snapshot.package_sha256 is invalid")
-        if not snapshot.get("inventory_ref"):
+        if not _nonempty_string(snapshot.get("inventory_ref")):
             errors.append("intake receipt source_snapshot.inventory_ref is required")
     elif "source_snapshot" not in missing:
         errors.append("intake receipt source_snapshot must be an object")
@@ -406,7 +497,15 @@ def validate_intake_receipt(receipt: dict[str, Any]) -> None:
             if not isinstance(item, dict):
                 errors.append(f"intake item [{index}] must be an object")
                 continue
-            label = item.get("name") or f"[{index}]"
+            label = item.get("name") if _nonempty_string(item.get("name")) else f"[{index}]"
+            if not _nonempty_string(item.get("name")):
+                errors.append(f"intake item {label} name must be a non-empty string")
+            unsupported_item = sorted(set(item) - INTAKE_ITEM_ALLOWED)
+            if unsupported_item:
+                errors.append(
+                    f"intake item {label} has unsupported fields: "
+                    + ", ".join(unsupported_item)
+                )
             disposition = item.get("disposition")
             if disposition not in ADMISSION_DISPOSITIONS:
                 errors.append(
@@ -417,6 +516,14 @@ def validate_intake_receipt(receipt: dict[str, Any]) -> None:
             if not isinstance(provenance, dict):
                 errors.append(f"intake item {label} missing provenance")
             else:
+                unsupported_provenance = sorted(
+                    set(provenance) - INTAKE_PROVENANCE_ALLOWED
+                )
+                if unsupported_provenance:
+                    errors.append(
+                        f"intake item {label} provenance has unsupported fields: "
+                        + ", ".join(unsupported_provenance)
+                    )
                 content_hash = provenance.get("content_sha256")
                 if not isinstance(content_hash, str) or not SHA256.fullmatch(
                     content_hash
@@ -424,16 +531,22 @@ def validate_intake_receipt(receipt: dict[str, Any]) -> None:
                     errors.append(
                         f"intake item {label} provenance.content_sha256 is invalid"
                     )
-                if not provenance.get("source_path"):
+                if not _nonempty_string(provenance.get("source_path")):
                     errors.append(
                         f"intake item {label} provenance.source_path is required"
                     )
-                if not isinstance(provenance.get("size_bytes"), int):
+                if not _nonnegative_integer(provenance.get("size_bytes")):
                     errors.append(
-                        f"intake item {label} provenance.size_bytes is required"
+                        f"intake item {label} provenance.size_bytes must be a non-negative integer"
                     )
-            if disposition in ADMISSION_EVIDENCE_REQUIRED and not item.get(
-                "evidence_ref"
+            if "evidence_ref" in item and not _nonempty_string(
+                item.get("evidence_ref")
+            ):
+                errors.append(
+                    f"intake item {label} evidence_ref must be a non-empty string"
+                )
+            elif disposition in ADMISSION_EVIDENCE_REQUIRED and not _nonempty_string(
+                item.get("evidence_ref")
             ):
                 errors.append(
                     f"intake item {label} disposition '{disposition}' "
@@ -930,18 +1043,55 @@ def graph_from_manifests(paths: list[Path]) -> dict[str, Any]:
     parameter_profiles: dict[str, Any] = {}
     for path in sorted(paths, key=lambda item: item.as_posix()):
         manifest = load_yaml(path)
+        unsupported = sorted(set(manifest) - MANIFEST_ALLOWED)
+        if unsupported:
+            raise ContractError(
+                [
+                    f"{path}: unsupported manifest fields: "
+                    + ", ".join(unsupported)
+                ]
+            )
+        missing = sorted(MANIFEST_REQUIRED - manifest.keys())
+        if missing:
+            raise ContractError(
+                [f"{path}: missing manifest fields: " + ", ".join(missing)]
+            )
+        if manifest.get("manifest_version") != "0.1.0":
+            raise ContractError([f"{path}: manifest_version must be 0.1.0"])
+        consumes = manifest.get("consumes")
+        if not isinstance(consumes, list):
+            raise ContractError([f"{path}: manifest consumes must be a list"])
+        for index, edge in enumerate(consumes):
+            if not isinstance(edge, dict):
+                raise ContractError(
+                    [f"{path}: manifest consumes[{index}] must be a mapping"]
+                )
+        profiles = manifest.get("parameter_profiles")
+        if not isinstance(profiles, dict):
+            raise ContractError(
+                [f"{path}: manifest parameter_profiles must be a mapping"]
+            )
+        for name, profile in profiles.items():
+            if not isinstance(name, str) or not name:
+                raise ContractError(
+                    [f"{path}: manifest parameter profile names must be non-empty strings"]
+                )
+            if not isinstance(profile, dict):
+                raise ContractError(
+                    [f"{path}: manifest parameter profile {name} must be a mapping"]
+                )
         artifact = {
             key: manifest.get(key)
-            for key in ARTIFACT_REQUIRED
+            for key in ARTIFACT_REQUIRED_ORDER
             if key in manifest
         }
         artifacts.append(artifact)
         consumer_id = manifest.get("artifact_id")
-        for edge in manifest.get("consumes", []):
+        for edge in consumes:
             copied = dict(edge)
             copied["_declared_by"] = consumer_id
             edges.append(copied)
-        for name, profile in manifest.get("parameter_profiles", {}).items():
+        for name, profile in profiles.items():
             profile_key = f"{consumer_id}:{name}"
             parameter_profiles[profile_key] = profile
     return {

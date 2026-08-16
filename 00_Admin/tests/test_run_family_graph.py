@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import re
 import subprocess
 import sys
@@ -38,6 +39,15 @@ repo_validator = load_module("validate_repo_rules")
 
 def load(path: Path):
     return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+def ensure_sibling_ai_ops_fixture(root: Path) -> None:
+    target = (
+        root.resolve().parent
+        / "ai_ops/00_Admin/scripts/generate_run_family_views.py"
+    )
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("# fixture generator target\n", encoding="utf-8")
 
 
 class RunFamilyGraphTests(unittest.TestCase):
@@ -88,6 +98,69 @@ class RunFamilyGraphTests(unittest.TestCase):
         self.assertEqual(
             alpha_edge["idempotency"]["key_fields"], ["run_instance_id"]
         )
+
+    def test_manifest_unknown_top_level_field_fails_closed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "manifest.yaml"
+            path.write_text(
+                """manifest_version: '0.1.0'
+artifact_id: runprogram-alpha
+artifact_kind: runprogram
+canonical_home: 00_Admin/runbooks/runprogram-alpha/README.md
+artifact_version: 1.0.0
+interface_version: 1.0.0
+lifecycle: active
+steward: repo_maintainers
+content_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+consumes: []
+parameter_profiles: {}
+routes: []
+""",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                validator.ContractError,
+                "unsupported manifest fields: routes",
+            ):
+                validator.graph_from_manifests([path])
+
+    def test_manifest_required_fields_and_types_fail_closed(self):
+        base = """manifest_version: '0.1.0'
+artifact_id: runprogram-alpha
+artifact_kind: runprogram
+canonical_home: 00_Admin/runbooks/runprogram-alpha/README.md
+artifact_version: 1.0.0
+interface_version: 1.0.0
+lifecycle: active
+steward: repo_maintainers
+content_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+consumes: []
+parameter_profiles: {}
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "manifest.yaml"
+
+            path.write_text(base.replace("consumes: []\n", ""), encoding="utf-8")
+            with self.assertRaisesRegex(
+                validator.ContractError, "missing manifest fields: consumes"
+            ):
+                validator.graph_from_manifests([path])
+
+            path.write_text(base.replace("consumes: []", "consumes: null"), encoding="utf-8")
+            with self.assertRaisesRegex(
+                validator.ContractError, "manifest consumes must be a list"
+            ):
+                validator.graph_from_manifests([path])
+
+            path.write_text(
+                base.replace("parameter_profiles: {}", "parameter_profiles: null"),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                validator.ContractError,
+                "manifest parameter_profiles must be a mapping",
+            ):
+                validator.graph_from_manifests([path])
 
     def test_version_range_evaluation_is_sole_provider_only(self):
         self.assertTrue(validator.version_satisfies(">=1.2,<2", "1.2.0"))
@@ -189,6 +262,23 @@ class RunFamilyGraphTests(unittest.TestCase):
     def test_provider_receipt_negatives_fail(self):
         base = load(FIXTURES / "provider_receipt_valid.yaml")
 
+        unknown_top_level = {**base, "operator_note": "not in schema"}
+        with self.assertRaisesRegex(
+            validator.ContractError,
+            "provider receipt has unsupported fields: operator_note",
+        ):
+            validator.validate_provider_receipt(unknown_top_level)
+
+        unknown_nested = {**base}
+        unknown_nested["validated_capabilities"] = [
+            {"capability": "x", "evidence_ref": "e", "status": "pass"}
+        ]
+        with self.assertRaisesRegex(
+            validator.ContractError,
+            r"capability\[0\] has unsupported fields: status",
+        ):
+            validator.validate_provider_receipt(unknown_nested)
+
         incomplete = {**base}
         del incomplete["substantiated_by"]
         with self.assertRaisesRegex(
@@ -208,6 +298,21 @@ class RunFamilyGraphTests(unittest.TestCase):
         ):
             validator.validate_provider_receipt(bad_authority)
 
+        bad_capability_type = {
+            **base,
+            "validated_capabilities": [{"capability": 1, "evidence_ref": "e"}],
+        }
+        with self.assertRaisesRegex(
+            validator.ContractError, r"capability\[0\] needs capability and evidence_ref"
+        ):
+            validator.validate_provider_receipt(bad_capability_type)
+
+        bad_artifact_type = {**base, "entry_artifacts": [7]}
+        with self.assertRaisesRegex(
+            validator.ContractError, "entry_artifacts must be a string array"
+        ):
+            validator.validate_provider_receipt(bad_artifact_type)
+
     def test_intake_receipt_valid_passes(self):
         receipt = load(FIXTURES / "intake_receipt_valid.yaml")
         self.assertIsNone(validator.validate_intake_receipt(receipt))
@@ -219,6 +324,22 @@ class RunFamilyGraphTests(unittest.TestCase):
             validator.ContractError, "disposition must be one of"
         ):
             validator.validate_intake_receipt(no_disposition)
+
+        unknown_top_level = load(FIXTURES / "intake_receipt_valid.yaml")
+        unknown_top_level["operator_note"] = "not in schema"
+        with self.assertRaisesRegex(
+            validator.ContractError,
+            "intake receipt has unsupported fields: operator_note",
+        ):
+            validator.validate_intake_receipt(unknown_top_level)
+
+        unknown_nested = load(FIXTURES / "intake_receipt_valid.yaml")
+        unknown_nested["items"][0]["provenance"]["timestamp"] = "not in schema"
+        with self.assertRaisesRegex(
+            validator.ContractError,
+            r"intake item existing_ground.xml provenance has unsupported fields: timestamp",
+        ):
+            validator.validate_intake_receipt(unknown_nested)
 
         no_provenance = load(FIXTURES / "intake_receipt_valid.yaml")
         del no_provenance["items"][0]["provenance"]
@@ -233,6 +354,29 @@ class RunFamilyGraphTests(unittest.TestCase):
             validator.ContractError, "requires evidence_ref"
         ):
             validator.validate_intake_receipt(admitted_no_evidence)
+
+        negative_size = load(FIXTURES / "intake_receipt_valid.yaml")
+        negative_size["items"][0]["provenance"]["size_bytes"] = -1
+        with self.assertRaisesRegex(
+            validator.ContractError, "size_bytes must be a non-negative integer"
+        ):
+            validator.validate_intake_receipt(negative_size)
+
+        integer_provider = load(FIXTURES / "intake_receipt_valid.yaml")
+        integer_provider["provider_id"] = 7
+        with self.assertRaisesRegex(
+            validator.ContractError, "provider_id must be a non-empty string"
+        ):
+            validator.validate_intake_receipt(integer_provider)
+
+        invalid_evidence_ref = load(FIXTURES / "intake_receipt_valid.yaml")
+        invalid_evidence_ref["items"][0]["disposition"] = "reference_only"
+        invalid_evidence_ref["items"][0]["evidence_ref"] = 7
+        with self.assertRaisesRegex(
+            validator.ContractError,
+            "evidence_ref must be a non-empty string",
+        ):
+            validator.validate_intake_receipt(invalid_evidence_ref)
 
     def test_execution_graph_valid_passes(self):
         graph = load(FIXTURES / "execution_graph_valid.yaml")
@@ -579,6 +723,8 @@ class RunFamilyGraphTests(unittest.TestCase):
         self.assertEqual(first, second)
         registry = first["registry"]
         self.assertEqual(registry["authority"], "derived_non_authoritative")
+        self.assertEqual(registry["registry_version"], generator.REGISTRY_VERSION)
+        self.assertEqual(registry["generator_version"], generator.GENERATOR_VERSION)
         shared_bundle = next(
             row for row in registry["artifacts"]
             if row["artifact_id"] == "runbundle-shared"
@@ -588,9 +734,91 @@ class RunFamilyGraphTests(unittest.TestCase):
             ["runprogram-alpha", "runprogram-beta"],
         )
 
+    def test_generator_outputs_are_stable_across_hash_seeds(self):
+        script = SCRIPTS / "generate_run_family_views.py"
+        output_sets = []
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "governed_root"
+            root.mkdir()
+            ensure_sibling_ai_ops_fixture(root)
+            aggregate = load(VALID)
+            for artifact in aggregate["artifacts"]:
+                manifest = {
+                    "manifest_version": "0.1.0",
+                    **artifact,
+                    "consumes": [
+                        edge
+                        for edge in aggregate["consumes"]
+                        if edge["consumer_id"] == artifact["artifact_id"]
+                    ],
+                    "parameter_profiles": {},
+                }
+                manifest_path = (
+                    root
+                    / "00_Admin/runbooks"
+                    / artifact["artifact_id"]
+                    / "manifest.yaml"
+                )
+                manifest_path.parent.mkdir(parents=True, exist_ok=True)
+                manifest_path.write_text(
+                    yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8"
+                )
+            for seed in ("0", "1", "7", "15"):
+                env = os.environ.copy()
+                env["PYTHONHASHSEED"] = seed
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        str(script),
+                        "--repo-root",
+                        str(root),
+                        "--write",
+                    ],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    env=env,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                output_sets.append(
+                    tuple(
+                        (root / target).read_bytes()
+                        for target in (
+                            "00_Admin/runbooks/run_family_registry.yaml",
+                            "00_Admin/reports/generated/graphs/run_family_graph.yaml",
+                            "00_Admin/reports/generated/graphs/artifact_dependency_graph.yaml",
+                            "00_Admin/reports/generated/graphs/governance_routing_graph.yaml",
+                        )
+                    )
+                )
+            self.assertEqual(len(set(output_sets)), 1)
+
+    def test_governed_root_generator_provenance_resolves(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "governed_root"
+            root.mkdir()
+            ensure_sibling_ai_ops_fixture(root)
+            views = generator.build_views(load(VALID), root)
+            for view in views.values():
+                self.assertEqual(
+                    view["generated_by"],
+                    "../ai_ops/00_Admin/scripts/generate_run_family_views.py",
+                )
+                self.assertTrue((root / view["generated_by"]).resolve().is_file())
+                self.assertEqual(view["generator_version"], generator.GENERATOR_VERSION)
+
+    def test_governed_root_generator_provenance_rejects_missing_target(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "governed_root"
+            root.mkdir()
+            (root.parent / "ai_ops").mkdir()
+            with self.assertRaisesRegex(ValueError, "resolvable sibling ai_ops"):
+                generator.build_views(load(VALID), root)
+
     def test_governance_routing_projects_workflows_specs_and_vs036(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            ensure_sibling_ai_ops_fixture(root)
             routing = root / "00_Admin/configs/context_routing.yaml"
             validator_config = (
                 root / "00_Admin/configs/validator/validator_config.yaml"
@@ -657,6 +885,7 @@ class RunFamilyGraphTests(unittest.TestCase):
         script = SCRIPTS / "generate_run_family_views.py"
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            ensure_sibling_ai_ops_fixture(root)
             write = subprocess.run(
                 [
                     sys.executable, str(script), "--repo-root", str(root),
@@ -747,6 +976,19 @@ class RunFamilyGraphTests(unittest.TestCase):
         self.assertIn("content_sha256", manifest["required"])
         self.assertTrue(
             validator.ARTIFACT_REQUIRED <= set(manifest["required"])
+        )
+        self.assertEqual(
+            list(validator.ARTIFACT_REQUIRED_ORDER),
+            [
+                "artifact_id",
+                "artifact_kind",
+                "canonical_home",
+                "artifact_version",
+                "interface_version",
+                "lifecycle",
+                "steward",
+                "content_sha256",
+            ],
         )
         self.assertTrue(
             validator.ARTIFACT_REQUIRED
