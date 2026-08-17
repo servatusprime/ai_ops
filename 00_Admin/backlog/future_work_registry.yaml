@@ -4,7 +4,7 @@ version: 0.6.8
 status: active
 owner: ai_ops
 created: 2026-01-07
-updated: '2026-08-03'
+updated: '2026-08-17'
 migration_note: >-
   Most items were moved to wb_governance_hardening_02; selected deferred items
   remain here.
@@ -49,6 +49,19 @@ prune_note_2026_08_01: >-
   A delivered deterministic profile generation and non-writing drift checks in
   commit 9ba8498; its execution workbook is complete. The Conductor and
   Director bundles are historical evidence and no longer active dependencies.
+intake_note_2026_08_17: >-
+  Scheduled three deferred items surfaced by the governed-repo GIS
+  writer-inventory risk audit (wp_gis_runprogram_writer_consolidation_01,
+  writer_inventory_risk_audit_2026-08-17.md) so they are tracked rather than
+  left as prose in a workbundle only the source packet reads. All three are
+  revisit-on-evidence, not currently causing wrong output, and were
+  explicitly scoped OUT of the same-session writer-hardening batch fix
+  (writer_hardening_batch_proposal_2026-08-17.md) because each needs a
+  design decision, not a mechanical correction: fw_20260817_01 (custom
+  draw-order two-owner conflict in retheme_project_qgz.py), fw_20260817_02
+  (atlas-controller layer-id churn in build_project_layouts.py), and
+  fw_20260817_03 (no validator anywhere detects a duplicate project layer
+  by name -- the audit's largest cross-writer validator gap).
 intake_note_2026_08_03: >-
   Scheduled two deferred items surfaced by the portfolio completion review so
   they are tracked rather than lost with their source workbooks:
@@ -745,3 +758,248 @@ entries:
       Provenance: VS035 proposal FC-2 constraint (measured 2026-07-23). This is
       a governed-repo hygiene item; execute in its owning governed-repo
       session, not from ai_ops.
+
+  - id: fw_20260817_01
+    title: Resolve custom-draw-order two-owner conflict (retheme_project_qgz.py vs apply_canonical_draw_order.py)
+    domain: tooling
+    target_repo: governed_repo
+    source_workbook: >-
+      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/
+      work_packets/wp_gis_runprogram_writer_consolidation_01_2026-08-15/
+      writer_inventory_risk_audit_2026-08-17.md
+    completion_workbook: >-
+      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/
+      work_packets/wp_gis_runprogram_writer_consolidation_01_2026-08-15/
+      round12_regression_2026-08-17/fix_a_implementation_receipt_2026-08-17.md
+    proposed_workbook: null
+    scope: >-
+      `02_Modules/gis_workflow/scripts/pyqgis/retheme_project_qgz.py` calls
+      `set_custom_layer_order()` from the theme contract's own
+      `render_order_priority` key, making it a second, undeclared writer of a
+      state family (`custom_draw_order`) the governed-repo
+      `state_ownership_preservation_matrix.yaml` assigns solely to
+      `apply_canonical_draw_order.py`. Today this is harmless because the
+      later, canonical `apply_canonical_draw_order.py` step deterministically
+      overwrites it every run -- confirmed by manifest step order, not
+      assumed -- so shipped output is correct, but the config surface it
+      reads from is silently ignored. Resolve the two-owner conflict: either
+      drop `set_custom_layer_order()` from `retheme_project_qgz.py` and make
+      `canonical_draw_order.yaml` the single source, or have
+      `apply_canonical_draw_order.py` consume the theme contract's
+      `render_order_priority` instead. Record the resolved owner in
+      `state_ownership_preservation_matrix.yaml`.
+      Sol-confirmed 2026-08-17 by full manifest trace (not assumed): inert
+      given the current manifest, where `retheme_project_qgz.py` appears
+      exactly once (step `enforce_theme_contract_and_render_order`) and is
+      unconditionally followed by two further `apply_canonical_draw_order.py`
+      invocations that fully overwrite the custom order. The write is live,
+      and the two-owner conflict becomes real, if this writer is ever
+      invoked standalone (an ad-hoc repair, or a future lane that runs
+      `retheme_project_qgz.py` without a following
+      `apply_canonical_draw_order.py`) -- carry this caveat into any future
+      activation-trigger evaluation.
+    priority: low
+    benefit: medium
+    effort: s
+    readiness: deferred
+    risk_if_deferred: low
+    activation_trigger: >-
+      Any future change to apply_canonical_draw_order.py's invocation order
+      or to retheme_project_qgz.py's theme-contract handling, or a case where
+      render_order_priority is observed to actually take effect from
+      retheme_project_qgz.py (meaning the deterministic-overwrite assumption
+      broke).
+    next_review: 2026-11-01
+    status: planned
+    owner: governed_repo
+    created: 2026-08-17
+    compacted_context:
+      source: writer_hardening_batch_proposal_2026-08-17.md, "Not proposed" section
+      note: >-
+        Deliberately excluded from the same-session writer-hardening batch
+        fix (Fixes 1-4) because it is a design/ownership decision, not a
+        mechanical correction like the other four writers in that batch.
+    notes: >-
+      Not currently causing wrong output -- this is a dead/misleading config
+      surface, not a live defect. Do not treat as urgent; the requestor
+      explicitly asked that non-live-defect findings not become busywork.
+
+  - id: fw_20260817_02
+    title: Stable atlas-controller layer id in build_project_layouts.py
+    domain: tooling
+    target_repo: governed_repo
+    source_workbook: >-
+      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/
+      work_packets/wp_gis_runprogram_writer_consolidation_01_2026-08-15/
+      writer_inventory_risk_audit_2026-08-17.md
+    completion_workbook: >-
+      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/
+      work_packets/wp_gis_runprogram_writer_consolidation_01_2026-08-15/
+      round12_regression_2026-08-17/registry_closeout_fixB_fixC_fixD_receipt_2026-08-17.md
+    proposed_workbook: null
+    scope: >-
+      `02_Modules/gis_workflow/scripts/pyqgis/build_project_layouts.py`'s
+      `detach_controller`/`write_controller`/`insert_controller` sequence
+      replaces the atlas controller layer with a new layer id every run,
+      orphaning any visibility-preset reference that named the old
+      controller id. Separate from, and not fixed by, the
+      `patch_startup_state` correction in `writer_hardening_batch_proposal_2026-08-17.md`
+      Fix 3. Needs a stable atlas-controller-layer-id scheme (e.g. a
+      deterministic id derived from project identity rather than a fresh
+      QGIS-assigned id per run), which is a design decision, not a
+      mechanical substitution.
+    priority: low
+    benefit: medium
+    effort: m
+    readiness: deferred
+    risk_if_deferred: medium
+    activation_trigger: >-
+      A visibility-preset is observed referencing the atlas controller layer
+      by id and losing that reference after a rerun, or any future rework of
+      build_project_layouts.py's controller lifecycle for an unrelated
+      reason.
+    next_review: 2026-11-01
+    status: planned
+    owner: governed_repo
+    created: 2026-08-17
+    compacted_context:
+      source: writer_inventory_risk_audit_2026-08-17.md, writer #12
+      note: >-
+        Currently covered for theme-preset purposes by the RB-5 finalizer
+        barrier (apply_canonical_draw_order.py's normalize_presets call),
+        the same downstream-accident protection Change 2 added this session
+        -- but that barrier cannot restore a broken id reference, only clean
+        up stale/hidden preset entries, so this is a narrower and less
+        certain protection than for the other "downstream accident" writers
+        fixed in the same-session batch.
+    notes: >-
+      Deferred, not urgent. Requires a concrete design proposal before
+      implementation, unlike the mechanical fixes in the same-session batch.
+
+  - id: fw_20260817_03
+    title: Validator coverage for duplicate project layers (same name, new id)
+    domain: validation
+    target_repo: governed_repo
+    source_workbook: >-
+      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/
+      work_packets/wp_gis_runprogram_writer_consolidation_01_2026-08-15/
+      writer_inventory_risk_audit_2026-08-17.md
+    completion_workbook: >-
+      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/
+      work_packets/wp_gis_runprogram_writer_consolidation_01_2026-08-15/
+      round12_regression_2026-08-17/registry_closeout_fixB_fixC_fixD_receipt_2026-08-17.md
+    proposed_workbook: null
+    scope: >-
+      Across the full 14-writer audit, no validator anywhere in the governed
+      GIS pipeline (`validate_qgz_theme_serialization.py`,
+      `validate_qgz_datasources.py`, or any other) detects a duplicate
+      project layer -- a second `<maplayer>` with a new id but the same
+      `layername` as an existing one. Duplicate detection today exists only
+      *within* a single preset's layer records and for atlas-controller rows.
+      This is the largest validator gap the audit found: a duplicated layer
+      from `apply_exhibit_project_tuning.py`'s `add_remote_layer` (before the
+      same-session guard fix) or `apply_roadway_labeling.py`'s unguarded
+      `addMapLayer` (tracked separately, owned by
+      wp_gis_smart_annotation_01_2026-07-13) would pass every existing
+      validator silently. Add a general `no_duplicate_project_layers` rule,
+      likely to `validate_qgz_theme_serialization.py` or a new small
+      validator run at the same pipeline points, checking `layername`
+      uniqueness across `projectlayers/maplayer`.
+    priority: medium
+    benefit: high
+    effort: s
+    readiness: ready
+    risk_if_deferred: medium
+    activation_trigger: >-
+      A duplicate-layer artifact is actually observed in any project's
+      output, or the next writer-inventory-style audit/defect investigation
+      touches any layer-membership writer (add_remote_layer,
+      add_local_vector_layer, add_ltar_layer, apply_roadway_labeling, or any
+      future addition).
+    next_review: 2026-10-01
+    status: planned
+    owner: governed_repo
+    created: 2026-08-17
+    compacted_context:
+      source: writer_inventory_risk_audit_2026-08-17.md, "Validator coverage findings"
+      note: >-
+        Generalizable across multiple writers, not specific to any one file
+        -- this is why it was routed here instead of folded into the
+        same-session writer-hardening batch fix for writer #4 alone; fixing
+        #4's instance does not close this gap for #13 or any future writer.
+    notes: >-
+      Higher benefit than the other two 2026-08-17 entries (closes a real,
+      currently-silent blind spot affecting more than one writer) but still
+      not urgent absent an observed duplicate-layer artifact.
+
+  - id: fw_20260817_04
+    title: Dead group-comparison branch in build_project_layouts.py's patch_startup_state
+    domain: tooling
+    target_repo: governed_repo
+    source_workbook: >-
+      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/
+      work_packets/wp_gis_runprogram_writer_consolidation_01_2026-08-15/
+      writer_hardening_fix1_fix3_revision_2026-08-17.md
+    completion_workbook: >-
+      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/
+      work_packets/wp_gis_runprogram_writer_consolidation_01_2026-08-15/
+      round12_regression_2026-08-17/registry_closeout_fixB_fixC_fixD_receipt_2026-08-17.md
+    proposed_workbook: null
+    scope: >-
+      `02_Modules/gis_workflow/scripts/pyqgis/build_project_layouts.py`'s
+      `patch_startup_state` / `sync_tree` compares a `layer-tree-group`
+      element's `id` attribute against the preset's checked-group-node path
+      set, but layer-tree groups carry `name`, not `id` -- the comparison
+      operand is always empty and the branch can never match. Sol-verified
+      2026-08-17 (empirical scan of all 76 preset-bearing `.qgz` artifacts in
+      the repo: zero `layer-tree-group` elements carry an `id` attribute at
+      all) that this is currently harmless, not merely masked: the group's
+      checked state is decided entirely by the `descendant_checked`
+      fallback on the same comparison line, and "ancestor of an ON layer"
+      (what canon's `checked-group-nodes` set encodes) and "has a checked
+      descendant layer" are the same predicate on normalized input -- the two
+      implementations diverge only on non-normalized input (a checked group
+      with no ON layers, or an ON layer under a deliberately unchecked
+      group), which this pipeline does not currently produce. Fix: rewrite
+      `sync_tree`'s group branch to build the same ancestor-path string
+      `qgz_theme_ops.collect_layer_group_paths`/`ancestor_group_paths` use
+      (walking `name`, accumulating `Parent/Child` paths) and compare that
+      instead of the dead `id` lookup, or route the whole tree/checked-state
+      sync through `qgz_theme_ops.apply_startup_state` once its interaction
+      with this writer's two live call sites in
+      `add_materialized_basemaps_to_project.py` (manifest 1131, 1191) is
+      separately analyzed and accepted -- do not repeat the same-session
+      Round 10 mistake of assuming that substitution is side-effect-free.
+    priority: low
+    benefit: low
+    effort: s
+    readiness: deferred
+    risk_if_deferred: low
+    activation_trigger: >-
+      Any future rework of `build_project_layouts.py`'s tree/checked-state
+      sync (including any resolution of the separate `fw_20260817_02`
+      atlas-controller-id item, since both live in the same file and a
+      future pass may reasonably want to look at both), or a case where a
+      checked group with no ON layer / an ON layer under a deliberately
+      unchecked group is observed in a real project (the one input class
+      where the dead branch and the fallback would actually disagree).
+    next_review: 2026-11-01
+    status: planned
+    owner: governed_repo
+    created: 2026-08-17
+    compacted_context:
+      source: >-
+        writer_hardening_fix1_fix3_revision_2026-08-17.md and its Sol
+        recheck, review_writer_hardening_fix1_fix3_revision_sol_2026-08-17.md
+      note: >-
+        Deliberately routed to its own entry rather than folded into
+        `fw_20260817_02`: that entry's scope text explicitly states it is
+        "Separate from, and not fixed by, the patch_startup_state
+        correction," so folding this patch_startup_state finding into it
+        would contradict the entry's own words (Sol catch, 2026-08-17). Left
+        untouched by the same-session Fix 3 patch on purpose -- Sol verified
+        removing this fallback (the original, since-revised Fix 3 proposal)
+        was the actually risky move, not leaving it alone.
+    notes: >-
+      Lowest priority of the four 2026-08-17 entries. Confirmed dead-but-
+      harmless by empirical scan, not by assumption; do not treat as urgent.
