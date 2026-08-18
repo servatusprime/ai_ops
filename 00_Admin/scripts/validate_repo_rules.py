@@ -1142,7 +1142,34 @@ def _extract_yaml_list(text: str, key: str) -> List[str]:
 def _resolve_ref_path(source_file: str, ref: str, repo_root: str) -> str:
     if os.path.isabs(ref):
         return os.path.normpath(ref)
-    if ref.startswith("./") or ref.startswith("../"):
+    if ref.startswith("./"):
+        return os.path.normpath(os.path.join(os.path.dirname(source_file), ref))
+    if ref.startswith("../"):
+        # "../<name>/..." is written identically by every file in this repo
+        # regardless of the file's own nesting depth, to mean "the sibling
+        # repo <name> in this workspace" (e.g. "../re_stack/AGENTS.md") --
+        # not "one directory above this file". Recognize that shorthand
+        # generically (no repo name hardcoded, so this keeps working for any
+        # current or future sibling repo in the workspace, not just the
+        # repo this validator happens to ship with) by checking whether the
+        # named segment is a real sibling of this repo's own root; otherwise
+        # fall back to the original file-relative resolution, so a genuine
+        # same-repo "../foo.md" reference (relative to the file) is
+        # unaffected.
+        first_segment = ref[len("../"):].split("/", 1)[0]
+        workspace_root = os.path.dirname(os.path.normpath(repo_root))
+        sibling_candidate = os.path.join(workspace_root, first_segment)
+        # A multi-level chain like "../../../foo" starts with "../" too, but
+        # stripping just the first "../" leaves "../../foo" -- whose first
+        # segment is literally "..", which always resolves to *some* real
+        # directory and would otherwise be misread as a sibling-repo name.
+        # Guard against that: only single-hop "../<name>/..." qualifies.
+        if (
+            first_segment
+            and first_segment not in (".", "..")
+            and os.path.isdir(sibling_candidate)
+        ):
+            return os.path.normpath(os.path.join(workspace_root, ref[len("../"):]))
         return os.path.normpath(os.path.join(os.path.dirname(source_file), ref))
     return os.path.normpath(os.path.join(repo_root, ref))
 
