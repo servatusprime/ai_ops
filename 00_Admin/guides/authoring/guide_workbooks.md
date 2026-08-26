@@ -178,37 +178,6 @@ See templates: `01_Resources/templates/workflows/wb_template_lite.md`,
 `01_Resources/templates/workflows/wb_template_generic.md`,
 `01_Resources/templates/workflows/wb_template_first_run.md`.
 
-## 2.0.2 Completed-status validation evidence (B-1)
-
-The first work-family status-integrity release is explicitly opt-in. A
-workbook may opt into the evidence subcheck by adding this flat front-matter
-marker:
-
-```yaml
-validation_contract: work_validation_v1
-validations:
-  - validator_id: validate_repo_rules
-    required: true
-    result: pass
-    evidence_ref: 00_Admin/logs/log_workbook_run.md
-```
-
-The raw `validations:` block is parsed by the validator's dedicated block
-parser; it is not parsed by the generic flat front-matter helper or by
-`yaml.safe_load`. Each entry uses exactly `validator_id`, `required`, `result`,
-and `evidence_ref`. `result` reuses the run-receipt vocabulary
-`pass | fail | not_applicable`. Duplicate, missing, unknown, empty, or malformed
-fields fail closed. A required entry passes only with `result: pass`;
-`not_applicable` is valid only for a non-required entry.
-
-For the first release, a completed workbook without the marker remains outside
-this new evidence subcheck and retains the existing VS035 checklist and R-6
-behavior. A completed workbook with the marker must provide a valid block and
-all required entries must pass. This control checks consistency between a
-workbook's completion claim and its self-recorded evidence; it does not prove
-that the recorded validator result is truthful. Mandatory migration of legacy
-completed workbooks is a separate decision and is not implied by this marker.
-
 ## 2.1 Capability-Gated Execution
 
 Use a capability-gated execution profile when one or more execution steps have
@@ -1129,6 +1098,10 @@ Status table, `work_state.yaml` active artifacts entry, and harvest/plan docs.
   index. Update it on activation, on status change, and on closeout.
 - The bundle README Status table is required for all workbundle tiers because it provides
   the operator at-a-glance view without reading individual workbooks.
+- `00_Admin/scripts/update_artifact_status.py --id <artifact_id> --status <status>
+  [--note "<text>"]` updates both the `work_state.yaml` entry and the matching bundle
+  README Status table row in one step (use `--dry-run` to preview; `--no-readme` to skip
+  the README update). Prefer it over hand-editing both surfaces separately.
 - Harvest docs and plan docs are optional because they are supplementary artifacts —
   their absence does not block resumption.
 

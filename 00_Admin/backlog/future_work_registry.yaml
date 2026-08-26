@@ -1,10 +1,10 @@
 ---
 title: future_work_registry
-version: 0.6.8
+version: 0.6.9
 status: active
 owner: ai_ops
 created: 2026-01-07
-updated: '2026-08-17'
+updated: '2026-08-20'
 migration_note: >-
   Most items were moved to wb_governance_hardening_02; selected deferred items
   remain here.
@@ -684,47 +684,16 @@ entries:
       changes shared health behavior and validator registration. Preserve
       generic governed-repo discovery; the initial GIS validator is evidence,
       not the generic health contract itself.
-  - id: fw_20260803_01
-    title: VS035 work-family status-integrity adoption and evolution
-    domain: validation
-    target_repo: both
-    source_workbook: >-
-      99_Trash/wb_vs035_status_integrity_enforcement_01_2026-07-22/wb_vs035_status_integrity_execution_01.md
-    completion_workbook: null
-    proposed_workbook: >-
-      90_Sandbox/ai_workbooks/wb_vs035_evolution_01_2026-08-03/README.md
-    scope: >-
-      Follow-on evolution of the opt-in C-02 completed-status evidence control
-      delivered under fw_20260716_02. Three deferred decisions, each requiring
-      its own evidence and approval: (1) B-1 template adoption -- whether
-      wb_template_generic.md and wb_template_lite.md should ship the
-      validation_contract work_validation_v1 marker so new workbooks adopt the
-      subcheck by default; (2) B-3 mandatory adoption/migration -- whether
-      existing and future completed workbooks must carry the validation block,
-      which requires a migration pass over the roughly 20 governed-repo completed
-      workbooks; (3) D-4 veracity enforcement -- whether the validator should
-      re-run required checks rather than trust a recorded result, closing the
-      self-consistency-versus-veracity gap the C-02 control intentionally left
-      open. Keep each sub-decision separately scoped; do not bundle migration or
-      veracity into a template-adoption change.
-    priority: medium
-    benefit: medium
-    effort: m
-    readiness: partial
-    risk_if_deferred: low
-    activation_trigger: >-
-      Operator greenlights template adoption (B-1), or a false-completion case
-      recurs that the current opt-in consistency control cannot catch (motivating
-      B-3 or D-4).
-    next_review: 2026-10-01
-    status: planned
-    owner: ai_ops
-    created: 2026-08-03
-    notes: >-
-      Provenance: VS035 execution workbook Deferred Work table and the
-      2026-08-01 remediation recheck L-01. The C-02 consistency control is
-      shipped and opt-in; this entry tracks its adoption breadth and optional
-      strengthening so the deferred options are not lost.
+  # fw_20260803_01 (VS035 work-family status-integrity adoption and
+  # evolution) removed 2026-08-26: the underlying opt-in completed-status
+  # evidence control (validation_contract: work_validation_v1 / C-02) was
+  # retired entirely -- guide section, validator parsing/enforcement code,
+  # and test fixtures all removed -- after the operator rejected its B-1
+  # template-adoption route for lacking real enforcement teeth (self-reported
+  # claims, never independently verified) and judged the base mechanism
+  # shared that same flaw. With the mechanism gone, B-3 (mandatory migration
+  # of that block) and D-4 (veracity re-run for that block) have nothing left
+  # to act on. See 00_Admin/logs/log_workbook_run.md for the full record.
   - id: fw_20260803_02
     title: Governed-repo workbook front-matter YAML hygiene
     domain: documentation
@@ -1003,3 +972,68 @@ entries:
     notes: >-
       Lowest priority of the four 2026-08-17 entries. Confirmed dead-but-
       harmless by empirical scan, not by assumption; do not treat as urgent.
+  - id: fw_20260820_01
+    title: Sweep and reconcile "packet"/work_packets terminology across ai_ops guides
+    domain: documentation
+    target_repo: ai_ops
+    source_workbook: >-
+      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_runprogram_hardening_01/
+      wb_gis_workprogram_migration_prep_01_2026-08-20/
+      wb_gis_workprogram_migration_prep_01_2026-08-20.md
+    completion_workbook: null
+    proposed_workbook: null
+    scope: >-
+      `guide_work_programs.md`, `guide_workbooks.md` §3.1, `guide_workflows.md`,
+      `guide_workflow_registries.md`, and `guide_file_placement.md` all currently
+      specify `work_program_<id>/work_packets/` as the required nesting layer for
+      workbundles inside a workprogram (all confirmed still-active, most recently
+      touched 2026-07-16). The operator explicitly directed 2026-08-20 that
+      "work_packet is not an accepted term" and had a governed-repo program's
+      workbundles moved to live flat under the workprogram root instead. This
+      contradicts every guide above, none of which reflect the change despite the
+      operator's expectation that "packet" terminology had already been sought
+      out and fixed repo-wide. `guide_ai_ops_vocabulary.md`'s Legacy->Canonical
+      table only lists two adjacent-but-different deprecations (`wp_*` -> `wb_*`
+      prefix; `ai_work_packets/` -> `ai_workbooks/` top-level directory rename) --
+      it does not address the `work_packets/` container-folder convention at all.
+      Resolve by either (a) updating all five-plus guides to a flat
+      `work_program_<id>/wb_<id>_<date>/` structure and adding `work_packets/` to
+      the vocabulary guide's Legacy->Canonical table, or (b) if the flat structure
+      was only ever meant to be program-local for the one governed-repo program
+      that requested it, explicitly documenting that scoping so future sessions
+      don't treat the current guides as stale. Do not guess which -- confirm
+      operator intent before editing any guide.
+    priority: medium
+    benefit: medium
+    effort: m
+    readiness: blocked
+    risk_if_deferred: medium
+    activation_trigger: >-
+      Operator confirms whether this is a permanent repo-wide terminology change
+      (update all affected guides) or a one-off program-local exception (document
+      the exception only, no guide change needed).
+    next_review: 2026-09-01
+    status: planned
+    owner: operator
+    created: 2026-08-20
+    compacted_context:
+      source: >-
+        Operator directed removing `work_packets/` nesting during a governed-repo
+        sandbox-consolidation session, then flagged surprise that it was still
+        the written standard: "I thought the word 'packet' was sought out and
+        fixed."
+      note: >-
+        A prior pass apparently addressed some "packet" terminology (the
+        `wp_*` -> `wb_*` prefix rename and the `ai_work_packets/` ->
+        `ai_workbooks/` top-level directory rename -- both already reflected in
+        `guide_ai_ops_vocabulary.md`) but did not touch the `work_packets/`
+        container-folder convention itself. Two separate sessions independently
+        created `work_packets/`-nested structures in the same governed repo on
+        the same day before this was caught, which is direct evidence the
+        guides are actively misleading current practice, not just stylistically
+        stale.
+    notes: >-
+      Scope as its own Level 3 workbook (`00_Admin/guides/**` requires workbook
+      scope and approval per `AGENTS.md`'s authority guard) rather than an inline
+      fix -- touches multiple canonical guides and needs consistent example
+      updates throughout, not a single find-and-replace.

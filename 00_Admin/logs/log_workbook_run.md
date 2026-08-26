@@ -595,3 +595,71 @@ ai_generated: true
   `status` enum in the reviewer's own rerun-2 file. Validation: repo validator 0
   errors, discover/check pass, 28/28 tests, ruff plus yamllint plus markdownlint
   clean. Commit and push are NOT performed; held for requestor.
+
+- 2026-08-16 | run-family generator determinism remediation (L4) | Governing
+  workbook `wb_runfamily_generator_determinism_01_2026-08-16.md`. Fixed a
+  determinism defect in the run-family derived-view generator: artifact
+  projection now uses an ordered tuple (retaining the existing set constant
+  for schema membership assertions) instead of iterating a Python set, so the
+  same canonical manifests now produce byte-identical registry and graph
+  views across fresh processes and hash seeds. Added generator
+  identity/version and repo-relative provenance to generated outputs; bumped
+  the registry output/schema contract to version 0.2.0 (incompatible change);
+  added runtime receipt type enforcement for schema-invalid scalars and
+  negative sizes. Added discovered-manifest cross-process/hash-seed
+  regression coverage for all four generated views. No governed-repository
+  files are write targets; downstream consumers regenerate/recheck under
+  their own governed workbundle. Validation: scoped unit/generator/schema/repo
+  checks pass; whole-repo validation retains two pre-existing, unrelated
+  VS003 baseline errors. Independent Sol strict-hybrid review: `ACCEPT`
+  (non-blocking test hardening also completed). Commit and push were
+  performed by the requestor (`051561f`, "Harden run-family generator
+  determinism", 2026-08-16).
+
+- 2026-08-26 | closeout documentation sync (no canonical/behavior change) |
+  During a routine workbundle status review, found that
+  `wb_runfamily_canon_uplift_01` (commit `d0be621`, 2026-08-12) and
+  `wb_runfamily_generator_determinism_01` (commit `051561f`, 2026-08-16) were
+  both already committed and pushed to `origin/main`, but their sandbox
+  docs (`README.md`/workbook status fields, commit/push gate language) still
+  read as pending. For `wb_runfamily_canon_uplift_01`, independently
+  re-verified (fresh adversarial probes against the 10 malformed cases from
+  the rerun-2 crosscheck's F-02, not a re-read of prior claims) that the
+  nested schema/runtime parity fix genuinely holds: `python -m unittest
+  00_Admin.tests.test_run_family_graph -v` -> 33/33 pass, zero files needed
+  patching. Fixed one stale cross-reference (a deleted evidence-source
+  bundle) that had started failing VS023. Updated both bundles' sandbox docs
+  to reflect actual commit/push state and added this log entry for
+  `051561f`, which had none. No files under `affects.artifacts` for either
+  bundle were modified. Both bundles are ready for `/closeout` archival to
+  `99_Trash/`.
+
+- 2026-08-26 | retired the opt-in completed-status evidence control (C-02) |
+  Follow-on to the same-day B-1 template-adoption trial (see prior entry).
+  After the operator rejected B-1 for lacking real enforcement teeth, they
+  asked why the guide still documented the underlying opt-in marker at all
+  and directed removing it if it had no benefit. Assessment: the mechanism
+  (frontmatter `validation_contract: work_validation_v1` / `validations:`
+  block, delivered under `fw_20260716_02` and accepted 2026-08-03) had the
+  identical flaw as B-1 -- opt-in, and only checks that a self-reported
+  `result` field says `pass`, never that a validator actually ran or that the
+  evidence is real. Confirmed via `git grep` that no live/committed workbook
+  used the marker; only the guide's own documentation example and the
+  validator's test fixtures referenced it. Removed in full: the
+  `_parse_validation_evidence()` function and its call site in
+  `check_status_vs_checklist()` from `validate_repo_rules.py`; the "2.0.2
+  Completed-status validation evidence" section from
+  `guide_workbooks.md`; the `validation_block()` helper, the `validation=`
+  parameter on `wb()`, and all ten "C-02 opt-in validation evidence
+  contract" fixture cases from
+  `00_Admin/scripts/fixtures/run_validate_repo_rules_fixtures.py`. VS035's
+  other function -- the always-on check that a `completed`/`active` workbook
+  has no unexplained open checklist items, with the R-6 forward-handoff
+  allowance -- is untouched; it has real teeth and was never in question.
+  Removed the now-moot `fw_20260803_01` registry entry (B-3/D-4 both assumed
+  a `validations:` block that no longer exists to migrate or strengthen) and
+  regenerated the scorecard. Validation: `python
+  00_Admin/scripts/fixtures/run_validate_repo_rules_fixtures.py` -- 25/25
+  pass; `python -m unittest 00_Admin.tests.test_run_family_graph` -- 33/33
+  pass; repo validator -- 0 new errors (only pre-existing, unrelated
+  findings remain). Commit and push are NOT performed; held for requestor.

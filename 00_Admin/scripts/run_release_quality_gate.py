@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Run canonical release-quality validation checks for ai_ops."""
+"""Run canonical release-quality validation checks for ai_ops.
+
+Includes the governance test/fixture suites (validator unit tests and the
+validator's own fixture harness) so a broken validator is caught by its own
+tests before it is trusted to judge the rest of the repo.
+"""
 
 from __future__ import annotations
 
@@ -79,6 +84,21 @@ def main() -> int:
     python_exe = sys.executable
 
     checks: List[Tuple[str, List[str]]] = [
+        (
+            "governance-tests",
+            [
+                python_exe,
+                "-m",
+                "unittest",
+                "00_Admin.tests.test_run_family_graph",
+                "00_Admin.tests.test_future_work_registry_lifecycle",
+                "00_Admin.tests.test_governance_seed_contracts",
+            ],
+        ),
+        (
+            "validator-fixtures",
+            [python_exe, "00_Admin/scripts/fixtures/run_validate_repo_rules_fixtures.py"],
+        ),
         (
             "repo-validator",
             [

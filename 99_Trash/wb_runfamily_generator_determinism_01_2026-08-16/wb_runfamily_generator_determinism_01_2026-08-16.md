@@ -1,11 +1,11 @@
 ---
 title: AI Workbook - Run-Family Generator Determinism 01
 id: wb_runfamily_generator_determinism_01_2026_08_16
-status: active
+status: completed
 license: Apache-2.0
-version: 0.2.0
+version: 0.3.0
 created: 2026-08-16
-last_updated: 2026-08-16
+last_updated: 2026-08-26
 owner: ai_ops
 ai_role: coordinator
 model_profile: "Luna:low | Terra:medium | Sol:high"
@@ -54,21 +54,23 @@ related_refs:
   - 00_Admin/tests/test_run_family_graph.py
   - 00_Admin/configs/validator/schema_run_family_intake_receipt.yaml
   - 00_Admin/configs/validator/schema_run_family_provider_receipt.yaml
-  - 90_Sandbox/ai_workbooks/wb_runfamily_generator_determinism_01_2026-08-16/validation_receipt_2026-08-16.md
+  - 99_Trash/wb_runfamily_generator_determinism_01_2026-08-16/validation_receipt_2026-08-16.md
 checklist_allowance:
   kind: forward_handoff
   target_artifact: wb_runfamily_generator_determinism_01_2026_08_16
   rationale: >-
-    Goodall's strict-hybrid review found four P1 findings. The remediation
-    patch is being rerun; Sol re-adjudication, downstream consumer recheck,
-    requestor acceptance, and commit/push remain open gates.
+    2026-08-26 closeout review found this bundle's canonical patch was
+    already committed and pushed (051561f, 2026-08-16, servatusprime) --
+    resolving five of the six original open items (commit, push, requestor
+    acceptance-by-committing, and both explicit authorizations). The one
+    remaining open item is a genuine forward handoff: downstream
+    (governed-repo) consumer regeneration/recheck is this bundle's own
+    README's explicit non-goal ("Governed-repository generated views are
+    validation consumers, not write targets. They must be regenerated and
+    checked by their owning governed workbundle after this ai_ops change is
+    accepted."), not a gap in this bundle's own scope.
   open_items:
-    - "Commit or push."
-    - "Requestor/maintainer acceptance of the canonical patch."
-    - "Commit/push authorization."
     - "Downstream consumer regeneration/recheck is recorded."
-    - "Commit is explicitly authorized."
-    - "Push is explicitly authorized."
 ---
 
 <!-- markdownlint-disable MD013 MD025 -->
@@ -92,7 +94,9 @@ checklist_allowance:
 - [x] Obtain independent Sol strict hybrid re-adjudication after remediation;
       final verdict is `ACCEPT` with only non-blocking test hardening, which was
       also completed.
-- [ ] Commit or push.
+- [x] Commit or push. **Done 2026-08-26 (discovered already complete):**
+      `051561f` ("Harden run-family generator determinism", 2026-08-16,
+      author servatusprime) is on `main`, matching `origin/main`.
 
 ## Intake Classification and Gated Boundary
 
@@ -138,9 +142,11 @@ hard_stops:
 - [x] Affected scripts, schema, tests, and derived outputs are allowlisted.
 - [x] The defect is reproduced by `generate_run_family_views.py --check` and
       fixed-seed serialization diagnostics.
-- [ ] Requestor/maintainer acceptance of the canonical patch.
+- [x] Requestor/maintainer acceptance of the canonical patch. Evidenced by
+      the requestor committing the patch themselves (`051561f`, 2026-08-16).
 - [x] Independent Sol recheck.
-- [ ] Commit/push authorization.
+- [x] Commit/push authorization. Evidenced by the completed commit and push
+      (`051561f` on `main`, matching `origin/main`).
 
 ## Resume Delta - 2026-08-16
 
@@ -216,12 +222,28 @@ hard_stops:
 | Cross-process regression | `PASS` | Fresh-process hash-seed coverage compares all four generated views from discovered manifests. |
 | Schema/unit/repo validation | `PASS_WITH_BASELINE` | Scoped checks pass; whole-repo validation retains two unrelated VS003 errors. |
 | Independent Sol review | `ACCEPT` | Final Sol recheck accepts downstream handoff; commit/push remain gated. |
-| Commit/push | `GATED` | Explicit requestor instruction required. |
+| Commit/push | `DONE` | `051561f` ("Harden run-family generator determinism", 2026-08-16, servatusprime) on `main`, matching `origin/main`. Discovered already complete during the 2026-08-26 closeout review; this bundle's own docs had not been updated to reflect it. |
 
 ## Requestor Gates
 
 - [x] Requestor directed execution of the separate generator remediation lane.
 - [x] Sol accepts the implementation and provenance contract.
 - [ ] Downstream consumer regeneration/recheck is recorded.
-- [ ] Commit is explicitly authorized.
-- [ ] Push is explicitly authorized.
+
+  Genuine forward handoff, not a gap: per this bundle's own README, governed
+  consumer views are regenerated/checked by their owning governed workbundle
+  after this change is accepted, not by this bundle. See `checklist_allowance`
+  in the frontmatter above.
+- [x] Commit is explicitly authorized. Already exercised (`051561f`).
+- [x] Push is explicitly authorized. Already exercised (`051561f` on
+      `origin/main`).
+
+## Closeout Note (2026-08-26)
+
+This bundle's substantive canonical work, Sol acceptance, commit, and push
+were all already complete as of 2026-08-16. The only action this closeout
+pass took was documentation sync (this workbook, the bundle README) plus
+adding the missing `00_Admin/logs/log_workbook_run.md` entry that the
+Post-Execution Archival contract requires for any commit/push -- that entry
+did not exist for `051561f` prior to this pass. No new canonical/behavior
+changes were made. Archived to `99_Trash/` as part of this closeout pass.

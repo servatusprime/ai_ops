@@ -1,10 +1,10 @@
 ---
 title: Workbundle - Run-Family Generator Determinism 01
 id: wb_runfamily_generator_determinism_01
-status: active
-version: 0.2.0
+status: completed
+version: 0.3.0
 created: 2026-08-16
-last_updated: 2026-08-16
+last_updated: 2026-08-26
 owner: ai_ops
 description: >-
   Isolated Level-4 ai_ops remediation for deterministic run-family derived-view
@@ -51,7 +51,7 @@ this ai_ops change is accepted.
 | Discovered-manifest all-view regression | Pass across four generated views |
 | Versioned schema/test validation | Pass; whole-repo baseline errors retained |
 | Independent Sol review | `ACCEPT`; downstream handoff/recheck remains open |
-| Commit / push | Held for explicit requestor instruction |
+| Commit / push | **Done.** `051561f` ("Harden run-family generator determinism", 2026-08-16, servatusprime) on `main`, matching `origin/main`. |
 
 ## Handoff
 
@@ -59,3 +59,10 @@ The governing workbook is
 `wb_runfamily_generator_determinism_01_2026-08-16.md`. This bundle is
 deliberately separate from the active governed-repository writer-consolidation
 packet and from the earlier run-family canon uplift bundle.
+
+**Closed out 2026-08-26.** Commit/push were already done as of 2026-08-16;
+this pass synced the sandbox docs to match and added the missing
+`log_workbook_run.md` entry. The one remaining item -- downstream
+(governed-repo) consumer regeneration/recheck -- is explicitly this bundle's
+non-goal per the Scope section above, not a blocker for this bundle's own
+closeout. Archived to `99_Trash/` as part of this closeout pass.
