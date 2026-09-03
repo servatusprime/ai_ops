@@ -65,6 +65,14 @@ def sync_external_context(config_path: Path, dry_run: bool = True) -> List[Path]
             continue
         src = (repo_root / source).resolve()
         dest = (bundle_root / bundle).resolve()
+        if not src.is_relative_to(repo_root):
+            raise ValueError(
+                f"source_path escapes repo_root, refusing to read: {source!r} -> {src}"
+            )
+        if not dest.is_relative_to(bundle_root):
+            raise ValueError(
+                f"bundle_path escapes bundle_root, refusing to write: {bundle!r} -> {dest}"
+            )
         if not src.exists():
             raise FileNotFoundError(f"Source file missing for external context export: {src}")
         copied.append(dest)

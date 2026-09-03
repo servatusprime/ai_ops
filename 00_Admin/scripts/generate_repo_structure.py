@@ -195,6 +195,24 @@ def main() -> int:
         print(f"[ERR] repo root does not exist or is not a directory: {repo_root}")
         return 1
 
+    # Defense-in-depth (SEC-AIOPS-010): --reference-path is otherwise fully
+    # caller-controlled with no containment. The tool's two legitimate write
+    # patterns are "inside the mapped repo_root" and "inside ai_ops_root's own
+    # sandbox external-context tree" (the default, used even when repo_root
+    # points elsewhere) -- so require one of those two, not an arbitrary path.
+    # target_main is not checked separately: it is always repo_root / a fixed
+    # literal filename, so it cannot escape repo_root by construction.
+    resolved_reference = target_reference.resolve()
+    if not (
+        resolved_reference.is_relative_to(repo_root.resolve())
+        or resolved_reference.is_relative_to(ai_ops_root.resolve())
+    ):
+        print(
+            f"[ERR] --reference-path resolves outside both repo_root and ai_ops_root, "
+            f"refusing to write: {target_reference}"
+        )
+        return 1
+
     tree = build_tree(repo_root)
 
     if args.dry_run:

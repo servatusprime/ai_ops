@@ -11,12 +11,14 @@ naming_policies:
   claude_project_skills: snake_case passthrough from workflow filename
   codex_skills: snake_case passthrough from workflow filename
 targets:
+- codex
 - plugin
 generation_targets:
+- codex
 - plugin
 workflow_count: 13
-output_count: 26
-manifest_output_count: 26
+output_count: 39
+manifest_output_count: 39
 workflows:
 - workflow: ai_ops_setup
   source: .ai_ops/workflows/ai_ops_setup.md
@@ -30,6 +32,9 @@ workflows:
   - path: plugins/ai-ops-governance/skills/ai-ops-setup/SKILL.md
     kind: plugin_skill
     sha256_12: f78743d574d0
+  - path: .agents/skills/ai_ops_setup/SKILL.md
+    kind: codex_skill_primary
+    sha256_12: f919cef45219
 - workflow: bootstrap
   source: .ai_ops/workflows/bootstrap.md
   source_sha256_12: 7880fa706331
@@ -40,6 +45,9 @@ workflows:
     sha256_12: 5ee2d3118a94
   - path: plugins/ai-ops-governance/skills/bootstrap/SKILL.md
     kind: plugin_skill
+    sha256_12: 5e3e551d96b0
+  - path: .agents/skills/bootstrap/SKILL.md
+    kind: codex_skill_primary
     sha256_12: 5e3e551d96b0
 - workflow: closeout
   source: .ai_ops/workflows/closeout.md
@@ -52,6 +60,9 @@ workflows:
   - path: plugins/ai-ops-governance/skills/closeout/SKILL.md
     kind: plugin_skill
     sha256_12: bbb22cf94532
+  - path: .agents/skills/closeout/SKILL.md
+    kind: codex_skill_primary
+    sha256_12: bbb22cf94532
 - workflow: crosscheck
   source: .ai_ops/workflows/crosscheck.md
   source_sha256_12: 60760d42dcf9
@@ -62,6 +73,9 @@ workflows:
     sha256_12: 67cde2906b7c
   - path: plugins/ai-ops-governance/skills/crosscheck/SKILL.md
     kind: plugin_skill
+    sha256_12: 703bf46927f6
+  - path: .agents/skills/crosscheck/SKILL.md
+    kind: codex_skill_primary
     sha256_12: 703bf46927f6
 - workflow: customize
   source: .ai_ops/workflows/customize.md
@@ -74,6 +88,9 @@ workflows:
   - path: plugins/ai-ops-governance/skills/customize/SKILL.md
     kind: plugin_skill
     sha256_12: 9da93b5fad68
+  - path: .agents/skills/customize/SKILL.md
+    kind: codex_skill_primary
+    sha256_12: 9da93b5fad68
 - workflow: harvest
   source: .ai_ops/workflows/harvest.md
   source_sha256_12: 3afcb3fab4d1
@@ -85,6 +102,9 @@ workflows:
   - path: plugins/ai-ops-governance/skills/harvest/SKILL.md
     kind: plugin_skill
     sha256_12: 01266cb5fbf2
+  - path: .agents/skills/harvest/SKILL.md
+    kind: codex_skill_primary
+    sha256_12: 01266cb5fbf2
 - workflow: health
   source: .ai_ops/workflows/health.md
   source_sha256_12: ea426aa3e49b
@@ -95,6 +115,9 @@ workflows:
     sha256_12: f0386efdb872
   - path: plugins/ai-ops-governance/skills/health/SKILL.md
     kind: plugin_skill
+    sha256_12: 0a7174678693
+  - path: .agents/skills/health/SKILL.md
+    kind: codex_skill_primary
     sha256_12: 0a7174678693
 - workflow: lint
   source: .ai_ops/workflows/lint.md
@@ -108,6 +131,9 @@ workflows:
   - path: plugins/ai-ops-governance/skills/lint/SKILL.md
     kind: plugin_skill
     sha256_12: 5c9050ad6aef
+  - path: .agents/skills/lint/SKILL.md
+    kind: codex_skill_primary
+    sha256_12: 5c9050ad6aef
 - workflow: profiles
   source: .ai_ops/workflows/profiles.md
   source_sha256_12: 0635053a4362
@@ -120,6 +146,9 @@ workflows:
   - path: plugins/ai-ops-governance/skills/profiles/SKILL.md
     kind: plugin_skill
     sha256_12: 69af9edc528f
+  - path: .agents/skills/profiles/SKILL.md
+    kind: codex_skill_primary
+    sha256_12: 69af9edc528f
 - workflow: scratchpad
   source: .ai_ops/workflows/scratchpad.md
   source_sha256_12: 3f7be7defc0d
@@ -130,6 +159,9 @@ workflows:
     sha256_12: 71ba1ed107fc
   - path: plugins/ai-ops-governance/skills/scratchpad/SKILL.md
     kind: plugin_skill
+    sha256_12: dcd9fad693c0
+  - path: .agents/skills/scratchpad/SKILL.md
+    kind: codex_skill_primary
     sha256_12: dcd9fad693c0
 - workflow: work
   source: .ai_ops/workflows/work.md
@@ -142,17 +174,24 @@ workflows:
   - path: plugins/ai-ops-governance/skills/work/SKILL.md
     kind: plugin_skill
     sha256_12: 79ffc08c02fc
+  - path: .agents/skills/work/SKILL.md
+    kind: codex_skill_primary
+    sha256_12: 79ffc08c02fc
 - workflow: work_savepoint
   source: .ai_ops/workflows/work_savepoint.md
-  source_sha256_12: c95860ff8521
-  description: Commit and push active work as a savepoint, then end the ai_ops session.
+  source_sha256_12: fb60ce37f80e
+  description: Prepare a scoped savepoint and end the ai_ops session; publication
+    requires explicit approval.
   outputs:
   - path: plugins/ai-ops-governance/commands/work_savepoint.md
     kind: plugin_command
-    sha256_12: ec6396cebcbe
+    sha256_12: a82d2a74416b
   - path: plugins/ai-ops-governance/skills/work-savepoint/SKILL.md
     kind: plugin_skill
-    sha256_12: d34c7c6f6217
+    sha256_12: 2b342598a48c
+  - path: .agents/skills/work_savepoint/SKILL.md
+    kind: codex_skill_primary
+    sha256_12: 5b1873562336
 - workflow: work_status
   source: .ai_ops/workflows/work_status.md
   source_sha256_12: f031af9959a2
@@ -164,3 +203,6 @@ workflows:
   - path: plugins/ai-ops-governance/skills/work-status/SKILL.md
     kind: plugin_skill
     sha256_12: 42763d1c9254
+  - path: .agents/skills/work_status/SKILL.md
+    kind: codex_skill_primary
+    sha256_12: c78abffbffdb

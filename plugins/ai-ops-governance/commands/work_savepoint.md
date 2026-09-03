@@ -1,6 +1,7 @@
 ---
-description: Commit and push active work as a savepoint, then end the ai_ops session.
-argument-hint: '[--no-commit]'
+description: Prepare a scoped savepoint and end the ai_ops session; publication requires
+  explicit approval.
+argument-hint: '[--commit] [--no-commit]'
 ---
 
 # /work_savepoint

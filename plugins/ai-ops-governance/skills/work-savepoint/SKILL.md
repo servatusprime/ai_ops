@@ -1,6 +1,7 @@
 ---
 name: work-savepoint
-description: Commit and push active work as a savepoint, then end the ai_ops session.
+description: Prepare a scoped savepoint and end the ai_ops session; publication requires
+  explicit approval.
 ---
 
 # work-savepoint

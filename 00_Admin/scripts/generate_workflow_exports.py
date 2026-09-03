@@ -151,6 +151,17 @@ def main() -> int:
         help="Preview actions without writing files.",
     )
     parser.add_argument(
+        "--print-manifest",
+        action="store_true",
+        help=(
+            "Print the freshly-computed manifest as YAML to stdout, delimited by "
+            "'---MANIFEST-BEGIN---'/'---MANIFEST-END---' markers. Intended for "
+            "--dry-run use by check_workflow_exports_drift.py, which needs the "
+            "manifest this run WOULD produce (independently re-rendered from current "
+            "source) rather than trusting the manifest.yaml already on disk."
+        ),
+    )
+    parser.add_argument(
         "--codex-compat",
         action="store_true",
         help="Also generate codex compatibility mirror (.codex/skills) when codex target is enabled.",
@@ -332,6 +343,11 @@ def main() -> int:
     )
     manifest_path = repo_root / EXPORT_MANIFEST_PRIMARY_REL
     write_text(manifest_path, manifest_content, args.dry_run)
+
+    if args.print_manifest:
+        print("---MANIFEST-BEGIN---")
+        print(manifest_content, end="")
+        print("---MANIFEST-END---")
 
     print("[OK] Workflow export generation complete.")
     print(f"Scope: {args.scope} (pointer basis: {workflow_rel})")

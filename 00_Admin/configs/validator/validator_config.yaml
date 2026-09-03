@@ -284,7 +284,7 @@ rules:
       - 00_Admin/runbooks/rb_*.md
       - 01_Resources/templates/**/*.md
     params:
-      severity: warning
+      severity: error
       new_only: true
       reference_paths:
         - README.md
@@ -378,7 +378,7 @@ rules:
     paths:
       - 90_Sandbox/ai_workbooks/**/*.md
     params:
-      severity: warning
+      severity: error
       description: >-
         Flag workbook related_refs entries that use absolute paths or bare
         sibling-repo names without ../ prefix.

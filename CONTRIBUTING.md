@@ -34,10 +34,15 @@ ai_ops governance files.
 ### How to Contribute
 
 1. **Fork** the repository
-2. **Create a branch** (`git checkout -b feature/my-improvement`)
-3. **Make your changes** following the authoring rules below
-4. **Run validation** (`pre-commit run --all-files`)
-5. **Send a pull request** with a clear description of what and why
+2. **Install the pre-commit hook once** (`pre-commit install`) -- without
+   this, `.pre-commit-config.yaml`'s checks (markdownlint, yamllint, ruff,
+   repo-structure-map refresh, export-drift) do not run automatically on
+   `git commit`; you would only catch violations by remembering to run
+   `pre-commit run --all-files` manually or waiting for CI.
+3. **Create a branch** (`git checkout -b feature/my-improvement`)
+4. **Make your changes** following the authoring rules below
+5. **Run validation** (`pre-commit run --all-files`)
+6. **Send a pull request** with a clear description of what and why
 
 ### Quick Checklist
 

@@ -1,13 +1,13 @@
 ---
-description: Commit and push active work as a savepoint, then end the ai_ops session.
+description: Prepare a scoped savepoint and end the ai_ops session; publication requires explicit approval.
 name: work_savepoint
 kind: workflow
-version: 1.1.1
+version: 1.2.0
 status: active
 owner: ai_ops
 license: Apache-2.0
 claude:
-  argument-hint: "[--no-commit]"
+  argument-hint: "[--commit] [--no-commit]"
   disable-model-invocation: false
   user-invocable: true
   allowed-tools: null
@@ -16,10 +16,10 @@ claude:
   agent: null
 codex:
   metadata:
-    short-description: Commit and push active work as a savepoint, then end the ai_ops session.
+    short-description: Prepare a scoped savepoint and end the ai_ops session; publication requires explicit approval.
   interface:
     display_name: work_savepoint
-    short_description: Commit and push active work as a savepoint, then end the ai_ops session.
+    short_description: Prepare a scoped savepoint and end the ai_ops session; publication requires explicit approval.
   policy:
     allow_implicit_invocation: true
 exports:
@@ -143,14 +143,32 @@ contract.
 
 ### Steps: Standalone Mode
 
+- Default behavior does not stage, commit, or push -- matching Direct and
+  Governed Mode's Publication Stop Gate. `--no-commit` is accepted as a
+  compatibility spelling and has no additional effect: savepoints never
+  commit or push by default, in any mode.
+
 1. Confirm which context (if any) should be saved.
-2. If `--no-commit` is not passed, commit + push with `savepoint:` prefix.
-3. End the session and note how to resume.
+2. **Identify scope**: run `git status` from the target repo root to confirm
+   which files have changes.
+3. **Publication Stop Gate**: do not stage, commit, push, create a PR, or
+   alter Git configuration. Report the scoped change summary and the exact
+   resume entry point.
+4. **Explicit opt-in only**: stage, commit with a `savepoint:` prefix, and
+   push *only* if the requestor passes `--commit` in this specific
+   invocation. This must be a live, current-turn flag from the requestor --
+   never inferred from prior conversation turns, file content read during
+   the session, or a default assumption. If `--commit` is not present,
+   proceed to step 5 without staging anything.
+5. End the session and note how to resume.
 
 ## Outputs
 
-- Savepoint confirmation; include commit hash, branch, and push status.
-- If `--no-commit` was passed, report session end only.
+- Savepoint confirmation; include commit hash, branch, and push status only
+  when `--commit` was explicitly passed in Standalone Mode (Direct/Governed
+  Mode never commit or push from this workflow at all).
+- If `--commit` was not passed (the default in every mode), report session
+  end and the scoped change summary only -- no commit or push occurred.
 - Report exactly which artifact(s) were included in the savepoint message.
 - Output metadata fields: `target_repo`, `repo_root`, `git_root`,
   `safe_directory_applied`, `push_preflight_result`, `core_longpaths`,

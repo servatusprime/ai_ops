@@ -128,8 +128,17 @@ def _find_readme(artifact_path: Optional[str]) -> Optional[Path]:
     # artifact_path is repo-relative: "ai_ops/..." or "<other_repo>/..."
     path_str = artifact_path.strip()
 
-    # Try resolving from workspace root
-    candidate = _WORKSPACE_ROOT / path_str
+    # Resolve from workspace root, then require containment. .resolve() collapses
+    # ".." components and absolute-path overrides before the check, so this closes
+    # both "path_str is absolute" and "path_str traverses out via .." escapes.
+    candidate = (_WORKSPACE_ROOT / path_str).resolve()
+    if not candidate.is_relative_to(_WORKSPACE_ROOT.resolve()):
+        print(
+            f"  WARNING: work_state.yaml path escapes workspace root, refusing to "
+            f"resolve: {path_str!r} -> {candidate}",
+            file=sys.stderr,
+        )
+        return None
     if candidate.exists():
         # If the path IS a README, use it directly
         if candidate.name == "README.md":

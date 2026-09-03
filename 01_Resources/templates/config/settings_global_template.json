@@ -1,5 +1,6 @@
 {
   "_comment": "ai_ops global settings template. Apply to ~/.claude/settings.json on new machine onboarding. Replace <workspace-root> with your actual workspace path in additionalDirectories.",
+  "_comment_permissions": "git commit/push/reset/checkout are deliberately NOT in the allow list -- they must prompt for confirmation every time, matching the operator's own non-negotiable commit/push gate (see AGENTS.md Commit/Push Gate). Do not add them back without also updating that gate's intent.",
   "additionalDirectories": [
     "<workspace-root>\\ai_ops\\.claude\\skills",
     "<workspace-root>\\.claude\\skills",
@@ -19,11 +20,7 @@
       "Bash(git ls-remote:*)",
       "Bash(git check-ignore:*)",
       "Bash(git mv:*)",
-      "Bash(git checkout:*)",
       "Bash(git rm:*)",
-      "Bash(git reset:*)",
-      "Bash(git commit:*)",
-      "Bash(git push:*)",
       "Bash(git fetch:*)",
       "Bash(git stash:*)",
       "Bash(git show:*)",

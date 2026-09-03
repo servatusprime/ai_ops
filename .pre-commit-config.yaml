@@ -1,17 +1,17 @@
 repos:
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.41.0
+    rev: f295829140d25717bc79368d3f966fc1f67a824f  # v0.41.0
     hooks:
       - id: markdownlint
         args: ['--config', '.markdownlint.json', '--fix']
         exclude: '^99_Trash/'
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.35.1
+    rev: 81e9f98ffd059efe8aa9c1b1a42e5cce61b640c6  # v1.35.1
     hooks:
       - id: yamllint
         args: ['-c', '.yamllint']
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.7.4
+    rev: cafecb2f683a620516412e109877570ca7648cbd  # v0.7.4
     hooks:
       - id: ruff
         args: ['--config', 'ruff.toml', '--fix']
@@ -39,7 +39,7 @@ repos:
           --strict --require-manifest
         language: system
         pass_filenames: false
-        files: ^\.ai_ops/workflows/.*\.md$
+        always_run: true
         stages: [pre-commit]
       - id: ai-ops-pending-check
         name: ai_ops pending-vs-ready drift (manual)

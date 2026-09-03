@@ -1,13 +1,29 @@
 #!/usr/bin/env python3
-"""Check drift between workflow export manifest and current files."""
+"""Check drift between workflow export manifest and current files.
+
+Two independent checks are performed:
+
+1. Manifest-vs-disk drift (original check): does each output file's current
+   hash match what manifest.yaml *claims* it should be? This catches simple
+   staleness (forgot to regenerate) but can be defeated by a coordinated edit
+   that changes an output file and its manifest entry together.
+2. Source-vs-disk verification (added 2026-08-26, SEC-AIOPS-004): independently
+   re-renders each output from the current .ai_ops/workflows/*.md source --
+   via a subprocess call to generate_workflow_exports.py --dry-run
+   --print-manifest, which never reads or trusts manifest.yaml -- and compares
+   that freshly-rendered hash against the *actual on-disk output file*. This
+   closes the gap check 1 cannot: it cannot be fooled by tampering with
+   manifest.yaml, because it never consults it.
+"""
 
 from __future__ import annotations
 
 import argparse
 import hashlib
+import subprocess
 import sys
 from pathlib import Path
-from typing import List
+from typing import Dict, List, Optional
 
 try:
     import yaml  # type: ignore
@@ -15,6 +31,7 @@ except ImportError:
     yaml = None
 
 PRIMARY_MANIFEST_REL = Path(".ai_ops/exports/manifest.yaml")
+GENERATOR_REL = Path("00_Admin/scripts/generate_workflow_exports.py")
 
 
 def sha12(path: Path) -> str:
@@ -22,6 +39,43 @@ def sha12(path: Path) -> str:
     # Windows and Unix checkout styles.
     text = path.read_text(encoding="utf-8")
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+
+
+def independently_rendered_manifest(
+    repo_root: Path, targets: List[str], scope: str
+) -> Optional[Dict]:
+    """Run the generator in --dry-run --print-manifest mode and parse its
+    freshly-rendered manifest. Returns None on any failure (subprocess error,
+    unparsable output) -- callers must treat that as "could not verify", not
+    as a clean result."""
+    cmd = [
+        sys.executable,
+        str(repo_root / GENERATOR_REL),
+        "--dry-run",
+        "--print-manifest",
+        "--targets",
+        *targets,
+        "--scope",
+        scope,
+    ]
+    try:
+        result = subprocess.run(
+            cmd, cwd=repo_root, capture_output=True, text=True, timeout=60
+        )
+    except Exception:  # noqa: BLE001
+        return None
+    if result.returncode != 0:
+        return None
+    stdout = result.stdout
+    begin = stdout.find("---MANIFEST-BEGIN---")
+    end = stdout.find("---MANIFEST-END---")
+    if begin == -1 or end == -1 or end <= begin:
+        return None
+    yaml_text = stdout[begin + len("---MANIFEST-BEGIN---") : end]
+    try:
+        return yaml.safe_load(yaml_text) or {}
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def main() -> int:
@@ -138,12 +192,74 @@ def main() -> int:
                 f"{workflow_name}: manifest missing output kinds: {', '.join(missing_output_kinds)}"
             )
 
-    total_drift = len(source_drift) + len(output_drift)
+    # Independent re-render verification (SEC-AIOPS-004): never consults
+    # manifest.yaml, so it cannot be fooled by a manifest that was tampered
+    # in sync with an output file.
+    render_drift: List[str] = []
+    render_check_skipped = False
+    scope = manifest.get("scope")
+    manifest_targets_list = sorted(manifest_targets) if manifest_targets else []
+    if not isinstance(scope, str) or not manifest_targets_list:
+        render_check_skipped = True
+    else:
+        rendered = independently_rendered_manifest(repo_root, manifest_targets_list, scope)
+        if rendered is None:
+            render_check_skipped = True
+        else:
+            rendered_workflows = {
+                w.get("workflow"): w
+                for w in rendered.get("workflows", [])
+                if isinstance(w, dict)
+            }
+            for workflow in workflows:
+                if not isinstance(workflow, dict):
+                    continue
+                name = workflow.get("workflow")
+                rendered_wf = rendered_workflows.get(name)
+                if rendered_wf is None:
+                    render_drift.append(f"{name}: not present in independently-rendered manifest")
+                    continue
+                rendered_outputs = {
+                    o.get("path"): o.get("sha256_12")
+                    for o in rendered_wf.get("outputs", [])
+                    if isinstance(o, dict)
+                }
+                for output in workflow.get("outputs", []):
+                    if not isinstance(output, dict):
+                        continue
+                    out_rel = output.get("path")
+                    if not isinstance(out_rel, str):
+                        continue
+                    out_path = repo_root / out_rel
+                    expected_hash = rendered_outputs.get(out_rel)
+                    if expected_hash is None:
+                        render_drift.append(
+                            f"{out_rel}: not present in independently-rendered manifest"
+                        )
+                        continue
+                    if not out_path.exists():
+                        continue  # already reported as missing in output_drift above
+                    actual_hash = sha12(out_path)
+                    if actual_hash != expected_hash:
+                        render_drift.append(
+                            f"phantom canon: {out_rel} does not match what its declared "
+                            f"source (.ai_ops/workflows/{name}.md) actually renders to "
+                            f"(independently-rendered={expected_hash}, on-disk={actual_hash}). "
+                            f"manifest.yaml's own recorded hash for this path may agree with "
+                            f"the on-disk file -- that would mean the manifest was tampered "
+                            f"in sync with the file, not that the file is correct."
+                        )
+
+    total_drift = len(source_drift) + len(output_drift) + len(render_drift)
 
     print("[Workflow Export Drift Check]")
     print(f"Manifest: {manifest_path.relative_to(repo_root)}")
     print(f"Source drift: {len(source_drift)}")
     print(f"Output drift: {len(output_drift)}")
+    if render_check_skipped:
+        print("Independent re-render check: SKIPPED (could not run generator or parse its output)")
+    else:
+        print(f"Independent re-render drift: {len(render_drift)}")
     print(f"Total drift findings: {total_drift}")
 
     if source_drift:
@@ -156,8 +272,23 @@ def main() -> int:
         for item in output_drift:
             print(f"- {item}")
 
+    if render_drift:
+        print("\n[Independent Re-Render Drift]")
+        for item in render_drift:
+            print(f"- {item}")
+
+    if render_check_skipped:
+        print(
+            "\n[UNVERIFIED] The independent re-render check could not run (generator "
+            "subprocess failed or its output could not be parsed). This is NOT the "
+            "same as a clean result -- manifest-vs-disk drift may look clean while "
+            "the phantom-canon check that would catch a tampered manifest never ran. "
+            "Fix whatever broke the generator invocation before trusting this report."
+        )
+        return 1 if args.strict else 0
+
     if total_drift == 0:
-        print("\n[OK] No workflow export drift detected.")
+        print("\n[OK] No workflow export drift detected (including independent re-render verification).")
         return 0
 
     print("\n[DRIFT] Regenerate exports with:")

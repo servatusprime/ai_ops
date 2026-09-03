@@ -1054,8 +1054,8 @@ def _resolve_ref_path(source_file: str, ref: str, repo_root: str) -> str:
     if ref.startswith("../"):
         # "../<name>/..." is written identically by every file in this repo
         # regardless of the file's own nesting depth, to mean "the sibling
-        # repo <name> in this workspace" (e.g. "../re_stack/AGENTS.md") --
-        # not "one directory above this file". Recognize that shorthand
+        # repo <name> in this workspace" (e.g. "../<sibling-repo>/AGENTS.md")
+        # -- not "one directory above this file". Recognize that shorthand
         # generically (no repo name hardcoded, so this keeps working for any
         # current or future sibling repo in the workspace, not just the
         # repo this validator happens to ship with) by checking whether the

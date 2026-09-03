@@ -13,7 +13,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if echo \"$CLAUDE_TOOL_INPUT_FILE_PATH\" | grep -qE '\\.md$'; then npx --yes markdownlint-cli2 \"$CLAUDE_TOOL_INPUT_FILE_PATH\" 2>&1; fi; exit 0"
+            "command": "if echo \"$CLAUDE_TOOL_INPUT_FILE_PATH\" | grep -qE '\\.md$'; then npx --yes markdownlint-cli2@0.23.2 \"$CLAUDE_TOOL_INPUT_FILE_PATH\" 2>&1; fi; exit 0"
           }
         ]
       }
