@@ -450,4 +450,5 @@
 |   |           +-- SKILL.md
 |   +-- marketplace.json
 |-- repo_structure.txt
+|-- requirements.txt
 +-- ruff.toml
