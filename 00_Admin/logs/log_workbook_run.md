@@ -1,10 +1,10 @@
 ---
 title: Log: Workbook Runs
-version: 0.1.1
+version: 0.1.2
 status: active
 owner: ai_ops
 created: 2026-01-08
-updated: 2026-03-13
+updated: 2026-09-04
 ai_generated: true
 ---
 
@@ -663,3 +663,90 @@ ai_generated: true
   pass; `python -m unittest 00_Admin.tests.test_run_family_graph` -- 33/33
   pass; repo validator -- 0 new errors (only pre-existing, unrelated
   findings remain). Commit and push are NOT performed; held for requestor.
+
+- 2026-09-04 | future-work integration + `wb_ai_ops_security_audit_01`
+  closeout (harvest/prune) | Two related actions in one pass, at requestor
+  direction. (1) Reviewed the four `90_Sandbox/ai_workbooks/` bundles against
+  the future-work registry and folded two ready items into the design
+  workbooks that already own their scope, rather than tracking them
+  separately: `fw_20260726_01` (runprogram wiring health gate) into
+  `wb_ai_ops_command_surface_uplift_01_2026-09-02` Workbook 01 (`/health`
+  pilot, Phase 2/3 tasks added, `proposed_workbook` set in the registry);
+  `fw_20260902_01` (work_savepoint publication contradiction +
+  installed-surface drift) into `wb_skills_surface_consolidation_01`
+  (new Phase 3.6 -- the registry already named this bundle as
+  `completion_workbook` but the workbook had no matching task until now).
+  A third item, `fw_20260904_01` (dependency manifest for governed execution
+  repos), was filed against a named governed repo's `target_repo` but had
+  been recorded in ai_ops's own registry; relocated it to that governed
+  repo's own `<governed_repo>/00_Admin/backlog/future_work_registry.yaml` in
+  full (content unchanged, only `owner`/`completion_workbook` adjusted to
+  that registry's conventions) and removed it from ai_ops's. Both registries'
+  scorecards regenerated (`generate_future_work_scorecard.py`; the governed
+  repo's run needed explicit `--registry`/`--output` args -- the script always
+  resolves
+  `_REPO_ROOT` from its own `ai_ops/00_Admin/scripts/` location, so the
+  documented "run from the nested repo root" shortcut silently regenerates
+  ai_ops's scorecard again instead of the target repo's; worth a future-work
+  entry of its own). (2) `wb_ai_ops_security_audit_01_2026-08-14` -- both the
+  workbundle and its sole workbook were already `status: completed`
+  (`last_updated: 2026-09-03`); the requestor had already authorized and
+  performed the canonical remediation commit/push (`215b8fc`, 2026-09-03) and
+  accepted residual risk the same day, but the sandbox bundle itself was
+  never archived. Ran the closeout harvest/prune step only (no re-commit):
+  moved the bundle to `99_Trash/wb_ai_ops_security_audit_01_2026-08-14/`
+  unchanged; removed its stale `status: active` entry from
+  `.ai_ops/local/work_state.yaml` `work_context.active_artifacts`; updated
+  `90_Sandbox/ai_workbooks/README.md`'s bundle index (also added the two
+  bundles it was missing --
+  `wb_ai_ops_command_surface_uplift_01_2026-09-02` and
+  `wb_codex_subagent_governance_handshake_01_2026-08-28` -- neither had ever
+  been listed); and fixed five now-broken `90_Sandbox/...` path references
+  to the archived bundle (two in the registry's `source_workbook` fields for
+  `fw_20260902_01`/`fw_20260902_02`, three in the command-surface-uplift
+  bundle's `related_refs`) to point at the new `99_Trash/` location. Only
+  `90_Sandbox/**`, `99_Trash/**`, and `.ai_ops/local/**` paths were touched by
+  the archive itself (all gitignored, no git action required); the tracked
+  files touched this pass are `00_Admin/backlog/future_work_registry.yaml`,
+  `00_Admin/backlog/future_work_scorecard.md`, and this log entry, plus the
+  equivalent registry and scorecard pair in the sibling governed repo.
+  Validation: registry YAML parses (scorecard generator ran clean against
+  both registries, 23 rows ai_ops / 21 rows in the governed repo); grepped
+  both repos post-move for any remaining
+  `90_Sandbox/ai_workbooks/wb_ai_ops_security_audit_01_2026-08-14` reference
+  -- none found outside `99_Trash/` itself. Commit and push are NOT
+  performed; held for requestor, per the standing commit/push gate.
+
+- 2026-09-04 | relocated misplaced proposal + added registry-prune steps to
+  final workbook phases | Follow-on to the same-day future-work integration
+  pass above, both at requestor direction. (1) The requestor flagged
+  `work_proposal_thin_governed_repo_seed_2026-08-27.md` (backing
+  `fw_20260827_01`) as misplaced -- it was sitting directly in
+  `00_Admin/backlog/`, a registry/scorecard/intake-only location, not a
+  workbundle, unlike every other work proposal in this repo (which each live
+  inside their own `90_Sandbox/ai_workbooks/<bundle>/` folder). Created
+  `wb_thin_governed_repo_architecture_01_2026-09-04/` (README with placement
+  decision echo + the proposal, renamed to the standard
+  `work_proposal_<topic>_01.md` convention, content unchanged in substance),
+  updated the registry's `proposed_workbook` pointer, added the bundle to
+  the sandbox index, and regenerated the scorecard. (2) Confirmed and
+  strengthened registry-pruning steps in the two workbooks that now carry
+  folded-in future-work items: `wb_skills_surface_consolidation_01`'s task
+  3.6.4 (already present) now explicitly cites
+  `policy_future_work_registry.md`'s Completion and Deletion Rule and
+  requires the scorecard regen in the same change; added a new task 5.5 in
+  its Completion Finalization phase that blocks reporting the workbook
+  complete if 3.6.4 was skipped or deferred.
+  `wb_ai_ops_command_surface_uplift_01_2026-09-02`'s Workbook 01 (`/health`
+  pilot) does not itself complete `fw_20260726_01` -- it only designs the
+  contract -- so its Phase 5 now explicitly defers pruning to whichever
+  later approved implementation workbook actually ships the validator
+  registration field, rather than leaving that responsibility unstated.
+  Validation: markdownlint clean (stdin, bypassing the `90_Sandbox/**`
+  ignore) on all new/edited files; repo validator shows no new findings
+  beyond the two pre-existing baseline errors already noted in the prior
+  entry (one `VS028` concrete-repo-name mention predating this session in
+  `future_work_registry.yaml`'s `fw_20260827_01` scope text, one `VS023`
+  broken relative reference in `wb_02_command_skill_surface_review_2026-09-02.md`
+  that this session never touched). Commit and push are NOT performed; held
+  for requestor.

@@ -1,10 +1,22 @@
 ---
 title: future_work_registry
-version: 0.6.9
+version: 0.6.13
 status: active
 owner: ai_ops
 created: 2026-01-07
-updated: '2026-08-20'
+updated: 2026-09-04
+relocation_note_2026_09_04: >-
+  fw_20260904_01 (resolvable dependency manifest for governed execution repos)
+  relocated to the named governed repo's own
+  `<governed_repo>/00_Admin/backlog/future_work_registry.yaml` -- its
+  target_repo field already named that repo, not ai_ops; this registry is
+  ai_ops-scoped only. See that repo's registry for the full entry, unchanged
+  in substance. Also this pass: fw_20260726_01 linked to the newly created
+  wb_ai_ops_command_surface_uplift_01_2026-09-02 (Workbook 01, /health pilot)
+  as its design workbook; fw_20260902_01's remaining scope (installed-surface
+  drift, three stale workspace-root surfaces) given an explicit Phase 3.6 task
+  in wb_skills_surface_consolidation_01.md, since the workbook previously had
+  no reference to this item despite the registry's completion_workbook pointer.
 migration_note: >-
   Most items were moved to wb_governance_hardening_02; selected deferred items
   remain here.
@@ -148,6 +160,123 @@ scorecard_schema:
     - medium
     - low
 entries:
+  - id: fw_20260902_01
+    title: >-
+      Refresh three stale generated work_savepoint install surfaces
+      (.claude/skills, .agents/skills, openai.yaml) and add workspace-scope
+      drift detection
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      99_Trash/wb_ai_ops_security_audit_01_2026-08-14/
+      wb_01_ai_ops_security_audit_plan_2026-08-14.md (archived 2026-09-04;
+      was 90_Sandbox/ai_workbooks/ at filing time)
+    completion_workbook: null
+    proposed_workbook: null
+    owner: ai_ops
+    status: planned
+    priority: medium
+    effort: S
+    readiness: ready
+    created: 2026-09-02
+    next_review: 2026-10-04
+    scope: >-
+      NARROWED 2026-09-04 (was broader; the frontmatter/body contradiction
+      half of this item is resolved, see notes). Three generated
+      workspace-root install surfaces still carry the pre-fix
+      `work_savepoint` description ("Commit and push active work as a
+      savepoint, then end the ai_ops session") even though the canonical
+      `.ai_ops/workflows/work_savepoint.md` was corrected to "Prepare a
+      scoped savepoint and end the ai_ops session; publication requires
+      explicit approval": `.claude/skills/work_savepoint/SKILL.md`,
+      `.agents/skills/work_savepoint/SKILL.md`, and
+      `.agents/skills/work_savepoint/agents/openai.yaml` -- re-confirmed
+      stale by direct read 2026-09-04. Refresh these three through the
+      operator-gated `/ai_ops_setup` lane (do not hand-edit installed
+      surfaces), and add a bounded workspace-scope drift check so the
+      repo-internal export-drift gate can't stay green while these three
+      diverge from canon.
+    benefit: >-
+      Prevents an agent or operator reading an installed skill listing from
+      believing a savepoint publishes by default, when the canonical source
+      has already been corrected to say the opposite.
+    risk_if_deferred: medium
+    activation_trigger: >-
+      Next `/ai_ops_setup` pass over Claude/Codex skill installs, or sooner
+      if another savepoint invocation surfaces the same stale-description
+      confusion.
+    compacted_context: >-
+      This entry is self-contained: its scope, risk, activation trigger,
+      owner, and acceptance conditions govern the work. Not tied to the
+      now-archived security-audit workbook (provenance only) or to
+      `wb_skills_surface_consolidation_01_2026-08-27` (that bundle's Phase
+      3.6 investigated and confirmed this residual per its own explicit
+      no-silent-install-write boundary; it does not execute the refresh
+      itself -- a future `/ai_ops_setup`-lane action does).
+    notes: >-
+      HISTORY: originally filed 2026-09-02 covering two sub-questions: (1) a
+      frontmatter/body contradiction in `work_savepoint.md` propagated via
+      the `exports` block to Claude/Codex skill listings, and (2) these same
+      three stale install surfaces. Sub-question (1) was independently
+      verified resolved 2026-09-04 (description now reads "publication
+      requires explicit approval", body's Publication Stop Gate matches, zero
+      export drift). `wb_skills_surface_consolidation_01_2026-08-27`'s Phase
+      3.6 (2026-09-04) re-confirmed sub-question (2) is still open by direct
+      read of all three files -- this entry is narrowed to that remainder
+      only, per `policy_future_work_registry.md`'s Completion and Deletion
+      Rule (narrow rather than delete when a sub-question remains open).
+      Editing `.ai_ops/workflows/work_savepoint.md` itself is Level 4 and
+      requires running `00_Admin/scripts/generate_workflow_exports.py` before
+      commit -- not in scope for this narrowed item, which only concerns the
+      three installed copies.
+  - id: fw_20260904_01
+    title: "closeout.md frontmatter description asserts unconditional commit/push that its body gates behind explicit approval"
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: >-
+      90_Sandbox/ai_workbooks/wb_skills_surface_consolidation_01_2026-08-27/
+      wb_skills_surface_consolidation_01.md (task 3.6.2, sweeping for the
+      same description/body contradiction pattern found in fw_20260902_01)
+    completion_workbook: null
+    proposed_workbook: null
+    owner: ai_ops
+    status: planned
+    priority: medium
+    effort: S
+    readiness: ready
+    created: 2026-09-04
+    next_review: 2026-10-04
+    scope: >-
+      `.ai_ops/workflows/closeout.md`'s frontmatter `description` reads
+      "Finalize a work session with cleanup, lint, commit, and push" -- read
+      on its own, this states commit and push as things the command does as
+      part of finishing. The body does not agree: step 14 requires "an
+      explicit operator approval that names the final include set... before
+      every commit" and "a separate explicit operator approval before every
+      push or PR creation; commit approval does not imply publication
+      approval." Decide which is authoritative (most likely: the description
+      should read as approval-gated, matching `work_savepoint.md`'s
+      post-fix wording) and make both agree, including the exported
+      Claude/Codex skill surfaces the `exports` block ships this description
+      to.
+    benefit: >-
+      Removes the same class of contradiction already fixed once this cycle
+      in `work_savepoint.md`: an agent or operator routing on the exported
+      description could believe `/closeout` always publishes, when the body
+      requires two separate explicit approvals first.
+    risk_if_deferred: medium
+    activation_trigger: >-
+      Next governance pass over `.ai_ops/workflows/`, or sooner if an agent
+      or operator is misled by the description into expecting automatic
+      commit/push from `/closeout`.
+    notes: >-
+      Found during a scoped sweep (fw_20260902_01's task 3.6.2), not a full
+      audit of every workflow file -- `harvest.md` was also checked and judged
+      not to match this pattern (its description is a capability summary, not
+      a default-behavior claim, and its body already carries an explicit
+      "always confirm before pruning" guardrail). Other workflow files were
+      not individually re-audited; a full sweep remains a candidate future
+      action if this pattern recurs.
   - id: fw_20260315_01
     title: Session-state infrastructure for context routing fast-path evaluation
     domain: integration
@@ -613,7 +742,9 @@ entries:
       work_packets/wp_gis_runprogram_thrift_and_resource_audit_01_2026-07-20/
       wb_gis_runprogram_thrift_and_resource_audit_01.md
     completion_workbook: null
-    proposed_workbook: null
+    proposed_workbook: >-
+      90_Sandbox/ai_workbooks/wb_ai_ops_command_surface_uplift_01_2026-09-02/
+      wb_01_health_command_pilot_2026-09-02.md
     scope: >-
       Extend the governed health orchestration so a selected runprogram scope
       invokes that runprogram's registered static wiring validator before
@@ -684,6 +815,14 @@ entries:
       changes shared health behavior and validator registration. Preserve
       generic governed-repo discovery; the initial GIS validator is evidence,
       not the generic health contract itself.
+      UPDATE 2026-09-04: folded into
+      `wb_ai_ops_command_surface_uplift_01_2026-09-02` Workbook 01 (`/health`
+      pilot) as its design workbook -- Phase 2 (Pilot Contract Design) and
+      Phase 3 (Graph Pilot Design) now carry an explicit task to design the
+      validator registration/discovery field this item requires, generalized
+      rather than GIS-hardcoded. This entry stays `status: planned` until that
+      design work actually produces the registration contract; folding it into
+      the pilot's scope is not itself completion.
   # fw_20260803_01 (VS035 work-family status-integrity adoption and
   # evolution) removed 2026-08-26: the underlying opt-in completed-status
   # evidence control (validation_contract: work_validation_v1 / C-02) was
@@ -1037,3 +1176,138 @@ entries:
       scope and approval per `AGENTS.md`'s authority guard) rather than an inline
       fix -- touches multiple canonical guides and needs consistent example
       updates throughout, not a single find-and-replace.
+  - id: fw_20260827_01
+    title: Define and seed a thin governed-repository architecture for new top-level directories
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: null
+    completion_workbook: null
+    proposed_workbook: >-
+      90_Sandbox/ai_workbooks/wb_thin_governed_repo_architecture_01_2026-09-04/
+      work_proposal_thin_governed_repo_architecture_01.md
+    scope: >-
+      Add an explicit, reusable bootstrap tier for new top-level governed
+      repositories. It should provide a thin architecture modeled on the
+      recognizable ai_ops/re_stack pattern, with required root instructions,
+      README, source/data separation as appropriate, 00_Admin governance
+      surfaces, 90_Sandbox work artifacts, and registration/work-state wiring.
+      It must also define when a domain repo may use a smaller shape, how the
+      exception is recorded, and how setup validates the resulting structure.
+    priority: high
+    benefit: high
+    effort: m
+    readiness: partial
+    risk_if_deferred: high
+    activation_trigger: >-
+      Any request to create a new top-level directory intended to function as a
+      governed repository, or any future setup that produces a sandbox-only
+      shape without an explicit architecture decision.
+    next_review: 2026-09-10
+    status: planned
+    owner: ai_ops
+    created: 2026-08-27
+    compacted_context:
+      source: >-
+        pm Outlook attention-management bootstrap, 2026-08-27 operator feedback
+      note: >-
+        The pm build satisfied workbundle controls but surprised the operator
+        because its visible architecture was a deep sandbox packet rather than
+        a thin top-level governed repository resembling ai_ops or re_stack.
+        This is a reusable guidance/setup gap, not a pm-specific data-model
+        defect.
+    notes: >-
+      Proposal seed only. Do not revise canonical bootstrap guides or setup
+      scripts in the same session without a separately authorized workbook and
+      review gate.
+
+  - id: fw_20260831_01
+    title: Define recoverable and disposable 99_Trash retention lanes
+    domain: operations
+    target_repo: both
+    source_workbook: null
+    completion_workbook: null
+    proposed_workbook: null
+    scope: >-
+      Establish an optional per-repository retention pattern under an existing
+      `99_Trash/` directory that separates recoverable temporary backups from
+      disposable churn, test artifacts, and superseded outputs. Define a
+      stable holding-area convention, required disposition metadata, retention
+      and recovery expectations, cleanup-tool safeguards, and how tracked versus
+      ignored contents are handled. Preserve provenance records where needed;
+      do not treat age alone as permission to delete. Keep reusable definitions,
+      project evidence, and generated outputs classified separately before any
+      item enters a trash lane. Validate the pattern against both ai_ops and a
+      governed repository without requiring every repository to create `99_Trash`
+      when it has no cleanup need.
+    priority: medium
+    benefit: high
+    effort: m
+    readiness: partial
+    risk_if_deferred: medium
+    activation_trigger: >-
+      A repository cleanup, harvest, closeout, or savepoint session encounters
+      mixed temporary artifacts where recovery value and disposable churn are
+      not clearly separated, or a cleanup tool is proposed to purge `99_Trash`.
+    next_review: 2026-10-01
+    status: planned
+    owner: ai_ops
+    created: 2026-08-31
+    compacted_context:
+      source: >-
+        Operator request after a governed re_stack savepoint and manual pruning
+        of 99_Trash contents on 2026-08-31.
+      note: >-
+        The current `99_Trash` concept is a soft staging area for eventual
+        deletion, but recoverable backups and disposable churn are not given a
+        consistent durable distinction. A future pattern should remain
+        optional, repository-local, and compatible with existing archive and
+        provenance practices.
+    notes: >-
+      Proposal seed only. Requires a scoped ai_ops workbook before changing
+      policies, cleanup scripts, templates, or repository-wide conventions.
+
+  - id: fw_20260902_02
+    title: Adjudicate validator warning-to-blocker policy for SEC-AIOPS-020
+    domain: validation
+    target_repo: ai_ops
+    source_workbook: 99_Trash/wb_ai_ops_security_audit_01_2026-08-14/wb_01_ai_ops_security_audit_plan_2026-08-14.md (archived 2026-09-04; was 90_Sandbox/ai_workbooks/ at filing time)
+    completion_workbook: null
+    proposed_workbook: null
+    scope: >-
+      Evaluate whether VS029, VS032, and the hardcoded warning rules
+      VS007/008/012/013/014/017 should remain advisory or become blocking.
+      Re-derive each rule's failure mode, affected artifact class, false-
+      positive and remediation cost, external-repository portability, and
+      required negative fixtures. Promote only rules with demonstrated
+      security or governance impact and a clear fail-closed contract; leave
+      descriptive, placement, or onboarding guidance as warnings unless the
+      design proves that a clean result must be blocked. Preserve the existing
+      VS025/VS033 error promotion and avoid changing severity merely to make
+      the current repository green.
+    priority: medium
+    benefit: high
+    effort: m
+    readiness: partial
+    risk_if_deferred: medium
+    activation_trigger: >-
+      A future audit, validator redesign, or external-repository adoption
+      needs a documented decision about which warning classes may block
+      execution, or new evidence shows a warning-only rule permits a material
+      security or governance failure to proceed.
+    next_review: 2026-10-01
+    status: planned
+    owner: ai_ops
+    created: 2026-09-02
+    compacted_context:
+      source: >-
+        SEC-AIOPS-020 in wb_ai_ops_security_audit_01_2026-08-14 and the
+        2026-09-02 Opus completion crosscheck.
+      note: >-
+        VS025 and VS033 were already promoted to errors. The remaining
+        warning-only rules appear intentional, but their blocker-worthiness
+        has not been adjudicated rule by rule. This is a policy/design review,
+        not authorization to promote every warning.
+    notes: >-
+      Proposal seed only. Requires a scoped validator-governance workbook,
+      rule-level evidence, changed-file-shape fixtures, and independent review
+      before any canonical validator code or severity configuration changes.

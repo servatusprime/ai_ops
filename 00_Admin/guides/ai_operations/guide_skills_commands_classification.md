@@ -1,10 +1,10 @@
 ---
 title: "Reference: Skills and Commands Classification"
 id: ref_skills_commands_classification_01
-version: 0.1.2
+version: 0.1.3
 status: active
 created: 2026-02-20
-last_updated: 2026-03-19
+last_updated: 2026-09-04
 owner: ai_ops
 license: Apache-2.0
 description: >
@@ -176,6 +176,31 @@ This separation ensures the plugin source is always in the ai_ops repo
 under version control, while tool-specific discovery surfaces are
 generated into the appropriate locations by setup scripts or export
 tooling.
+
+### Claude Code Inline-Plugin Discovery Hazard
+
+**Never place a `.claude-plugin/plugin.json` at the `ai_ops` repo root.**
+Claude Code CLI auto-discovers a `.claude-plugin/plugin.json` sitting at a
+repo's own root as an in-session local plugin (identity `<name>@inline`,
+visible in `~/.claude.json`'s `pluginUsage`). If that manifest's skill set
+overlaps the same skills already installed at `.claude/skills/`, every skill
+loads twice in one session -- once unscoped, once under the manifest's
+`<name>:` prefix.
+
+This happened in this repo: a root-level `ai_ops/.claude-plugin/plugin.json`
+(name `ai-ops-skills`, authored only as metadata for the `setup_cowork_plugin`
+packaging script, not for Claude Code CLI discovery) caused every governance
+skill to double-load as `ai-ops-skills:<skill>`. Fixed 2026-09-04
+(`wb_skills_surface_consolidation_01`) by deleting the root manifest; the
+canonical manifest now lives only at
+`ai_ops/plugins/ai-ops-governance/.claude-plugin/plugin.json` (the "Always
+present in repo" location above), which is not inline-discovered -- a
+manifest nested one level under `plugins/<name>/` does not trigger the same
+behavior as one at the repo's own root. `setup_cowork_plugin.sh`/`.bat` read
+the manifest from that location for Cowork/Claude Desktop packaging; the
+resulting `.plugin` zip's filename (`ai-ops-skills.plugin`, set in
+`.ai_ops/workflows/ai_ops_setup.md`) is unrelated to the manifest's location
+and was intentionally left unchanged by that fix.
 
 ---
 

@@ -16,7 +16,7 @@ REM Exit codes:
 REM   0  Success (or dry-run complete)
 REM   1  Error (zero skills found, manifest missing, Python unavailable)
 REM
-REM Manifest source: <repo_root>/.claude-plugin/plugin.json (tracked)
+REM Manifest source: <repo_root>/plugins/ai-ops-governance/.claude-plugin/plugin.json (tracked)
 REM If not found, error is raised.
 
 setlocal enableextensions enabledelayedexpansion
@@ -49,10 +49,10 @@ popd >nul
 REM Fallback: if script-location resolution failed, walk upward from CWD until
 REM the tracked plugin manifest is found. This keeps the helper portable while
 REM supporting shells that invoke .bat files with unusual %~dp0 behavior.
-if exist "!REPO_ROOT!\.claude-plugin\plugin.json" goto :repo_root_resolved
+if exist "!REPO_ROOT!\plugins\ai-ops-governance\.claude-plugin\plugin.json" goto :repo_root_resolved
 set "SEARCH_DIR=%CD%"
 :find_repo_root
-if exist "!SEARCH_DIR!\.claude-plugin\plugin.json" (
+if exist "!SEARCH_DIR!\plugins\ai-ops-governance\.claude-plugin\plugin.json" (
     set "REPO_ROOT=!SEARCH_DIR!"
     goto :repo_root_resolved
 )
@@ -78,7 +78,7 @@ if "%SCOPE%"=="workspace" (
 )
 
 REM Resolve manifest path
-set "MANIFEST_PATH=%REPO_ROOT%\.claude-plugin\plugin.json"
+set "MANIFEST_PATH=%REPO_ROOT%\plugins\ai-ops-governance\.claude-plugin\plugin.json"
 
 REM Resolve output path
 if "%OUTPUT_PATH%"=="" (
@@ -97,7 +97,7 @@ echo.
 REM Check manifest
 if not exist "%MANIFEST_PATH%" (
     echo ERROR: Manifest not found: %MANIFEST_PATH%
-    echo Create it at .claude-plugin\plugin.json in the ai_ops repo root.
+    echo Expected at plugins\ai-ops-governance\.claude-plugin\plugin.json in the ai_ops repo.
     exit /b 1
 )
 

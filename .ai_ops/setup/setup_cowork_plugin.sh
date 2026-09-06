@@ -16,7 +16,7 @@
 #   0  Success (or dry-run complete)
 #   1  Error (zero skills found, manifest missing, Python unavailable)
 #
-# Manifest source: <repo_root>/.claude-plugin/plugin.json (tracked)
+# Manifest source: <repo_root>/plugins/ai-ops-governance/.claude-plugin/plugin.json (tracked)
 
 set -e
 
@@ -68,7 +68,7 @@ else
   SKILLS_ROOT="$REPO_ROOT/.claude/skills"
 fi
 
-MANIFEST_PATH="$REPO_ROOT/.claude-plugin/plugin.json"
+MANIFEST_PATH="$REPO_ROOT/plugins/ai-ops-governance/.claude-plugin/plugin.json"
 
 if [ -z "$output_path" ]; then
   output_path="$WORKSPACE_ROOT/ai-ops-skills.plugin"
@@ -88,7 +88,7 @@ echo ""
 # Check manifest
 if [ ! -f "$MANIFEST_PATH" ]; then
   echo "ERROR: Manifest not found: $MANIFEST_PATH"
-  echo "Create it at .claude-plugin/plugin.json in the ai_ops repo root."
+  echo "Expected at plugins/ai-ops-governance/.claude-plugin/plugin.json in the ai_ops repo."
   exit 1
 fi
 

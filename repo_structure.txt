@@ -32,8 +32,6 @@
 |       |-- work.md
 |       |-- work_savepoint.md
 |       +-- work_status.md
-|-- .claude-plugin/
-|   +-- plugin.json
 |-- .editorconfig
 |-- .gitattributes
 |-- .github/
