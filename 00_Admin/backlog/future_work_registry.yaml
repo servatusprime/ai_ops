@@ -234,8 +234,9 @@ entries:
     domain: governance
     target_repo: ai_ops
     source_workbook: >-
-      90_Sandbox/ai_workbooks/wb_skills_surface_consolidation_01_2026-08-27/
-      wb_skills_surface_consolidation_01.md (task 3.6.2, sweeping for the
+      99_Trash/wb_skills_surface_consolidation_01_2026-08-27/
+      wb_skills_surface_consolidation_01.md (archived 2026-09-05; was
+      90_Sandbox/ai_workbooks/ at filing time) (task 3.6.2, sweeping for the
       same description/body contradiction pattern found in fw_20260902_01)
     completion_workbook: null
     proposed_workbook: null

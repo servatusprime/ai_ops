@@ -1,6 +1,6 @@
 ---
 title: Log: Workbook Runs
-version: 0.1.3
+version: 0.1.4
 status: active
 owner: ai_ops
 created: 2026-01-08
@@ -778,3 +778,17 @@ ai_generated: true
   active-artifacts entry for this workbook removed. Requestor separately
   asked about archiving the workbundle to `99_Trash/`; not yet actioned
   pending that answer.
+
+- 2026-09-05 | archived `wb_skills_surface_consolidation_01` to `99_Trash/` |
+  Requestor confirmed the archive. Moved the bundle folder intact from
+  `90_Sandbox/ai_workbooks/` to `99_Trash/`; updated the sandbox index
+  README (moved its "Current workbundle" bullet to a new "Archived
+  2026-09-05" section); fixed the one external stale pointer this move
+  created (`fw_20260904_01`'s `source_workbook` in
+  `future_work_registry.yaml`, now `99_Trash/...`) -- the bundle's own
+  internal self-references to its former `90_Sandbox/` path were left
+  as-authored historical record, matching the precedent set when the
+  security-audit bundle was archived 2026-09-04. Scorecard regenerated (no
+  visible diff -- `source_workbook` isn't a scorecard column). Validator
+  and markdownlint clean; only the two pre-existing baseline findings
+  remain, neither touched.
