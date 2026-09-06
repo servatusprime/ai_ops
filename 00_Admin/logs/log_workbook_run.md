@@ -1,10 +1,10 @@
 ---
 title: Log: Workbook Runs
-version: 0.1.2
+version: 0.1.3
 status: active
 owner: ai_ops
 created: 2026-01-08
-updated: 2026-09-04
+updated: 2026-09-05
 ai_generated: true
 ---
 
@@ -750,3 +750,31 @@ ai_generated: true
   broken relative reference in `wb_02_command_skill_surface_review_2026-09-02.md`
   that this session never touched). Commit and push are NOT performed; held
   for requestor.
+
+- 2026-09-05 | closeout: `wb_skills_surface_consolidation_01` commit/push |
+  Requestor ran `/closeout the active workbook, including commit and push`
+  after the workbook reached `status: completed` (all phases 0-7 done,
+  crosscheck verdict `Acceptable`). Staged exactly the workbook's own
+  change set, explicitly excluding
+  `00_Admin/scripts/generate_future_work_scorecard.py` (a pre-existing,
+  unrelated dirty file from a concurrent session, already disclosed in the
+  workbook's own Verification Checklist). Pre-commit blocked on an
+  unrelated environment defect: the legacy `.git/hooks/pre-commit.legacy`
+  script (predates the pre-commit framework install; regenerates
+  `repo_structure.txt`) had a hardcoded `#!/bin/sh` shebang that a
+  Windows-native Python subprocess (pre-commit's own `hook-impl`, invoked
+  via `miniconda3/python.exe`) cannot resolve as a literal path --
+  `ExecutableNotFoundError: Executable /bin/sh not found`. Fixed by
+  changing the shebang to `#!/usr/bin/env sh` (PATH-based lookup, which the
+  child process's inherited environment does resolve); this is local
+  machine/hook state (`.git/hooks/` is never tracked), not a canonical repo
+  change. Commit `e434a5d` ("Fix duplicate Claude Code skill loading;
+  retire root plugin manifest"), 8 files (409 insertions/34 deletions) --
+  the workbook's 7 intended files plus `repo_structure.txt`, auto-updated
+  and staged by the now-working legacy hook. Pushed to `origin/main`
+  (`215b8fc..e434a5d`). Full validator suite and markdownlint clean before
+  commit (only the two pre-existing baseline findings already noted in
+  prior entries remain, neither touched). `.ai_ops/local/work_state.yaml`
+  active-artifacts entry for this workbook removed. Requestor separately
+  asked about archiving the workbundle to `99_Trash/`; not yet actioned
+  pending that answer.
