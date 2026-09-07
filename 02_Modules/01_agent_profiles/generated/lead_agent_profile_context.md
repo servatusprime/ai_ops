@@ -5,7 +5,7 @@ status: active
 last_updated: 2026-04-12
 owner: ai_ops
 generated_at: 2026-04-12T00:00:00Z
-source_hash: 2d1e72649d65
+source_hash: a0bed2449707
 ---
 
 <!-- markdownlint-disable MD013 MD025 -->
@@ -19,7 +19,7 @@ copied into root `AGENTS.md` or `GEMINI.md`.
 
 - crew_preset: `default`
 - generated_at: `2026-04-12T00:00:00Z`
-- source_hash: `2d1e72649d65`
+- source_hash: `a0bed2449707`
 
 ## Lead Profile State
 

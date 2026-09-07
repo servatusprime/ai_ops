@@ -80,14 +80,14 @@ Best fit:
 <!--
 Managed by ai_ops /profiles
 generated_at: 2026-04-12T00:00:00Z
-source_hash: 2d1e72649d65
+source_hash: a0bed2449707
 role: ai-ops-linter
 profile_id: anchor
 crew_preset: default
 canonical_lanes:
   - Linter
 sliders:
-  - communication_depth: 25 (T2)
+  - communication_depth: 55 (T3)
   - tone_warmth: 30 (T2)
   - formality: 70 (T4)
   - directness: 70 (T4)

@@ -82,7 +82,7 @@ Best fit:
 <!--
 Managed by ai_ops /profiles
 generated_at: 2026-04-12T00:00:00Z
-source_hash: 2d1e72649d65
+source_hash: a0bed2449707
 role: ai-ops-builder
 profile_id: forge
 crew_preset: default

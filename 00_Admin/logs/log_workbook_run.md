@@ -817,3 +817,13 @@ ai_generated: true
   changed the setup surface. The map now records the two Claude agent setup
   scripts and omits the retired Claude setup scripts. The GitHub-equivalent
   generation and diff check pass against the refreshed map.
+
+- 2026-09-07 | release-quality gate portability fix |
+  The clean-checkout gate now generates the repo-local Claude and Codex
+  export surfaces before strict drift validation; those surfaces are ignored
+  installation outputs and are absent from fresh CI checkouts. Tracked profile
+  derivatives now use the factory profile as their deterministic baseline when
+  `--tracked-only` is requested, while machine-local profiles continue to
+  govern ignored local surfaces. The release-quality gate passes in a clean
+  checkout with 40 governance tests, zero export drift, and matching tracked
+  derivatives.

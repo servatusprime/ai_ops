@@ -117,6 +117,17 @@ def main() -> int:
             [python_exe, "00_Admin/scripts/validate_workflow_frontmatter.py"],
         ),
         (
+            "workflow-export-generation",
+            [
+                python_exe,
+                "00_Admin/scripts/generate_workflow_exports.py",
+                "--targets",
+                "plugin",
+                "claude",
+                "codex",
+            ],
+        ),
+        (
             "export-drift",
             [
                 python_exe,

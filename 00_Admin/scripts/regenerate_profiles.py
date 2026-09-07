@@ -1219,7 +1219,13 @@ def main() -> int:
         except Exception as exc:  # noqa: BLE001
             print(f"[WARN] Could not load rider archetypes from {archetypes_path}: {exc}. Using built-in defaults.")
 
-    profile_path = resolve_profile_source(repo_root, args.profile)
+    # Tracked derivatives must be reproducible from the factory profile in a
+    # clean checkout. Machine-local active profiles may customize ignored
+    # surfaces, but they must not redefine the tracked derivative baseline.
+    if args.tracked_only and args.profile is None:
+        profile_path = repo_root / "02_Modules" / "01_agent_profiles" / "base" / "default_crew.yaml"
+    else:
+        profile_path = resolve_profile_source(repo_root, args.profile)
     model_tuning_path = resolve_model_tuning_source(repo_root, args.model_tuning)
     if not profile_path.exists():
         print(f"[FAIL] Profile source file not found: {profile_path}")
