@@ -811,3 +811,9 @@ ai_generated: true
   because its shell wrapper could not resolve `dirname` and pre-commit’s cache
   was read-only; the full pre-commit suite had already passed in the real
   checkout, so the commit uses `--no-verify` for this isolated metadata path.
+
+- 2026-09-07 | repository structure map refresh |
+  Regenerated `repo_structure.txt` from the committed tree after the closeout
+  changed the setup surface. The map now records the two Claude agent setup
+  scripts and omits the retired Claude setup scripts. The GitHub-equivalent
+  generation and diff check pass against the refreshed map.

@@ -5,8 +5,8 @@
 |   |-- setup/
 |   |   |-- README.md
 |   |   |-- setup_antigravity.md
-|   |   |-- setup_claude.bat
-|   |   |-- setup_claude.sh
+|   |   |-- setup_claude_agents.bat
+|   |   |-- setup_claude_agents.sh
 |   |   |-- setup_claude_skills.bat
 |   |   |-- setup_claude_skills.sh
 |   |   |-- setup_codex_skills.bat
