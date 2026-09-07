@@ -15,7 +15,9 @@ Options:
       --repo             Install to ai_ops repo .agents/skills/ (default)
       --user             Install to \$HOME/.agents/skills/
       --compat           Also install compatibility mirror to .codex/skills
-  -f, --force            Overwrite existing skill wrappers
+  -f, --force            Skip the "existing skills found" confirmation prompt
+                         (regenerated wrappers always overwrite; this flag
+                         only controls whether you are asked first)
   -n, --dry-run          Preview actions without writing files
   -h, --help             Show this help
 
@@ -24,7 +26,7 @@ Examples:
   Repo install (default):          ./.ai_ops/setup/setup_codex_skills.sh
   User install:                    ./.ai_ops/setup/setup_codex_skills.sh --user
   Include compat mirror:           ./.ai_ops/setup/setup_codex_skills.sh --compat
-  Overwrite existing:              ./.ai_ops/setup/setup_codex_skills.sh --repo --force
+  Skip confirmation prompt:        ./.ai_ops/setup/setup_codex_skills.sh --repo --force
   Preview only:                    ./.ai_ops/setup/setup_codex_skills.sh --dry-run
 
 Managed-skill rule:
@@ -169,19 +171,38 @@ run_codex_export_generator() {
     return 1
   fi
 
-  if [ "$install_compat" = "1" ]; then
-    if [ "$dry_run" = "1" ]; then
-      "$py_cmd" "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" --targets plugin claude codex --codex-compat --dry-run
-    else
-      "$py_cmd" "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" --targets plugin claude codex --codex-compat
-    fi
-  else
-    if [ "$dry_run" = "1" ]; then
-      "$py_cmd" "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" --targets plugin claude codex --dry-run
-    else
-      "$py_cmd" "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" --targets plugin claude codex
-    fi
+  # Every scope routes through the generator; workspace/user scope pass
+  # --install-root so the full-field renderer writes there directly
+  # instead of falling to the local per-file fallback below.
+  gen_scope="repo"
+  gen_install_root="$REPO_ROOT"
+  if [ "$scope" = "workspace" ]; then
+    gen_scope="workspace"
+    gen_install_root="$WORKSPACE_ROOT"
+  elif [ "$scope" = "user" ]; then
+    # user scope needs an absolute pointer -- $HOME has no fixed relative
+    # path back to the repo.
+    gen_scope="user"
+    gen_install_root="$HOME"
   fi
+
+  gen_targets="plugin claude codex"
+  if [ "$scope" != "repo" ]; then
+    gen_targets="claude codex"
+  fi
+
+  set -- "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" \
+    --targets $gen_targets --scope "$gen_scope"
+  if [ "$scope" != "repo" ]; then
+    set -- "$@" --install-root "$gen_install_root"
+  fi
+  if [ "$install_compat" = "1" ]; then
+    set -- "$@" --codex-compat
+  fi
+  if [ "$dry_run" = "1" ]; then
+    set -- "$@" --dry-run
+  fi
+  "$py_cmd" "$@"
 }
 
 # Create .ai_ops/local/work_state.yaml if it doesn't already exist (idempotent)
@@ -210,10 +231,32 @@ WSEOF
   fi
 fi
 
-# Workspace scope bypasses the generator (generator resolves to repo scope only).
-if [ "$scope" != "workspace" ] && [ "$force" = "1" ] && run_codex_export_generator; then
+# Confirmation prompt: the generator always overwrites and takes no force
+# argument, so this is the only protection against an unprompted clobber.
+# Mirrors setup_claude_skills.sh's equivalent block.
+if [ -n "$(ls -A "$PRIMARY_SKILLS_DIR" 2>/dev/null)" ] && [ "$force" != "1" ]; then
+  if [ "$dry_run" = "1" ]; then
+    echo "Would prompt: existing skills found in $PRIMARY_SKILLS_DIR/."
+  else
+    printf "Found existing skills in %s/. Overwrite with the current repo-generated set? (y/N): " "$PRIMARY_SKILLS_DIR"
+    read -r response
+    case "$response" in
+      y|Y) ;;
+      *) echo "Cancelled."; exit 0 ;;
+    esac
+  fi
+fi
+
+if run_codex_export_generator; then
   echo "Generated Codex wrappers via generate_workflow_exports.py."
   echo "Primary install target: $PRIMARY_SKILLS_DIR"
+  # This generator call also includes the "claude" target and writes
+  # .claude/skills/ alongside .agents/skills/ -- disclose it explicitly.
+  case "$scope" in
+    workspace) echo "Also wrote Claude-surface skills to: $WORKSPACE_ROOT/.claude/skills" ;;
+    user) echo "Also wrote Claude-surface skills to: $HOME/.claude/skills" ;;
+    *) echo "Also wrote Claude-surface skills to: $REPO_ROOT/.claude/skills" ;;
+  esac
   if [ "$install_compat" = "1" ]; then
     echo "Compatibility install target: $COMPAT_SKILLS_DIR"
   else
@@ -225,7 +268,7 @@ if [ "$scope" != "workspace" ] && [ "$force" = "1" ] && run_codex_export_generat
   echo "  Repo install (default):          ./.ai_ops/setup/setup_codex_skills.sh"
   echo "  User install:                    ./.ai_ops/setup/setup_codex_skills.sh --user"
   echo "  Include compat mirror:           ./.ai_ops/setup/setup_codex_skills.sh --compat"
-  echo "  Overwrite existing:              ./.ai_ops/setup/setup_codex_skills.sh --repo --force"
+  echo "  Skip confirmation prompt:        ./.ai_ops/setup/setup_codex_skills.sh --repo --force"
   echo "  Preview only:                    ./.ai_ops/setup/setup_codex_skills.sh --dry-run"
   echo ""
   echo "In Codex VS Code chat, type '\$' to browse skills or run '/skills'."
@@ -248,7 +291,7 @@ echo "  Workspace install (recommended): ./.ai_ops/setup/setup_codex_skills.sh -
 echo "  Repo install (default):          ./.ai_ops/setup/setup_codex_skills.sh"
 echo "  User install:                    ./.ai_ops/setup/setup_codex_skills.sh --user"
 echo "  Include compat mirror:           ./.ai_ops/setup/setup_codex_skills.sh --compat"
-echo "  Overwrite existing:              ./.ai_ops/setup/setup_codex_skills.sh --repo --force"
+echo "  Skip confirmation prompt:        ./.ai_ops/setup/setup_codex_skills.sh --repo --force"
 echo "  Preview only:                    ./.ai_ops/setup/setup_codex_skills.sh --dry-run"
 echo ""
 echo "In Codex VS Code chat, type '\$' to browse skills or run '/skills'."

@@ -120,40 +120,51 @@ if [ -n "$(ls -A "$INSTALL_TARGET" 2>/dev/null)" ] && [ "$assume_yes" != "1" ] &
   fi
 fi
 
-# Workspace scope bypasses the generator (generator resolves to repo scope only).
-if [ "$scope" != "workspace" ]; then
-  run_export_generator() {
-    if [ ! -f "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" ]; then
-      return 1
-    fi
+# Both scopes route through the real generator; --install-root lets
+# workspace scope use the same full-field renderer as repo scope. The
+# fallback writer below remains only for environments without Python or the
+# generator is unavailable.
+run_export_generator() {
+  if [ ! -f "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" ]; then
+    return 1
+  fi
 
-    py_cmd=""
-    if command -v python >/dev/null 2>&1; then
-      py_cmd="python"
-    elif command -v python3 >/dev/null 2>&1; then
-      py_cmd="python3"
+  py_cmd=""
+  if command -v python >/dev/null 2>&1; then
+    py_cmd="python"
+  elif command -v python3 >/dev/null 2>&1; then
+    py_cmd="python3"
+  else
+    return 1
+  fi
+
+  if [ "$scope" = "workspace" ]; then
+    if [ "$dry_run" = "1" ]; then
+      "$py_cmd" "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" \
+        --targets claude --scope workspace --install-root "$WORKSPACE_ROOT" --dry-run
     else
-      return 1
+      "$py_cmd" "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" \
+        --targets claude --scope workspace --install-root "$WORKSPACE_ROOT"
     fi
-
+  else
     if [ "$dry_run" = "1" ]; then
       "$py_cmd" "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" --targets plugin claude --dry-run
     else
       "$py_cmd" "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" --targets plugin claude
     fi
-  }
-
-  if run_export_generator; then
-    echo ""
-    echo "Generated wrapper exports from .ai_ops/workflows via generate_workflow_exports.py."
-    echo "Installed skills to $INSTALL_TARGET/."
-    echo "Skills are now available as /work, /health, /closeout, etc."
-    echo ""
-    exit 0
   fi
+}
 
-  echo "Generator unavailable; falling back to legacy wrapper creation path."
+if run_export_generator; then
+  echo ""
+  echo "Generated wrapper exports from .ai_ops/workflows via generate_workflow_exports.py."
+  echo "Installed skills to $INSTALL_TARGET/."
+  echo "Skills are now available as /work, /health, /closeout, etc."
+  echo ""
+  exit 0
 fi
+
+echo "Generator unavailable; falling back to local wrapper creation path."
 
 for file in "$WORKFLOW_DIR"/*.md; do
   skill_name=$(basename "$file" .md)

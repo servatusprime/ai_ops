@@ -2,18 +2,16 @@
 description: Prepare a scoped savepoint and end the ai_ops session; publication requires explicit approval.
 name: work_savepoint
 kind: workflow
-version: 1.2.0
+version: 1.2.3
 status: active
 owner: ai_ops
 license: Apache-2.0
 claude:
   argument-hint: "[--commit] [--no-commit]"
-  disable-model-invocation: false
+  disable-model-invocation: true
   user-invocable: true
   allowed-tools: null
   model: null
-  context: null
-  agent: null
 codex:
   metadata:
     short-description: Prepare a scoped savepoint and end the ai_ops session; publication requires explicit approval.
@@ -21,7 +19,7 @@ codex:
     display_name: work_savepoint
     short_description: Prepare a scoped savepoint and end the ai_ops session; publication requires explicit approval.
   policy:
-    allow_implicit_invocation: true
+    allow_implicit_invocation: false
 exports:
   claude_plugin:
     enabled: true
@@ -66,9 +64,9 @@ contract.
 6. Do not execute edits from `/work_savepoint`; transition to `/work` for any
    requested changes.
 
-## Decision Matrix (Cold-Start)
+## Steps
 
-### Steps: Direct Mode
+### Direct Mode
 
 - No active artifacts: end the ai_ops session with no publication action.
 - `--no-commit` is accepted as a compatibility spelling and has no additional
@@ -119,7 +117,7 @@ contract.
 - Multiple active artifacts: ask which context the checkpoint summarizes; do
   not infer a publication scope.
 
-### Steps: Governed Mode
+### Governed Mode
 
 - No active artifacts and `--no-commit` not passed: end the session with no commit.
 - `--no-commit` flag present: end session without committing.
@@ -141,7 +139,7 @@ contract.
    - Record `validation_commands_run` in output.
 4. Proceed with Direct Mode Steps 3–8 (Identify scope through End session).
 
-### Steps: Standalone Mode
+### Standalone Mode
 
 - Default behavior does not stage, commit, or push -- matching Direct and
   Governed Mode's Publication Stop Gate. `--no-commit` is accepted as a

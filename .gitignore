@@ -37,6 +37,4 @@ Thumbs.db
 !00_Admin/configs/env/*.example.env
 
 # ai_ops dynamic config (machine-local)
-.ai_ops/config.yaml
-.ai_ops/profiles/active_crew.yaml
 .aiops_session

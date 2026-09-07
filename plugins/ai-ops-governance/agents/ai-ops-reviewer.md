@@ -11,7 +11,7 @@ tools:
 disallowedTools: null
 model: opus
 permissionMode: plan
-maxTurns: 10
+maxTurns: 20
 skills:
   - crosscheck
   - health
@@ -21,10 +21,14 @@ hooks:
   - matcher: Edit|Write
     hooks:
     - type: command
-      command: "if ! echo \"$CLAUDE_TOOL_INPUT_FILE_PATH\" | grep -qE '(90_Sandbox|99_Trash|\\\
-        .ai_ops/local)'; then echo \"[REVIEWER GUARD] Write outside sandbox detected:\
-        \ $CLAUDE_TOOL_INPUT_FILE_PATH \u2014 reviewer lane is read/report-only except\
-        \ in sandbox.\"; fi; exit 0"
+      command: "input=$(cat); fp=$(printf '%s' \"$input\" | grep -o '\"file_path\"[[:space:]]*:[[:space:]]*\"\
+        [^\"]*\"' | head -1 | sed -E 's/.*\"file_path\"[[:space:]]*:[[:space:]]*\"([^\"\
+        ]*)\"/\\1/'); if [ -z \"$fp\" ]; then echo \"[REVIEWER GUARD] Blocked: no file_path\
+        \ found in tool_input \u2014 failing closed.\" >&2; exit 2; fi; npath=$(printf\
+        \ '%s' \"$fp\" | tr '\\\\\\\\' '/'); if ! printf '%s' \"$npath\" | grep -qE\
+        \ '(^|/)(90_Sandbox|99_Trash)(/|$)|(^|/)\\.ai_ops/local(/|$)'; then echo \"\
+        [REVIEWER GUARD] Write outside sandbox blocked: $fp \u2014 reviewer lane is\
+        \ read/report-only except in sandbox.\" >&2; exit 2; fi; exit 0"
 memory: null
 ---
 
@@ -88,7 +92,7 @@ Best fit:
 <!--
 Managed by ai_ops /profiles
 generated_at: 2026-04-12T00:00:00Z
-source_hash: a6c5c7bb2d72
+source_hash: 2d1e72649d65
 role: ai-ops-reviewer
 profile_id: anchor
 crew_preset: default

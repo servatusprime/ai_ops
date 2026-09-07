@@ -461,25 +461,22 @@ def slider_tier(value: int) -> str:
 def max_turns_from_autonomy(value: int, default_turns: int) -> int:
     tier = slider_tier(value)
     if tier == "T1":
-        return 5
+        return max(default_turns, 5)
     if tier == "T2":
-        return 10
+        return max(default_turns, 10)
     if tier == "T3":
         return max(default_turns, 20)
     if tier == "T4":
         return max(default_turns, 30)
-    return 50
+    return max(default_turns, 50)
 
 
 def resolve_profile_source(repo_root: Path, profile_arg: str | None) -> Path:
     if profile_arg:
         return Path(profile_arg).resolve()
     per_repo = repo_root / ".ai_ops" / "local" / "profiles" / "active_crew.yaml"
-    legacy_per_repo = repo_root / ".ai_ops" / "profiles" / "active_crew.yaml"
     if per_repo.exists():
         return per_repo
-    if legacy_per_repo.exists():
-        return legacy_per_repo
     return repo_root / "02_Modules" / "01_agent_profiles" / "base" / "default_crew.yaml"
 
 
@@ -707,7 +704,7 @@ def render_hooks_block(spec_hooks, slot_hooks) -> str:
     """Render the hooks frontmatter block.
 
     slot_hooks (from source YAML) takes precedence over spec_hooks (from RoleSpec).
-    slot_hooks is a Dict (structured YAML); spec_hooks is a List[str] (legacy simple list).
+    slot_hooks is a Dict (structured YAML); spec_hooks is a List[str] (simple list format).
     """
     if slot_hooks and yaml is not None:
         serialized = yaml.dump(slot_hooks, default_flow_style=False, sort_keys=False).strip()

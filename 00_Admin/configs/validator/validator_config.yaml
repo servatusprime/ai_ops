@@ -358,6 +358,13 @@ rules:
       severity: error
       required_sections:
         - "## Context Routing Hook"
+        - "## Purpose"
+        - "## Steps"
+        - "## Outputs"
+        - "## Resources"
+        - "## Lane"
+        - "## Risks and Limits"
+        - "## Inputs and Preconditions"
       required_content:
         - "context_routing.yaml` as the canonical onboarding"
   - id: VS032
@@ -432,6 +439,13 @@ rules:
     enabled: true
     paths:
       - 90_Sandbox/ai_workbooks/**/wb_*.md
+  - id: VS037
+    enabled: true
+    paths:
+      - .ai_ops/workflows/*.md
+    params:
+      guide_path: 00_Admin/guides/ai_operations/guide_skills_commands_classification.md
+      workflows_glob: .ai_ops/workflows/*.md
   - id: VS036
     enabled: true
     paths:

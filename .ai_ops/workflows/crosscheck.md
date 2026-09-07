@@ -2,7 +2,7 @@
 description: Conduct a structured peer review of work.
 name: crosscheck
 kind: workflow
-version: 0.2.2
+version: 0.2.3
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -12,8 +12,6 @@ claude:
   user-invocable: true
   allowed-tools: null
   model: null
-  context: null
-  agent: null
 codex:
   metadata:
     short-description: Conduct a structured peer review of work.

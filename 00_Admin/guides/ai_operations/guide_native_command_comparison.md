@@ -1,7 +1,7 @@
 ---
 title: "Reference: Native Command Comparative Analysis"
 id: ref_native_command_comparison_01
-version: 0.1.1
+version: 0.1.2
 status: active
 license: Apache-2.0
 created: 2026-02-21
@@ -267,7 +267,7 @@ and AGENTS.md).
 | `/lint` | (no equivalent) | Pure addition. No native conflict. |
 | `/bootstrap` | `/init` (Claude/Codex) | `/init` is one-time setup. `/bootstrap` is per-session context loading. Complementary lifecycle stages. |
 | `/work_status` | `/status` (all) | Native `/status` shows token/model info. `/work_status` shows governed context (active artifacts, session scope, workbook state). Different information. |
-| `/compact` (native) | `/work_savepoint` (ai_ops) | When context is running low, user can `/work_savepoint` to commit governed state, then `/compact` to reclaim tokens. `/work_savepoint` preserves governance metadata that `/compact` might lose. |
+| `/compact` (native) | `/work_savepoint` (ai_ops) | When context is running low, user can `/work_savepoint` to checkpoint governed state (no commit/push by default -- add `--commit` for that explicitly), then `/compact` to reclaim tokens. `/work_savepoint` preserves governance metadata that `/compact` might lose. |
 
 ### Potential Conflict Points
 
@@ -385,9 +385,6 @@ Gemini) across sessions need:
 | Context file | CLAUDE.md | AGENTS.md | AGENTS.md | GEMINI.md / AGENT.md |
 | Plugin package | `plugins/ai-ops-governance/` | Not applicable | Not applicable | Not applicable |
 | Custom commands | `commands/*.md` | `.codex/prompts/*.md` | Not applicable | `.gemini/commands/*.toml` |
-
-Legacy compatibility note: `.ai_ops/config.yaml` remains a fallback path
-during the active migration window; `.ai_ops/local/config.yaml` is canonical.
 
 <!-- REVIEW NOTE: Codex is deprecating custom prompts in favor of skills.
 The "custom commands" row for Codex may shift to skills-only. Gemini

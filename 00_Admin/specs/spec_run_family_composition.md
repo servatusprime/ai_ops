@@ -117,7 +117,7 @@ remain separate.
 Every stable ID has one canonical home and one registry-backed discovery route.
 An adoption map MUST either affirm the current path as the permanent canonical
 home or move the artifact and update every consumer in the same governed batch;
-it MUST NOT create a "legacy canonical" class or retain parallel discovery
+it MUST NOT create a second canonical class or retain parallel discovery
 paths. Contract v0.1 rejects every alias record and field. If a named consumer
 cannot migrate atomically, the work stops for a separately approved Level-4
 contract version that defines enforcement, removal ownership, and a fixed

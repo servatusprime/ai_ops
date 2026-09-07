@@ -22,11 +22,6 @@ setup_contract:
     config: .ai_ops/local/config.yaml
     active_profile: .ai_ops/local/profiles/active_crew.yaml
     setup_state: .ai_ops/local/setup/state.yaml
-  compatibility:
-    legacy_paths:
-      config: .ai_ops/config.yaml
-      active_profile: .ai_ops/profiles/active_crew.yaml
-    sunset_status: active
 
 customizations:
   # Pointer to the machine-local config template.
@@ -40,7 +35,6 @@ customizations:
   profile_layering:
     global_profile_path: null
     repo_overrides_path: .ai_ops/local/config.yaml
-    legacy_repo_overrides_path: .ai_ops/config.yaml
 
 resource_resolution:
   resolution_strategy: local_first

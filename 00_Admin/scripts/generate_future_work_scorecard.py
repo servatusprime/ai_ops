@@ -119,7 +119,10 @@ def _render_markdown(registry_path: Path, rows: list[dict[str, Any]]) -> str:
             "## Notes",
             "",
             "- Registry and scorecard should be updated together in the same change.",
-            "- Use `python ai_ops/00_Admin/scripts/generate_future_work_scorecard.py` after registry edits.",
+            "- From the workspace root, use `python ai_ops/00_Admin/scripts/"
+            "generate_future_work_scorecard.py`.",
+            "  From a nested framework repository root, use `python "
+            "../ai_ops/00_Admin/scripts/generate_future_work_scorecard.py`.",
         ]
     )
     return "\n".join(lines)

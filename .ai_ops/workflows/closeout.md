@@ -2,7 +2,7 @@
 description: Finalize a work session with cleanup, lint, commit, and push.
 name: closeout
 kind: workflow
-version: 0.3.2
+version: 0.3.3
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -12,8 +12,6 @@ claude:
   user-invocable: true
   allowed-tools: null
   model: null
-  context: null
-  agent: null
 codex:
   metadata:
     short-description: Finalize a work session with cleanup, lint, commit, and push.

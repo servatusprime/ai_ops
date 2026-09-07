@@ -1,10 +1,10 @@
 ---
 title: "Reference: Skills and Commands Classification"
 id: ref_skills_commands_classification_01
-version: 0.1.3
+version: 0.1.10
 status: active
 created: 2026-02-20
-last_updated: 2026-09-04
+last_updated: 2026-09-07
 owner: ai_ops
 license: Apache-2.0
 description: >
@@ -71,10 +71,10 @@ lanes remain upstream in ai_ops canon:
 | `/harvest` | Both | Closer | Coordinator -> Closer | User invokes for artifact promotion. Primary agent may invoke as part of closeout. |
 | `/customize` | Command | Primary agent (builder sidecar for config writes when needed) | Coordinator -> Builder | Always user-initiated. Agent should not auto-invoke config changes. |
 | `/profiles` | Command | Primary agent (builder sidecar for file regeneration when needed) | Coordinator -> Builder | Always user-initiated. New command for rider/crew management. |
-| `/lint` | Both | Linter | Linter | User invokes for standalone validation. Closer and reviewer may invoke as part of their workflows. |
+| `/lint` | Command | Linter | Linter | Report-only mechanical validation is a Command, not a Skill. Claude disables model-initiated invocation; Codex blocks implicit invocation while allowing explicit `$lint`. Reviewer/Closer delegation reads the workflow directly. |
 | `/scratchpad` | Command | Executor | Executor | User-initiated note creation. Agent does not auto-create scratchpads. |
 | `/work_status` | Command | Planner | Coordinator | User-initiated status check. Single-turn report. |
-| `/work_savepoint` | Command | Primary agent | Closer | User-initiated session end. Commits + pushes savepoint, then ends. |
+| `/work_savepoint` | Command | Primary agent | Closer | User-initiated session end. Does not commit or push by default in any mode; publication needs an explicit, current-turn `--commit` flag or a separate `/closeout`. |
 | `/ai_ops_setup` | Command | Primary agent | Coordinator -> Builder | User-initiated setup. Should never auto-invoke. |
 
 ### Plugin Export Implications
@@ -89,6 +89,20 @@ context window budget.
 | Skill only | `false` | No | Yes |
 | Both | `false` | Yes (explicit entry point) | Yes (auto-discoverable) |
 
+### Relationship to `context_routing.yaml`'s Guard Profiles (G-06, added 2026-09-06)
+
+`context_routing.yaml`'s `guard_profile.mode`/`family` fields and this
+guide's Command/Skill/Both classification are **two independent schemes
+answering different questions** -- they must not be assumed to correspond
+1:1. `guard_profile` describes execution-guard behavior (write scope,
+artifact-type restrictions, onboarding tier); classification describes
+invocation-surface exposure (who can trigger it, and how). Concrete
+evidence that the two do not align: `guard_profile.mode: action` is shared
+by `/closeout` (Both), `/harvest` (Both), `/customize` (Command), and
+`/profiles`/`/scratchpad` (Command) alike -- the same execution-guard mode
+covers three different classifications. Read both fields when reasoning
+about a command's behavior; neither substitutes for the other.
+
 ---
 
 ## New Workflows Introduced by This Workbundle
@@ -96,7 +110,7 @@ context window budget.
 | Workflow | Classification | File Location | Description |
 | --- | --- | --- | --- |
 | `/profiles` | Command | `.ai_ops/workflows/profiles.md` (new) | Manage rider archetype profiles, slider adjustment, crew preset selection, derivative file regeneration. |
-| `/lint` | Both | `.ai_ops/workflows/lint.md` (new) | Run configured validators against target files. Standalone validation entry point. |
+| `/lint` | Command | `.ai_ops/workflows/lint.md` (new) | Run configured validators against target files. Standalone validation entry point. |
 
 These workflows need SoT files created in `.ai_ops/workflows/` with the
 frontmatter schema from WB-01, and corresponding plugin skill/command

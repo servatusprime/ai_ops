@@ -30,7 +30,7 @@ settings to keep docs readable and diffs clean.
 - When front matter is present, include exactly one H1 that matches the `title`, then use lower levels.
 - Do not use bold text as a heading; use H2/H3 instead.
 - Avoid duplicate headings within the same document; rename repeated sections.
-- Keep headings semantic and durable. Avoid parenthetical suffixes (for example, `(Consolidated)`, `(Legacy)`,
+- Keep headings semantic and durable. Avoid parenthetical suffixes (for example, `(Consolidated)`,
   `(Draft)`) unless they add active disambiguation that a reader needs to execute the task correctly.
 
 ### Spacing
@@ -72,13 +72,13 @@ settings to keep docs readable and diffs clean.
 
 - Prefer narrow, block-scoped disables:
 - `<!-- markdownlint-disable MD013 -->` ... `<!-- markdownlint-enable MD013 -->`
-- Avoid file-level disables for new content; acceptable only for legacy files with a plan to remove.
+- Avoid file-level disables for new content; existing exceptions should have a removal plan.
 - When disabling, add a brief note in a PR about why and when to revisit.
 
 ### MD029 Override Policy
 
 - Default: use `1.` for all ordered list items.
-- Only disable MD029 in legacy documents that cannot be reflowed safely.
+- Only disable MD029 in documents that cannot be reflowed safely.
 - If you disable MD029, add a short inline note and scope the disable to the smallest block.
 
 ### Formatter Interaction (MD025)

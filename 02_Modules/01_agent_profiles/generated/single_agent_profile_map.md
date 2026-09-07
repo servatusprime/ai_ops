@@ -5,7 +5,7 @@ status: active
 last_updated: 2026-04-12
 owner: ai_ops
 generated_at: 2026-04-12T00:00:00Z
-source_hash: a6c5c7bb2d72
+source_hash: 2d1e72649d65
 ---
 
 <!-- markdownlint-disable MD013 MD025 -->
@@ -19,7 +19,7 @@ subagent delegation is not available.
 
 - crew_preset: `default`
 - generated_at: `2026-04-12T00:00:00Z`
-- source_hash: `a6c5c7bb2d72`
+- source_hash: `2d1e72649d65`
 
 ## Canonical Lane Mapping
 
@@ -28,7 +28,7 @@ subagent delegation is not available.
 | `ai-ops-planner` | `logike` | 55 | 75 | 30 | 60 | 20 | `plan` |
 | `ai-ops-executor` | `forge` | 75 | 45 | 45 | 45 | 30 | `default` |
 | `ai-ops-builder` | `forge` | 75 | 60 | 35 | 45 | 30 | `default` |
-| `ai-ops-reviewer` | `anchor` | 25 | 90 | 20 | 80 | 10 | `plan` |
+| `ai-ops-reviewer` | `anchor` | 25 | 90 | 20 | 80 | 20 | `plan` |
 | `ai-ops-researcher` | `scout` | 70 | 60 | 70 | 55 | 30 | `plan` |
 | `ai-ops-closer` | `forge` | 75 | 80 | 20 | 45 | 30 | `default` |
 | `ai-ops-linter` | `anchor` | 70 | 90 | 20 | 80 | 30 | `default` |

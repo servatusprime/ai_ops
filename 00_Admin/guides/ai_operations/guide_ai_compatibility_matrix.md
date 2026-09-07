@@ -27,7 +27,7 @@ available in tools that support skill/command folders.
 
 | AI Tool | Compatibility | How to Use |
 | --- | --- | --- |
-| Claude Code | Direct (wrapper files) | Install to workspace-root `.claude/skills/` (recommended) or `.claude/commands/` (legacy), then invoke `/work` |
+| Claude Code | Direct (wrapper files) | Install to workspace-root `.claude/skills/`, then invoke `/work` |
 | Codex CLI | Direct (wrapper files) | Install to `.agents/skills/` (recommended) with optional `.codex/skills/` compatibility mirror, then invoke `/work` |
 | GitHub Copilot Chat | Instructions + optional skills | Use `.github/copilot-instructions.md` or `AGENTS.md` for repo guidance; supported surfaces can also read project skills from `.claude/skills/` or `.github/skills/` |
 | Cursor | Direct (command wrappers) | Install to `.cursor/commands/` then invoke `/work` |

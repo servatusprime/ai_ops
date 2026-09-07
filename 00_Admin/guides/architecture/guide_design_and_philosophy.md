@@ -1,6 +1,6 @@
 ---
 title: "ai_ops: Design and Philosophy"
-version: 0.4.1
+version: 0.4.3
 status: active
 license: Apache-2.0
 created: 2026-02-21
@@ -433,10 +433,6 @@ Default to Level 2 when unsure. Model level is set per workbook via `model_profi
 lane participation. See `AGENTS.md §AI Model Level Reference` for per-lane escalation
 conditions.
 
-Operators may declare a **model-ID-to-level binding** in `.ai_ops/local/config.yaml`
-under `customizations.model_capabilities.model_level_map` (populated via `/customize`).
-This binding resolves workbook level references to concrete model IDs at runtime.
-
 ### Subagents: specialization without fragmentation
 
 When a platform supports delegation, ai_ops uses runtime-local subagent
@@ -614,7 +610,7 @@ These are predictable failure modes that ai_ops is designed to prevent:
 | --- | --- | --- |
 | `/work` | Starting or resuming work | Establishes context and execution path |
 | `/work_status` | Need current state | Summarizes active work and blockers |
-| `/work_savepoint` | Stopping mid-task | Commits + pushes savepoint, then ends session |
+| `/work_savepoint` | Stopping mid-task | Prepares checkpoint, no commit/push by default, then ends session |
 | `/closeout` | Work is complete | Runs validation and closeout workflow |
 | `/crosscheck` | Need review feedback | Runs structured review workflow |
 | `/health` | Repo seems inconsistent | Runs report-only health analysis |

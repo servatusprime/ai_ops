@@ -1,5 +1,6 @@
 ---
 description: Summarize active work context and blockers.
+disable-model-invocation: true
 ---
 
 # /work_status

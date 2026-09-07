@@ -42,9 +42,6 @@ If any answer is "no" or uncertain, guide user to:
 7. For governed external repos, should ai_ops validators/linters be used or should we use the target repo's tooling?
 8. Are you trying to change session output style only (for example concise or verbose)? If yes, use the native style
    command for your surface (for example Claude `/output-style`) instead of persistent profile changes.
-9. Would you like to declare a model-to-level binding? This maps concrete model IDs (e.g., `claude-opus-4-6`)
-   to ai_ops reasoning levels (1–4) so workbook `model_profile` tier references resolve at runtime. Skip if using
-   a single model or if the defaults are sufficient.
 
 ## Flow
 
@@ -78,8 +75,7 @@ interview_state:
     thrift_pass_mode: local
     validation_policy:
       governed_mode: ai_ops
-    model_capabilities:
-      model_level_map: {}   # populated if operator answers yes to Q9
+    model_capabilities: {}
     work_command_preferences:
       offer_status: true
       offer_anchor: true

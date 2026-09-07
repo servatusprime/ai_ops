@@ -50,16 +50,6 @@ customizations:
     # Use one entry per model/surface pair available to the user.
     # reasoning_level: low | medium | high | maximum  (see AGENTS.md §AI Model Level Reference)
     available_models: []
-    # Operator model-to-level binding. Maps a concrete model ID to an ai_ops reasoning level
-    # (1=low, 2=medium, 3=high, 4=maximum). Used by /customize and referenced at runtime to
-    # resolve workbook model_profile level-based references (high/standard/fast) to model IDs.
-    # See AGENTS.md §AI Model Level Reference for level definitions.
-    # Example:
-    # model_level_map:
-    #   claude-opus-4-6: 4        # Level 4 — maximum reasoning
-    #   claude-sonnet-4-6: 2      # Level 2 — medium (standard workbook default)
-    #   claude-haiku-4-5: 1       # Level 1 — low (fast/linter tasks)
-    model_level_map: {}
   external_context:
     # Example: 90_Sandbox/ai_external_context/manifest.yaml
     manifest_path: 90_Sandbox/ai_external_context/manifest.yaml

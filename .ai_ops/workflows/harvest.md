@@ -2,7 +2,7 @@
 description: Harvest, prune, and summarize work artifacts across one or more targets.
 name: harvest
 kind: workflow
-version: 0.2.0
+version: 0.2.1
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -12,8 +12,6 @@ claude:
   user-invocable: true
   allowed-tools: null
   model: null
-  context: null
-  agent: null
 codex:
   metadata:
     short-description: Harvest, prune, and summarize work artifacts across one or

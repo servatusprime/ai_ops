@@ -2,7 +2,7 @@
 description: "Run a repo health check\u2014verify the repo is consistent and clean."
 name: health
 kind: workflow
-version: 0.1.4
+version: 0.1.6
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -12,8 +12,6 @@ claude:
   user-invocable: true
   allowed-tools: null
   model: null
-  context: null
-  agent: null
 codex:
   metadata:
     short-description: "Run a repo health check\u2014verify the repo is consistent\
@@ -193,6 +191,15 @@ When scope is Option 2 (Comprehensive), run and report:
   ask for location confirmation before artifact writes.
 - Follow report contract/metrics formatting from
   `00_Admin/runbooks/rb_repo_health_review.md`.
+
+## Resources
+
+- `00_Admin/runbooks/rb_repo_health_review.md` (detailed execution procedure,
+  category checklists, and report/metrics contract)
+- `00_Admin/guides/ai_operations/guide_workflows.md` (canonical
+  Inside/Governed/External decision matrix)
+- `00_Admin/specs/spec_execution_control_graph.md` (Authority Boundary
+  precedent for any derived relationship view)
 
 ## Lane
 

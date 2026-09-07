@@ -1,5 +1,6 @@
 ---
 description: Create a scratchpad for session notes and observations.
+disable-model-invocation: true
 ---
 
 # /scratchpad

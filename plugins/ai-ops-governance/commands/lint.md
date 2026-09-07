@@ -3,6 +3,7 @@ description: Run configured validators and linters against a target scope and re
   findings without modifying files.
 argument-hint: '[target]'
 allowed-tools: Read Grep Glob LS Bash
+disable-model-invocation: true
 ---
 
 # /lint

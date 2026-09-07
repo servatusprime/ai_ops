@@ -185,6 +185,8 @@ def main() -> int:
             required_output_kinds.add("claude_skill")
         if "codex" in manifest_targets:
             required_output_kinds.add("codex_skill_primary")
+            # The companion file carries required, schema-validated fields.
+            required_output_kinds.add("codex_skill_primary_openai_yaml")
         missing_output_kinds = sorted(required_output_kinds - output_kinds)
         if missing_output_kinds:
             workflow_name = workflow.get("workflow", "<unknown>")

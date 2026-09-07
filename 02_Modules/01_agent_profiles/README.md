@@ -49,6 +49,3 @@ Subagent profile slots map to canonical ai_ops execution lanes as follows:
 
 Active user profile state is local and non-committed:
 `.ai_ops/local/profiles/active_crew.yaml`.
-
-Compatibility reads may still check legacy
-`.ai_ops/profiles/active_crew.yaml`.

@@ -11,33 +11,41 @@ naming_policies:
   claude_project_skills: snake_case passthrough from workflow filename
   codex_skills: snake_case passthrough from workflow filename
 targets:
+- claude
 - codex
 - plugin
 generation_targets:
+- claude
 - codex
 - plugin
 workflow_count: 13
-output_count: 39
-manifest_output_count: 39
+output_count: 65
+manifest_output_count: 65
 workflows:
 - workflow: ai_ops_setup
   source: .ai_ops/workflows/ai_ops_setup.md
-  source_sha256_12: 086b148254ca
+  source_sha256_12: a3c5a3393c62
   description: Run ai_ops setup scripts for skills, commands, and supported instruction
     surfaces
   outputs:
   - path: plugins/ai-ops-governance/commands/ai_ops_setup.md
     kind: plugin_command
-    sha256_12: 4cab6d4fa770
+    sha256_12: 0de151c47c55
   - path: plugins/ai-ops-governance/skills/ai-ops-setup/SKILL.md
     kind: plugin_skill
-    sha256_12: f78743d574d0
+    sha256_12: 926a31eaded1
+  - path: .claude/skills/ai_ops_setup/SKILL.md
+    kind: claude_skill
+    sha256_12: eae2e80a6c86
   - path: .agents/skills/ai_ops_setup/SKILL.md
     kind: codex_skill_primary
-    sha256_12: f919cef45219
+    sha256_12: f292a223d4de
+  - path: .agents/skills/ai_ops_setup/agents/openai.yaml
+    kind: codex_skill_primary_openai_yaml
+    sha256_12: 87877e7d017b
 - workflow: bootstrap
   source: .ai_ops/workflows/bootstrap.md
-  source_sha256_12: 7880fa706331
+  source_sha256_12: 32ba3fbe0214
   description: Initialize agent context by reading repo entry point and instructions.
   outputs:
   - path: plugins/ai-ops-governance/commands/bootstrap.md
@@ -46,12 +54,18 @@ workflows:
   - path: plugins/ai-ops-governance/skills/bootstrap/SKILL.md
     kind: plugin_skill
     sha256_12: 5e3e551d96b0
+  - path: .claude/skills/bootstrap/SKILL.md
+    kind: claude_skill
+    sha256_12: 5e3e551d96b0
   - path: .agents/skills/bootstrap/SKILL.md
     kind: codex_skill_primary
-    sha256_12: 5e3e551d96b0
+    sha256_12: 90909c34aefd
+  - path: .agents/skills/bootstrap/agents/openai.yaml
+    kind: codex_skill_primary_openai_yaml
+    sha256_12: 6bec19573c50
 - workflow: closeout
   source: .ai_ops/workflows/closeout.md
-  source_sha256_12: 8050149ac37d
+  source_sha256_12: 4a264fca5d4e
   description: Finalize a work session with cleanup, lint, commit, and push.
   outputs:
   - path: plugins/ai-ops-governance/commands/closeout.md
@@ -60,12 +74,18 @@ workflows:
   - path: plugins/ai-ops-governance/skills/closeout/SKILL.md
     kind: plugin_skill
     sha256_12: bbb22cf94532
+  - path: .claude/skills/closeout/SKILL.md
+    kind: claude_skill
+    sha256_12: bbb22cf94532
   - path: .agents/skills/closeout/SKILL.md
     kind: codex_skill_primary
-    sha256_12: bbb22cf94532
+    sha256_12: ec3c13496c09
+  - path: .agents/skills/closeout/agents/openai.yaml
+    kind: codex_skill_primary_openai_yaml
+    sha256_12: f258e5ea5e04
 - workflow: crosscheck
   source: .ai_ops/workflows/crosscheck.md
-  source_sha256_12: 60760d42dcf9
+  source_sha256_12: fc46e089c265
   description: Conduct a structured peer review of work.
   outputs:
   - path: plugins/ai-ops-governance/commands/crosscheck.md
@@ -74,26 +94,38 @@ workflows:
   - path: plugins/ai-ops-governance/skills/crosscheck/SKILL.md
     kind: plugin_skill
     sha256_12: 703bf46927f6
+  - path: .claude/skills/crosscheck/SKILL.md
+    kind: claude_skill
+    sha256_12: 703bf46927f6
   - path: .agents/skills/crosscheck/SKILL.md
     kind: codex_skill_primary
-    sha256_12: 703bf46927f6
+    sha256_12: 26e86049c81f
+  - path: .agents/skills/crosscheck/agents/openai.yaml
+    kind: codex_skill_primary_openai_yaml
+    sha256_12: 12cff0c98759
 - workflow: customize
   source: .ai_ops/workflows/customize.md
-  source_sha256_12: b092afb18c33
+  source_sha256_12: e49b3f52cd44
   description: Configure agent preferences and customization options.
   outputs:
   - path: plugins/ai-ops-governance/commands/customize.md
     kind: plugin_command
-    sha256_12: fe097a255aee
+    sha256_12: bc1591d075b4
   - path: plugins/ai-ops-governance/skills/customize/SKILL.md
     kind: plugin_skill
-    sha256_12: 9da93b5fad68
+    sha256_12: 936832e24db8
+  - path: .claude/skills/customize/SKILL.md
+    kind: claude_skill
+    sha256_12: 936832e24db8
   - path: .agents/skills/customize/SKILL.md
     kind: codex_skill_primary
-    sha256_12: 9da93b5fad68
+    sha256_12: edf149550309
+  - path: .agents/skills/customize/agents/openai.yaml
+    kind: codex_skill_primary_openai_yaml
+    sha256_12: b668a48dc8cf
 - workflow: harvest
   source: .ai_ops/workflows/harvest.md
-  source_sha256_12: 3afcb3fab4d1
+  source_sha256_12: 5bc1af696ca3
   description: Harvest, prune, and summarize work artifacts across one or more targets.
   outputs:
   - path: plugins/ai-ops-governance/commands/harvest.md
@@ -102,12 +134,18 @@ workflows:
   - path: plugins/ai-ops-governance/skills/harvest/SKILL.md
     kind: plugin_skill
     sha256_12: 01266cb5fbf2
+  - path: .claude/skills/harvest/SKILL.md
+    kind: claude_skill
+    sha256_12: 01266cb5fbf2
   - path: .agents/skills/harvest/SKILL.md
     kind: codex_skill_primary
-    sha256_12: 01266cb5fbf2
+    sha256_12: fca283006c2c
+  - path: .agents/skills/harvest/agents/openai.yaml
+    kind: codex_skill_primary_openai_yaml
+    sha256_12: 23c3ff9cb411
 - workflow: health
   source: .ai_ops/workflows/health.md
-  source_sha256_12: ea426aa3e49b
+  source_sha256_12: 2abbe26bc6bf
   description: "Run a repo health check\u2014verify the repo is consistent and clean."
   outputs:
   - path: plugins/ai-ops-governance/commands/health.md
@@ -116,56 +154,80 @@ workflows:
   - path: plugins/ai-ops-governance/skills/health/SKILL.md
     kind: plugin_skill
     sha256_12: 0a7174678693
+  - path: .claude/skills/health/SKILL.md
+    kind: claude_skill
+    sha256_12: 0a7174678693
   - path: .agents/skills/health/SKILL.md
     kind: codex_skill_primary
-    sha256_12: 0a7174678693
+    sha256_12: 2c091541e57a
+  - path: .agents/skills/health/agents/openai.yaml
+    kind: codex_skill_primary_openai_yaml
+    sha256_12: b0e04ceddb9e
 - workflow: lint
   source: .ai_ops/workflows/lint.md
-  source_sha256_12: 24e9647947f4
+  source_sha256_12: cb6dfe242f2a
   description: Run configured validators and linters against a target scope and report
     findings without modifying files.
   outputs:
   - path: plugins/ai-ops-governance/commands/lint.md
     kind: plugin_command
-    sha256_12: a3871956f137
+    sha256_12: ffc94e8a45c5
   - path: plugins/ai-ops-governance/skills/lint/SKILL.md
     kind: plugin_skill
-    sha256_12: 5c9050ad6aef
+    sha256_12: ea1886c10fa1
+  - path: .claude/skills/lint/SKILL.md
+    kind: claude_skill
+    sha256_12: ea1886c10fa1
   - path: .agents/skills/lint/SKILL.md
     kind: codex_skill_primary
-    sha256_12: 5c9050ad6aef
+    sha256_12: 6efddaf1fda8
+  - path: .agents/skills/lint/agents/openai.yaml
+    kind: codex_skill_primary_openai_yaml
+    sha256_12: 0548ff515b77
 - workflow: profiles
   source: .ai_ops/workflows/profiles.md
-  source_sha256_12: 0635053a4362
+  source_sha256_12: fae0d0631076
   description: Manage rider/crew profile source data and regenerate deterministic
     derivative behavior files.
   outputs:
   - path: plugins/ai-ops-governance/commands/profiles.md
     kind: plugin_command
-    sha256_12: eb63c917576b
+    sha256_12: f09cdd8377e6
   - path: plugins/ai-ops-governance/skills/profiles/SKILL.md
     kind: plugin_skill
-    sha256_12: 69af9edc528f
+    sha256_12: 6b656fe585f9
+  - path: .claude/skills/profiles/SKILL.md
+    kind: claude_skill
+    sha256_12: 6b656fe585f9
   - path: .agents/skills/profiles/SKILL.md
     kind: codex_skill_primary
-    sha256_12: 69af9edc528f
+    sha256_12: 0d45e15977aa
+  - path: .agents/skills/profiles/agents/openai.yaml
+    kind: codex_skill_primary_openai_yaml
+    sha256_12: cbdf9f072be0
 - workflow: scratchpad
   source: .ai_ops/workflows/scratchpad.md
-  source_sha256_12: 3f7be7defc0d
+  source_sha256_12: 922fef57814e
   description: Create a scratchpad for session notes and observations.
   outputs:
   - path: plugins/ai-ops-governance/commands/scratchpad.md
     kind: plugin_command
-    sha256_12: 71ba1ed107fc
+    sha256_12: 07313ecddadd
   - path: plugins/ai-ops-governance/skills/scratchpad/SKILL.md
     kind: plugin_skill
-    sha256_12: dcd9fad693c0
+    sha256_12: 0cffd7ee6c77
+  - path: .claude/skills/scratchpad/SKILL.md
+    kind: claude_skill
+    sha256_12: 0cffd7ee6c77
   - path: .agents/skills/scratchpad/SKILL.md
     kind: codex_skill_primary
-    sha256_12: dcd9fad693c0
+    sha256_12: 50d03bd0c920
+  - path: .agents/skills/scratchpad/agents/openai.yaml
+    kind: codex_skill_primary_openai_yaml
+    sha256_12: 0c8a5dc03e6e
 - workflow: work
   source: .ai_ops/workflows/work.md
-  source_sha256_12: e3385271e5a3
+  source_sha256_12: e7cab1abc4ae
   description: Signal that repo rules apply and establish work/run context.
   outputs:
   - path: plugins/ai-ops-governance/commands/work.md
@@ -174,35 +236,53 @@ workflows:
   - path: plugins/ai-ops-governance/skills/work/SKILL.md
     kind: plugin_skill
     sha256_12: 79ffc08c02fc
+  - path: .claude/skills/work/SKILL.md
+    kind: claude_skill
+    sha256_12: 79ffc08c02fc
   - path: .agents/skills/work/SKILL.md
     kind: codex_skill_primary
-    sha256_12: 79ffc08c02fc
+    sha256_12: cb0b23841b64
+  - path: .agents/skills/work/agents/openai.yaml
+    kind: codex_skill_primary_openai_yaml
+    sha256_12: faca4d486bb7
 - workflow: work_savepoint
   source: .ai_ops/workflows/work_savepoint.md
-  source_sha256_12: fb60ce37f80e
+  source_sha256_12: 1fdafc2198f0
   description: Prepare a scoped savepoint and end the ai_ops session; publication
     requires explicit approval.
   outputs:
   - path: plugins/ai-ops-governance/commands/work_savepoint.md
     kind: plugin_command
-    sha256_12: a82d2a74416b
+    sha256_12: b0548e4d73f0
   - path: plugins/ai-ops-governance/skills/work-savepoint/SKILL.md
     kind: plugin_skill
-    sha256_12: 2b342598a48c
+    sha256_12: d5d21ee0a4d4
+  - path: .claude/skills/work_savepoint/SKILL.md
+    kind: claude_skill
+    sha256_12: 2bd704db126d
   - path: .agents/skills/work_savepoint/SKILL.md
     kind: codex_skill_primary
-    sha256_12: 5b1873562336
+    sha256_12: dea096ea6af9
+  - path: .agents/skills/work_savepoint/agents/openai.yaml
+    kind: codex_skill_primary_openai_yaml
+    sha256_12: 4ee5a5cebcae
 - workflow: work_status
   source: .ai_ops/workflows/work_status.md
-  source_sha256_12: f031af9959a2
+  source_sha256_12: 6d70ed28cb7f
   description: Summarize active work context and blockers.
   outputs:
   - path: plugins/ai-ops-governance/commands/work_status.md
     kind: plugin_command
-    sha256_12: 39ef6ff5008b
+    sha256_12: 39fd564d3767
   - path: plugins/ai-ops-governance/skills/work-status/SKILL.md
     kind: plugin_skill
-    sha256_12: 42763d1c9254
+    sha256_12: d838faed372d
+  - path: .claude/skills/work_status/SKILL.md
+    kind: claude_skill
+    sha256_12: be61a27ff8ba
   - path: .agents/skills/work_status/SKILL.md
     kind: codex_skill_primary
-    sha256_12: c78abffbffdb
+    sha256_12: 5f0888076e25
+  - path: .agents/skills/work_status/agents/openai.yaml
+    kind: codex_skill_primary_openai_yaml
+    sha256_12: 9e8d49c4878e

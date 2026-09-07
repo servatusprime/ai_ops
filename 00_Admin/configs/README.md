@@ -47,5 +47,3 @@ In open-source mode, keep only placeholders/docs in `secrets/` (`README.md`,
   in one place.
 - Repo-local operator overrides are machine-local:
   `.ai_ops/local/config.yaml`.
-- Compatibility reads may still check legacy paths during migration:
-  `.ai_ops/config.yaml` and `.ai_ops/profiles/active_crew.yaml`.

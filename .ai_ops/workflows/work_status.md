@@ -2,18 +2,16 @@
 description: Summarize active work context and blockers.
 name: work_status
 kind: workflow
-version: 0.1.1
+version: 0.1.3
 status: active
 owner: ai_ops
 license: Apache-2.0
 claude:
   argument-hint: null
-  disable-model-invocation: false
+  disable-model-invocation: true
   user-invocable: true
   allowed-tools: null
   model: null
-  context: null
-  agent: null
 codex:
   metadata:
     short-description: Summarize active work context and blockers.
@@ -21,7 +19,7 @@ codex:
     display_name: work_status
     short_description: Summarize active work context and blockers.
   policy:
-    allow_implicit_invocation: true
+    allow_implicit_invocation: false
 exports:
   claude_plugin:
     enabled: true

@@ -2,18 +2,16 @@
 description: Create a scratchpad for session notes and observations.
 name: scratchpad
 kind: workflow
-version: 0.1.2
+version: 0.1.4
 status: active
 owner: ai_ops
 license: Apache-2.0
 claude:
   argument-hint: null
-  disable-model-invocation: false
+  disable-model-invocation: true
   user-invocable: true
   allowed-tools: null
   model: null
-  context: null
-  agent: null
 codex:
   metadata:
     short-description: Create a scratchpad for session notes and observations.
@@ -21,7 +19,7 @@ codex:
     display_name: scratchpad
     short_description: Create a scratchpad for session notes and observations.
   policy:
-    allow_implicit_invocation: true
+    allow_implicit_invocation: false
 exports:
   claude_plugin:
     enabled: true

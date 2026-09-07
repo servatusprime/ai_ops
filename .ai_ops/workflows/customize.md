@@ -2,18 +2,16 @@
 description: Configure agent preferences and customization options.
 name: customize
 kind: workflow
-version: 0.1.1
+version: 0.1.4
 status: active
 owner: ai_ops
 license: Apache-2.0
 claude:
   argument-hint: null
-  disable-model-invocation: false
+  disable-model-invocation: true
   user-invocable: true
   allowed-tools: null
   model: null
-  context: null
-  agent: null
 codex:
   metadata:
     short-description: Configure agent preferences and customization options.
@@ -21,7 +19,7 @@ codex:
     display_name: customize
     short_description: Configure agent preferences and customization options.
   policy:
-    allow_implicit_invocation: true
+    allow_implicit_invocation: false
 exports:
   claude_plugin:
     enabled: true
@@ -97,8 +95,7 @@ contract.
 3. Run the customization interview and load defaults from
    `02_Modules/00_operator_config/templates/aiops_config.template.yaml`.
 4. Focus areas: bootstrap preferences, profile layering, external resources, session limits.
-   - model capabilities (user-declared available models, default model/reasoning level,
-     and operator model-to-level binding via `model_level_map`)
+   - model capabilities (user-declared available models and default model/reasoning level)
    - validation policy for governed external repos (ai_ops vs repo-native)
 5. Preview changes and confirm before writing overrides to `.ai_ops/local/config.yaml`.
 6. If user adds free-form notes, record them in `customizations.notes.free_form` only.

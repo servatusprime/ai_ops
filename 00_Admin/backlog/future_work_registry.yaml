@@ -744,7 +744,7 @@ entries:
       wb_gis_runprogram_thrift_and_resource_audit_01.md
     completion_workbook: null
     proposed_workbook: >-
-      90_Sandbox/ai_workbooks/wb_ai_ops_command_surface_uplift_01_2026-09-02/
+      99_Trash/wb_ai_ops_command_surface_uplift_01_2026-09-02/
       wb_01_health_command_pilot_2026-09-02.md
     scope: >-
       Extend the governed health orchestration so a selected runprogram scope
@@ -1189,7 +1189,7 @@ entries:
     scope: >-
       Add an explicit, reusable bootstrap tier for new top-level governed
       repositories. It should provide a thin architecture modeled on the
-      recognizable ai_ops/re_stack pattern, with required root instructions,
+      recognizable governed-repository pattern, with required root instructions,
       README, source/data separation as appropriate, 00_Admin governance
       surfaces, 90_Sandbox work artifacts, and registration/work-state wiring.
       It must also define when a domain repo may use a smaller shape, how the
@@ -1213,7 +1213,7 @@ entries:
       note: >-
         The pm build satisfied workbundle controls but surprised the operator
         because its visible architecture was a deep sandbox packet rather than
-        a thin top-level governed repository resembling ai_ops or re_stack.
+        a thin top-level governed repository with the expected root shape.
         This is a reusable guidance/setup gap, not a pm-specific data-model
         defect.
     notes: >-
@@ -1255,7 +1255,7 @@ entries:
     created: 2026-08-31
     compacted_context:
       source: >-
-        Operator request after a governed re_stack savepoint and manual pruning
+        Operator request after a governed-repository savepoint and manual pruning
         of 99_Trash contents on 2026-08-31.
       note: >-
         The current `99_Trash` concept is a soft staging area for eventual

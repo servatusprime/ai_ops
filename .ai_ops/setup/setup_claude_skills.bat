@@ -5,6 +5,37 @@ REM on supported Copilot surfaces.
 
 setlocal enableextensions enabledelayedexpansion
 
+REM Capture the script's own location BEFORE the arg-parse loop runs.
+REM Plain `shift` shifts %0 along with %1-%9 in Windows batch; resolving
+REM %~f0 after the loop can silently produce a wrong-but-plausible path
+REM once flags are parsed.
+set "REPO_ROOT="
+set "SCRIPT_DIR="
+for %%I in ("%~f0") do set "SCRIPT_DIR=%%~dpI"
+if defined SCRIPT_DIR (
+  set "AIOPS_DOT="
+  for %%I in ("!SCRIPT_DIR!..") do set "AIOPS_DOT=%%~fI"
+  if defined AIOPS_DOT if exist "!AIOPS_DOT!\workflows\" (
+    for %%I in ("!AIOPS_DOT!\..") do set "REPO_ROOT=%%~fI"
+  )
+)
+if not defined REPO_ROOT if exist "%CD%\ai_ops\.ai_ops\workflows\" (
+  set "REPO_ROOT=%CD%\ai_ops"
+)
+if not defined REPO_ROOT if exist "%CD%\..\ai_ops\.ai_ops\workflows\" (
+  set "REPO_ROOT=%CD%\..\ai_ops"
+)
+if not defined REPO_ROOT if exist "%CD%\.ai_ops\workflows\" (
+  set "REPO_ROOT=%CD%"
+)
+if not defined REPO_ROOT (
+  echo Could not resolve ai_ops repo root from script or current directory.
+  echo Script directory: !SCRIPT_DIR!
+  echo Current directory: !CD!
+  exit /b 1
+)
+set "WORKFLOW_DIR=%REPO_ROOT%\.ai_ops\workflows"
+
 set "scope=repo"
 set "dry_run=0"
 set "assume_yes=0"
@@ -63,33 +94,6 @@ echo Unknown option: %~1
 goto usage_error
 
 :args_done
-set "REPO_ROOT="
-set "SCRIPT_DIR="
-for %%I in ("%~f0") do set "SCRIPT_DIR=%%~dpI"
-if defined SCRIPT_DIR (
-  set "AIOPS_DOT="
-  for %%I in ("!SCRIPT_DIR!..") do set "AIOPS_DOT=%%~fI"
-  if defined AIOPS_DOT if exist "!AIOPS_DOT!\workflows\" (
-    for %%I in ("!AIOPS_DOT!\..") do set "REPO_ROOT=%%~fI"
-  )
-)
-if not defined REPO_ROOT if exist "%CD%\ai_ops\.ai_ops\workflows\" (
-  set "REPO_ROOT=%CD%\ai_ops"
-)
-if not defined REPO_ROOT if exist "%CD%\..\ai_ops\.ai_ops\workflows\" (
-  set "REPO_ROOT=%CD%\..\ai_ops"
-)
-if not defined REPO_ROOT if exist "%CD%\.ai_ops\workflows\" (
-  set "REPO_ROOT=%CD%"
-)
-if not defined REPO_ROOT (
-  echo Could not resolve ai_ops repo root from script or current directory.
-  echo Script directory: !SCRIPT_DIR!
-  echo Current directory: !CD!
-  exit /b 1
-)
-set "WORKFLOW_DIR=%REPO_ROOT%\.ai_ops\workflows"
-
 REM Resolve install target and workflow relative path based on scope
 if /I "!scope!"=="workspace" (
   for %%I in ("%REPO_ROOT%\..") do set "WORKSPACE_ROOT=%%~fI"
@@ -160,20 +164,29 @@ if "!dry_run!"=="1" (
   )
 )
 
-REM Workspace scope bypasses the generator (generator resolves to repo scope only).
+REM Both scopes route through the real generator; --install-root lets
+REM workspace scope use the same full-field renderer as repo scope. The
+REM fallback writer below remains only for environments without Python or the
+REM generator is unavailable.
 set "ran_generator=0"
-if /I not "!scope!"=="workspace" (
-  if exist "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" (
-    where python >nul 2>&1
-    if not errorlevel 1 (
+if exist "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" (
+  where python >nul 2>&1
+  if not errorlevel 1 (
+    if /I "!scope!"=="workspace" (
+      if "!dry_run!"=="1" (
+        python "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" --targets claude --scope workspace --install-root "!WORKSPACE_ROOT!" --dry-run
+      ) else (
+        python "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" --targets claude --scope workspace --install-root "!WORKSPACE_ROOT!"
+      )
+    ) else (
       if "!dry_run!"=="1" (
         python "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" --targets plugin claude --dry-run
       ) else (
         python "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" --targets plugin claude
       )
-      if not errorlevel 1 (
-        set "ran_generator=1"
-      )
+    )
+    if not errorlevel 1 (
+      set "ran_generator=1"
     )
   )
 )
@@ -188,9 +201,7 @@ if "!ran_generator!"=="1" (
   exit /b 0
 )
 
-if /I not "!scope!"=="workspace" (
-  echo Generator unavailable; falling back to legacy wrapper creation path.
-)
+echo Generator unavailable; falling back to local wrapper creation path.
 
 for %%f in (!WORKFLOW_DIR!\*.md) do (
   set "skill_name=%%~nf"

@@ -40,8 +40,16 @@ subagents:
           hooks:
             - type: command
               command: >-
-                if ! echo "$CLAUDE_TOOL_INPUT_FILE_PATH" | grep -qE '(90_Sandbox|99_Trash|\.ai_ops/local)';
-                then echo "[REVIEWER GUARD] Write outside sandbox detected: $CLAUDE_TOOL_INPUT_FILE_PATH — reviewer lane is read/report-only except in sandbox.";
+                input=$(cat);
+                fp=$(printf '%s' "$input" | grep -o '"file_path"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/.*"file_path"[[:space:]]*:[[:space:]]*"([^"]*)"/\1/');
+                if [ -z "$fp" ];
+                then echo "[REVIEWER GUARD] Blocked: no file_path found in tool_input — failing closed." >&2;
+                exit 2;
+                fi;
+                npath=$(printf '%s' "$fp" | tr '\\\\' '/');
+                if ! printf '%s' "$npath" | grep -qE '(^|/)(90_Sandbox|99_Trash)(/|$)|(^|/)\.ai_ops/local(/|$)';
+                then echo "[REVIEWER GUARD] Write outside sandbox blocked: $fp — reviewer lane is read/report-only except in sandbox." >&2;
+                exit 2;
                 fi; exit 0
   ai-ops-researcher:
     rider: "scout"

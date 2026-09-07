@@ -320,7 +320,7 @@ def resolve_repo_structure_paths(repo_root: str, configured_paths: List[str]) ->
     """Resolve repo map paths for monorepo and split-repo modes.
 
     Canonical target is <repo_root>/repo_structure.txt.
-    Compatibility target (legacy monorepo layout) is <repo_root>/../repo_structure.txt.
+    Compatibility target for older monorepo layouts is <repo_root>/../repo_structure.txt.
     When canonical exists, prefer it exclusively to avoid validating stale fallback maps.
     """
     resolved: List[str] = []
@@ -1384,6 +1384,79 @@ def check_run_family_graph_contract(
             errors.append(f"VS036: {label} check failed: {detail}")
 
 
+def check_classification_invocation_consistency(
+    params: Dict[str, Any], repo_root: str, errors: List[str], rule_id: str
+) -> None:
+    """VS037: cross-check guide_skills_commands_classification.md's
+    Command/Skill/Both classification against each workflow's actual
+    claude.disable-model-invocation value. Parses the guide's own table as
+    the single source of truth rather than duplicating the mapping in code
+    -- Command requires true; Skill/Both require false."""
+    guide_path = os.path.join(
+        repo_root,
+        params.get(
+            "guide_path",
+            "00_Admin/guides/ai_operations/guide_skills_commands_classification.md",
+        ),
+    )
+    workflows_glob = params.get("workflows_glob", ".ai_ops/workflows/*.md")
+
+    try:
+        guide_text = read_text(guide_path)
+    except OSError as exc:
+        errors.append(f"{rule_id}: could not read {guide_path}: {exc}")
+        return
+
+    row_pattern = re.compile(r"^\|\s*`/(\w+)`\s*\|\s*(Command|Skill|Both)\b", re.MULTILINE)
+    classifications: Dict[str, str] = {}
+    for match in row_pattern.finditer(guide_text):
+        name, classification = match.group(1), match.group(2)
+        classifications.setdefault(name, classification)
+
+    if not classifications:
+        errors.append(
+            f"{rule_id}: no `/name | Classification` rows found in {guide_path}; "
+            "table format may have changed"
+        )
+        return
+
+    try:
+        import yaml  # local import: only this rule needs full YAML parsing
+    except ImportError as exc:
+        errors.append(f"{rule_id}: PyYAML is required for this check: {exc}")
+        return
+
+    for path in sorted(glob.glob(os.path.join(repo_root, workflows_glob))):
+        name = os.path.splitext(os.path.basename(path))[0]
+        classification = classifications.get(name)
+        if classification is None:
+            continue
+        try:
+            text = read_text(path)
+        except OSError as exc:
+            errors.append(f"{rule_id}: could not read {path}: {exc}")
+            continue
+        fm_match = re.match(r"^---\r?\n(.*?)\r?\n---\r?\n", text, flags=re.DOTALL)
+        if not fm_match:
+            continue
+        try:
+            fm = yaml.safe_load(fm_match.group(1)) or {}
+        except yaml.YAMLError as exc:
+            errors.append(f"{rule_id}: {path}: could not parse frontmatter YAML: {exc}")
+            continue
+        claude_meta = fm.get("claude") if isinstance(fm, dict) else None
+        if not isinstance(claude_meta, dict):
+            continue
+        actual = claude_meta.get("disable-model-invocation")
+        expected = classification == "Command"
+        if actual is not None and actual != expected:
+            errors.append(
+                f"{rule_id}: {path}: guide classifies `/{name}` as '{classification}' "
+                f"(requires disable-model-invocation: {expected}) but frontmatter has "
+                f"disable-model-invocation: {actual}"
+            )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -1653,6 +1726,10 @@ def main() -> int:
             check_status_vs_checklist(paths, errors, rule_id)
         elif rule_id == "VS036":
             check_run_family_graph_contract(rule.get("params", {}), repo_root, errors)
+        elif rule_id == "VS037":
+            check_classification_invocation_consistency(
+                rule.get("params", {}), repo_root, errors, rule_id
+            )
 
     if errors:
         print("Validator errors:")

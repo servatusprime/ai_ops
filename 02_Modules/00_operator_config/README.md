@@ -25,7 +25,7 @@ Operator-level customization contracts for ai_ops.
 
 ## Decommission Note
 
-The legacy customization module has been retired. Use:
+The retired customization module is no longer used. Use:
 
 - `02_Modules/00_operator_config/` for operator config templates/specs.
 - `02_Modules/01_agent_profiles/` for profile/base/schema/generated assets.

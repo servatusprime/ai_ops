@@ -3,7 +3,7 @@ name: lint
 description: Run configured validators and linters against a target scope and report
   findings without modifying files.
 kind: workflow
-version: 0.2.2
+version: 0.2.3
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -13,8 +13,6 @@ claude:
   user-invocable: true
   allowed-tools: Read Grep Glob LS Bash
   model: null
-  context: null
-  agent: null
 codex:
   metadata:
     short-description: Run validators and linters for a target scope.

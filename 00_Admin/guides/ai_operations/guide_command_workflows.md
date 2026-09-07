@@ -1,11 +1,11 @@
 ---
 title: Guide - Command Workflows
-version: 0.7.2
+version: 0.8.2
 status: active
 license: Apache-2.0
 created: 2026-01-25
-updated: 2026-03-19
-last_updated: 2026-03-19
+updated: 2026-09-06
+last_updated: 2026-09-06
 owner: ai_ops
 description: Guidance for ai_ops command workflows.
 ---
@@ -96,7 +96,7 @@ Direct support targets (setup scripts available):
 
 | Tool | Folder | Format |
 | --- | --- | --- |
-| Claude Code | `.claude/skills/` (workspace-root recommended), `.claude/commands/` (legacy) | Markdown wrappers |
+| Claude Code | `.claude/skills/` (workspace-root recommended) | Markdown wrappers |
 | Claude App (web/desktop) | none | Instructions-only via direct workflow reference |
 | Codex CLI | `.agents/skills/` (recommended), `.codex/skills/` (compat mirror) | Markdown wrappers |
 | Cursor | `.cursor/commands/` | Markdown |
@@ -174,7 +174,7 @@ Commands operate in two modes based on repo context:
    c. If ops_stack_root != current_repo -> EXTERNAL MODE (User)
 3. If not found:
    a. Check for .ai_ops/workflows/ folder
-   b. If present -> INSIDE MODE (legacy/fallback)
+   b. If present -> INSIDE MODE (fallback)
    c. If absent -> NO AI_OPS_STACK
 ```
 
@@ -430,17 +430,23 @@ Use existing artifacts:
 
 ### /work_savepoint
 
-Commit + push active work as a savepoint, then end the session. Pass `--no-commit` to end without committing.
+Prepare a scoped savepoint and end the session. Default behavior does
+**not** stage, commit, or push in any mode (Direct, Governed, or
+Standalone) -- publication is a separate, explicitly approved
+`/closeout` action. `--no-commit` is accepted only as a compatibility
+spelling and has no additional effect. Staging/commit/push happens
+*only* on an explicit, live, current-turn `--commit` flag from the
+requestor.
 
 | Mode | Behavior |
 | --- | --- |
-| Inside | Stage, commit (`savepoint:` prefix), push; update compacted context |
-| External | Commit + push user work artifact; summarize next steps |
+| Direct | Prepare scoped change summary and resume instructions; no commit/push unless `--commit` passed |
+| Governed | Same publication contract as Direct, plus governed-repo validator preflight |
+| Standalone | Same publication contract; explicit `--commit` opt-in stages/commits (`savepoint:` prefix)/pushes |
 
 **Minimum Inputs / Conditions**
 
-- Inside: active workbook or workbundle.
-- External: active work context to save.
+- Active work context to save (workbook, workbundle, or user work context).
 
 **Workflow:** `.ai_ops/workflows/work_savepoint.md`
 
@@ -472,6 +478,21 @@ to separate workbooks.
 - **Decision:** Keep commands unprefixed (e.g., `/health` not `/aios_health`)
 - **Rationale:** Context (AGENTS.md + `.ai_ops/workflows/` presence) disambiguates
 - **Fallback:** If conflict detected, agent asks for clarification
+
+## Section Naming Crosswalk
+
+Several `.ai_ops/workflows/*.md` files solve the same structural need under
+different `##` heading names or positions. Standardizing the heading text
+is deliberately deferred until the mapping itself proves to be a
+recurring point of confusion in practice, not done pre-emptively -- a
+rename touches every reader/reference of the section it changes. This
+table documents the known mapping.
+
+| Concept | Canonical source | Heading name(s) actually used |
+| --- | --- | --- |
+| Direct/Governed/Standalone mode resolution | `AGENTS.md` `## Mode Detection` | `work.md`: `## Mode and Target Selection` (an inline pointer to `AGENTS.md`, not a duplicate table); `bootstrap.md`: `## Mode Detection` (matches, plus its own bootstrap-specific quick-reference table) |
+| Pre-write authority classification | `AGENTS.md` `### Path-Based Authority Guard (Pre-Write)` | `work.md`: `## Pre-Write Authority Guard (Mandatory)` (an inline pointer, not a duplicate table) |
+| Cold-start branching by active-artifact state | No single canonical source | `## Decision Matrix (Cold-Start)` in 10 of 13 commands; absent from `work.md`, `ai_ops_setup.md`, and `work_savepoint.md` (all three have equivalent branching logic under their own `(Mandatory)` gate sections or `## Steps` instead -- a presence variance, not purely a naming one) |
 
 ## Open Questions and Discussion
 
