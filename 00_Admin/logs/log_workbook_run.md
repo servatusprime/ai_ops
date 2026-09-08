@@ -827,3 +827,24 @@ ai_generated: true
   govern ignored local surfaces. The release-quality gate passes in a clean
   checkout with 40 governance tests, zero export drift, and matching tracked
   derivatives.
+
+- 2026-09-08 | local-clone drift, not a missing commit | A `/work` review of
+  `90_Sandbox/ai_workbooks` found the local ai_ops checkout carrying the full
+  `wb_ai_ops_command_surface_uplift_01` change set uncommitted, with a working
+  tree matching the 2026-09-07 `closeout` entry's description but no matching
+  commit in that checkout's `git log`/`git reflog`. This was misdiagnosed as
+  the described commit never having landed, and "corrected" by re-committing
+  the same content locally (`ffb9f70`, plus a now-retracted log entry claiming
+  the original commit never happened). A `git push` attempt then revealed the
+  actual cause: this local clone had never fetched `origin/main`, which
+  already held the real, correctly-pushed closeout as three commits
+  (`82ace8d` "Complete ai_ops command surface uplift closeout", `4d11f85`
+  "Refresh repository structure map", `a9e0460` "Make release quality gate
+  reproducible in CI", all 2026-09-07 19:14-19:35). Diffing confirmed the
+  locally re-committed tree was byte-identical to origin's for all 86
+  overlapping files. Local `main` was reset to `origin/main` (`git reset
+  --mixed`, no working-tree files touched) to discard the two redundant local
+  commits; nothing was force-pushed and no published history was altered.
+  Lesson: verify against `origin` (`git fetch` + `git log origin/main`)
+  before concluding a described commit never happened, not just local
+  `log`/`reflog`.

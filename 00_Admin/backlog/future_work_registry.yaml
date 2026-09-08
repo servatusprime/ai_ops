@@ -4,7 +4,7 @@ version: 0.6.13
 status: active
 owner: ai_ops
 created: 2026-01-07
-updated: 2026-09-04
+updated: 2026-09-08
 relocation_note_2026_09_04: >-
   fw_20260904_01 (resolvable dependency manifest for governed execution repos)
   relocated to the named governed repo's own
@@ -239,7 +239,9 @@ entries:
       90_Sandbox/ai_workbooks/ at filing time) (task 3.6.2, sweeping for the
       same description/body contradiction pattern found in fw_20260902_01)
     completion_workbook: null
-    proposed_workbook: null
+    proposed_workbook: >-
+      90_Sandbox/ai_workbooks/wb_thin_governed_repo_architecture_01_2026-09-04/
+      wb_runprogram_buildout_hardening_01.md
     owner: ai_ops
     status: planned
     priority: medium
@@ -277,7 +279,10 @@ entries:
       a default-behavior claim, and its body already carries an explicit
       "always confirm before pruning" guardrail). Other workflow files were
       not individually re-audited; a full sweep remains a candidate future
-      action if this pattern recurs.
+      action if this pattern recurs. Routed 2026-09-08 into
+      `wb_runprogram_buildout_hardening_01.md` Phase 5 as the best matching
+      closeout-hygiene lane; completion remains pending until that workbook's
+      execution and run-log evidence are complete.
   - id: fw_20260315_01
     title: Session-state infrastructure for context routing fast-path evaluation
     domain: integration
