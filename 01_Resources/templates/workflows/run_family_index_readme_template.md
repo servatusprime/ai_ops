@@ -36,8 +36,24 @@ reverse-index -- never inferred from folders.
 # regenerate the registry + graph views from the manifests, then verify parity
 python 00_Admin/scripts/generate_run_family_views.py --repo-root . --write
 python 00_Admin/scripts/generate_run_family_views.py --repo-root . --check
-python 00_Admin/scripts/validate_run_family_graph.py --discover --check-files
+python 00_Admin/scripts/validate_run_family_graph.py --discover --check-files --check-closure
 ```
+
+## Runnable recipe
+
+This section is part of the promoted artifact's cold-start contract. Replace
+the placeholders with the actual artifact-specific invocation and keep the
+flags aligned with the current validator help output.
+
+```powershell
+# resolve and validate this run-family definition
+python 00_Admin/scripts/resolve_run_family.py --help
+python 00_Admin/scripts/validate_run_family_graph.py --discover --check-files --check-closure
+```
+
+The recipe is a projection of canonical commands, not an authority. A changed
+flag or path requires updating this recipe in the same governed batch as the
+implementation and its validation evidence.
 
 ## Organization contract (this home)
 

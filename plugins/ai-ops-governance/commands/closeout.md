@@ -1,5 +1,6 @@
 ---
-description: Finalize a work session with cleanup, lint, commit, and push.
+description: Finalize a work session with cleanup, lint, review, and approval-gated
+  commit/push publication.
 ---
 
 # /closeout

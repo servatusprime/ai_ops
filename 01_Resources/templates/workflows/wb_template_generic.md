@@ -289,6 +289,8 @@ Phase gate expectation:
 
 - end-of-phase validation run completed
 - end-of-phase evidence logged in workbook Selfcheck
+- use `/work_savepoint` only when a resumable handoff is needed; it does not
+  imply commit, push, or closeout
 
 ---
 

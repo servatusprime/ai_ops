@@ -42,7 +42,7 @@ def sha12(path: Path) -> str:
 
 
 def independently_rendered_manifest(
-    repo_root: Path, targets: List[str], scope: str
+    repo_root: Path, targets: List[str], scope: str, codex_compat: bool = False
 ) -> Optional[Dict]:
     """Run the generator in --dry-run --print-manifest mode and parse its
     freshly-rendered manifest. Returns None on any failure (subprocess error,
@@ -58,6 +58,12 @@ def independently_rendered_manifest(
         "--scope",
         scope,
     ]
+    if codex_compat:
+        # The compatibility mirror is an explicit generation option rather
+        # than a target. Preserve that option during independent rendering so
+        # the check verifies the same governed surface recorded in the
+        # manifest instead of reporting every .codex output as phantom.
+        cmd.append("--codex-compat")
     try:
         result = subprocess.run(
             cmd, cwd=repo_root, capture_output=True, text=True, timeout=60
@@ -204,7 +210,20 @@ def main() -> int:
     if not isinstance(scope, str) or not manifest_targets_list:
         render_check_skipped = True
     else:
-        rendered = independently_rendered_manifest(repo_root, manifest_targets_list, scope)
+        manifest_has_codex_compat = any(
+            isinstance(output, dict)
+            and output.get("kind") in {"codex_skill_compat", "codex_skill_compat_openai_yaml"}
+            for workflow in workflows
+            if isinstance(workflow, dict)
+            for output in workflow.get("outputs", [])
+            if isinstance(workflow.get("outputs", []), list)
+        )
+        rendered = independently_rendered_manifest(
+            repo_root,
+            manifest_targets_list,
+            scope,
+            codex_compat=manifest_has_codex_compat,
+        )
         if rendered is None:
             render_check_skipped = True
         else:

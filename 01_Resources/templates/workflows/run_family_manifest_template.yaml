@@ -25,10 +25,19 @@ canonical_home: <repo-relative path to this artifact's canonical file>
 artifact_version: 0.1.0
 interface_version: "1.0.0"
 lifecycle: active            # planned | stub | active | deprecated
+promotion_target: <repo-relative canonical home or 'none - project local'>
+promotion_gate: <named approval required for promotion>
 steward: <steward_id>        # who maintains this artifact (not a consumer)
 # content_sha256 = sha256 of the canonical_home file; tooling-populated.
 content_sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+entry_artifacts: []           # node-interface ids admitted from outside this graph
 parameter_profiles: {}
+# Example profile shape when a profile is declared:
+# parameter_profiles:
+#   default:
+#     block_classification:
+#       runtime_inputs: consumed
+#       operator_notes: declaration
 consumes:
   - consumer_id: run_program_<program_id>
     provider_id: rnb_<bundle_id>
@@ -62,7 +71,10 @@ consumes:
 # artifact_version: 0.1.0
 # interface_version: "1.0.0"
 # lifecycle: active
+# promotion_target: <repo-relative canonical home or 'none - project local'>
+# promotion_gate: <named approval required for promotion>
 # steward: <steward_id>
 # content_sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+# entry_artifacts: []
 # parameter_profiles: {}
 # consumes: []          # runbooks MUST declare an empty consumes list

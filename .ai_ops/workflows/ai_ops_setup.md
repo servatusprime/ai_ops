@@ -214,10 +214,25 @@ contract.
    - If `installation_target` is `none`, stop and confirm no install performed.
 2. Detect OS or ask if not detectable.
 3. If `AGENTS.md` is missing in the target repo, point the user to the onboarding guide in `HUMANS.md`.
-4. If `.ai_ops/local/config.yaml` exists, update `customizations.validation_policy.governed_mode` with the confirmed
+4. For a new top-level governed repository, bootstrap the minimum governed
+   shape before installing tool surfaces:
+   - choose exactly one domain anchor (`--domain-dir src`, for example), or
+     record a no-domain `--exception-id`;
+   - run one documented command from the workspace root:
+     `python ai_ops/00_Admin/scripts/bootstrap_governed_repo.py --repo-root
+     <repo_root> --ai-ops-root ai_ops --workspace-root . --domain-dir <domain>`
+     (use `--exception-id <id>` instead of `--domain-dir` for a no-domain repo);
+   - the command creates only missing `AGENTS.md`, `README.md`, `00_Admin/`,
+     `90_Sandbox/`, local work-state/receipt evidence, and the ai_ops
+     `workspace.work_repos` registration; it does not overwrite non-empty
+     files or copy domain-specific content;
+   - it runs the structural validator before reporting success. If the target
+     already contains non-empty root instructions, transition to `/work` and
+     reconcile manually rather than overwriting them.
+5. If `.ai_ops/local/config.yaml` exists, update `customizations.validation_policy.governed_mode` with the confirmed
    `governed_validation_policy`. If it does not exist, create it from the template and apply the value after
    confirmation.
-5. **Configure target/external repos** (governed workflow prerequisite):
+6. **Configure target/external repos** (governed workflow prerequisite):
    - Ask: "Do you have external repos you want ai_ops to govern (for `/work_savepoint`, `/closeout`, and `/lint` in
      Governed or External mode)?"
    - If yes: for each target repo, add an entry to `workspace.work_repos` in `.ai_ops/local/config.yaml`:
@@ -247,10 +262,10 @@ contract.
      or re-invoke `/ai_ops_setup` at any time to add new repos to `work_repos`.
    - If `governed_validation_policy` is `repo_native`, `work_repos` entries are still used for repo-root resolution
      at runtime; `minimum_commands` is ignored (validators are auto-detected from the repo's native tooling).
-6. Check existing installation state for the selected surface and scope:
+7. Check existing installation state for the selected surface and scope:
    - If wrappers already exist at the target scope root, report "already installed" and offer `--force` overwrite or
      stop.
-7. Run the matching script(s) from `.ai_ops/setup/` with the resolved scope flag:
+8. Run the matching script(s) from `.ai_ops/setup/` with the resolved scope flag:
    - Claude skills: `setup_claude_skills.bat|.sh [--workspace|--repo]`
    - Claude app: no install script; confirm direct workflow-reference lane
      and Filesystem access when repo files are needed
@@ -270,17 +285,20 @@ contract.
      `.github/copilot-instructions.md` exists and confirm instructions-only lane
    - Commands: `setup_cursor.bat|.sh`, `setup_gemini.bat|.sh`
    - Echo resolved install root and workflow pointer before executing.
-8. For Claude installs, ensure plugin skeleton folders exist:
+9. For Claude installs, ensure plugin skeleton folders exist:
    - `plugins/ai-ops-governance/agents/`
    - `plugins/ai-ops-governance/commands/`
    - `plugins/ai-ops-governance/.claude-plugin/`
-9. For Codex installs, use primary skills path by default:
-   - primary: `.agents/skills/` (or `$HOME/.agents/skills/`)
-   - compatibility mirror (`.codex/skills/` or `$HOME/.codex/skills/`) is on-demand only when explicitly requested.
-10. If retained ai_ops behavior needs to persist, confirm the source edit
+
+10. For Codex installs, use primary skills path by default:
+   primary: `.agents/skills/` (or `$HOME/.agents/skills/`); the compatibility
+   mirror (`.codex/skills/` or `$HOME/.codex/skills/`) is on-demand only when
+   explicitly requested.
+
+11. If retained ai_ops behavior needs to persist, confirm the source edit
     belongs in tracked repo surfaces and not in the installed runtime folder.
-11. Report results and note where files were installed.
-12. Ensure local setup-state surfaces exist:
+12. Report results and note where files were installed.
+13. Ensure local setup-state surfaces exist:
 
 - `.ai_ops/local/config.yaml` (when local overrides are created),
 - `.ai_ops/local/profiles/active_crew.yaml` (when profile state exists),

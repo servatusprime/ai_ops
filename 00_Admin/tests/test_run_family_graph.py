@@ -110,8 +110,11 @@ canonical_home: 00_Admin/runbooks/runprogram-alpha/README.md
 artifact_version: 1.0.0
 interface_version: 1.0.0
 lifecycle: active
+promotion_target: 00_Admin/runbooks/runprogram-alpha/README.md
+promotion_gate: requestor approval
 steward: repo_maintainers
 content_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+entry_artifacts: []
 consumes: []
 parameter_profiles: {}
 routes: []
@@ -132,8 +135,11 @@ canonical_home: 00_Admin/runbooks/runprogram-alpha/README.md
 artifact_version: 1.0.0
 interface_version: 1.0.0
 lifecycle: active
+promotion_target: 00_Admin/runbooks/runprogram-alpha/README.md
+promotion_gate: requestor approval
 steward: repo_maintainers
 content_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+entry_artifacts: []
 consumes: []
 parameter_profiles: {}
 """
@@ -159,6 +165,41 @@ parameter_profiles: {}
             with self.assertRaisesRegex(
                 validator.ContractError,
                 "manifest parameter_profiles must be a mapping",
+            ):
+                validator.graph_from_manifests([path])
+
+    def test_legacy_manifest_fields_are_optional_but_validated(self):
+        base = """manifest_version: '0.1.0'
+artifact_id: runbook-legacy
+artifact_kind: runbook
+canonical_home: 02_Modules/example/docs/runbooks/runbook-legacy/README.md
+artifact_version: 1.0.0
+interface_version: 1.0.0
+lifecycle: active
+steward: repo_maintainers
+content_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+consumes: []
+parameter_profiles: {}
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "manifest.yaml"
+            path.write_text(base, encoding="utf-8")
+            graph = validator.graph_from_manifests([path])
+            self.assertEqual(graph["artifacts"][0]["artifact_id"], "runbook-legacy")
+
+            path.write_text(
+                base + "entry_artifacts: [7]\n", encoding="utf-8"
+            )
+            with self.assertRaisesRegex(
+                validator.ContractError,
+                "entry_artifacts must be a string array",
+            ):
+                validator.graph_from_manifests([path])
+
+            path.write_text(base + "promotion_gate: ''\n", encoding="utf-8")
+            with self.assertRaisesRegex(
+                validator.ContractError,
+                "manifest promotion_gate must be a non-empty string",
             ):
                 validator.graph_from_manifests([path])
 
@@ -746,6 +787,9 @@ parameter_profiles: {}
                 manifest = {
                     "manifest_version": "0.1.0",
                     **artifact,
+                    "promotion_target": artifact["canonical_home"],
+                    "promotion_gate": "requestor approval",
+                    "entry_artifacts": [],
                     "consumes": [
                         edge
                         for edge in aggregate["consumes"]
@@ -974,6 +1018,9 @@ parameter_profiles: {}
         self.assertTrue(required_edge_fields <= set(consumption_edge["required"]))
         self.assertTrue(required_edge_fields <= set(manifest_edge["required"]))
         self.assertIn("content_sha256", manifest["required"])
+        self.assertNotIn("promotion_target", manifest["required"])
+        self.assertNotIn("promotion_gate", manifest["required"])
+        self.assertNotIn("entry_artifacts", manifest["required"])
         self.assertTrue(
             validator.ARTIFACT_REQUIRED <= set(manifest["required"])
         )

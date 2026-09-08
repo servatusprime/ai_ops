@@ -47,6 +47,31 @@ Section 3.0.1.
 - Do not hand-edit the map; run the script or follow `00_Admin/policies/policy_git_workflow_conventions.md` to refresh
   it.
 
+### 2.1 Minimum Governed-Repository Bootstrap
+
+For a new top-level repository governed through ai_ops, the minimum
+recognizable bootstrap shape is:
+
+- root `AGENTS.md` with the repository purpose and bootstrap read order;
+- root `README.md` with the repository purpose and current architecture;
+- `00_Admin/` for repository-local governance references and configuration;
+- `90_Sandbox/` for workbundles, validation evidence, and temporary execution
+  artifacts; and
+- one clearly named domain anchor when the repository has domain assets.
+
+`01_Resources/`, `02_Modules/`, `99_Trash/`, `01_Agents/`, `Projects/`, and
+other domain-specific folders are optional. Create them when the first real
+governed asset requires them; do not create empty placeholders for visual
+completeness.
+
+ai_ops registration and work-state wiring are required for an ai_ops-governed
+repository, but they are setup/state surfaces rather than additional required
+top-level directories. A repository with no domain assets may use a single
+`Governed Bootstrap Exception` declaration in its README. Setup records the
+corresponding work-state and receipt evidence, and the structural validator
+checks their consistency. This is the exception path, not a second repository
+template.
+
 ## 3. Folder Reference
 
 <!-- markdownlint-disable MD013 -->

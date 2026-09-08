@@ -1,8 +1,5 @@
 #!/usr/bin/env python
-"""
-Minimal repo validator for machine-checkable rules defined in validator_config.yaml.
-No external dependencies required.
-"""
+"""Minimal repo validator for machine-checkable rules in validator_config.yaml."""
 
 from __future__ import annotations
 

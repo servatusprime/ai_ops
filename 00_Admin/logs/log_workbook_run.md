@@ -848,3 +848,70 @@ ai_generated: true
   Lesson: verify against `origin` (`git fetch` + `git log origin/main`)
   before concluding a described commit never happened, not just local
   `log`/`reflog`.
+
+- 2026-09-08 | `wb_thin_governed_repo_architecture_01` execution authorization,
+  protected-scope record, and crosscheck trail | The requestor approved the
+  proposal on 2026-09-06 and authorized execution on 2026-09-08. The durable
+  protected-scope authorization covers D-3: the named `00_Admin/specs/**`
+  changes, including `spec_infrastructure_change_validation_gate.md` and
+  `spec_run_family_composition.md`; D-4: the named `.ai_ops/workflows/**`
+  changes, including `ai_ops_setup.md`, `closeout.md`, and `work_savepoint.md`;
+  and D-5: the exact
+  `00_Admin/configs/validator/schema_run_family_manifest.yaml` change for
+  `promotion_target` and `promotion_gate`. It does not authorize commit, push,
+  registry pruning, or closeout. Crosscheck trail: R1 Ohm structural/contract
+  acceptable after remediation; R2 Dirac adversarial/runtime acceptable with
+  minor environment cleanup; R3 Descartes release/consumer/registry acceptable
+  after remediation; R4 Codex current completion blocking on F-01/F-02; R5
+  Claude Sonnet independent verification confirmed those findings and added
+  F-03/F-04. The current `/work` remediation corrected the lint, lifecycle,
+  README, and durable-record findings; a fresh independent re-review, registry
+  disposition, closeout, commit, and push remain open.
+
+- 2026-09-08 | `wb_thin_governed_repo_architecture_01` R6 substance
+  adjudication remediation | R6 independently confirmed R4/R5 process
+  remediation and found F-05 through F-08 as implementation defects plus F-09
+  as a low-priority unenforced-ceremony proposal. The selected remediation is
+  compatibility-first: manifest promotion fields and top-level entry metadata
+  remain optional for legacy consumers; promotion fields are validated when
+  present; legacy entry labels do not satisfy executable closure; standing
+  VS038/VS039 validator rules were removed; closure/discovery was centralized
+  under the run-family validator; bootstrap registration now preserves existing
+  YAML text; and the unenforced Phase-Close Contract was removed. The live
+  downstream governed-repository compatibility check discovered 31 artifacts
+  and 28 edges without requiring a cross-repo migration; no governed-repository
+  file was modified. Targeted Ruff and 42 governance/bootstrap/closure tests
+  passed. A fresh independent
+  R7 review, registry disposition, closeout, commit, and push remain open.
+
+- 2026-09-08 | `wb_thin_governed_repo_architecture_01` R7 final verification |
+  Independent completion review re-read the R6 implementation changes and
+  reran the consequential checks. R7 verified optional legacy manifest-field
+  compatibility against the downstream governed-repository corpus (31
+  artifacts, 28 edges), removal of standing VS038/VS039 wiring, canonical
+  closure/discovery reuse, bootstrap text-preservation behavior, and removal
+  of unenforced phase-close ceremony. The full 46-test suite, no-fix lint,
+  repository validator, workflow export-drift check, graph discovery, and diff
+  check passed; only pre-existing warning sets remain. R7 verdict is
+  Acceptable with no open findings. Future-work registry disposition, scorecard
+  refresh, closeout, commit, and push remain separate requestor-gated phases.
+
+- 2026-09-08 | future-work registry closeout for the governed-repository
+  architecture bundle | Completion authority is recorded for both incorporated
+  registry items: `fw_20260827_01` is completed by
+  `90_Sandbox/ai_workbooks/wb_thin_governed_repo_architecture_01_2026-09-04/wb_thin_governed_repo_architecture_01.md`,
+  and `fw_20260904_01` (the closeout-description contradiction item, distinct
+  from the earlier relocated dependency-manifest history note) is completed by
+  `90_Sandbox/ai_workbooks/wb_thin_governed_repo_architecture_01_2026-09-04/wb_runprogram_buildout_hardening_01.md`.
+  Both items were removed from `00_Admin/backlog/future_work_registry.yaml`
+  under the workbooks' final registry phases. The generated
+  `00_Admin/backlog/future_work_scorecard.md` was refreshed in the same
+  change; unrelated registry items remain present.
+
+- 2026-09-08 | closeout commit: `wb_thin_governed_repo_architecture_01` |
+  Requestor approved the exact 30-file closeout include set. Commit
+  a closeout commit (`Complete governed repository architecture hardening`)
+  was created after staged-scope verification and pre-commit validation. The
+  repository-structure hook regenerated and included the required canonical
+  `repo_structure.txt` derivative, resulting in 31 committed files total.
+  Worktree is clean; push and workbundle archival remain separately gated.

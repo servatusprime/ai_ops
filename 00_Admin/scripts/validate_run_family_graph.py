@@ -22,6 +22,7 @@ VERSION_CONSTRAINT = re.compile(
     r"(?:,(?:>=|<=|>|<|==|=)?[0-9]+(?:\.[0-9]+){0,2})*$"
 )
 INTERFACE_VERSION = re.compile(r"^(0|[1-9][0-9]*)(?:\.(0|[1-9][0-9]*)){0,2}$")
+INTERFACE_ARTIFACT_ID = re.compile(r"^[a-z][a-z0-9_.:-]*$")
 SHA256 = re.compile(r"^[a-f0-9]{64}$")
 REGISTRY_VERSION = "0.2.0"
 KINDS = {"runprogram", "runbundle", "runbook"}
@@ -54,7 +55,10 @@ EDGE_REQUIRED = {
     "idempotency",
 }
 ROOT_ALLOWED = {"schema_version", "artifacts", "consumes", "parameter_profiles"}
-ARTIFACT_ALLOWED = set(ARTIFACT_REQUIRED)
+ARTIFACT_ALLOWED = set(ARTIFACT_REQUIRED) | {
+    "promotion_target",
+    "promotion_gate",
+}
 MANIFEST_ALLOWED = {
     "manifest_version",
     *ARTIFACT_REQUIRED,
@@ -64,6 +68,8 @@ MANIFEST_ALLOWED = {
     "exit_artifacts",
     "gates",
     "idempotency",
+    "promotion_target",
+    "promotion_gate",
 }
 MANIFEST_REQUIRED = {
     "manifest_version",
@@ -1080,9 +1086,42 @@ def graph_from_manifests(paths: list[Path]) -> dict[str, Any]:
                 raise ContractError(
                     [f"{path}: manifest parameter profile {name} must be a mapping"]
                 )
+        if "entry_artifacts" in manifest:
+            entry_artifacts = manifest["entry_artifacts"]
+            if (
+                not isinstance(entry_artifacts, list)
+                or any(not isinstance(value, str) for value in entry_artifacts)
+            ):
+                raise ContractError(
+                    [
+                        f"{path}: manifest entry_artifacts must be a string array"
+                    ]
+                )
+            node_interface_entries = [
+                value
+                for value in entry_artifacts
+                if INTERFACE_ARTIFACT_ID.fullmatch(value)
+            ]
+            if (
+                len(node_interface_entries) == len(entry_artifacts)
+                and len(entry_artifacts) != len(set(entry_artifacts))
+            ):
+                raise ContractError(
+                    [
+                        f"{path}: manifest entry_artifacts must contain unique "
+                        "node-interface ids"
+                    ]
+                )
+        for field in ("promotion_target", "promotion_gate"):
+            if field in manifest and (
+                not isinstance(manifest[field], str) or not manifest[field].strip()
+            ):
+                raise ContractError(
+                    [f"{path}: manifest {field} must be a non-empty string"]
+                )
         artifact = {
             key: manifest.get(key)
-            for key in ARTIFACT_REQUIRED_ORDER
+            for key in (*ARTIFACT_REQUIRED_ORDER, "promotion_target", "promotion_gate")
             if key in manifest
         }
         artifacts.append(artifact)
@@ -1112,6 +1151,93 @@ def discover_manifests(repo_root: Path) -> list[Path]:
     for pattern in patterns:
         found.update(path for path in repo_root.glob(pattern) if path.is_file())
     return sorted(found, key=lambda path: path.as_posix())
+
+
+def _execution_graph_sets(
+    home: Path,
+) -> tuple[dict[str, set[str]], dict[str, list[str]]]:
+    """Return producers and consumers without treating self-production as closure."""
+
+    graph_path = home / "execution_graph.yaml"
+    if not graph_path.is_file():
+        return {}, {}
+    graph = load_yaml(graph_path)
+    produced_by: dict[str, set[str]] = {}
+    consumed_by: dict[str, list[str]] = {}
+    for node in graph.get("nodes") or []:
+        if not isinstance(node, dict):
+            continue
+        node_id = str(node.get("id", "?"))
+        interface = node.get("interface") or {}
+        outputs = interface.get("produces") or []
+        inputs = interface.get("consumes") or []
+        if isinstance(outputs, list):
+            for value in outputs:
+                if isinstance(value, str):
+                    produced_by.setdefault(value, set()).add(node_id)
+        if isinstance(inputs, list):
+            for value in inputs:
+                if isinstance(value, str):
+                    consumed_by.setdefault(value, []).append(node_id)
+    return produced_by, consumed_by
+
+
+def validate_graph_artifact_closure(
+    repo_root: Path,
+    manifests: list[Path] | None = None,
+    artifact_ids: set[str] | None = None,
+) -> list[str]:
+    """Return unsatisfied interface inputs for discovered run-family artifacts."""
+
+    repo_root = repo_root.resolve()
+    manifests = manifests if manifests is not None else discover_manifests(repo_root)
+    records: dict[str, tuple[Path, dict[str, Any]]] = {}
+    findings: list[str] = []
+    for path in manifests:
+        manifest = load_yaml(path)
+        artifact_id = manifest.get("artifact_id")
+        if not isinstance(artifact_id, str) or not artifact_id:
+            continue
+        if artifact_id in records:
+            findings.append(
+                f"duplicate manifest artifact_id discovered: {artifact_id}"
+            )
+            continue
+        records[artifact_id] = (path.parent, manifest)
+
+    selected = set(artifact_ids or records)
+    for artifact_id in sorted(selected):
+        record = records.get(artifact_id)
+        if record is None:
+            continue
+        home, manifest = record
+        produced_by, consumed_by = _execution_graph_sets(home)
+        if not consumed_by:
+            continue
+        entry_artifacts = {
+            value
+            for value in manifest.get("entry_artifacts") or []
+            if isinstance(value, str) and INTERFACE_ARTIFACT_ID.fullmatch(value)
+        }
+        composed_outputs: set[str] = set()
+        for edge in manifest.get("consumes") or []:
+            if not isinstance(edge, dict):
+                continue
+            provider = records.get(edge.get("provider_id"))
+            if provider is not None:
+                provider_produced, _ = _execution_graph_sets(provider[0])
+                composed_outputs.update(provider_produced)
+        for value, nodes in sorted(consumed_by.items()):
+            producers = produced_by.get(value, set())
+            if any(producer != node for producer in producers for node in nodes):
+                continue
+            if value in entry_artifacts or value in composed_outputs:
+                continue
+            findings.append(
+                f"{artifact_id}: '{value}' consumed by {', '.join(nodes)} "
+                "but produced by nothing and not declared external"
+            )
+    return findings
 
 
 def validate_graph(
@@ -1188,6 +1314,11 @@ def validate_graph(
             )
         else:
             by_hash[content_hash] = str(artifact_id)
+        for field in ("promotion_target", "promotion_gate"):
+            if field in artifact and (
+                not isinstance(artifact[field], str) or not artifact[field].strip()
+            ):
+                errors.append(f"{label}.{field} must be a non-empty string")
         if check_files and repo_root is not None and isinstance(home, str):
             target = (repo_root / home).resolve()
             try:
@@ -1353,6 +1484,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--repo-root", type=Path, default=Path("."))
     parser.add_argument("--check-files", action="store_true")
+    parser.add_argument(
+        "--check-closure",
+        action="store_true",
+        help="Check executable input closure using canonical manifest discovery",
+    )
     parser.add_argument("--receipt", type=Path)
     parser.add_argument("--run-receipt", type=Path)
     parser.add_argument("--provider-receipt", type=Path)
@@ -1367,7 +1503,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    has_source = bool(args.input or args.manifest or args.discover or args.check)
+    has_source = bool(
+        args.input or args.manifest or args.discover or args.check or args.check_closure
+    )
     standalone = bool(
         args.provider_receipt
         or args.intake_receipt
@@ -1382,11 +1520,13 @@ def main(argv: list[str] | None = None) -> int:
                 "--execution-graph/--execution-graph-state argument"
             ])
         normalized = None
+        manifest_paths: list[Path] | None = None
         if has_source:
             if args.input:
                 document = load_yaml(args.input)
-            elif args.discover or args.check:
-                document = graph_from_manifests(discover_manifests(args.repo_root))
+            elif args.discover or args.check or args.check_closure:
+                manifest_paths = discover_manifests(args.repo_root)
+                document = graph_from_manifests(manifest_paths)
             else:
                 document = graph_from_manifests(args.manifest)
             normalized = validate_graph(
@@ -1394,6 +1534,12 @@ def main(argv: list[str] | None = None) -> int:
                 repo_root=args.repo_root,
                 check_files=args.check_files or args.check,
             )
+        if args.check_closure:
+            closure_findings = validate_graph_artifact_closure(
+                args.repo_root, manifest_paths or args.manifest
+            )
+            if closure_findings:
+                raise ContractError(closure_findings)
         if args.check:
             args.registry = args.registry or args.repo_root / "00_Admin/runbooks/run_family_registry.yaml"
             args.runbooks_readme = args.runbooks_readme or args.repo_root / "00_Admin/runbooks/README.md"

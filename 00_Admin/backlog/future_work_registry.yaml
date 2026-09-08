@@ -95,6 +95,13 @@ closeout_note_2026_08_03: >-
   (proposed_workbook set); fw_20260803_02 stays routed to a governed-repo
   session. A log_workbook_run.md entry is owed when the accepted canonical
   changes are committed.
+prune_note_2026_09_08: >-
+  Pruned fw_20260827_01 (thin governed-repository architecture) and
+  fw_20260904_01 (closeout frontmatter/body contradiction) after their
+  respective workbooks recorded completion authority. The historical
+  relocation_note_2026_09_04 mention of fw_20260904_01 refers to a different,
+  earlier dependency-manifest item that was relocated to a governed repo
+  registry; it is retained as historical lineage and is not an active entry.
 scorecard_sync:
   required: true
   scorecard_file: 00_Admin/backlog/future_work_scorecard.md
@@ -229,60 +236,6 @@ entries:
       requires running `00_Admin/scripts/generate_workflow_exports.py` before
       commit -- not in scope for this narrowed item, which only concerns the
       three installed copies.
-  - id: fw_20260904_01
-    title: "closeout.md frontmatter description asserts unconditional commit/push that its body gates behind explicit approval"
-    domain: governance
-    target_repo: ai_ops
-    source_workbook: >-
-      99_Trash/wb_skills_surface_consolidation_01_2026-08-27/
-      wb_skills_surface_consolidation_01.md (archived 2026-09-05; was
-      90_Sandbox/ai_workbooks/ at filing time) (task 3.6.2, sweeping for the
-      same description/body contradiction pattern found in fw_20260902_01)
-    completion_workbook: null
-    proposed_workbook: >-
-      90_Sandbox/ai_workbooks/wb_thin_governed_repo_architecture_01_2026-09-04/
-      wb_runprogram_buildout_hardening_01.md
-    owner: ai_ops
-    status: planned
-    priority: medium
-    effort: S
-    readiness: ready
-    created: 2026-09-04
-    next_review: 2026-10-04
-    scope: >-
-      `.ai_ops/workflows/closeout.md`'s frontmatter `description` reads
-      "Finalize a work session with cleanup, lint, commit, and push" -- read
-      on its own, this states commit and push as things the command does as
-      part of finishing. The body does not agree: step 14 requires "an
-      explicit operator approval that names the final include set... before
-      every commit" and "a separate explicit operator approval before every
-      push or PR creation; commit approval does not imply publication
-      approval." Decide which is authoritative (most likely: the description
-      should read as approval-gated, matching `work_savepoint.md`'s
-      post-fix wording) and make both agree, including the exported
-      Claude/Codex skill surfaces the `exports` block ships this description
-      to.
-    benefit: >-
-      Removes the same class of contradiction already fixed once this cycle
-      in `work_savepoint.md`: an agent or operator routing on the exported
-      description could believe `/closeout` always publishes, when the body
-      requires two separate explicit approvals first.
-    risk_if_deferred: medium
-    activation_trigger: >-
-      Next governance pass over `.ai_ops/workflows/`, or sooner if an agent
-      or operator is misled by the description into expecting automatic
-      commit/push from `/closeout`.
-    notes: >-
-      Found during a scoped sweep (fw_20260902_01's task 3.6.2), not a full
-      audit of every workflow file -- `harvest.md` was also checked and judged
-      not to match this pattern (its description is a capability summary, not
-      a default-behavior claim, and its body already carries an explicit
-      "always confirm before pruning" guardrail). Other workflow files were
-      not individually re-audited; a full sweep remains a candidate future
-      action if this pattern recurs. Routed 2026-09-08 into
-      `wb_runprogram_buildout_hardening_01.md` Phase 5 as the best matching
-      closeout-hygiene lane; completion remains pending until that workbook's
-      execution and run-log evidence are complete.
   - id: fw_20260315_01
     title: Session-state infrastructure for context routing fast-path evaluation
     domain: integration
@@ -1182,50 +1135,6 @@ entries:
       scope and approval per `AGENTS.md`'s authority guard) rather than an inline
       fix -- touches multiple canonical guides and needs consistent example
       updates throughout, not a single find-and-replace.
-  - id: fw_20260827_01
-    title: Define and seed a thin governed-repository architecture for new top-level directories
-    domain: governance
-    target_repo: ai_ops
-    source_workbook: null
-    completion_workbook: null
-    proposed_workbook: >-
-      90_Sandbox/ai_workbooks/wb_thin_governed_repo_architecture_01_2026-09-04/
-      work_proposal_thin_governed_repo_architecture_01.md
-    scope: >-
-      Add an explicit, reusable bootstrap tier for new top-level governed
-      repositories. It should provide a thin architecture modeled on the
-      recognizable governed-repository pattern, with required root instructions,
-      README, source/data separation as appropriate, 00_Admin governance
-      surfaces, 90_Sandbox work artifacts, and registration/work-state wiring.
-      It must also define when a domain repo may use a smaller shape, how the
-      exception is recorded, and how setup validates the resulting structure.
-    priority: high
-    benefit: high
-    effort: m
-    readiness: partial
-    risk_if_deferred: high
-    activation_trigger: >-
-      Any request to create a new top-level directory intended to function as a
-      governed repository, or any future setup that produces a sandbox-only
-      shape without an explicit architecture decision.
-    next_review: 2026-09-10
-    status: planned
-    owner: ai_ops
-    created: 2026-08-27
-    compacted_context:
-      source: >-
-        pm Outlook attention-management bootstrap, 2026-08-27 operator feedback
-      note: >-
-        The pm build satisfied workbundle controls but surprised the operator
-        because its visible architecture was a deep sandbox packet rather than
-        a thin top-level governed repository with the expected root shape.
-        This is a reusable guidance/setup gap, not a pm-specific data-model
-        defect.
-    notes: >-
-      Proposal seed only. Do not revise canonical bootstrap guides or setup
-      scripts in the same session without a separately authorized workbook and
-      review gate.
-
   - id: fw_20260831_01
     title: Define recoverable and disposable 99_Trash retention lanes
     domain: operations

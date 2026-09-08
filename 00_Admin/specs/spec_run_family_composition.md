@@ -4,9 +4,9 @@ id: spec_run_family_composition
 module: admin
 status: active
 license: Apache-2.0
-version: 0.2.2
+version: 0.3.1
 created: 2026-07-16
-last_updated: 2026-08-11
+last_updated: 2026-09-08
 owner: ai_ops
 ai_generated: true
 spec_archetype: governance_spec
@@ -66,6 +66,48 @@ manifest MUST NOT be relied on to express multiple routes.
 `consumed_by`, affected-consumer closure, human navigation, and graph views are
 derived. They MUST NOT be hand-maintained authority.
 
+### Executability Closure
+
+Structural composition validity is distinct from execution validity. When an
+artifact has a colocated `execution_graph.yaml`, every interface named in a
+node's `interface.consumes` MUST be satisfied by exactly one of:
+
+- a `produces` interface on another node in the same graph;
+- an interface admitted in the manifest's top-level `entry_artifacts`; or
+- a `produces` interface on a graph owned by a provider declared in the
+  manifest's outgoing `consumes` edges.
+
+Operator-node outputs are ordinary graph-produced interfaces and may satisfy a
+downstream external handoff through the declared provider edge. A repository-
+wide union of outputs is not valid: an unrelated artifact must never satisfy a
+graph's input. The companion closure entry point is
+`00_Admin/scripts/validate_graph_artifact_closure.py`, backed by the canonical
+run-family validator's explicit `--check-closure` flag; it is an executability
+gate, not a replacement for structural validation.
+
+`entry_artifacts` are node-interface identifiers, not prose descriptions.
+Their source-specific meaning belongs in the profile or receipt consumed by the
+run; the manifest only declares the graph boundary.
+
+### Declared-Not-Consumed Profile Blocks
+
+Parameter profiles MUST make the status of each top-level block explicit with
+`block_classification`:
+
+```yaml
+block_classification:
+  <block_name>: consumed | declaration
+```
+
+`consumed` means implementation code reads the block during execution and the
+governed repository's profile-consumption validator is responsible for proving
+that claim. `declaration` means the block is a governance or explanatory
+record and MUST NOT be treated as an executable input. A block absent from the
+classification is not an implicit live value; it is a contract defect. The
+classification rule is generic ai_ops contract; proving code-level consumption
+remains a governed-repository implementation because the consumer runtime is
+repo-specific.
+
 ## Resolution Contract
 
 The initial resolver MUST select the single canonical provider for each stable
@@ -124,6 +166,16 @@ contract version that defines enforcement, removal ownership, and a fixed
 removal date. An operator exception alone does not create a bridge, authority,
 or valid closeout state.
 
+For compatibility with existing governed repositories, the manifest's
+`promotion_target`, `promotion_gate`, and top-level `entry_artifacts` fields
+are optional in contract v0.1. The promotion fields are strictly validated
+when present. `entry_artifacts` remains a string array for legacy manifests;
+only values matching the node-interface identifier contract participate in
+closure satisfaction. New ai_ops-authored manifests SHOULD use unique
+node-interface identifiers. Making any of these fields required is a separate
+contract-tightening change and MUST include an inventory, migration owner, and
+same-batch validation of every affected consumer.
+
 ## Shared-Artifact Completion
 
 A change to a shared runbook or runbundle is not globally complete until every
@@ -181,9 +233,19 @@ definitions. Canonical ai_ops artifacts MUST remain repository-neutral.
 - `00_Admin/specs/spec_runbook_structure.md`
 - `00_Admin/specs/spec_repository_indices.md`
 - `00_Admin/guides/authoring/guide_runbooks.md`
+- `00_Admin/scripts/validate_graph_artifact_closure.py`
+- `01_Resources/templates/workflows/run_family_execution_profile_template.yaml`
 
 ## Change Log
 
+- 0.3.1 (2026-09-08): Restored v0.1 manifest compatibility for legacy
+  consumers; promotion fields remain validated when present, legacy entry
+  metadata is not executable closure evidence, and closure checking is exposed
+  through the canonical run-family validator rather than a standing duplicate
+  rule.
+- 0.3.0 (2026-09-08): Added executable input closure, node-interface
+  `entry_artifacts`, explicit promotion intent, declared-not-consumed profile
+  classification, and the one-contract execution-profile reference.
 - 0.2.2 (2026-08-11): Clarified that manifest edge route/queue order is a
   single-route convenience; the execution control graph is the authority for
   multi-route sequencing.

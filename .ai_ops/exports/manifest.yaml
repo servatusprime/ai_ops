@@ -19,12 +19,12 @@ generation_targets:
 - codex
 - plugin
 workflow_count: 13
-output_count: 65
-manifest_output_count: 65
+output_count: 91
+manifest_output_count: 91
 workflows:
 - workflow: ai_ops_setup
   source: .ai_ops/workflows/ai_ops_setup.md
-  source_sha256_12: a3c5a3393c62
+  source_sha256_12: 7bfc271a886e
   description: Run ai_ops setup scripts for skills, commands, and supported instruction
     surfaces
   outputs:
@@ -42,6 +42,12 @@ workflows:
     sha256_12: f292a223d4de
   - path: .agents/skills/ai_ops_setup/agents/openai.yaml
     kind: codex_skill_primary_openai_yaml
+    sha256_12: 87877e7d017b
+  - path: .codex/skills/ai_ops_setup/SKILL.md
+    kind: codex_skill_compat
+    sha256_12: f292a223d4de
+  - path: .codex/skills/ai_ops_setup/agents/openai.yaml
+    kind: codex_skill_compat_openai_yaml
     sha256_12: 87877e7d017b
 - workflow: bootstrap
   source: .ai_ops/workflows/bootstrap.md
@@ -63,26 +69,39 @@ workflows:
   - path: .agents/skills/bootstrap/agents/openai.yaml
     kind: codex_skill_primary_openai_yaml
     sha256_12: 6bec19573c50
+  - path: .codex/skills/bootstrap/SKILL.md
+    kind: codex_skill_compat
+    sha256_12: 90909c34aefd
+  - path: .codex/skills/bootstrap/agents/openai.yaml
+    kind: codex_skill_compat_openai_yaml
+    sha256_12: 6bec19573c50
 - workflow: closeout
   source: .ai_ops/workflows/closeout.md
-  source_sha256_12: 4a264fca5d4e
-  description: Finalize a work session with cleanup, lint, commit, and push.
+  source_sha256_12: 782276fa2e8b
+  description: Finalize a work session with cleanup, lint, review, and approval-gated
+    commit/push publication.
   outputs:
   - path: plugins/ai-ops-governance/commands/closeout.md
     kind: plugin_command
-    sha256_12: c079d1ca1e3e
+    sha256_12: dc58ebc95c8c
   - path: plugins/ai-ops-governance/skills/closeout/SKILL.md
     kind: plugin_skill
-    sha256_12: bbb22cf94532
+    sha256_12: ed52f0fe78fb
   - path: .claude/skills/closeout/SKILL.md
     kind: claude_skill
-    sha256_12: bbb22cf94532
+    sha256_12: ed52f0fe78fb
   - path: .agents/skills/closeout/SKILL.md
     kind: codex_skill_primary
-    sha256_12: ec3c13496c09
+    sha256_12: 1bc21df9a238
   - path: .agents/skills/closeout/agents/openai.yaml
     kind: codex_skill_primary_openai_yaml
-    sha256_12: f258e5ea5e04
+    sha256_12: 6185baacbb87
+  - path: .codex/skills/closeout/SKILL.md
+    kind: codex_skill_compat
+    sha256_12: 1bc21df9a238
+  - path: .codex/skills/closeout/agents/openai.yaml
+    kind: codex_skill_compat_openai_yaml
+    sha256_12: 6185baacbb87
 - workflow: crosscheck
   source: .ai_ops/workflows/crosscheck.md
   source_sha256_12: fc46e089c265
@@ -102,6 +121,12 @@ workflows:
     sha256_12: 26e86049c81f
   - path: .agents/skills/crosscheck/agents/openai.yaml
     kind: codex_skill_primary_openai_yaml
+    sha256_12: 12cff0c98759
+  - path: .codex/skills/crosscheck/SKILL.md
+    kind: codex_skill_compat
+    sha256_12: 26e86049c81f
+  - path: .codex/skills/crosscheck/agents/openai.yaml
+    kind: codex_skill_compat_openai_yaml
     sha256_12: 12cff0c98759
 - workflow: customize
   source: .ai_ops/workflows/customize.md
@@ -123,6 +148,12 @@ workflows:
   - path: .agents/skills/customize/agents/openai.yaml
     kind: codex_skill_primary_openai_yaml
     sha256_12: b668a48dc8cf
+  - path: .codex/skills/customize/SKILL.md
+    kind: codex_skill_compat
+    sha256_12: edf149550309
+  - path: .codex/skills/customize/agents/openai.yaml
+    kind: codex_skill_compat_openai_yaml
+    sha256_12: b668a48dc8cf
 - workflow: harvest
   source: .ai_ops/workflows/harvest.md
   source_sha256_12: 5bc1af696ca3
@@ -143,6 +174,12 @@ workflows:
   - path: .agents/skills/harvest/agents/openai.yaml
     kind: codex_skill_primary_openai_yaml
     sha256_12: 23c3ff9cb411
+  - path: .codex/skills/harvest/SKILL.md
+    kind: codex_skill_compat
+    sha256_12: fca283006c2c
+  - path: .codex/skills/harvest/agents/openai.yaml
+    kind: codex_skill_compat_openai_yaml
+    sha256_12: 23c3ff9cb411
 - workflow: health
   source: .ai_ops/workflows/health.md
   source_sha256_12: 2abbe26bc6bf
@@ -162,6 +199,12 @@ workflows:
     sha256_12: 2c091541e57a
   - path: .agents/skills/health/agents/openai.yaml
     kind: codex_skill_primary_openai_yaml
+    sha256_12: b0e04ceddb9e
+  - path: .codex/skills/health/SKILL.md
+    kind: codex_skill_compat
+    sha256_12: 2c091541e57a
+  - path: .codex/skills/health/agents/openai.yaml
+    kind: codex_skill_compat_openai_yaml
     sha256_12: b0e04ceddb9e
 - workflow: lint
   source: .ai_ops/workflows/lint.md
@@ -184,6 +227,12 @@ workflows:
   - path: .agents/skills/lint/agents/openai.yaml
     kind: codex_skill_primary_openai_yaml
     sha256_12: 0548ff515b77
+  - path: .codex/skills/lint/SKILL.md
+    kind: codex_skill_compat
+    sha256_12: 6efddaf1fda8
+  - path: .codex/skills/lint/agents/openai.yaml
+    kind: codex_skill_compat_openai_yaml
+    sha256_12: 0548ff515b77
 - workflow: profiles
   source: .ai_ops/workflows/profiles.md
   source_sha256_12: fae0d0631076
@@ -205,6 +254,12 @@ workflows:
   - path: .agents/skills/profiles/agents/openai.yaml
     kind: codex_skill_primary_openai_yaml
     sha256_12: cbdf9f072be0
+  - path: .codex/skills/profiles/SKILL.md
+    kind: codex_skill_compat
+    sha256_12: 0d45e15977aa
+  - path: .codex/skills/profiles/agents/openai.yaml
+    kind: codex_skill_compat_openai_yaml
+    sha256_12: cbdf9f072be0
 - workflow: scratchpad
   source: .ai_ops/workflows/scratchpad.md
   source_sha256_12: 922fef57814e
@@ -225,6 +280,12 @@ workflows:
   - path: .agents/skills/scratchpad/agents/openai.yaml
     kind: codex_skill_primary_openai_yaml
     sha256_12: 0c8a5dc03e6e
+  - path: .codex/skills/scratchpad/SKILL.md
+    kind: codex_skill_compat
+    sha256_12: 50d03bd0c920
+  - path: .codex/skills/scratchpad/agents/openai.yaml
+    kind: codex_skill_compat_openai_yaml
+    sha256_12: 0c8a5dc03e6e
 - workflow: work
   source: .ai_ops/workflows/work.md
   source_sha256_12: e7cab1abc4ae
@@ -244,6 +305,12 @@ workflows:
     sha256_12: cb0b23841b64
   - path: .agents/skills/work/agents/openai.yaml
     kind: codex_skill_primary_openai_yaml
+    sha256_12: faca4d486bb7
+  - path: .codex/skills/work/SKILL.md
+    kind: codex_skill_compat
+    sha256_12: cb0b23841b64
+  - path: .codex/skills/work/agents/openai.yaml
+    kind: codex_skill_compat_openai_yaml
     sha256_12: faca4d486bb7
 - workflow: work_savepoint
   source: .ai_ops/workflows/work_savepoint.md
@@ -266,6 +333,12 @@ workflows:
   - path: .agents/skills/work_savepoint/agents/openai.yaml
     kind: codex_skill_primary_openai_yaml
     sha256_12: 4ee5a5cebcae
+  - path: .codex/skills/work_savepoint/SKILL.md
+    kind: codex_skill_compat
+    sha256_12: dea096ea6af9
+  - path: .codex/skills/work_savepoint/agents/openai.yaml
+    kind: codex_skill_compat_openai_yaml
+    sha256_12: 4ee5a5cebcae
 - workflow: work_status
   source: .ai_ops/workflows/work_status.md
   source_sha256_12: 6d70ed28cb7f
@@ -285,4 +358,10 @@ workflows:
     sha256_12: 5f0888076e25
   - path: .agents/skills/work_status/agents/openai.yaml
     kind: codex_skill_primary_openai_yaml
+    sha256_12: 9e8d49c4878e
+  - path: .codex/skills/work_status/SKILL.md
+    kind: codex_skill_compat
+    sha256_12: 5f0888076e25
+  - path: .codex/skills/work_status/agents/openai.yaml
+    kind: codex_skill_compat_openai_yaml
     sha256_12: 9e8d49c4878e

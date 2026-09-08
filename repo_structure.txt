@@ -177,12 +177,15 @@
 |   |   |-- rb_workflow_frontmatter_validation_01.md
 |   |   +-- run_family_registry.yaml
 |   |-- scripts/
+|   |   |-- bootstrap_governed_repo.py
 |   |   |-- check_workflow_exports_drift.py
 |   |   |-- cleanup_sandbox.ps1
 |   |   |-- cleanup_trash.ps1
 |   |   |-- diagnose_file_locks.ps1
 |   |   |-- fixtures/
-|   |   |   +-- run_validate_repo_rules_fixtures.py
+|   |   |   |-- run_validate_repo_rules_fixtures.py
+|   |   |   |-- test_bootstrap_governed_repo.py
+|   |   |   +-- test_validate_governed_repo_shape.py
 |   |   |-- generate_future_work_scorecard.py
 |   |   |-- generate_repo_structure.ps1
 |   |   |-- generate_repo_structure.py
@@ -197,6 +200,8 @@
 |   |   |-- sync_claude_settings.py
 |   |   |-- sync_validator_baseline.py
 |   |   |-- update_artifact_status.py
+|   |   |-- validate_governed_repo_shape.py
+|   |   |-- validate_graph_artifact_closure.py
 |   |   |-- validate_ide_extensions.ps1
 |   |   |-- validate_metadata.py
 |   |   |-- validate_repo_precommit.ps1
@@ -259,6 +264,7 @@
 |   |   |       +-- run_receipt_valid.yaml
 |   |   |-- test_future_work_registry_lifecycle.py
 |   |   |-- test_governance_seed_contracts.py
+|   |   |-- test_graph_artifact_closure.py
 |   |   |-- test_run_family_graph.py
 |   |   +-- workflow_smoke_tests.yaml
 |   +-- tooling/
@@ -307,6 +313,7 @@
 |           |-- peer_review_template.md
 |           |-- quality_loop_convergence_template.md
 |           |-- rb_template_generic.md
+|           |-- run_family_execution_profile_template.yaml
 |           |-- run_family_index_readme_template.md
 |           |-- run_family_manifest_template.yaml
 |           |-- runbundle_pipeline_template.md

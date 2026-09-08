@@ -34,6 +34,12 @@ properties:
     pattern: '^(0|[1-9][0-9]*)(?:\.(0|[1-9][0-9]*)){0,2}$'
   lifecycle:
     enum: [planned, stub, active, deprecated]
+  promotion_target:
+    type: string
+    minLength: 1
+  promotion_gate:
+    type: string
+    minLength: 1
   steward:
     type: string
     pattern: '^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$'

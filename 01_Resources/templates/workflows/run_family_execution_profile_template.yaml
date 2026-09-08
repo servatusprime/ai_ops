@@ -1,0 +1,25 @@
+# One-contract, per-governed-repository execution profile.
+# This is a repo-local declaration that references ai_ops contract surfaces; it
+# must not fork or copy the run-family specifications.
+profile_version: "0.1.0"
+profile_id: <governed_repo_id>_run_family
+contract_refs:
+  identity: 00_Admin/specs/spec_artifact_graph_identity.md
+  composition: 00_Admin/specs/spec_run_family_composition.md
+  execution_graph: 00_Admin/specs/spec_execution_control_graph.md
+  manifest_schema: 00_Admin/configs/validator/schema_run_family_manifest.yaml
+repository:
+  repo_id: <governed_repo_id>
+  root: .
+  canonical_run_family_homes:
+    - 00_Admin/runbooks/**/manifest.yaml
+    - 02_Modules/**/docs/runbooks/**/manifest.yaml
+validators:
+  structural: 00_Admin/scripts/validate_run_family_graph.py
+  executable_closure: 00_Admin/scripts/validate_graph_artifact_closure.py
+  repo_native: []
+runtimes: []
+conventions:
+  module_project_split: null
+  profile_consumption_validator: null
+  additional_notes: []
