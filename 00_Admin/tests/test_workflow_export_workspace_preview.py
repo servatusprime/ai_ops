@@ -47,8 +47,9 @@ class WorkspaceInstallPreviewTests(unittest.TestCase):
             self.assertEqual(result.returncode, 2)
             self.assertIn("[Workspace install preview]", result.stdout)
             self.assertIn("[BLOCKED] Workspace install requires the matching preview token.", result.stdout)
-            self.assertIn(r".agents\skills\bootstrap\SKILL.md", result.stdout)
-            self.assertIn(r".agents\skills\work_savepoint\SKILL.md", result.stdout)
+            normalized_stdout = result.stdout.replace("\\", "/")
+            self.assertIn(".agents/skills/bootstrap/SKILL.md", normalized_stdout)
+            self.assertIn(".agents/skills/work_savepoint/SKILL.md", normalized_stdout)
             self.assertFalse((install_root / ".agents").exists())
 
     def test_matching_preview_token_allows_exact_plan(self) -> None:
