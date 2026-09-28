@@ -1,10 +1,10 @@
 ---
 title: future_work_registry
-version: 0.6.13
+version: 0.6.15
 status: active
 owner: ai_ops
 created: 2026-01-07
-updated: 2026-09-08
+updated: 2026-09-25
 relocation_note_2026_09_04: >-
   fw_20260904_01 (resolvable dependency manifest for governed execution repos)
   relocated to the named governed repo's own
@@ -102,6 +102,11 @@ prune_note_2026_09_08: >-
   relocation_note_2026_09_04 mention of fw_20260904_01 refers to a different,
   earlier dependency-manifest item that was relocated to a governed repo
   registry; it is retained as historical lineage and is not an active entry.
+prune_note_2026_09_25: >-
+  Pruned actualized entry fw_20260902_01. RG-10 in the active security
+  remediation workbundle restores the approved work_savepoint publication
+  contract, regenerates the declared install surfaces, and adds drift/contract
+  validation. The completion receipt remains in that workbundle.
 scorecard_sync:
   required: true
   scorecard_file: 00_Admin/backlog/future_work_scorecard.md
@@ -167,75 +172,6 @@ scorecard_schema:
     - medium
     - low
 entries:
-  - id: fw_20260902_01
-    title: >-
-      Refresh three stale generated work_savepoint install surfaces
-      (.claude/skills, .agents/skills, openai.yaml) and add workspace-scope
-      drift detection
-    domain: governance
-    target_repo: ai_ops
-    source_workbook: >-
-      99_Trash/wb_ai_ops_security_audit_01_2026-08-14/
-      wb_01_ai_ops_security_audit_plan_2026-08-14.md (archived 2026-09-04;
-      was 90_Sandbox/ai_workbooks/ at filing time)
-    completion_workbook: null
-    proposed_workbook: null
-    owner: ai_ops
-    status: planned
-    priority: medium
-    effort: S
-    readiness: ready
-    created: 2026-09-02
-    next_review: 2026-10-04
-    scope: >-
-      NARROWED 2026-09-04 (was broader; the frontmatter/body contradiction
-      half of this item is resolved, see notes). Three generated
-      workspace-root install surfaces still carry the pre-fix
-      `work_savepoint` description ("Commit and push active work as a
-      savepoint, then end the ai_ops session") even though the canonical
-      `.ai_ops/workflows/work_savepoint.md` was corrected to "Prepare a
-      scoped savepoint and end the ai_ops session; publication requires
-      explicit approval": `.claude/skills/work_savepoint/SKILL.md`,
-      `.agents/skills/work_savepoint/SKILL.md`, and
-      `.agents/skills/work_savepoint/agents/openai.yaml` -- re-confirmed
-      stale by direct read 2026-09-04. Refresh these three through the
-      operator-gated `/ai_ops_setup` lane (do not hand-edit installed
-      surfaces), and add a bounded workspace-scope drift check so the
-      repo-internal export-drift gate can't stay green while these three
-      diverge from canon.
-    benefit: >-
-      Prevents an agent or operator reading an installed skill listing from
-      believing a savepoint publishes by default, when the canonical source
-      has already been corrected to say the opposite.
-    risk_if_deferred: medium
-    activation_trigger: >-
-      Next `/ai_ops_setup` pass over Claude/Codex skill installs, or sooner
-      if another savepoint invocation surfaces the same stale-description
-      confusion.
-    compacted_context: >-
-      This entry is self-contained: its scope, risk, activation trigger,
-      owner, and acceptance conditions govern the work. Not tied to the
-      now-archived security-audit workbook (provenance only) or to
-      `wb_skills_surface_consolidation_01_2026-08-27` (that bundle's Phase
-      3.6 investigated and confirmed this residual per its own explicit
-      no-silent-install-write boundary; it does not execute the refresh
-      itself -- a future `/ai_ops_setup`-lane action does).
-    notes: >-
-      HISTORY: originally filed 2026-09-02 covering two sub-questions: (1) a
-      frontmatter/body contradiction in `work_savepoint.md` propagated via
-      the `exports` block to Claude/Codex skill listings, and (2) these same
-      three stale install surfaces. Sub-question (1) was independently
-      verified resolved 2026-09-04 (description now reads "publication
-      requires explicit approval", body's Publication Stop Gate matches, zero
-      export drift). `wb_skills_surface_consolidation_01_2026-08-27`'s Phase
-      3.6 (2026-09-04) re-confirmed sub-question (2) is still open by direct
-      read of all three files -- this entry is narrowed to that remainder
-      only, per `policy_future_work_registry.md`'s Completion and Deletion
-      Rule (narrow rather than delete when a sub-question remains open).
-      Editing `.ai_ops/workflows/work_savepoint.md` itself is Level 4 and
-      requires running `00_Admin/scripts/generate_workflow_exports.py` before
-      commit -- not in scope for this narrowed item, which only concerns the
-      three installed copies.
   - id: fw_20260315_01
     title: Session-state infrastructure for context routing fast-path evaluation
     domain: integration
@@ -652,14 +588,18 @@ entries:
     activation_trigger: >-
       Requestor authorizes the named independent workbook, or a delegation
       decision is made on an unverified runtime capability assumption.
-    next_review: 2026-08-15
-    status: planned
+    next_review: 2026-10-01
+    status: deferred
     owner: ai_ops
     created: 2026-07-21
     notes: >-
-      Routed, not deferred by neglect. Approved 2026-07-21 as out of scope for
-      the core uplift because setup/export and platform-capability verification
-      form an independent substrate.
+      Read-only parity workbook execution and independent crosscheck completed
+      2026-09-09. Wrapper parity is pass and runtime delegation support remains
+      unknown. Requestor accepted workbook-only evidence for this run, so no
+      persistent capability state was written and completion_workbook remains
+      null. Next gate: create a separately approved small host-local capability
+      record only if a lead needs consultable state before a delegation
+      decision; otherwise retain this item for that evidence-triggered review.
   - id: fw_20260721_03
     title: Remove Director-receipt dependency from run-family adoption handoff
     domain: governance

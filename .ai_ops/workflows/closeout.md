@@ -2,7 +2,7 @@
 description: Finalize a work session with cleanup, lint, review, and approval-gated commit/push publication.
 name: closeout
 kind: workflow
-version: 0.3.3
+version: 0.3.4
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -19,7 +19,7 @@ codex:
     display_name: closeout
     short_description: Finalize a work session with cleanup, lint, and approval-gated commit/push publication.
   policy:
-    allow_implicit_invocation: true
+    allow_implicit_invocation: false
 exports:
   claude_plugin:
     enabled: true
@@ -86,6 +86,22 @@ closeout-specific branching.
 - Active work context: close out the selected context.
 
 ## Steps
+
+### Publication Command Registry
+
+Closeout may describe publication commands during a dry run, but it may
+execute them only after the explicit approval and scope gates below pass:
+
+| Action | Fixed form | Required gate |
+| --- | --- | --- |
+| stage | `git -C <repo> add -- <approved include paths>` | scope manifest and current-turn approval |
+| commit | `git -C <repo> commit -m <approved summary>` | explicit commit approval naming the include set |
+| push | `git -C <repo> push <approved remote> <approved branch>` | separate push approval |
+
+Resolve the repository, remote, branch, and include paths before invocation.
+Reject shell metacharacters, force/delete options, reparse paths, detached
+heads, and any command assembled from free-form workflow text. A closeout
+state, hook, or generated wrapper cannot substitute for the operator approval.
 
 ### Inside Repo (Maintainer)
 

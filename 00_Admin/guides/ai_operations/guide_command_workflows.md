@@ -430,19 +430,19 @@ Use existing artifacts:
 
 ### /work_savepoint
 
-Prepare a scoped savepoint and end the session. Default behavior does
-**not** stage, commit, or push in any mode (Direct, Governed, or
-Standalone) -- publication is a separate, explicitly approved
-`/closeout` action. `--no-commit` is accepted only as a compatibility
-spelling and has no additional effect. Staging/commit/push happens
-*only* on an explicit, live, current-turn `--commit` flag from the
-requestor.
+Save scoped work-in-progress and end the session without claiming completion.
+The first leg is read-only: resolve one target, validate it, classify every
+changed path, and show the exact include set, commit message, remote, and
+branch. The workflow then stops for explicit final requestor approval before
+staging, committing, or pushing. `--no-commit` selects a read-only checkpoint;
+`--commit` is accepted as an explicit spelling of save intent but cannot bypass
+the preview and approval gate.
 
 | Mode | Behavior |
 | --- | --- |
-| Direct | Prepare scoped change summary and resume instructions; no commit/push unless `--commit` passed |
+| Direct | Preview exact scope; after final approval, stage exact paths, commit with `savepoint:` prefix, push, and keep work active |
 | Governed | Same publication contract as Direct, plus governed-repo validator preflight |
-| Standalone | Same publication contract; explicit `--commit` opt-in stages/commits (`savepoint:` prefix)/pushes |
+| Standalone | Same preview, approval, exact-path staging, commit, push, and state-preservation contract |
 
 **Minimum Inputs / Conditions**
 

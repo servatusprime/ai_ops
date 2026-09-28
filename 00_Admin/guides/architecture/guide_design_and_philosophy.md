@@ -610,7 +610,7 @@ These are predictable failure modes that ai_ops is designed to prevent:
 | --- | --- | --- |
 | `/work` | Starting or resuming work | Establishes context and execution path |
 | `/work_status` | Need current state | Summarizes active work and blockers |
-| `/work_savepoint` | Stopping mid-task | Prepares checkpoint, no commit/push by default, then ends session |
+| `/work_savepoint` | Stopping mid-task | Previews and, after explicit final approval, commits/pushes a scoped WIP savepoint; leaves work active |
 | `/closeout` | Work is complete | Runs validation and closeout workflow |
 | `/crosscheck` | Need review feedback | Runs structured review workflow |
 | `/health` | Repo seems inconsistent | Runs report-only health analysis |

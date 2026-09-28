@@ -4,6 +4,14 @@ extends: default
 # there are linted per the /closeout sandbox-lint contract.
 ignore: |
   **/00_Admin/tests/fixtures/manifests/invalid_syntax.yaml
+  90_Sandbox/ai_workbooks/wb_security_remediation_01_2026-09-15/implementation_prechange_2026-09-17/context_escape.yaml
+  90_Sandbox/ai_workbooks/wb_security_remediation_01_2026-09-15/implementation_prechange_2026-09-17/profile_bad_hook.yaml
+  90_Sandbox/ai_workbooks/wb_security_remediation_01_2026-09-15/implementation_prechange_2026-09-17/profile_valid.yaml
+  90_Sandbox/ai_workbooks/wb_security_remediation_01_2026-09-15/implementation_prechange_2026-09-17/validator_command.yaml
+  90_Sandbox/ai_workbooks/wb_security_remediation_01_2026-09-15/implementation_prechange_2026-09-17/validator_escape.yaml
+  90_Sandbox/ai_workbooks/wb_security_remediation_01_2026-09-15/implementation_prechange_2026-09-17/validator_valid.yaml
+  90_Sandbox/ai_workbooks/wb_security_remediation_01_2026-09-15/implementation_prechange_2026-09-17/context_fixture/config.yaml
+  90_Sandbox/ai_workbooks/wb_security_remediation_01_2026-09-15/implementation_prechange_2026-09-17/context_fixture/manifest.yaml
   **/99_Trash/**
   .cache/**
   **/node_modules/**

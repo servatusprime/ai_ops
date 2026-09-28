@@ -202,6 +202,36 @@ Rules:
 
 ---
 
+## Delegation Contract Activation (Conditional)
+
+Keep the workbook contract minimal until delegation is actually chosen. For a
+`single_agent` run, omit the following fields. When a lane is actually
+delegated in a `multi_agent` or `hybrid` run, add a bounded delegation contract
+with:
+
+```yaml
+delegation_contract:
+  target_repo: "<governed repository identity>"
+  authority_level: <0-4>
+  allowed_paths:
+    - "<exact path or path pattern>"
+  active_artifact: "<workbook/workbundle/runbook id or null>"
+  context_pack:
+    - "<required context artifact>"
+  permission_envelope: "<delegated permission boundary>"
+  skill_surface:
+    - "<skill required by the delegated task>"
+  return_contract: "<evidence-backed return shape>"
+```
+
+The canonical handshake and lifecycle rules live in
+`guide_ai_facing_protocol.md` and `guide_multi_agent_coordination.md`; do not
+repeat them in each workbook. The lead owns dispatch and reconciliation. A
+lead-side `pending` or `timed_out` child is not a terminal `Disposition` and
+must not be reported as `failed` until authoritative status is reconciled.
+
+---
+
 ## Ordered Execution Queue
 
 Use an explicit ordered queue. If reprioritized, log who requested the change and why.

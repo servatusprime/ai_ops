@@ -181,12 +181,61 @@ def render_command_wrapper(
     )
 
 
-def write_text(path: Path, content: str, dry_run: bool) -> None:
-    if dry_run:
-        return
+def normalized_text(content: str) -> str:
+    return content.strip() + "\n"
+
+
+def write_text(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="\n") as handle:
-        handle.write(content.strip() + "\n")
+        handle.write(normalized_text(content))
+
+
+def build_write_preview(
+    planned_writes: List[Tuple[Path, str]],
+) -> Tuple[List[Dict[str, str]], str]:
+    entries: List[Dict[str, str]] = []
+    for path, content in sorted(planned_writes, key=lambda item: str(item[0]).casefold()):
+        desired = normalized_text(content)
+        desired_sha256 = hashlib.sha256(desired.encode("utf-8")).hexdigest()
+        if path.exists():
+            current_bytes = path.read_bytes()
+            current_sha256 = hashlib.sha256(current_bytes).hexdigest()
+            status = "UNCHANGED" if current_bytes == desired.encode("utf-8") else "UPDATE"
+        else:
+            current_sha256 = "MISSING"
+            status = "CREATE"
+        entries.append(
+            {
+                "path": str(path.resolve()),
+                "status": status,
+                "current_sha256": current_sha256,
+                "desired_sha256": desired_sha256,
+            }
+        )
+
+    digest_input = "\n".join(
+        "|".join(
+            (
+                entry["path"],
+                entry["status"],
+                entry["current_sha256"],
+                entry["desired_sha256"],
+            )
+        )
+        for entry in entries
+    )
+    preview_token = hashlib.sha256(digest_input.encode("utf-8")).hexdigest()[:16].upper()
+    return entries, preview_token
+
+
+def print_write_preview(entries: List[Dict[str, str]], preview_token: str) -> None:
+    print("[Workspace install preview]")
+    for entry in entries:
+        print(f"{entry['status']:9} {entry['path']}")
+    changed = sum(entry["status"] != "UNCHANGED" for entry in entries)
+    print(f"Planned outputs: {len(entries)} ({changed} changed, {len(entries) - changed} unchanged)")
+    print(f"Preview token: {preview_token}")
 
 
 def resolve_workflow_dir(repo_root: Path) -> Path:
@@ -256,11 +305,28 @@ def main() -> int:
             "generation only."
         ),
     )
+    parser.add_argument(
+        "--approve-preview",
+        type=str,
+        default=None,
+        help=(
+            "Approval token printed by a prior workspace-install preview. Required "
+            "for writes when --scope workspace targets an external --install-root. "
+            "The token binds the complete output plan and current destination state."
+        ),
+    )
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parents[2]
     install_root = Path(args.install_root).resolve() if args.install_root else repo_root
     manifest_scoped_write = install_root == repo_root
+    workspace_external_install = args.scope == "workspace" and not manifest_scoped_write
+    if args.approve_preview and not workspace_external_install:
+        print(
+            "[FAIL] --approve-preview is valid only for an external "
+            "--scope workspace install."
+        )
+        return 2
     if args.scope == "user":
         workflow_rel = (repo_root / WORKFLOW_PRIMARY_REL).as_posix()
     else:
@@ -286,6 +352,7 @@ def main() -> int:
         manifest_targets.add("codex")
 
     manifest_items: List[Dict] = []
+    planned_writes: List[Tuple[Path, str]] = []
     write_count = 0
 
     for workflow_path in workflow_paths:
@@ -334,7 +401,7 @@ def main() -> int:
                 model=claude_model,
             )
             if "plugin" in generation_targets:
-                write_text(command_path, command_content, args.dry_run)
+                planned_writes.append((command_path, command_content))
                 write_count += 1
             item_outputs.append(
                 {
@@ -357,7 +424,7 @@ def main() -> int:
                 agent=claude_agent,
             )
             if "plugin" in generation_targets:
-                write_text(plugin_skill_path, plugin_skill_content, args.dry_run)
+                planned_writes.append((plugin_skill_path, plugin_skill_content))
                 write_count += 1
             item_outputs.append(
                 {
@@ -379,7 +446,7 @@ def main() -> int:
                 agent=claude_agent,
             )
             if "claude" in generation_targets:
-                write_text(claude_skill_path, claude_skill_content, args.dry_run)
+                planned_writes.append((claude_skill_path, claude_skill_content))
                 write_count += 1
             if manifest_scoped_write:
                 item_outputs.append(
@@ -416,9 +483,9 @@ def main() -> int:
             codex_primary_path = install_root / CODEX_PRIMARY_SKILLS_REL / name / "SKILL.md"
             codex_primary_yaml_path = codex_primary_path.parent / "agents" / "openai.yaml"
             if "codex" in generation_targets:
-                write_text(codex_primary_path, codex_skill_content, args.dry_run)
+                planned_writes.append((codex_primary_path, codex_skill_content))
                 write_count += 1
-                write_text(codex_primary_yaml_path, codex_openai_yaml_content, args.dry_run)
+                planned_writes.append((codex_primary_yaml_path, codex_openai_yaml_content))
                 write_count += 1
             if manifest_scoped_write:
                 item_outputs.append(
@@ -440,9 +507,9 @@ def main() -> int:
                 codex_compat_path = install_root / CODEX_COMPAT_SKILLS_REL / name / "SKILL.md"
                 codex_compat_yaml_path = codex_compat_path.parent / "agents" / "openai.yaml"
                 if "codex" in generation_targets:
-                    write_text(codex_compat_path, codex_skill_content, args.dry_run)
+                    planned_writes.append((codex_compat_path, codex_skill_content))
                     write_count += 1
-                    write_text(codex_compat_yaml_path, codex_openai_yaml_content, args.dry_run)
+                    planned_writes.append((codex_compat_yaml_path, codex_openai_yaml_content))
                     write_count += 1
                 if manifest_scoped_write:
                     item_outputs.append(
@@ -547,12 +614,25 @@ def main() -> int:
     )
     manifest_path = repo_root / EXPORT_MANIFEST_PRIMARY_REL
     if manifest_scoped_write:
-        write_text(manifest_path, manifest_content, args.dry_run)
+        planned_writes.append((manifest_path, manifest_content))
     # else: an --install-root run targeting outside the repo (a workspace-
     # scope install) never writes the repo's tracked manifest -- doing so
     # would overwrite it with a partial view scoped to whatever --targets
     # this particular install happened to pass, corrupting drift checks
     # for the real repo-scope generation.
+
+    if workspace_external_install:
+        preview_entries, preview_token = build_write_preview(planned_writes)
+        print_write_preview(preview_entries, preview_token)
+        if not args.dry_run and args.approve_preview != preview_token:
+            print("[BLOCKED] Workspace install requires the matching preview token.")
+            print(f"Re-run with --approve-preview {preview_token}")
+            print("No files written.")
+            return 2
+
+    if not args.dry_run:
+        for output_path, output_content in planned_writes:
+            write_text(output_path, output_content)
 
     if args.print_manifest:
         print("---MANIFEST-BEGIN---")
@@ -567,7 +647,8 @@ def main() -> int:
     print(f"Workflows processed: {len(workflow_paths)}")
     print(f"Outputs generated: {write_count}")
     if manifest_scoped_write:
-        print(f"Manifest: {manifest_path.relative_to(repo_root)} (updated)")
+        manifest_action = "planned" if args.dry_run else "updated"
+        print(f"Manifest: {manifest_path.relative_to(repo_root)} ({manifest_action})")
     else:
         print(f"Manifest: {manifest_path.relative_to(repo_root)} (NOT touched -- external install root)")
     if args.dry_run:

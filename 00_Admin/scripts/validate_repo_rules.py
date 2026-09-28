@@ -5,14 +5,168 @@ from __future__ import annotations
 
 import argparse
 import glob
+import hashlib
+import json
 import os
 import re
-import shutil
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 ALLOWED_STATUS = {"planned", "stub", "active", "completed", "deprecated"}
+_REPARSE_POINT = 0x400
+_MARKDOWNLINT_COMMAND = "markdownlint"
+_MARKDOWNLINT_FIXED_ARGS = ("--config", ".markdownlint.json")
+
+
+def _real_path(path: str) -> str:
+    """Return a normalized real path without following an untrusted string twice."""
+    return os.path.normcase(os.path.realpath(os.path.abspath(path)))
+
+
+def _is_within(path: str, root: str) -> bool:
+    """Return true only when path is root or a descendant of root."""
+    try:
+        return os.path.commonpath([_real_path(path), _real_path(root)]) == _real_path(root)
+    except ValueError:
+        return False
+
+
+def _is_reparse_point(path: str) -> bool:
+    """Reject symlinks/junctions at a security boundary."""
+    try:
+        info = os.lstat(path)
+    except OSError:
+        return False
+    if os.path.islink(path):
+        return True
+    return bool(getattr(info, "st_file_attributes", 0) & _REPARSE_POINT)
+
+
+def _has_reparse_component(path: str, root: str) -> bool:
+    """Detect a reparse point in the lexical path before resolution."""
+    candidate = Path(os.path.abspath(path))
+    trusted = Path(os.path.abspath(root))
+    try:
+        relative = candidate.relative_to(trusted)
+    except ValueError:
+        return True
+    current = trusted
+    if _is_reparse_point(str(current)):
+        return True
+    for part in relative.parts:
+        current = current / part
+        if os.path.lexists(str(current)) and _is_reparse_point(str(current)):
+            return True
+    return False
+
+
+def _validate_repo_path(path: str, repo_root: str, *, label: str, must_exist: bool = True) -> str:
+    """Inspect lexical identity before resolving a path for containment."""
+    lexical_path = os.path.abspath(path)
+    lexical_root = os.path.abspath(repo_root)
+    if _has_reparse_component(lexical_path, lexical_root):
+        raise ValueError(f"{label} crosses a symlink/reparse point: {path}")
+    resolved = _real_path(lexical_path)
+    trusted_root = _real_path(lexical_root)
+    if not _is_within(resolved, trusted_root):
+        raise ValueError(f"{label} resolves outside repo root: {path}")
+    if must_exist and not os.path.exists(resolved):
+        raise ValueError(f"{label} does not exist: {path}")
+    return resolved
+
+
+def _sha256_file(path: str) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _sha256_directory(root: str) -> str:
+    """Hash a trusted package tree without following links or ambient paths."""
+    root_path = Path(root)
+    if not root_path.is_dir() or _is_reparse_point(str(root_path)):
+        raise ValueError(f"trusted package root is missing or reparse-linked: {root}")
+    files: List[Path] = []
+    for current, directories, names in os.walk(root, topdown=True, followlinks=False):
+        for name in directories:
+            directory = Path(current) / name
+            if _is_reparse_point(str(directory)):
+                raise ValueError(f"trusted package tree contains a reparse directory: {directory}")
+        for name in names:
+            file_path = Path(current) / name
+            if _is_reparse_point(str(file_path)):
+                raise ValueError(f"trusted package tree contains a reparse file: {file_path}")
+            files.append(file_path)
+    digest = hashlib.sha256()
+    for file_path in sorted(files, key=lambda item: os.path.normcase(str(item))):
+        relative = file_path.relative_to(root_path).as_posix().encode("utf-8")
+        content = file_path.read_bytes()
+        digest.update(relative)
+        digest.update(b"\0")
+        digest.update(len(content).to_bytes(8, "big"))
+        digest.update(content)
+    return digest.hexdigest()
+
+
+def _resolve_trusted_markdownlint(params: Dict[str, Any]) -> List[str]:
+    """Resolve only the pinned node and markdownlint entrypoint from config."""
+    command = str(params.get("command", ""))
+    if command != _MARKDOWNLINT_COMMAND:
+        raise ValueError(f"unsupported validator command: {command!r}")
+    if str(params.get("allow_dynamic_resolution", "false")).lower() == "true":
+        raise ValueError("dynamic package resolution is disabled by validator policy")
+    fixed_args = params.get("fixed_args", [])
+    if fixed_args != list(_MARKDOWNLINT_FIXED_ARGS):
+        raise ValueError(f"markdownlint fixed args must be {_MARKDOWNLINT_FIXED_ARGS!r}")
+    if params.get("trusted_node_root") != "program_files":
+        raise ValueError("markdownlint node root must be the approved program_files token")
+    if params.get("trusted_markdownlint_root") != "user_appdata":
+        raise ValueError("markdownlint package root must be the approved user_appdata token")
+
+    program_files = os.environ.get("ProgramFiles")
+    if not program_files:
+        raise ValueError("ProgramFiles is required for the trusted markdownlint tool")
+    user_appdata = os.path.join(os.path.expanduser("~"), "AppData", "Roaming")
+    node_path = os.path.abspath(
+        os.path.join(program_files, str(params.get("trusted_node_relative", "")))
+    )
+    entrypoint = os.path.abspath(
+        os.path.join(user_appdata, str(params.get("trusted_markdownlint_relative", "")))
+    )
+    if _has_reparse_component(node_path, program_files) or _has_reparse_component(entrypoint, user_appdata):
+        raise ValueError("trusted markdownlint executable or package crosses a reparse point")
+    if not os.path.isfile(node_path) or not os.path.isfile(entrypoint):
+        raise ValueError("pinned markdownlint executable or entrypoint is unavailable")
+
+    expected_node = str(params.get("trusted_node_sha256", "")).lower()
+    expected_entrypoint = str(params.get("trusted_entrypoint_sha256", "")).lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_node) or not re.fullmatch(r"[0-9a-f]{64}", expected_entrypoint):
+        raise ValueError("trusted markdownlint hashes are missing or malformed")
+    if _sha256_file(node_path) != expected_node:
+        raise ValueError("trusted node executable hash mismatch")
+    if _sha256_file(entrypoint) != expected_entrypoint:
+        raise ValueError("trusted markdownlint entrypoint hash mismatch")
+
+    package_root = str(Path(entrypoint).parent)
+    package_file = os.path.join(package_root, "package.json")
+    if not os.path.isfile(package_file):
+        raise ValueError("trusted markdownlint package metadata is missing")
+    try:
+        package = json.loads(Path(package_file).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ValueError("trusted markdownlint package metadata is unreadable") from exc
+    if package.get("version") != params.get("trusted_package_version"):
+        raise ValueError("trusted markdownlint package version mismatch")
+    expected_tree = str(params.get("trusted_package_tree_sha256", "")).lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_tree):
+        raise ValueError("trusted markdownlint package-tree hash is missing or malformed")
+    if _sha256_directory(package_root) != expected_tree:
+        raise ValueError("trusted markdownlint package-tree hash mismatch")
+    return [node_path, entrypoint]
 
 
 def read_text(path: str) -> str:
@@ -21,6 +175,7 @@ def read_text(path: str) -> str:
 
 
 def detect_git_root(start_dir: str) -> str:
+    start_dir = _real_path(start_dir)
     try:
         result = subprocess.run(
             ["git", "-C", start_dir, "rev-parse", "--show-toplevel"],
@@ -30,10 +185,10 @@ def detect_git_root(start_dir: str) -> str:
         )
         root = result.stdout.strip()
         if root:
-            return os.path.normpath(root)
+            return _real_path(root)
     except Exception:
         pass
-    return os.path.normpath(start_dir)
+    return _real_path(start_dir)
 
 
 def resolve_repo_root(repo_root_arg: str | None, default_root: str) -> str:
@@ -42,7 +197,7 @@ def resolve_repo_root(repo_root_arg: str | None, default_root: str) -> str:
     candidate = repo_root_arg
     if not os.path.isabs(candidate):
         candidate = os.path.join(default_root, candidate)
-    return os.path.normpath(candidate)
+    return _real_path(candidate)
 
 
 def split_front_matter(text: str) -> Tuple[Dict[str, str], str]:
@@ -77,9 +232,19 @@ def count_h1(text: str) -> int:
 def expand_patterns(repo_root: str, patterns: List[str]) -> List[str]:
     results: List[str] = []
     for pattern in patterns:
+        if os.path.isabs(pattern):
+            raise ValueError(f"Configured path pattern must be relative: {pattern}")
+        if pattern.startswith(("../<work_repo>", "../<governed_repo>")):
+            # Cross-repo registry keys are validated by their owning rule and
+            # intentionally remain symbolic; they are not local glob roots.
+            continue
         full = os.path.join(repo_root, pattern)
+        if not _is_within(full, repo_root):
+            raise ValueError(f"Configured path pattern escapes repo root: {pattern}")
         matches = glob.glob(full, recursive=True)
-        results.extend(matches)
+        for match in matches:
+            resolved = _validate_repo_path(match, repo_root, label="configured path")
+            results.append(resolved)
     return sorted(set(results))
 
 
@@ -189,49 +354,32 @@ def build_repo_tree(root: str) -> str:
     return "\n".join(lines)
 
 
-def check_markdownlint(paths: List[str], errors: List[str], command: str, repo_root: str) -> None:
-    cmd_parts: List[str]
-    npx_fallback: List[str] | None = None
-    if command == "markdownlint":
-        node_bin = shutil.which("node")
-        appdata = os.environ.get("APPDATA") or ""
-        cli_path = os.path.join(appdata, "npm", "node_modules", "markdownlint-cli", "markdownlint.js")
-        if node_bin and os.path.exists(cli_path):
-            cmd_parts = [node_bin, cli_path]
-        elif shutil.which(command):
-            cmd_parts = [command]
-            npx_bin = shutil.which("npx") or shutil.which("npx.cmd")
-            if npx_bin:
-                npx_fallback = [npx_bin, "markdownlint-cli"]
-        else:
-            npx_bin = shutil.which("npx") or shutil.which("npx.cmd")
-            if npx_bin:
-                cmd_parts = [npx_bin, "markdownlint-cli"]
-            else:
-                errors.append(f"VS015: {command} not found in PATH")
-                return
-    elif shutil.which(command):
-        cmd_parts = [command]
-    else:
-        errors.append(f"VS015: {command} not found in PATH")
+def check_markdownlint(
+    paths: List[str],
+    errors: List[str],
+    params: Dict[str, Any],
+    repo_root: str,
+) -> None:
+    try:
+        cmd_parts = _resolve_trusted_markdownlint(params)
+    except ValueError as exc:
+        errors.append(f"VS015: {exc}")
         return
     if not paths:
         errors.append("VS015: no paths configured for markdownlint")
         return
 
+    base_command = [*cmd_parts, *_MARKDOWNLINT_FIXED_ARGS]
+
     def is_cmd_too_long(message: str) -> bool:
         return "command line is too long" in message.lower()
 
     def run_markdownlint(selected_paths: List[str]) -> subprocess.CompletedProcess[str] | None:
-        env = None
-        if not os.environ.get("NPM_CONFIG_CACHE"):
-            cache_root = os.path.join(repo_root, ".cache", "npm")
-            os.makedirs(cache_root, exist_ok=True)
-            env = os.environ.copy()
-            env["NPM_CONFIG_CACHE"] = cache_root
+        env = os.environ.copy()
+        env["npm_config_offline"] = "true"
         try:
             return subprocess.run(
-                [*cmd_parts, *selected_paths],
+                [*base_command, *selected_paths],
                 capture_output=True,
                 text=True,
                 check=False,
@@ -241,24 +389,11 @@ def check_markdownlint(paths: List[str], errors: List[str], command: str, repo_r
         except OSError as exc:
             if getattr(exc, "winerror", None) == 206 or is_cmd_too_long(str(exc)):
                 return subprocess.CompletedProcess(
-                    args=[*cmd_parts, *selected_paths],
+                    args=[*base_command, *selected_paths],
                     returncode=1,
                     stdout="",
                     stderr="command line is too long",
                 )
-            if npx_fallback is not None:
-                try:
-                    return subprocess.run(
-                        [*npx_fallback, *selected_paths],
-                        capture_output=True,
-                        text=True,
-                        check=False,
-                        env=env,
-                        cwd=repo_root,
-                    )
-                except OSError:
-                    errors.append(f"VS015: failed to execute {cmd_parts[0]}: {exc}")
-                    return None
             errors.append(f"VS015: failed to execute {cmd_parts[0]}: {exc}")
             return None
 
@@ -269,7 +404,7 @@ def check_markdownlint(paths: List[str], errors: List[str], command: str, repo_r
         detail = result.stdout.strip() or result.stderr.strip()
         if detail and is_cmd_too_long(detail):
             max_cmd_len = 7000
-            base_len = sum(len(part) + 1 for part in cmd_parts)
+            base_len = sum(len(part) + 1 for part in base_command)
             chunk: List[str] = []
             chunk_len = base_len
             for path in paths:
@@ -488,6 +623,53 @@ def parse_config(path: str) -> Dict[str, Any]:
 
     add_rule()
     return data
+
+
+def validate_config_envelope(config: Dict[str, Any], config_path: str, repo_root: str) -> List[str]:
+    """Validate the small config language before any configured check runs.
+
+    The validator is intentionally fail-closed here: a malformed or path-escaping
+    rule must not silently reduce the set of checks or make the process execute
+    against an attacker-selected checkout.
+    """
+    errors: List[str] = []
+    if config.get("validator_id") != "validator_v1":
+        errors.append(f"VS-CONFIG: unsupported validator_id in {config_path}")
+    if str(config.get("version", "")) != "0.1.0":
+        errors.append(f"VS-CONFIG: unsupported config version in {config_path}")
+    rules = config.get("rules")
+    if not isinstance(rules, list) or not rules:
+        errors.append("VS-CONFIG: rules must be a non-empty list")
+        return errors
+    seen: set[str] = set()
+    for index, rule in enumerate(rules, start=1):
+        if not isinstance(rule, dict):
+            errors.append(f"VS-CONFIG: rule {index} is not a mapping")
+            continue
+        rule_id = rule.get("id")
+        if not isinstance(rule_id, str) or not re.fullmatch(r"VS\d{3}", rule_id):
+            errors.append(f"VS-CONFIG: rule {index} has invalid id {rule_id!r}")
+            continue
+        if rule_id in seen:
+            errors.append(f"VS-CONFIG: duplicate rule id {rule_id}")
+        seen.add(rule_id)
+        if not isinstance(rule.get("enabled", True), bool):
+            errors.append(f"VS-CONFIG: {rule_id} enabled must be boolean")
+        paths = rule.get("paths", [])
+        if not isinstance(paths, list):
+            errors.append(f"VS-CONFIG: {rule_id} paths must be a list")
+            continue
+        for raw_path in paths:
+            if not isinstance(raw_path, str) or not raw_path.strip():
+                errors.append(f"VS-CONFIG: {rule_id} contains an empty path")
+                continue
+            symbolic_cross_repo = raw_path.startswith(("../<work_repo>", "../<governed_repo>"))
+            if os.path.isabs(raw_path) or (
+                not symbolic_cross_repo
+                and not _is_within(os.path.join(repo_root, raw_path), repo_root)
+            ):
+                errors.append(f"VS-CONFIG: {rule_id} path escapes repo root: {raw_path}")
+    return errors
 
 
 def check_front_matter(files: List[str], errors: List[str]) -> None:
@@ -1324,15 +1506,32 @@ def check_related_paths(files: List[str], warnings: List[str]) -> None:
 def check_run_family_graph_contract(
     params: Dict[str, Any], repo_root: str, errors: List[str]
 ) -> None:
-    """VS036: enforce canonical run-family validation and derived-view parity."""
-    validator_script = os.path.join(
-        repo_root,
-        params.get("validator_script", "00_Admin/scripts/validate_run_family_graph.py"),
+    """VS036: run only fixed helper identities from this validator's ai_ops tree.
+
+    ``params`` remains in the signature for compatibility with older configs, but
+    config supplied by the target checkout must never choose executable code.
+    """
+    helper_names = (
+        "validate_run_family_graph.py",
+        "generate_run_family_views.py",
     )
-    generator_script = os.path.join(
-        repo_root,
-        params.get("generator_script", "00_Admin/scripts/generate_run_family_views.py"),
-    )
+    trusted_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    trusted_scripts = os.path.abspath(os.path.join(os.path.dirname(__file__)))
+    helper_paths: List[str] = []
+    try:
+        for helper_name in helper_names:
+            helper_paths.append(
+                _validate_repo_path(
+                    os.path.join(trusted_scripts, helper_name),
+                    trusted_root,
+                    label=f"trusted VS036 helper {helper_name}",
+                )
+            )
+    except (OSError, ValueError) as exc:
+        errors.append(f"VS036: trusted helper could not be validated: {exc}")
+        return
+
+    validator_script, generator_script = helper_paths
     registry = os.path.join(
         repo_root,
         params.get("registry", "00_Admin/runbooks/run_family_registry.yaml"),
@@ -1504,11 +1703,27 @@ def main() -> int:
         config_path = os.path.normpath(
             os.path.join(script_dir, "..", "configs", "validator", "validator_config.yaml")
         )
+    try:
+        config_path = _validate_repo_path(config_path, repo_root, label="validator config")
+        repo_root = _validate_repo_path(repo_root, repo_root, label="repo root")
+    except ValueError as exc:
+        print(f"Config trust failure: {exc}")
+        return 1
     if not os.path.exists(config_path):
         print(f"Config not found: {config_path}")
         return 1
 
-    config = parse_config(config_path)
+    try:
+        config = parse_config(config_path)
+    except (OSError, ValueError) as exc:
+        print(f"Config parse failure: {exc}")
+        return 1
+    config_errors = validate_config_envelope(config, config_path, repo_root)
+    if config_errors:
+        print("Validator configuration errors:")
+        for error in config_errors:
+            print(f"- {error}")
+        return 1
     rules = config.get("rules", [])
     if not rules:
         print(f"Validator config parse failure: no rules parsed from {config_path}")
@@ -1521,12 +1736,21 @@ def main() -> int:
         if args.structure_root
         else detect_git_root(repo_root)
     )
+    try:
+        structure_root = _validate_repo_path(structure_root, repo_root, label="structure root")
+    except ValueError as exc:
+        print(f"Structure-root trust failure: {exc}")
+        return 1
 
     for rule in rules:
         if not rule.get("enabled", True):
             continue
         rule_id = rule.get("id")
-        paths = expand_patterns(repo_root, rule.get("paths", []))
+        try:
+            paths = expand_patterns(repo_root, rule.get("paths", []))
+        except ValueError as exc:
+            errors.append(f"{rule_id}: {exc}")
+            continue
 
         if rule_id == "VS001":
             check_front_matter(paths, errors)
@@ -1562,8 +1786,8 @@ def main() -> int:
         elif rule_id == "VS014":
             check_related_paths(paths, warnings)
         elif rule_id == "VS015":
-            command = rule.get("params", {}).get("command", "markdownlint")
-            check_markdownlint(paths, errors, command, repo_root)
+            params = rule.get("params", {})
+            check_markdownlint(paths, errors, params, repo_root)
         elif rule_id == "VS016":
             repo_map_paths = resolve_repo_structure_paths(repo_root, rule.get("paths", []))
             existing = [path for path in repo_map_paths if os.path.exists(path)]

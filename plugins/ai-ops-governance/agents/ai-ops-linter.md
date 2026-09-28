@@ -80,7 +80,7 @@ Best fit:
 <!--
 Managed by ai_ops /profiles
 generated_at: 2026-04-12T00:00:00Z
-source_hash: a0bed2449707
+source_hash: 0c1996a7ab84
 role: ai-ops-linter
 profile_id: anchor
 crew_preset: default

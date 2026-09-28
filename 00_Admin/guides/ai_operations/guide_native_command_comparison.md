@@ -267,7 +267,7 @@ and AGENTS.md).
 | `/lint` | (no equivalent) | Pure addition. No native conflict. |
 | `/bootstrap` | `/init` (Claude/Codex) | `/init` is one-time setup. `/bootstrap` is per-session context loading. Complementary lifecycle stages. |
 | `/work_status` | `/status` (all) | Native `/status` shows token/model info. `/work_status` shows governed context (active artifacts, session scope, workbook state). Different information. |
-| `/compact` (native) | `/work_savepoint` (ai_ops) | When context is running low, user can `/work_savepoint` to checkpoint governed state (no commit/push by default -- add `--commit` for that explicitly), then `/compact` to reclaim tokens. `/work_savepoint` preserves governance metadata that `/compact` might lose. |
+| `/compact` (native) | `/work_savepoint` (ai_ops) | When context is running low, the user can invoke `/work_savepoint` to preview and approve a scoped WIP commit/push, then `/compact` to reclaim tokens. Use `/work_savepoint --no-commit` for a read-only checkpoint. `/work_savepoint` preserves governance metadata that `/compact` might lose. |
 
 ### Potential Conflict Points
 

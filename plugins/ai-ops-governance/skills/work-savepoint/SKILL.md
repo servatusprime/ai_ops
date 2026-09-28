@@ -1,7 +1,7 @@
 ---
 name: work-savepoint
-description: Prepare a scoped savepoint and end the ai_ops session; publication requires
-  explicit approval.
+description: Validate, commit, and push a scoped work-in-progress savepoint after
+  explicit final approval.
 disable-model-invocation: true
 ---
 

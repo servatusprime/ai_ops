@@ -27,14 +27,14 @@ def _priority_rank(priority: str) -> int:
     return order.get(priority.lower(), 9)
 
 
-def _relativize(path: Path) -> str:
+def _relativize(path: Path, repo_root: Path) -> str:
     """Emit a repo-root-relative POSIX path so generated output stays portable.
 
     Falls back to the plain POSIX path when the target is outside the repo root,
     preventing session-local absolute paths from leaking into the scorecard.
     """
     try:
-        return path.resolve().relative_to(_REPO_ROOT).as_posix()
+        return path.resolve().relative_to(repo_root.resolve()).as_posix()
     except ValueError:
         return path.as_posix()
 
@@ -66,7 +66,9 @@ def _build_rows(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return rows
 
 
-def _render_markdown(registry_path: Path, rows: list[dict[str, Any]]) -> str:
+def _render_markdown(
+    registry_path: Path, rows: list[dict[str, Any]], repo_root: Path
+) -> str:
     today = date.today().isoformat()
     lines: list[str] = [
         "---",
@@ -74,7 +76,7 @@ def _render_markdown(registry_path: Path, rows: list[dict[str, Any]]) -> str:
         "version: 0.1.0",
         "status: active",
         f"updated: '{today}'",
-        f"source_registry: {_relativize(registry_path)}",
+        f"source_registry: {_relativize(registry_path, repo_root)}",
         "generated_by: 00_Admin/scripts/generate_future_work_scorecard.py",
         "---",
         "",
@@ -131,6 +133,20 @@ def _render_markdown(registry_path: Path, rows: list[dict[str, Any]]) -> str:
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
+def _infer_repo_root(output_path: Path) -> Path:
+    """Find the governed repository containing the generated scorecard.
+
+    The generator is shared from ``ai_ops`` but may render a scorecard for a
+    sibling governed repository. Relativizing against the script's repository
+    would leak an absolute path whenever the destination is outside ``ai_ops``.
+    """
+    resolved_output = output_path.resolve()
+    for candidate in (resolved_output.parent, *resolved_output.parents):
+        if (candidate / "AGENTS.md").is_file():
+            return candidate
+    return _REPO_ROOT
+
+
 def main() -> int:
     parser = ArgumentParser(description="Generate future work scorecard markdown.")
     parser.add_argument(
@@ -143,16 +159,26 @@ def main() -> int:
         default=str(_REPO_ROOT / "00_Admin" / "backlog" / "future_work_scorecard.md"),
         help="Path to generated markdown scorecard.",
     )
+    parser.add_argument(
+        "--repo-root",
+        default=None,
+        help="Governed repository root used for portable generated paths.",
+    )
     args = parser.parse_args()
 
     registry_path = Path(args.registry)
     output_path = Path(args.output)
+    repo_root = (
+        Path(args.repo_root).resolve()
+        if args.repo_root
+        else _infer_repo_root(output_path)
+    )
     data = _read_registry(registry_path)
     entries = data.get("entries", [])
     if not isinstance(entries, list):
         raise ValueError("Registry 'entries' must be a list.")
     rows = _build_rows(entries)
-    content = _render_markdown(registry_path, rows)
+    content = _render_markdown(registry_path, rows, repo_root)
     output_path.write_text(content + "\n", encoding="utf-8", newline="\n")
     print(f"Generated {output_path} from {registry_path} ({len(rows)} rows).")
     return 0

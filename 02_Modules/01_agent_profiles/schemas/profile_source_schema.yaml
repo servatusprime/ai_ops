@@ -87,9 +87,45 @@ definitions:
           Passed through to agent file frontmatter by regenerate_profiles.py.
       hooks:
         type: object
+        additionalProperties: false
+        properties:
+          PreToolUse:
+            $ref: "#/definitions/hook_group"
+          PostToolUse:
+            $ref: "#/definitions/hook_group"
+          SessionStart:
+            $ref: "#/definitions/hook_group"
         description: >-
           Per-agent hooks configuration. Structured as PreToolUse/PostToolUse
-          keys containing lists of hook definitions. Serialized as YAML into
-          agent file frontmatter by regenerate_profiles.py.
+          keys containing lists of reviewed hook IDs. The generator expands
+          those IDs into exact command payloads; free-form shell commands are
+          not accepted.
     additionalProperties: false
+  hook_group:
+    type: array
+    items:
+      type: object
+      required:
+        - hooks
+      properties:
+        matcher:
+          type: string
+          pattern: "^[^\\r\\n]+$"
+        hooks:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required:
+              - type
+              - command_id
+            properties:
+              type:
+                const: command
+              command_id:
+                type: string
+                enum:
+                  - reviewer_write_guard_v1
+            additionalProperties: false
+      additionalProperties: false
 additionalProperties: false

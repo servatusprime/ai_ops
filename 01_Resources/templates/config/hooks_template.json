@@ -1,5 +1,5 @@
 {
-  "_comment": "ai_ops hooks template. Copy content into .claude/settings.local.json at workspace root. Adjust paths to match your workspace layout.",
+  "_comment": "ai_ops hooks template. Copy content into .claude/settings.local.json at workspace root. SessionStart is read-only; PreToolUse is advisory. The dynamic PostToolUse npx Markdown hook is intentionally disabled pending an integrity-controlled local replacement.",
   "permissions": {
     "allow": [
       "Bash(bash .ai_ops/setup/*.sh:*)",
@@ -7,17 +7,6 @@
     ]
   },
   "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "if echo \"$CLAUDE_TOOL_INPUT_FILE_PATH\" | grep -qE '\\.md$'; then npx --yes markdownlint-cli2@0.23.2 \"$CLAUDE_TOOL_INPUT_FILE_PATH\" 2>&1; fi; exit 0"
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
         "matcher": "Edit|Write",

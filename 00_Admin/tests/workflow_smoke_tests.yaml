@@ -130,22 +130,26 @@ tests:
 
   - id: smoke_work_savepoint
     workflow: /work_savepoint
-    description: Non-publishing checkpoint for later resumption
+    description: Approval-gated work-in-progress commit and push
     preconditions:
       - Active work context exists
+      - One target repository and artifact scope are selected
     inputs:
       - Optional: checkpoint notes
+      - Optional: --no-commit for a read-only checkpoint
     expected_outputs:
-      - Checkpoint confirmation
-      - Compacted context updated (if applicable)
-      - Resume instructions provided
-      - Scoped change summary with include, related_scope_requires_confirmation, and exclude buckets
-      - Explicit statement that no staging, commit, push, PR creation, or global Git configuration occurred
+      - Exact include, related_scope_requires_confirmation, exclude, and ignored_unpublished buckets
+      - Validation results and proposed savepoint commit message
+      - Exact push remote and branch
+      - Final approval request before any Git mutation
+      - After approval, exact-path staging, commit hash, and push status
+      - Active work remains in progress with resume instructions
     failure_indicators:
-      - Agent continues working after pause
-      - Agent loses context state
-      - Workflow stages, commits, pushes, creates a PR, or changes global Git configuration
-      - Scope drift is automatically included in a future publication set
+      - Workflow mutates Git before displaying the proposal and receiving final approval
+      - Workflow widens the approved include set or stages unrelated/ignored paths
+      - Workflow force-pushes, creates a PR, or changes global Git configuration
+      - Workflow marks active work complete, cleans it, or archives it
+      - Workflow publishes when --no-commit is present
 
   - id: smoke_customize
     workflow: /customize

@@ -3,7 +3,7 @@ name: lint
 description: Run configured validators and linters against a target scope and report
   findings without modifying files.
 kind: workflow
-version: 0.2.3
+version: 0.2.4
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -99,6 +99,25 @@ lint-specific branching.
 - Return findings and suggested remediation path.
 
 ## Steps
+
+### Command Provenance Registry
+
+The lint lane is report-only and uses this fixed command registry:
+
+| Tool | Invocation rule | Network/package rule |
+| --- | --- | --- |
+| Python validators | `python <repo-relative-script> [fixed flags]` | no shell string or user-provided executable |
+| Ruff | `ruff check <resolved scope> --no-fix` | resolve the executable before invocation |
+| Markdownlint | fixed Node executable plus the pinned `markdownlint-cli` entrypoint, package version, and hashes recorded in `00_Admin/configs/validator/validator_config.yaml` | no `npx`, PATH lookup, registry resolution, or install fallback; a missing or altered artifact blocks the check |
+| Yamllint | `yamllint -c <trusted config> <resolved scope>` | config and scope must remain under the governed root |
+
+Resolve the target and every executable/configuration path before execution.
+Reject absolute or reparse-point scope paths, sibling-prefix escapes, shell
+metacharacters, and missing tools. Record the resolved executable and whether
+the check was a dry run. The Markdownlint command is an exact offline tool
+chain: Node, entrypoint, package version, and integrity hashes must match the
+validator manifest. A missing or changed local package is a failed/blocked
+check, not permission to download one.
 
 ### Inside Repo (Maintainer)
 

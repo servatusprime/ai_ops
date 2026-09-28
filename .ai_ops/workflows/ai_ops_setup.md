@@ -324,15 +324,20 @@ contract.
 2. Recommend hooks configuration and two-file permission separation (structural governance enforcement):
 
 - "Copy the hooks template from `01_Resources/templates/config/hooks_template.json`
-  into `.claude/settings.local.json` at your workspace root. Hooks provide
-  structural (non-LLM) enforcement of governance rules: PostToolUse markdown lint,
-  PreToolUse Level 4 path guard, and SessionStart context injection."
+  into `.claude/settings.local.json` at your workspace root. The template keeps
+  only the read-only SessionStart context injection and advisory PreToolUse
+  Level 4 path warning. The dynamic PostToolUse npx Markdown hook is disabled
+  pending a repository-local integrity-controlled replacement."
 - "Keep `.claude/settings.local.json` for hooks and machine-local overrides only.
   Do not duplicate `allow`/`deny` entries that already appear in the committed
   `.claude/settings.json`. The two-file separation is: `settings.json` (committed,
   allow/deny rules, portable across machines) and `settings.local.json` (gitignored,
   hooks + machine-local keys only)."
 - "Verify `.claude/settings.local.json` is listed in `.gitignore` before committing."
+- "Run the settings synchronizer in check mode first. Use `--strict` only for
+  an explicitly approved portable target; it drops target-only permission
+  additions while preserving hook keys. The synchronizer refuses workspace
+  escapes, symlink/reparse targets, and Git mutation additions."
 
 3. New machine onboarding — workspace and global `~/.claude/` configuration:
 

@@ -13,7 +13,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import re
 import sys
+import tempfile
+from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -51,6 +55,25 @@ COMMUNICATION_SLIDERS: Tuple[str, ...] = (
 )
 
 WRITE_ROLES = {"ai-ops-executor", "ai-ops-builder", "ai-ops-closer"}
+
+# Profile sources carry reviewed IDs rather than executable shell strings. The
+# generator expands these IDs into the exact native hook payload so arbitrary
+# commands cannot be serialized into agent frontmatter.
+HOOK_COMMANDS: Dict[str, str] = {
+    "reviewer_write_guard_v1": (
+        r'''input=$(cat); '''
+        r'''fp=$(printf '%s' "$input" | grep -o '"file_path"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/.*"file_path"[[:space:]]*:[[:space:]]*"([^"]*)"/\1/'); '''  # noqa: E501
+        r'''if [ -z "$fp" ]; '''
+        r'''then echo "[REVIEWER GUARD] Blocked: no file_path found in tool_input — failing closed." >&2; '''
+        r'''exit 2; '''
+        r'''fi; '''
+        r'''npath=$(printf '%s' "$fp" | tr '\\\\' '/'); '''
+        r'''if ! printf '%s' "$npath" | grep -qE '(^|/)(90_Sandbox|99_Trash)(/|$)|(^|/)\.ai_ops/local(/|$)'; '''
+        r'''then echo "[REVIEWER GUARD] Write outside sandbox blocked: $fp — reviewer lane is read/report-only except in sandbox." >&2; '''  # noqa: E501
+        r'''exit 2; '''
+        r'''fi; exit 0'''
+    ),
+}
 
 # Built-in fallback only. Prefer 02_Modules/01_agent_profiles/base/rider_archetypes_numeric.yaml.
 # When that YAML file exists, main() loads it and replaces these values at runtime (DQ-09).
@@ -527,6 +550,13 @@ def validate_profile_source(profile: Dict) -> None:
     missing = required_top - set(profile.keys())
     if missing:
         raise ValueError(f"Missing required profile keys: {sorted(missing)}")
+    if (
+        not isinstance(profile.get("schema_version"), str)
+        or not re.fullmatch(r"\d+\.\d+\.\d+", profile["schema_version"])
+    ):
+        raise ValueError("profile.schema_version must use semantic version format")
+    if not isinstance(profile.get("generated_at"), str) or not profile["generated_at"].strip():
+        raise ValueError("profile.generated_at must be a non-empty string")
 
     lead_agent = profile.get("lead_agent")
     if not isinstance(lead_agent, dict):
@@ -548,6 +578,8 @@ def validate_profile_source(profile: Dict) -> None:
             raise ValueError(f"Unknown lead slider override '{key}'")
         if not isinstance(value, int):
             raise ValueError(f"Lead slider override '{key}' must be an integer")
+    if "hooks" in lead_agent:
+        _validate_hook_contract(lead_agent["hooks"], "profile.lead_agent")
 
     subagents = profile.get("subagents")
     if not isinstance(subagents, dict):
@@ -555,6 +587,29 @@ def validate_profile_source(profile: Dict) -> None:
     missing_roles = set(ROLE_SPECS.keys()) - set(subagents.keys())
     if missing_roles:
         raise ValueError(f"Missing required subagent slots: {sorted(missing_roles)}")
+    unknown_roles = set(subagents) - set(ROLE_SPECS)
+    if unknown_roles:
+        raise ValueError(f"Unknown subagent slots: {sorted(unknown_roles)}")
+    for role_name, slot in subagents.items():
+        if not isinstance(slot, dict):
+            raise ValueError(f"profile.subagents.{role_name} must be a dictionary")
+        if not isinstance(slot.get("rider"), str) or not slot.get("rider"):
+            raise ValueError(f"profile.subagents.{role_name}.rider must be a non-empty string")
+        if slot["rider"] not in RIDER_ARCHETYPES:
+            raise ValueError(f"Unknown rider archetype for {role_name}: {slot['rider']}")
+        overrides = slot.get("overrides")
+        if not isinstance(overrides, dict):
+            raise ValueError(f"profile.subagents.{role_name}.overrides must be a dictionary")
+        for key, value in overrides.items():
+            if key not in SLIDERS or not isinstance(value, int):
+                raise ValueError(f"Invalid slider override for {role_name}: {key}")
+        model = slot.get("model")
+        if model is not None and model not in {"haiku", "sonnet", "opus", "inherit"}:
+            raise ValueError(f"Invalid model override for {role_name}: {model}")
+        if "background" in slot and not isinstance(slot["background"], bool):
+            raise ValueError(f"profile.subagents.{role_name}.background must be boolean")
+        if "hooks" in slot:
+            _validate_hook_contract(slot["hooks"], f"profile.subagents.{role_name}")
 
 
 def validate_model_tuning_manifest(manifest: Dict) -> None:
@@ -707,7 +762,13 @@ def render_hooks_block(spec_hooks, slot_hooks) -> str:
     slot_hooks is a Dict (structured YAML); spec_hooks is a List[str] (simple list format).
     """
     if slot_hooks and yaml is not None:
-        serialized = yaml.dump(slot_hooks, default_flow_style=False, sort_keys=False).strip()
+        materialized = deepcopy(slot_hooks)
+        for group_list in materialized.values():
+            for group in group_list:
+                for hook in group.get("hooks", []):
+                    command_id = hook.pop("command_id")
+                    hook["command"] = HOOK_COMMANDS[command_id]
+        serialized = yaml.dump(materialized, default_flow_style=False, sort_keys=False).strip()
         indented = "\n".join(f"  {line}" if line else "" for line in serialized.splitlines())
         return f"hooks:\n{indented}"
     if slot_hooks:
@@ -1134,6 +1195,92 @@ Generated by `00_Admin/scripts/regenerate_profiles.py`.
 
 
 GENERATOR_FORMAT_VERSION = "2"
+REPARSE_POINT = 0x400
+
+
+def _is_reparse(path: Path) -> bool:
+    try:
+        info = path.lstat()
+    except OSError:
+        return False
+    return path.is_symlink() or bool(getattr(info, "st_file_attributes", 0) & REPARSE_POINT)
+
+
+def _assert_no_reparse_components(path: Path, repo_root: Path, label: str) -> None:
+    """Inspect the lexical path so resolving a link cannot hide its parent."""
+    root = Path(os.path.abspath(os.fspath(repo_root)))
+    lexical = Path(os.path.abspath(os.fspath(path)))
+    try:
+        relative = lexical.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"{label} escapes repo root: {path}") from exc
+    current = root
+    for part in relative.parts:
+        current = current / part
+        if current.exists() and _is_reparse(current):
+            raise ValueError(f"{label} crosses a symlink/reparse point: {path}")
+
+
+def _assert_generated_target(path: Path, repo_root: Path) -> Path:
+    """Permit writes only to declared generated roots and reject reparse paths."""
+    root = repo_root.resolve(strict=True)
+    resolved = path.resolve(strict=False)
+    allowed_roots = [
+        root / "plugins" / "ai-ops-governance" / "agents",
+        root / "02_Modules" / "01_agent_profiles" / "generated",
+        root / ".claude" / "agents",
+    ]
+    if not any(resolved == allowed or allowed in resolved.parents for allowed in allowed_roots):
+        raise ValueError(f"profile generator target outside declared generated roots: {path}")
+    _assert_no_reparse_components(path, root, "profile generator target")
+    return resolved
+
+
+def _assert_profile_input(path: Path, repo_root: Path, label: str) -> Path:
+    root = repo_root.resolve(strict=True)
+    if path.exists() and _is_reparse(path):
+        raise ValueError(f"{label} is a symlink/reparse point: {path}")
+    resolved = path.resolve(strict=False)
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"{label} escapes repo root: {path}") from exc
+    if not resolved.is_file():
+        raise ValueError(f"{label} is not a file: {path}")
+    _assert_no_reparse_components(path, root, label)
+    return resolved
+
+
+def _validate_hook_contract(value: object, path: str) -> None:
+    """Validate reviewed hook IDs before serializing executable frontmatter."""
+    if not isinstance(value, dict):
+        raise ValueError(f"{path} hooks must be an object")
+    allowed_groups = {"PreToolUse", "PostToolUse", "SessionStart"}
+    unknown = set(value) - allowed_groups
+    if unknown:
+        raise ValueError(f"{path} contains unsupported hook groups: {sorted(unknown)}")
+    for group_name, groups in value.items():
+        if not isinstance(groups, list):
+            raise ValueError(f"{path}.{group_name} must be a list")
+        for index, group in enumerate(groups):
+            if not isinstance(group, dict) or not isinstance(group.get("hooks"), list):
+                raise ValueError(f"{path}.{group_name}[{index}] must contain a hooks list")
+            matcher = group.get("matcher")
+            if matcher is not None and (not isinstance(matcher, str) or "\n" in matcher or "\r" in matcher):
+                raise ValueError(f"{path}.{group_name}[{index}] matcher is invalid")
+            for hook_index, hook in enumerate(group["hooks"]):
+                if not isinstance(hook, dict) or hook.get("type") != "command":
+                    raise ValueError(f"{path}.{group_name}[{index}].hooks[{hook_index}] must be a command hook")
+                unknown = set(hook) - {"type", "command_id"}
+                if unknown:
+                    raise ValueError(
+                        f"{path}.{group_name}[{index}].hooks[{hook_index}] has unsupported fields: {sorted(unknown)}"
+                    )
+                command_id = hook.get("command_id")
+                if not isinstance(command_id, str) or command_id not in HOOK_COMMANDS:
+                    raise ValueError(
+                        f"{path}.{group_name}[{index}].hooks[{hook_index}] has an unapproved command_id"
+                    )
 
 
 def write_text(
@@ -1142,8 +1289,11 @@ def write_text(
     dry_run: bool = False,
     check: bool = False,
     stale_paths: List[Path] | None = None,
+    repo_root: Path | None = None,
 ) -> None:
     expected = content.strip() + "\n"
+    if repo_root is not None:
+        path = _assert_generated_target(path, repo_root)
     if check:
         actual = path.read_text(encoding="utf-8") if path.exists() else None
         if actual != expected and stale_paths is not None:
@@ -1152,7 +1302,23 @@ def write_text(
     if dry_run:
         return
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(expected, encoding="utf-8")
+    if path.exists() and _is_reparse(path):
+        raise ValueError(f"refusing to replace symlink/reparse output: {path}")
+    temp_name: str | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", newline="\n", prefix=f".{path.name}.", suffix=".tmp",
+            dir=path.parent, delete=False
+        ) as handle:
+            temp_name = handle.name
+            handle.write(expected)
+            handle.flush()
+            os.fsync(handle.fileno())
+        Path(temp_name).replace(path)
+    except Exception:
+        if temp_name:
+            Path(temp_name).unlink(missing_ok=True)
+        raise
 
 
 def main() -> int:
@@ -1209,6 +1375,12 @@ def main() -> int:
 
     # Load rider archetypes from YAML source (DQ-09: operators adjust here, not in script).
     archetypes_path = resolve_rider_archetypes_source(repo_root, args.rider_archetypes)
+    try:
+        if archetypes_path.exists():
+            archetypes_path = _assert_profile_input(archetypes_path, repo_root, "rider archetypes source")
+    except ValueError as exc:
+        print(f"[FAIL] {exc}")
+        return 1
     if archetypes_path.exists():
         try:
             archetypes_data = load_yaml(archetypes_path)
@@ -1229,6 +1401,13 @@ def main() -> int:
     model_tuning_path = resolve_model_tuning_source(repo_root, args.model_tuning)
     if not profile_path.exists():
         print(f"[FAIL] Profile source file not found: {profile_path}")
+        return 1
+    try:
+        profile_path = _assert_profile_input(profile_path, repo_root, "profile source")
+        if model_tuning_path.exists():
+            model_tuning_path = _assert_profile_input(model_tuning_path, repo_root, "model tuning source")
+    except ValueError as exc:
+        print(f"[FAIL] {exc}")
         return 1
 
     agents_dir = repo_root / "plugins" / "ai-ops-governance" / "agents"
@@ -1286,6 +1465,7 @@ def main() -> int:
             dry_run=args.dry_run or args.check,
             check=check_this,
             stale_paths=stale_paths,
+            repo_root=repo_root,
         )
     if selected_model_family not in model_families:
         print(

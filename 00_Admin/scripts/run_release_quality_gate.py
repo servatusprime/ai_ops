@@ -16,12 +16,30 @@ import sys
 from pathlib import Path
 from typing import List, Sequence, Tuple
 
+ALLOWED_CHECKS = {
+    "governance-tests",
+    "validator-fixtures",
+    "repo-validator",
+    "metadata-validator",
+    "workflow-frontmatter",
+    "workflow-export-generation",
+    "export-drift",
+    "lint-no-fix",
+    "profiles-derivative-drift",
+}
+
 
 def format_cmd(parts: Sequence[str]) -> str:
     return " ".join(shlex.quote(p) for p in parts)
 
 
 def run_check(name: str, cmd: Sequence[str], cwd: Path, dry_run: bool) -> Tuple[str, int]:
+    if name not in ALLOWED_CHECKS:
+        print(f"[FAIL] unapproved release check: {name}")
+        return name, 1
+    if not cwd.is_dir() or any("\x00" in part or "\n" in part or "\r" in part for part in cmd):
+        print(f"[FAIL] invalid release check command or cwd for {name}")
+        return name, 1
     print(f"[CHECK] {name}")
     print(f"  {format_cmd(cmd)}")
     if dry_run:
@@ -32,6 +50,7 @@ def run_check(name: str, cmd: Sequence[str], cwd: Path, dry_run: bool) -> Tuple[
 
 
 def detect_git_root(start: Path) -> Path:
+    start = start.resolve()
     try:
         result = subprocess.run(
             ["git", "-C", str(start), "rev-parse", "--show-toplevel"],
@@ -81,6 +100,11 @@ def main() -> int:
 
     repo_root = Path(__file__).resolve().parents[2]
     structure_root = detect_git_root(repo_root)
+    try:
+        structure_root.relative_to(repo_root)
+    except ValueError:
+        print(f"[FAIL] detected git root escapes ai_ops repo root: {structure_root}")
+        return 1
     python_exe = sys.executable
 
     checks: List[Tuple[str, List[str]]] = [
@@ -93,6 +117,8 @@ def main() -> int:
                 "00_Admin.tests.test_run_family_graph",
                 "00_Admin.tests.test_future_work_registry_lifecycle",
                 "00_Admin.tests.test_governance_seed_contracts",
+                "00_Admin.tests.test_work_savepoint_contract",
+                "00_Admin.tests.test_workflow_export_workspace_preview",
             ],
         ),
         (

@@ -915,3 +915,43 @@ ai_generated: true
   repository-structure hook regenerated and included the required canonical
   `repo_structure.txt` derivative, resulting in 31 committed files total.
   Worktree is clean; push and workbundle archival remain separately gated.
+
+- 2026-09-08 | archived `wb_thin_governed_repo_architecture_01` |
+  Requestor confirmed archival after completion and commit. Moved the intact
+  bundle from `90_Sandbox/ai_workbooks/` to
+  `99_Trash/wb_thin_governed_repo_architecture_01_2026-09-04/`; no files were
+  deleted. Updated the sandbox workbook index and removed the bundle's active
+  local work-state entry. Canonical changes remain in commit `d6e8f30`; push
+  remains unperformed.
+
+- 2026-09-08 | Codex subagent governance handshake and delegation capability
+  parity execution | Requestor authorized both active sibling workbooks through
+  independent-crosscheck preparation. Applied the compact delegated governance
+  handshake and lead-side `pending`/`timed_out` lifecycle rule to
+  `guide_ai_facing_protocol.md` and `guide_multi_agent_coordination.md`, plus
+  the conditional delegation hook in `wb_template_generic.md`. The exact
+  one-bullet `AGENTS.md` pointer diff was drafted but held for separate
+  edit-specific approval and was not applied. The parity workbook verified
+  13/13 workflow wrappers on both workspace skill surfaces, passed both setup
+  dry-runs and the profile derivative check, and recorded runtime delegation as
+  `unknown` with no-action/no-write disposition. Explicit-file markdownlint,
+  `git diff --check`, and profile checks passed; the repository validator was
+  rerun after checklist synchronization. Future-work registry items remain
+  unchanged; commit, push, crosscheck, closeout, and registry pruning remain
+  open.
+
+- 2026-09-09 | Codex subagent governance handshake and delegation capability
+  parity crosscheck remediation and artifact closeout | Independent crosscheck
+  verdict was `Acceptable with minor cleanup`; the invalid frozen capability
+  contract YAML and stale workbundle README Contents rows were corrected. The
+  requestor accepted workbook-only capability evidence and explicitly deferred
+  the exact one-bullet `AGENTS.md` invariant diff; no `AGENTS.md` or persistent
+  capability-state write was made. `fw_20260721_02` remains open with
+  `completion_workbook: null`, status `deferred`, and a 2026-10-01 review gate;
+  the scorecard was regenerated. Both workbooks were marked completed for
+  their executed/no-action scopes, the intact bundle was archived to
+  `99_Trash/wb_codex_subagent_governance_handshake_01_2026-09-09/`, and the
+  active local work-state entries were removed. Pre-commit, direct sandbox
+  Markdown lint, YAML parsing, repo validation, and `git diff --check` passed.
+  Canonical changes remain uncommitted and unpushed pending separate
+  publication approval.

@@ -10,6 +10,10 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $repoName = Split-Path -Leaf $repoRoot
 $missing = @()
+$trustedNodeSha256 = "f13ac3ca23248dc389507e8fe38c34489ab7edb3e6d6700eb6da6a0b7e128eaf"
+$trustedMarkdownlintSha256 = "644e27c3425f651751382d6963b3b6ca6a2395764c2f64efe7e03fc71e604e12"
+$trustedMarkdownlintPackageSha256 = "21280478d4322f01e1e59b802a663b2d0c2a5d6ef26c76a6ce3e3c025d4703ec"
+$trustedMarkdownlintVersion = "0.47.0"
 
 function Test-WritableDirectory {
     param(
@@ -97,6 +101,40 @@ function Resolve-YamllintConfigPath {
     throw "yamllint config not found. Expected one of: $($candidates -join ', ')"
 }
 
+function Resolve-TrustedMarkdownlint {
+    $programFiles = [Environment]::GetEnvironmentVariable("ProgramFiles", "Process")
+    $applicationData = [Environment]::GetFolderPath([Environment+SpecialFolder]::ApplicationData)
+    if ([string]::IsNullOrWhiteSpace($programFiles) -or [string]::IsNullOrWhiteSpace($applicationData)) {
+        throw "Trusted markdownlint roots are unavailable."
+    }
+    $nodePath = Join-Path $programFiles "nodejs\node.exe"
+    $entrypoint = Join-Path $applicationData "npm\node_modules\markdownlint-cli\markdownlint.js"
+    $packageJson = Join-Path (Split-Path -Parent $entrypoint) "package.json"
+    foreach ($path in @($nodePath, $entrypoint, $packageJson)) {
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            throw "Trusted markdownlint artifact is missing: $path"
+        }
+        $item = Get-Item -LiteralPath $path -Force
+        if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+            throw "Trusted markdownlint artifact is a reparse point: $path"
+        }
+    }
+    if ((Get-FileHash -LiteralPath $nodePath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $trustedNodeSha256) {
+        throw "Trusted Node executable hash mismatch."
+    }
+    if ((Get-FileHash -LiteralPath $entrypoint -Algorithm SHA256).Hash.ToLowerInvariant() -ne $trustedMarkdownlintSha256) {
+        throw "Trusted markdownlint entrypoint hash mismatch."
+    }
+    if ((Get-FileHash -LiteralPath $packageJson -Algorithm SHA256).Hash.ToLowerInvariant() -ne $trustedMarkdownlintPackageSha256) {
+        throw "Trusted markdownlint package metadata hash mismatch."
+    }
+    $package = Get-Content -LiteralPath $packageJson -Raw | ConvertFrom-Json
+    if ($package.version -ne $trustedMarkdownlintVersion) {
+        throw "Trusted markdownlint package version mismatch."
+    }
+    return @($nodePath, $entrypoint)
+}
+
 function Resolve-LintScope {
     param(
         [string] $RepoRoot,
@@ -126,7 +164,12 @@ function Resolve-LintScope {
 
     $resolved = (Resolve-Path -LiteralPath $candidate).Path
     $repoResolved = (Resolve-Path -LiteralPath $RepoRoot).Path
-    $inRepo = $resolved.StartsWith($repoResolved, [System.StringComparison]::OrdinalIgnoreCase)
+    $sep = [System.IO.Path]::DirectorySeparatorChar
+    $inRepo = ($resolved -eq $repoResolved) -or $resolved.StartsWith($repoResolved + $sep, [System.StringComparison]::OrdinalIgnoreCase)
+    $resolvedItem = Get-Item -LiteralPath $resolved -Force
+    if ($resolvedItem.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+        throw "Scope resolves through a symlink/reparse point: $Scope"
+    }
 
     if (-not $inRepo) {
         $isExplicitExternal = [System.IO.Path]::IsPathRooted($token) -or $token.StartsWith("..\") -or $token.StartsWith("../")
@@ -192,6 +235,7 @@ try {
     Write-Host "Lint scope: $($target.Display)" -ForegroundColor DarkGray
 
     $yamllintConfig = Resolve-YamllintConfigPath -PrimaryRoot $target.Root -FallbackRoot $repoRoot
+    $markdownlintCommand = Resolve-TrustedMarkdownlint
 
     $ruffSkippableExts = @(".py", ".pyi", ".ipynb")
     $skipRuff = $false
@@ -214,12 +258,12 @@ try {
     }
 
     if ($target.InRepo) {
-        Invoke-Step -Name "markdownlint" -CommandArgs @("npx", "markdownlint", $target.Path) -DryRun:$DryRun
+        Invoke-Step -Name "markdownlint" -CommandArgs @($markdownlintCommand + @("--config", ".markdownlint.json", $target.Path)) -DryRun:$DryRun
     }
     else {
         Push-Location $target.Root
         try {
-            Invoke-Step -Name "markdownlint" -CommandArgs @("npx", "markdownlint", ".") -DryRun:$DryRun
+            Invoke-Step -Name "markdownlint" -CommandArgs @($markdownlintCommand + @("--config", ".markdownlint.json", ".")) -DryRun:$DryRun
         }
         finally {
             Pop-Location

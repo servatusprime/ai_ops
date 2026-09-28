@@ -1,3 +1,6 @@
+[CmdletBinding(SupportsShouldProcess = $true)]
+param()
+
 $ErrorActionPreference = 'Stop'
 
 function Get-RepoRoot {
@@ -6,46 +9,58 @@ function Get-RepoRoot {
 
 $RepoRoot = (Get-RepoRoot).Path
 
-# SEC-AIOPS-012: only dot-source a guards file that resolves inside the repo
-# root -- an unconditional dot-source of an env-var-controlled path is a code-
-# execution gadget if RE_GUARDS_PATH is ever attacker-influenced (compromised
-# CI runner config, shared shell profile).
-if ($env:RE_GUARDS_PATH -and (Test-Path $env:RE_GUARDS_PATH)) {
-  $ResolvedGuardsPath = (Resolve-Path $env:RE_GUARDS_PATH).Path
-  $ResolvedRepoRootForGuards = (Resolve-Path $RepoRoot).Path
-  if ($ResolvedGuardsPath -eq $ResolvedRepoRootForGuards -or
-      $ResolvedGuardsPath.StartsWith($ResolvedRepoRootForGuards + [System.IO.Path]::DirectorySeparatorChar)) {
-    . $ResolvedGuardsPath
-  } else {
-    throw "RE_GUARDS_PATH resolves outside repo root, refusing to dot-source: $ResolvedGuardsPath"
-  }
+# SEC-AIOPS-012: cleanup safety is embedded and cannot be replaced by an
+# environment-selected dot-sourced file. Reject the legacy override explicitly
+# so a caller cannot believe its guard implementation was honored.
+if ($env:RE_GUARDS_PATH) {
+  throw "RE_GUARDS_PATH is unsupported; cleanup uses embedded fixed guards"
 }
 
-if (-not (Get-Command Test-InRoot -ErrorAction SilentlyContinue)) {
-  function Test-InRoot {
-    # SEC-AIOPS-018: append a trailing separator (or require exact equality)
-    # before the prefix comparison, so a sibling directory that merely shares
-    # a name prefix (e.g. "ai_ops" vs "ai_ops_evil") cannot pass.
-    param([string]$Path, [string]$Root = $RepoRoot)
-    $resolvedPath = (Resolve-Path $Path).Path
-    $resolvedRoot = (Resolve-Path $Root).Path
-    $sep = [System.IO.Path]::DirectorySeparatorChar
-    return ($resolvedPath -eq $resolvedRoot) -or $resolvedPath.StartsWith($resolvedRoot + $sep)
+function Test-EmbeddedInRoot {
+  param([string]$Path, [string]$Root = $RepoRoot)
+  $lexicalPath = [IO.Path]::GetFullPath($Path)
+  $lexicalRoot = [IO.Path]::GetFullPath($Root)
+  $sep = [IO.Path]::DirectorySeparatorChar
+  if ($lexicalPath -ne $lexicalRoot -and
+      -not $lexicalPath.StartsWith($lexicalRoot + $sep, [System.StringComparison]::OrdinalIgnoreCase)) {
+    return $false
   }
+  $relative = if ($lexicalPath -eq $lexicalRoot) { @() } else {
+    $lexicalPath.Substring($lexicalRoot.Length).TrimStart('\', '/') -split '[\\/]'
+  }
+  $current = $lexicalRoot
+  foreach ($part in $relative) {
+    if ([string]::IsNullOrWhiteSpace($part)) { continue }
+    $current = Join-Path $current $part
+    if (Test-Path -LiteralPath $current) {
+      $item = Get-Item -LiteralPath $current -Force -ErrorAction Stop
+      if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { return $false }
+    }
+  }
+  try {
+    $resolvedPath = (Resolve-Path -LiteralPath $lexicalPath -ErrorAction Stop).Path
+    $resolvedRoot = (Resolve-Path -LiteralPath $lexicalRoot -ErrorAction Stop).Path
+    return ($resolvedPath -eq $resolvedRoot) -or
+      $resolvedPath.StartsWith($resolvedRoot + $sep, [System.StringComparison]::OrdinalIgnoreCase)
+  }
+  catch { return $false }
 }
 
-if (-not (Get-Command Remove-Safe -ErrorAction SilentlyContinue)) {
-  function Remove-Safe {
-    param([string]$Path, [switch]$Permanent, [switch]$WhatIf)
-    Remove-Item -LiteralPath $Path -Recurse -Force -WhatIf:$WhatIf
+function Remove-EmbeddedSafe {
+  param([string]$Path, [switch]$Permanent, [switch]$WhatIf)
+  if (-not (Test-EmbeddedInRoot -Path $Path)) { throw "Path outside embedded repo guard: $Path" }
+  $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+  if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+    throw "Refusing to remove a symlink/reparse point: $Path"
   }
+  Remove-Item -LiteralPath $Path -Recurse -Force -WhatIf:$WhatIf
 }
 
 $cutoff = (Get-Date).AddDays(-14)
 $sandbox = Join-Path $RepoRoot '90_Sandbox'
-if (-not (Test-InRoot $sandbox)) { throw "Sandbox path outside repo root" }
+if (-not (Test-EmbeddedInRoot $sandbox)) { throw "Sandbox path outside repo root" }
 Get-ChildItem -LiteralPath $sandbox -Force -ErrorAction SilentlyContinue | ForEach-Object {
   if ($_.LastWriteTime -lt $cutoff) {
-    Remove-Safe -Path $_.FullName -WhatIf:\False
+    Remove-EmbeddedSafe -Path $_.FullName -WhatIf:$WhatIfPreference
   }
 }

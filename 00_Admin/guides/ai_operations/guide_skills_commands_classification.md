@@ -74,7 +74,7 @@ lanes remain upstream in ai_ops canon:
 | `/lint` | Command | Linter | Linter | Report-only mechanical validation is a Command, not a Skill. Claude disables model-initiated invocation; Codex blocks implicit invocation while allowing explicit `$lint`. Reviewer/Closer delegation reads the workflow directly. |
 | `/scratchpad` | Command | Executor | Executor | User-initiated note creation. Agent does not auto-create scratchpads. |
 | `/work_status` | Command | Planner | Coordinator | User-initiated status check. Single-turn report. |
-| `/work_savepoint` | Command | Primary agent | Closer | User-initiated session end. Does not commit or push by default in any mode; publication needs an explicit, current-turn `--commit` flag or a separate `/closeout`. |
+| `/work_savepoint` | Command | Primary agent | Closer | User-initiated WIP save. Builds an exact publication preview, waits for explicit final approval, then commits/pushes without marking work complete. `--no-commit` selects a read-only checkpoint. |
 | `/ai_ops_setup` | Command | Primary agent | Coordinator -> Builder | User-initiated setup. Should never auto-invoke. |
 
 ### Plugin Export Implications

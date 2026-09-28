@@ -30,6 +30,26 @@ in this guide apply regardless of which lane an agent holds.
 - Explicit triggers: user requests parallel execution or multi-agent coordination
 - Implicit triggers: more than one active agent or overlapping shared files
 
+## Delegated Child Lifecycle
+
+When a lane is actually delegated in a `multi_agent` or `hybrid` run, the lead
+creates a bounded dispatch record containing the task brief, context pack,
+permission/tool envelope, skill surface, return contract, and the compact
+governance handshake: `target_repo`, `authority_level`, `allowed_paths`, and
+`active_artifact`. The child may not infer omitted authority or paths from
+ambient session context.
+
+The lead-side orchestration record may use `pending` or `timed_out` while a
+child's authoritative terminal status is unavailable. Neither value is a
+terminal child outcome and neither may be translated into `failed` without
+reconciliation. After authoritative reconciliation, report the child's
+terminal result using the existing return `Disposition` vocabulary:
+`completed`, `blocked`, `partial`, or `failed`.
+
+Single-agent runs do not activate this dispatch handshake or add empty child
+lifecycle fields. This section governs coordination behavior; it does not
+create a runtime lock service or expand delegated authority.
+
 ## Write Coordination Model
 
 ai_ops has **no runtime lock service**. There is no daemon, no lock file

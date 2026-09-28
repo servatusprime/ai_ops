@@ -248,6 +248,28 @@ Before commit/push for Level 3+ work:
 Level 2 changes should also use this gate when scope is non-trivial or the
 requestor asks for explicit review before commit/push.
 
+## Tool Settings and Hook Boundary
+
+The portable workspace settings template is the permission source of truth for
+`.claude/settings.json`. Its `ask` rules prompt for `git -C`, Git `push`,
+`commit`, `reset`, `checkout`, `clean`, and `rm`, plus Git network and remote
+operations (`fetch`, `pull`, `clone`, `ls-remote`, `submodule`, and `remote`),
+`gh`, `curl`, and PowerShell commands. Claude Code permission patterns inspect
+command text: they cannot
+fully control operations performed through broadly allowed interpreters,
+alternate executable paths, or unrecognized wrappers. They provide an
+interactive approval layer; the human commit/push gate remains authoritative.
+The settings synchronizer must reject workspace escapes, reparse points, and
+prompt-gated Git mutation/network additions before it writes, and must preserve the template's
+allow, ask, and deny rules.
+
+`.claude/settings.local.json` is a machine-local overlay. It may retain the two
+setup-shell permissions, the read-only SessionStart context hook, and the
+advisory Level 4 PreToolUse warning. Dynamic package execution from hooks is
+disabled until a repository-local integrity-controlled replacement is adopted.
+Local overlays never promote permissions into the portable template, and
+workspace-root settings changes require workspace-owner authority.
+
 ## Request Clarification Gate
 
 If a request is vague, ask for:
@@ -917,7 +939,7 @@ workflow file.
 | --------------- | ------------------------ | ------------------------------------------ |
 | /work | Coordinator -> Executor | Establish work context, execute tasks |
 | /work_status | Coordinator | Summarize active work and blockers |
-| /work_savepoint | Executor | Prepare checkpoint; no commit or push (publication is `/closeout`) |
+| /work_savepoint | Executor | Preview and, after explicit final approval, commit/push a scoped WIP savepoint; `--no-commit` is checkpoint-only |
 | /harvest | Coordinator -> Executor | Harvest/prune artifacts |
 | /crosscheck | Reviewer | Review and report only |
 | /health | Reviewer | Report-only repo health check |

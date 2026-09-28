@@ -269,7 +269,7 @@ Include workflow files in context using their respective mechanisms.
 | --- | --- | --- |
 | /work | work.md | Start/resume work session |
 | /work_status | work_status.md | Show active context and blockers |
-| /work_savepoint | work_savepoint.md | Prepare checkpoint, no commit/push by default; end session (publication is `/closeout`) |
+| /work_savepoint | work_savepoint.md | Preview, then approval-gated commit/push of a scoped WIP savepoint; `--no-commit` is checkpoint-only |
 | /harvest | harvest.md | Consolidate/prune artifacts |
 | /crosscheck | crosscheck.md | Conduct structured peer review |
 | /health | health.md | Repo health check |
@@ -309,6 +309,11 @@ All workflow files are in `.ai_ops/workflows/`.
   in `.ai_ops/workflows/profiles.md`, not in setup docs.
 - For deterministic wrapper regeneration from SoT workflows, run:
   `python 00_Admin/scripts/generate_workflow_exports.py`.
+- Workspace-root installs fail closed before writing. First run the complete
+  preview with `--scope workspace --install-root <workspace_root> --dry-run`,
+  review every `CREATE`, `UPDATE`, and `UNCHANGED` output, then rerun the same
+  command with the printed `--approve-preview <token>`. The token becomes
+  invalid if either a source wrapper or destination file changes.
 - Model availability is not reliably auto-detected by setup scripts; declare
   available models/default reasoning via `/customize`, then use `/profiles` for
   model-family behavior tuning when needed.

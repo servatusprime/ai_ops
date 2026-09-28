@@ -2,7 +2,7 @@
 name: profiles
 description: Manage rider/crew profile source data and regenerate deterministic derivative behavior files.
 kind: workflow
-version: 0.1.5
+version: 0.1.6
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -147,6 +147,13 @@ contract.
      run `.ai_ops/setup/setup_claude_agents.sh --workspace --force` (or the
      `.bat` equivalent) to propagate the change there. Report whether this
      step ran and, if skipped, that the workspace copy may now be stale.
+   - The generator accepts only the declared YAML source and writes only the
+     declared plugin, generated-map, and repo-local `.claude/agents` roots. Hook
+     entries use reviewed `command_id` values (currently
+     `reviewer_write_guard_v1`); free-form shell commands, dynamic/network hook
+     commands, absolute source paths, and symlink/reparse output roots are
+     rejected. The generator expands an approved ID into its exact command
+     payload only at serialization time.
 10. Report:
 
 - files regenerated

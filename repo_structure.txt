@@ -262,10 +262,13 @@
 |   |   |       |-- run_family_shared_valid.yaml
 |   |   |       |-- run_instance_lock_valid.yaml
 |   |   |       +-- run_receipt_valid.yaml
+|   |   |-- test_claude_settings_policy.py
 |   |   |-- test_future_work_registry_lifecycle.py
 |   |   |-- test_governance_seed_contracts.py
 |   |   |-- test_graph_artifact_closure.py
 |   |   |-- test_run_family_graph.py
+|   |   |-- test_work_savepoint_contract.py
+|   |   |-- test_workflow_export_workspace_preview.py
 |   |   +-- workflow_smoke_tests.yaml
 |   +-- tooling/
 |       |-- README.md
@@ -342,9 +345,11 @@
 |   |   |   +-- module.yaml
 |   |   |-- operations/
 |   |   |   +-- op_sync_external_context.py
-|   |   +-- templates/
-|   |       |-- aiops_config.template.yaml
-|   |       +-- aiops_config.user.yaml
+|   |   |-- templates/
+|   |   |   |-- aiops_config.template.yaml
+|   |   |   +-- aiops_config.user.yaml
+|   |   +-- tests/
+|   |       +-- test_sync_external_context.py
 |   |-- 01_agent_profiles/
 |   |   |-- README.md
 |   |   |-- base/
