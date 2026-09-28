@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -122,6 +123,8 @@ def _resolve_trusted_markdownlint(params: Dict[str, Any]) -> List[str]:
     fixed_args = params.get("fixed_args", [])
     if fixed_args != list(_MARKDOWNLINT_FIXED_ARGS):
         raise ValueError(f"markdownlint fixed args must be {_MARKDOWNLINT_FIXED_ARGS!r}")
+    if os.name != "nt":
+        return _resolve_trusted_ci_markdownlint(params)
     if params.get("trusted_node_root") != "program_files":
         raise ValueError("markdownlint node root must be the approved program_files token")
     if params.get("trusted_markdownlint_root") != "user_appdata":
@@ -157,6 +160,64 @@ def _resolve_trusted_markdownlint(params: Dict[str, Any]) -> List[str]:
         raise ValueError("trusted markdownlint package metadata is missing")
     try:
         package = json.loads(Path(package_file).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ValueError("trusted markdownlint package metadata is unreadable") from exc
+    if package.get("version") != params.get("trusted_package_version"):
+        raise ValueError("trusted markdownlint package version mismatch")
+    expected_tree = str(params.get("trusted_package_tree_sha256", "")).lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_tree):
+        raise ValueError("trusted markdownlint package-tree hash is missing or malformed")
+    if _sha256_directory(package_root) != expected_tree:
+        raise ValueError("trusted markdownlint package-tree hash mismatch")
+    return [node_path, entrypoint]
+
+
+def _resolve_trusted_ci_markdownlint(params: Dict[str, Any]) -> List[str]:
+    """Resolve the pinned Markdownlint package installed by GitHub Actions."""
+    if os.environ.get("GITHUB_ACTIONS", "").lower() != "true" or os.environ.get("CI", "").lower() != "true":
+        raise ValueError("non-Windows markdownlint execution is restricted to GitHub Actions")
+    if params.get("trusted_ci_node_root") != "runner_tool_cache":
+        raise ValueError("CI node root must be the approved runner_tool_cache token")
+    runner_root = os.environ.get("RUNNER_TOOL_CACHE")
+    node_candidate = shutil.which("node")
+    if not runner_root or not node_candidate:
+        raise ValueError("GitHub runner tool cache or Node executable is unavailable")
+    node_path = os.path.abspath(node_candidate)
+    if not _is_within(node_path, runner_root) or _has_reparse_component(node_path, runner_root):
+        raise ValueError("trusted CI Node executable escapes or crosses a link in RUNNER_TOOL_CACHE")
+    expected_version = str(params.get("trusted_ci_node_version", ""))
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", expected_version):
+        raise ValueError("trusted CI Node version is missing or malformed")
+    expected_node = str(params.get("trusted_ci_node_sha256", "")).lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_node):
+        raise ValueError("trusted CI Node hash is missing or malformed")
+    if _sha256_file(node_path) != expected_node:
+        raise ValueError("trusted CI Node executable hash mismatch")
+    try:
+        version_result = subprocess.run(
+            [node_path, "--version"], capture_output=True, text=True, check=False
+        )
+    except OSError as exc:
+        raise ValueError("trusted CI Node version could not be read") from exc
+    if version_result.returncode != 0 or version_result.stdout.strip() != f"v{expected_version}":
+        raise ValueError(f"trusted CI Node version must be {expected_version}")
+
+    install_prefix = Path(node_path).parent.parent
+    entrypoint = str(install_prefix / "lib" / "node_modules" / "markdownlint-cli" / "markdownlint.js")
+    if _has_reparse_component(entrypoint, str(install_prefix)) or not os.path.isfile(entrypoint):
+        raise ValueError("pinned CI markdownlint entrypoint is unavailable or link-routed")
+    expected_entrypoint = str(params.get("trusted_entrypoint_sha256", "")).lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_entrypoint):
+        raise ValueError("trusted markdownlint entrypoint hash is missing or malformed")
+    if _sha256_file(entrypoint) != expected_entrypoint:
+        raise ValueError("trusted markdownlint entrypoint hash mismatch")
+
+    package_root = str(Path(entrypoint).parent)
+    package_file = Path(package_root) / "package.json"
+    if not package_file.is_file():
+        raise ValueError("trusted markdownlint package metadata is missing")
+    try:
+        package = json.loads(package_file.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         raise ValueError("trusted markdownlint package metadata is unreadable") from exc
     if package.get("version") != params.get("trusted_package_version"):

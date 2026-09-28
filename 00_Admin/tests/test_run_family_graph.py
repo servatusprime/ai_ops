@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import re
 import subprocess
@@ -963,6 +964,38 @@ parameter_profiles: {}
             )
             self.assertEqual(drift.returncode, 1)
             self.assertIn("drift:", drift.stderr)
+
+    def test_generator_skip_registry_limits_write_and_check_targets(self):
+        script = SCRIPTS / "generate_run_family_views.py"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ensure_sibling_ai_ops_fixture(root)
+            registry = root / "00_Admin" / "runbooks" / "run_family_registry.yaml"
+            registry.parent.mkdir(parents=True, exist_ok=True)
+            registry.write_text("local registry owner\n", encoding="utf-8")
+            write = subprocess.run(
+                [
+                    sys.executable, str(script), "--repo-root", str(root),
+                    "--input", str(VALID), "--skip-registry", "--write",
+                ],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertEqual(write.returncode, 0, write.stderr)
+            result = json.loads(write.stdout)
+            self.assertEqual(
+                set(result["outputs"]),
+                set(generator.DEFAULT_TARGETS) - {"registry"},
+            )
+            self.assertEqual(registry.read_text(encoding="utf-8"), "local registry owner\n")
+            check = subprocess.run(
+                [
+                    sys.executable, str(script), "--repo-root", str(root),
+                    "--input", str(VALID), "--skip-registry", "--check",
+                ],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertEqual(check.returncode, 0, check.stderr)
+            self.assertEqual(set(json.loads(check.stdout)["outputs"]), set(result["outputs"]))
 
     def test_dedicated_validator_cli_and_schema_yaml(self):
         script = SCRIPTS / "validate_run_family_graph.py"

@@ -108,13 +108,7 @@ def run_lexical_reparse_fixture(mod) -> bool:
         os.makedirs(target)
         with open(os.path.join(target, "safe.txt"), "w", encoding="utf-8") as handle:
             handle.write("safe\n")
-        result = subprocess.run(
-            ["cmd.exe", "/c", "mklink", "/J", junction, target],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if result.returncode != 0:
+        if not make_directory_link(junction, target):
             return False
         try:
             mod._validate_repo_path(os.path.join(junction, "safe.txt"), root_path, label="fixture")
@@ -123,6 +117,91 @@ def run_lexical_reparse_fixture(mod) -> bool:
         return False
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+def make_directory_link(link: str, target: str) -> bool:
+    """Create a directory link using the platform's native mechanism."""
+    if os.name == "nt":
+        result = subprocess.run(
+            ["cmd.exe", "/c", "mklink", "/J", link, target],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return result.returncode == 0
+    try:
+        os.symlink(target, link, target_is_directory=True)
+    except OSError:
+        return False
+    return True
+
+
+def run_ci_markdownlint_resolver_fixtures(mod) -> tuple[bool, bool, bool, bool]:
+    """Exercise the CI resolver without trusting the host's Node installation."""
+    with tempfile.TemporaryDirectory(prefix="validator-ci-markdownlint-") as temp:
+        runner_root = os.path.join(temp, "toolcache")
+        install_prefix = os.path.join(runner_root, "node", "24.21.0", "x64")
+        bin_dir = os.path.join(install_prefix, "bin")
+        package_root = os.path.join(install_prefix, "lib", "node_modules", "markdownlint-cli")
+        os.makedirs(bin_dir)
+        os.makedirs(package_root)
+        node_path = os.path.join(bin_dir, "node")
+        entrypoint = os.path.join(package_root, "markdownlint.js")
+        package_file = os.path.join(package_root, "package.json")
+        with open(node_path, "wb") as handle:
+            handle.write(b"fixture node executable\n")
+        with open(entrypoint, "wb") as handle:
+            handle.write(b"fixture markdownlint entrypoint\n")
+        with open(package_file, "w", encoding="utf-8") as handle:
+            handle.write('{"version":"0.47.0"}\n')
+
+        params = {
+            "trusted_ci_node_root": "runner_tool_cache",
+            "trusted_ci_node_version": "24.21.0",
+            "trusted_ci_node_sha256": mod._sha256_file(node_path),
+            "trusted_entrypoint_sha256": mod._sha256_file(entrypoint),
+            "trusted_package_version": "0.47.0",
+            "trusted_package_tree_sha256": mod._sha256_directory(package_root),
+        }
+        trusted_env = {
+            "GITHUB_ACTIONS": "true",
+            "CI": "true",
+            "RUNNER_TOOL_CACHE": runner_root,
+        }
+        version_result = subprocess.CompletedProcess(
+            [node_path, "--version"], 0, "v24.21.0\n", ""
+        )
+
+        def resolve(candidate: str, candidate_params: dict, env: dict) -> tuple[bool, str]:
+            try:
+                with (
+                    mock.patch.dict(os.environ, env, clear=False),
+                    mock.patch.object(mod.shutil, "which", return_value=candidate),
+                    mock.patch.object(mod.subprocess, "run", return_value=version_result),
+                ):
+                    resolved = mod._resolve_trusted_ci_markdownlint(candidate_params)
+                return resolved == [os.path.abspath(node_path), entrypoint], ""
+            except ValueError as exc:
+                return False, str(exc)
+
+        legitimate, _ = resolve(node_path, params, trusted_env)
+        altered = dict(params)
+        altered["trusted_ci_node_sha256"] = "0" * 64
+        _, altered_error = resolve(node_path, altered, trusted_env)
+        _, environment_error = resolve(
+            node_path,
+            params,
+            {**trusted_env, "GITHUB_ACTIONS": "false"},
+        )
+        linked_bin = os.path.join(runner_root, "linked-bin")
+        link_created = make_directory_link(linked_bin, bin_dir)
+        _, link_error = resolve(os.path.join(linked_bin, "node"), params, trusted_env)
+        return (
+            legitimate,
+            "Node executable hash mismatch" in altered_error,
+            "restricted to GitHub Actions" in environment_error,
+            link_created and ("crosses" in link_error or "link" in link_error),
+        )
 
 
 def run_vs036_override_fixtures(mod) -> tuple[bool, bool]:
@@ -186,13 +265,7 @@ def run_vs036_reparse_fixture(mod) -> bool:
         for name in ("validate_run_family_graph.py", "generate_run_family_views.py"):
             with open(os.path.join(external_scripts, name), "w", encoding="utf-8") as handle:
                 handle.write("raise SystemExit(0)\n")
-        result = subprocess.run(
-            ["cmd.exe", "/c", "mklink", "/J", scripts_link, external_scripts],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if result.returncode != 0:
+        if not make_directory_link(scripts_link, external_scripts):
             return False
 
         original_file = mod.__file__
@@ -331,6 +404,14 @@ def main() -> int:
         malicious_rejected = True
     check("profile free-form command hook is rejected", malicious_rejected)
     check("validator rejects lexical junction before resolution", run_lexical_reparse_fixture(mod))
+
+    ci_legitimate, ci_hash_rejected, ci_env_rejected, ci_link_rejected = (
+        run_ci_markdownlint_resolver_fixtures(mod)
+    )
+    check("VS015 CI resolver accepts exact pinned artifacts", ci_legitimate)
+    check("VS015 CI resolver rejects altered Node executable", ci_hash_rejected)
+    check("VS015 CI resolver rejects spoofed CI environment", ci_env_rejected)
+    check("VS015 CI resolver rejects linked Node path", ci_link_rejected)
 
     # 7. VS036 must ignore target-config helper overrides and reject reparse paths.
     in_root_safe, traversal_safe = run_vs036_override_fixtures(mod)

@@ -171,6 +171,9 @@ rules:
       trusted_node_root: program_files
       trusted_node_relative: nodejs/node.exe
       trusted_node_sha256: f13ac3ca23248dc389507e8fe38c34489ab7edb3e6d6700eb6da6a0b7e128eaf
+      trusted_ci_node_root: runner_tool_cache
+      trusted_ci_node_version: '24.21.0'
+      trusted_ci_node_sha256: 7fde7b8afa198da66257f42ee2001d874c7355631e6d1579a5fb5ef1f246df4c
       trusted_markdownlint_root: user_appdata
       trusted_markdownlint_relative: npm/node_modules/markdownlint-cli/markdownlint.js
       trusted_entrypoint_sha256: 644e27c3425f651751382d6963b3b6ca6a2395764c2f64efe7e03fc71e604e12

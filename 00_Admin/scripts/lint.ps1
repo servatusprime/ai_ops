@@ -14,6 +14,8 @@ $trustedNodeSha256 = "f13ac3ca23248dc389507e8fe38c34489ab7edb3e6d6700eb6da6a0b7e
 $trustedMarkdownlintSha256 = "644e27c3425f651751382d6963b3b6ca6a2395764c2f64efe7e03fc71e604e12"
 $trustedMarkdownlintPackageSha256 = "21280478d4322f01e1e59b802a663b2d0c2a5d6ef26c76a6ce3e3c025d4703ec"
 $trustedMarkdownlintVersion = "0.47.0"
+$trustedCiNodeVersion = "24.21.0"
+$trustedCiNodeSha256 = "7fde7b8afa198da66257f42ee2001d874c7355631e6d1579a5fb5ef1f246df4c"
 
 function Test-WritableDirectory {
     param(
@@ -101,7 +103,77 @@ function Resolve-YamllintConfigPath {
     throw "yamllint config not found. Expected one of: $($candidates -join ', ')"
 }
 
+function Resolve-LinkFreeContainedPath {
+    param(
+        [Parameter(Mandatory = $true)][string] $Path,
+        [Parameter(Mandatory = $true)][string] $Root
+    )
+
+    $rootPath = [System.IO.Path]::GetFullPath($Root)
+    $candidatePath = [System.IO.Path]::GetFullPath($Path)
+    $separator = [System.IO.Path]::DirectorySeparatorChar
+    if ($candidatePath -ne $rootPath -and -not $candidatePath.StartsWith($rootPath + $separator, [System.StringComparison]::Ordinal)) {
+        throw "Trusted path is outside its root: $candidatePath"
+    }
+
+    $current = $rootPath
+    $rootItem = Get-Item -LiteralPath $current -Force -ErrorAction Stop
+    if ($rootItem.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+        throw "Trusted path root is a link: $current"
+    }
+    $relative = [System.IO.Path]::GetRelativePath($rootPath, $candidatePath)
+    if ($relative -ne ".") {
+        foreach ($part in $relative.Split(@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar), [System.StringSplitOptions]::RemoveEmptyEntries)) {
+            $current = Join-Path $current $part
+            if (Test-Path -LiteralPath $current) {
+                $item = Get-Item -LiteralPath $current -Force
+                if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+                    throw "Trusted path crosses a link: $current"
+                }
+            }
+        }
+    }
+    if (-not (Test-Path -LiteralPath $candidatePath -PathType Leaf)) {
+        throw "Trusted artifact is missing: $candidatePath"
+    }
+    $resolved = (Resolve-Path -LiteralPath $candidatePath).Path
+    if ($resolved -ne $rootPath -and -not $resolved.StartsWith($rootPath + $separator, [System.StringComparison]::Ordinal)) {
+        throw "Trusted path resolves outside its root: $candidatePath"
+    }
+    return $resolved
+}
+
 function Resolve-TrustedMarkdownlint {
+    $isWindowsPlatform = [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
+    if (-not $isWindowsPlatform) {
+        if ($env:GITHUB_ACTIONS -ne "true" -or $env:CI -ne "true" -or [string]::IsNullOrWhiteSpace($env:RUNNER_TOOL_CACHE)) {
+            throw "Non-Windows markdownlint execution is restricted to GitHub Actions."
+        }
+        $nodeCommand = Get-Command node -CommandType Application -ErrorAction Stop
+        $runnerRoot = (Resolve-Path -LiteralPath $env:RUNNER_TOOL_CACHE).Path
+        $nodePath = Resolve-LinkFreeContainedPath -Path $nodeCommand.Source -Root $runnerRoot
+        if ((Get-FileHash -LiteralPath $nodePath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $trustedCiNodeSha256) {
+            throw "Trusted CI Node executable hash mismatch."
+        }
+        $nodeVersion = (& $nodePath --version).Trim()
+        if ($LASTEXITCODE -ne 0 -or $nodeVersion -ne "v$trustedCiNodeVersion") {
+            throw "Trusted CI Node version must be $trustedCiNodeVersion."
+        }
+        $installPrefix = Split-Path -Parent (Split-Path -Parent $nodePath)
+        $entrypoint = Resolve-LinkFreeContainedPath -Path (Join-Path $installPrefix "lib/node_modules/markdownlint-cli/markdownlint.js") -Root $installPrefix
+        $packageJson = Resolve-LinkFreeContainedPath -Path (Join-Path (Split-Path -Parent $entrypoint) "package.json") -Root $installPrefix
+        if ((Get-FileHash -LiteralPath $entrypoint -Algorithm SHA256).Hash.ToLowerInvariant() -ne $trustedMarkdownlintSha256) {
+            throw "Trusted CI markdownlint entrypoint hash mismatch."
+        }
+        if ((Get-FileHash -LiteralPath $packageJson -Algorithm SHA256).Hash.ToLowerInvariant() -ne $trustedMarkdownlintPackageSha256) {
+            throw "Trusted CI markdownlint package metadata hash mismatch."
+        }
+        $package = Get-Content -LiteralPath $packageJson -Raw | ConvertFrom-Json
+        if ($package.version -ne $trustedMarkdownlintVersion) {
+            throw "Trusted CI markdownlint package version mismatch."
+        }
+        return @($nodePath, $entrypoint)
+    }
     $programFiles = [Environment]::GetEnvironmentVariable("ProgramFiles", "Process")
     $applicationData = [Environment]::GetFolderPath([Environment+SpecialFolder]::ApplicationData)
     if ([string]::IsNullOrWhiteSpace($programFiles) -or [string]::IsNullOrWhiteSpace($applicationData)) {
