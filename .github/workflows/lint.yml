@@ -29,7 +29,7 @@ jobs:
       - name: Install lint dependencies
         run: |
           pip install pyyaml yamllint ruff
-          npm install -g markdownlint-cli@0.47.0
+          npm install -g --ignore-scripts --omit=dev markdownlint-cli@0.47.0
 
       - name: Verify repo structure map is current
         run: |

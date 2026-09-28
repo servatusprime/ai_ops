@@ -17,6 +17,7 @@ outside the system temp dir.
 """
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import os
 import shutil
@@ -97,6 +98,85 @@ def run_markdownlint(mod, params: dict, repo_root: str) -> list[str]:
     finally:
         os.remove(path)
     return errs
+
+
+def run_portable_directory_hash_fixture(mod) -> bool:
+    """Require case-sensitive POSIX ordering regardless of the host OS."""
+    with tempfile.TemporaryDirectory(prefix="validator-package-hash-") as root:
+        # This ordering differs from Windows normcase() ordering.
+        contents = {"Z.txt": b"upper\n", "a.txt": b"lower\n"}
+        for name, content in contents.items():
+            with open(os.path.join(root, name), "wb") as handle:
+                handle.write(content)
+
+        expected = hashlib.sha256()
+        for name in ("Z.txt", "a.txt"):
+            relative = name.encode("utf-8")
+            content = contents[name]
+            expected.update(relative)
+            expected.update(b"\0")
+            expected.update(len(content).to_bytes(8, "big"))
+            expected.update(content)
+        return mod._sha256_directory(root) == expected.hexdigest()
+
+
+def run_generated_bin_hash_fixtures(mod) -> tuple[bool, bool, bool]:
+    """Ignore only generated node_modules/.bin contents while rejecting other links."""
+    with tempfile.TemporaryDirectory(prefix="validator-package-bin-") as root:
+        package_root = os.path.join(root, "node_modules", "markdownlint-cli")
+        generated_bin = os.path.join(package_root, "node_modules", ".bin")
+        payload = os.path.join(package_root, "lib", "payload.js")
+        bin_link_target = os.path.join(root, "generated-bin-target")
+        os.makedirs(bin_link_target)
+        os.makedirs(generated_bin)
+        os.makedirs(os.path.dirname(payload))
+        if not make_directory_link(os.path.join(generated_bin, "linked-tool"), bin_link_target):
+            return False, False, False
+        with open(payload, "wb") as handle:
+            handle.write(b"dependency payload\n")
+        with open(os.path.join(generated_bin, "markdownlint"), "wb") as handle:
+            handle.write(b"POSIX symlink target A\n")
+        with open(os.path.join(generated_bin, "markdownlint.cmd"), "wb") as handle:
+            handle.write(b"Windows shim A\n")
+        initial_hash = mod._sha256_directory(root)
+        with open(os.path.join(generated_bin, "markdownlint"), "wb") as handle:
+            handle.write(b"POSIX symlink target B with different bytes\n")
+        with open(os.path.join(generated_bin, "markdownlint.ps1"), "wb") as handle:
+            handle.write(b"Another generated Windows shim\n")
+        generated_contents_ignored = mod._sha256_directory(root) == initial_hash
+
+        elsewhere = os.path.join(root, "node_modules", "payload", "linked-dir")
+        target = os.path.join(root, "link-target")
+        os.makedirs(os.path.dirname(elsewhere))
+        os.makedirs(target)
+        link_created = make_directory_link(elsewhere, target)
+        try:
+            mod._sha256_directory(root)
+        except ValueError as exc:
+            outside_bin_link_rejected = "reparse" in str(exc).lower()
+        else:
+            outside_bin_link_rejected = False
+        return (
+            generated_contents_ignored,
+            link_created and outside_bin_link_rejected,
+            run_bin_directory_link_fixture(mod),
+        )
+
+
+def run_bin_directory_link_fixture(mod) -> bool:
+    """Reject a linked node_modules/.bin directory before pruning its entries."""
+    with tempfile.TemporaryDirectory(prefix="validator-package-bin-link-") as root:
+        node_modules = os.path.join(root, "node_modules")
+        target = os.path.join(root, "external-bin-target")
+        os.makedirs(node_modules)
+        os.makedirs(target)
+        if not make_directory_link(os.path.join(node_modules, ".bin"), target):
+            return False
+        try:
+            mod._sha256_directory(root)
+        except ValueError as exc:
+            return "reparse" in str(exc).lower()
+        return False
 
 
 def run_lexical_reparse_fixture(mod) -> bool:
@@ -354,10 +434,19 @@ def main() -> int:
         rule["params"] for rule in live_config["rules"] if rule.get("id") == "VS015"
     )
     repo_root = os.path.normpath(os.path.join(HERE, "..", "..", ".."))
+    check("VS015 package-tree hash uses portable case-sensitive ordering", run_portable_directory_hash_fixture(mod))
+    generated_bin_ignored, package_link_rejected, linked_bin_rejected = run_generated_bin_hash_fixtures(mod)
+    check("VS015 omits only generated node_modules/.bin contents", generated_bin_ignored)
+    check("VS015 still rejects reparse links elsewhere in the package", package_link_rejected)
+    check("VS015 rejects a reparse-linked node_modules/.bin directory", linked_bin_rejected)
+    live_markdownlint_errors = run_markdownlint(mod, markdownlint_params, repo_root)
     check(
         "VS015 legitimate pinned markdownlint fixture -> pass",
-        not run_markdownlint(mod, markdownlint_params, repo_root),
+        not live_markdownlint_errors,
     )
+    if live_markdownlint_errors:
+        for error in live_markdownlint_errors:
+            print(f"    VS015 diagnostic: {error}")
     arbitrary = dict(markdownlint_params)
     arbitrary["command"] = "python"
     check(

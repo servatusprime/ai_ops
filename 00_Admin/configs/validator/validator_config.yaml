@@ -178,7 +178,7 @@ rules:
       trusted_markdownlint_relative: npm/node_modules/markdownlint-cli/markdownlint.js
       trusted_entrypoint_sha256: 644e27c3425f651751382d6963b3b6ca6a2395764c2f64efe7e03fc71e604e12
       trusted_package_version: '0.47.0'
-      trusted_package_tree_sha256: e3e3e69cd6a2dc1e63a9e27185df4b634f073763ff932591ccae0a1b170f59bb
+      trusted_package_tree_sha256: 9d7ceeb7eabfae89b4279109264b0246605f6704b5aa00ed833adebc2d75c8cb
       fixed_args:
         - --config
         - .markdownlint.json

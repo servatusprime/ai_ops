@@ -93,6 +93,16 @@ def _sha256_directory(root: str) -> str:
         raise ValueError(f"trusted package root is missing or reparse-linked: {root}")
     files: List[Path] = []
     for current, directories, names in os.walk(root, topdown=True, followlinks=False):
+        # npm creates OS-specific command shims and may use links under these
+        # generated bin directories. Exclude only node_modules/.bin before
+        # inspecting its entries; dependency package payload remains covered.
+        if Path(current).name == "node_modules":
+            for name in directories:
+                if name == ".bin" and _is_reparse_point(str(Path(current) / name)):
+                    raise ValueError(
+                        f"trusted package tree contains a reparse directory: {Path(current) / name}"
+                    )
+            directories[:] = [name for name in directories if name != ".bin"]
         for name in directories:
             directory = Path(current) / name
             if _is_reparse_point(str(directory)):
@@ -103,7 +113,10 @@ def _sha256_directory(root: str) -> str:
                 raise ValueError(f"trusted package tree contains a reparse file: {file_path}")
             files.append(file_path)
     digest = hashlib.sha256()
-    for file_path in sorted(files, key=lambda item: os.path.normcase(str(item))):
+    # Sort by the package-relative POSIX path. normcase() is platform-specific
+    # (case-folding on Windows, identity on POSIX), so it gives the same tree a
+    # different digest on GitHub's Linux runner and on local Windows installs.
+    for file_path in sorted(files, key=lambda item: item.relative_to(root_path).as_posix()):
         relative = file_path.relative_to(root_path).as_posix().encode("utf-8")
         content = file_path.read_bytes()
         digest.update(relative)
