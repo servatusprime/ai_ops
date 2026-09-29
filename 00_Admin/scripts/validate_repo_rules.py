@@ -86,6 +86,15 @@ def _sha256_file(path: str) -> str:
     return digest.hexdigest()
 
 
+def _sha256_lf_text_file(path: str) -> str:
+    """Hash UTF-8 text using canonical LF line endings across checkouts."""
+    try:
+        data = Path(path).read_bytes()
+    except OSError:
+        raise
+    return hashlib.sha256(data.replace(b"\r\n", b"\n")).hexdigest()
+
+
 def _trusted_directory_files(root: str) -> Tuple[Path, List[Path]]:
     """List a trusted tree's files after rejecting links and reparse points."""
     root_path = Path(root)
@@ -234,7 +243,7 @@ def _resolve_trusted_ci_markdownlint(params: Dict[str, Any]) -> List[str]:
         raise ValueError("trusted CI markdownlint lockfile hash is missing or malformed")
     if not lockfile.is_file() or _has_reparse_component(str(lockfile), workspace):
         raise ValueError("trusted CI markdownlint lockfile is unavailable or link-routed")
-    if _sha256_file(str(lockfile)) != expected_lock:
+    if _sha256_lf_text_file(str(lockfile)) != expected_lock:
         raise ValueError("trusted CI markdownlint lockfile hash mismatch")
     entrypoint = str(install_root / "node_modules" / "markdownlint-cli" / "markdownlint.js")
     if _has_reparse_component(entrypoint, workspace) or not os.path.isfile(entrypoint):

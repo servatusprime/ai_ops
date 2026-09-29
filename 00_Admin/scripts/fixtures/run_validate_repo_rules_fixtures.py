@@ -216,7 +216,7 @@ def make_directory_link(link: str, target: str) -> bool:
     return True
 
 
-def run_ci_markdownlint_resolver_fixtures(mod) -> tuple[bool, bool, bool, bool, bool, bool]:
+def run_ci_markdownlint_resolver_fixtures(mod) -> tuple[bool, bool, bool, bool, bool, bool, bool]:
     """Exercise the CI resolver without trusting the host's Node installation."""
     with tempfile.TemporaryDirectory(prefix="validator-ci-markdownlint-") as temp:
         runner_root = os.path.join(temp, "toolcache")
@@ -238,8 +238,9 @@ def run_ci_markdownlint_resolver_fixtures(mod) -> tuple[bool, bool, bool, bool, 
         with open(package_file, "w", encoding="utf-8") as handle:
             handle.write('{"version":"0.47.0"}\n')
         lockfile = os.path.join(install_root, "package-lock.json")
-        with open(lockfile, "w", encoding="utf-8") as handle:
-            handle.write('{"lockfileVersion":3,"packages":{}}\n')
+        lock_content = b'{"lockfileVersion":3,"packages":{}}\n'
+        with open(lockfile, "wb") as handle:
+            handle.write(lock_content)
 
         params = {
             "trusted_ci_node_root": "runner_tool_cache",
@@ -248,7 +249,7 @@ def run_ci_markdownlint_resolver_fixtures(mod) -> tuple[bool, bool, bool, bool, 
             "trusted_entrypoint_sha256": mod._sha256_file(entrypoint),
             "trusted_package_version": "0.47.0",
             "trusted_ci_install_root": ".github/tools/markdownlint",
-            "trusted_ci_lockfile_sha256": mod._sha256_file(lockfile),
+            "trusted_ci_lockfile_sha256": mod._sha256_lf_text_file(lockfile),
         }
         trusted_env = {
             "GITHUB_ACTIONS": "true",
@@ -273,6 +274,11 @@ def run_ci_markdownlint_resolver_fixtures(mod) -> tuple[bool, bool, bool, bool, 
                 return False, str(exc)
 
         legitimate, _ = resolve(node_path, params, trusted_env)
+        with open(lockfile, "wb") as handle:
+            handle.write(lock_content.replace(b"\n", b"\r\n"))
+        crlf_legitimate, _ = resolve(node_path, params, trusted_env)
+        with open(lockfile, "wb") as handle:
+            handle.write(lock_content)
         altered = dict(params)
         altered["trusted_ci_node_sha256"] = "0" * 64
         _, altered_error = resolve(node_path, altered, trusted_env)
@@ -294,6 +300,7 @@ def run_ci_markdownlint_resolver_fixtures(mod) -> tuple[bool, bool, bool, bool, 
         _, lock_error = resolve(node_path, params, trusted_env)
         return (
             legitimate,
+            crlf_legitimate,
             "Node executable hash mismatch" in altered_error,
             "lockfile hash mismatch" in lock_error,
             "restricted to GitHub Actions" in environment_error,
@@ -514,6 +521,7 @@ def main() -> int:
 
     (
         ci_legitimate,
+        ci_crlf_legitimate,
         ci_hash_rejected,
         ci_lock_rejected,
         ci_env_rejected,
@@ -521,6 +529,7 @@ def main() -> int:
         ci_dependency_link_rejected,
     ) = run_ci_markdownlint_resolver_fixtures(mod)
     check("VS015 CI resolver accepts exact pinned artifacts", ci_legitimate)
+    check("VS015 CI lockfile hash accepts LF and CRLF checkouts", ci_crlf_legitimate)
     check("VS015 CI resolver rejects altered Node executable", ci_hash_rejected)
     check("VS015 CI resolver rejects altered dependency lockfile", ci_lock_rejected)
     check("VS015 CI resolver rejects spoofed CI environment", ci_env_rejected)
