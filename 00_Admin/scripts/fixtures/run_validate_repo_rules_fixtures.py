@@ -216,15 +216,18 @@ def make_directory_link(link: str, target: str) -> bool:
     return True
 
 
-def run_ci_markdownlint_resolver_fixtures(mod) -> tuple[bool, bool, bool, bool]:
+def run_ci_markdownlint_resolver_fixtures(mod) -> tuple[bool, bool, bool, bool, bool, bool]:
     """Exercise the CI resolver without trusting the host's Node installation."""
     with tempfile.TemporaryDirectory(prefix="validator-ci-markdownlint-") as temp:
         runner_root = os.path.join(temp, "toolcache")
         install_prefix = os.path.join(runner_root, "node", "24.21.0", "x64")
         bin_dir = os.path.join(install_prefix, "bin")
-        package_root = os.path.join(install_prefix, "lib", "node_modules", "markdownlint-cli")
+        workspace = os.path.join(temp, "workspace")
+        install_root = os.path.join(workspace, ".github", "tools", "markdownlint")
+        package_root = os.path.join(install_root, "node_modules", "markdownlint-cli")
         os.makedirs(bin_dir)
         os.makedirs(package_root)
+        os.makedirs(install_root, exist_ok=True)
         node_path = os.path.join(bin_dir, "node")
         entrypoint = os.path.join(package_root, "markdownlint.js")
         package_file = os.path.join(package_root, "package.json")
@@ -234,6 +237,9 @@ def run_ci_markdownlint_resolver_fixtures(mod) -> tuple[bool, bool, bool, bool]:
             handle.write(b"fixture markdownlint entrypoint\n")
         with open(package_file, "w", encoding="utf-8") as handle:
             handle.write('{"version":"0.47.0"}\n')
+        lockfile = os.path.join(install_root, "package-lock.json")
+        with open(lockfile, "w", encoding="utf-8") as handle:
+            handle.write('{"lockfileVersion":3,"packages":{}}\n')
 
         params = {
             "trusted_ci_node_root": "runner_tool_cache",
@@ -241,12 +247,14 @@ def run_ci_markdownlint_resolver_fixtures(mod) -> tuple[bool, bool, bool, bool]:
             "trusted_ci_node_sha256": mod._sha256_file(node_path),
             "trusted_entrypoint_sha256": mod._sha256_file(entrypoint),
             "trusted_package_version": "0.47.0",
-            "trusted_package_tree_sha256": mod._sha256_directory(package_root),
+            "trusted_ci_install_root": ".github/tools/markdownlint",
+            "trusted_ci_lockfile_sha256": mod._sha256_file(lockfile),
         }
         trusted_env = {
             "GITHUB_ACTIONS": "true",
             "CI": "true",
             "RUNNER_TOOL_CACHE": runner_root,
+            "GITHUB_WORKSPACE": workspace,
         }
         version_result = subprocess.CompletedProcess(
             [node_path, "--version"], 0, "v24.21.0\n", ""
@@ -276,11 +284,21 @@ def run_ci_markdownlint_resolver_fixtures(mod) -> tuple[bool, bool, bool, bool]:
         linked_bin = os.path.join(runner_root, "linked-bin")
         link_created = make_directory_link(linked_bin, bin_dir)
         _, link_error = resolve(os.path.join(linked_bin, "node"), params, trusted_env)
+        outside_dependency = os.path.join(temp, "outside-dependency")
+        os.makedirs(outside_dependency)
+        linked_dependency = os.path.join(install_root, "node_modules", "linked-dependency")
+        dependency_link_created = make_directory_link(linked_dependency, outside_dependency)
+        _, dependency_link_error = resolve(node_path, params, trusted_env)
+        with open(lockfile, "a", encoding="utf-8") as handle:
+            handle.write("tampered\n")
+        _, lock_error = resolve(node_path, params, trusted_env)
         return (
             legitimate,
             "Node executable hash mismatch" in altered_error,
+            "lockfile hash mismatch" in lock_error,
             "restricted to GitHub Actions" in environment_error,
             link_created and ("crosses" in link_error or "link" in link_error),
+            dependency_link_created and "reparse" in dependency_link_error.lower(),
         )
 
 
@@ -494,13 +512,20 @@ def main() -> int:
     check("profile free-form command hook is rejected", malicious_rejected)
     check("validator rejects lexical junction before resolution", run_lexical_reparse_fixture(mod))
 
-    ci_legitimate, ci_hash_rejected, ci_env_rejected, ci_link_rejected = (
-        run_ci_markdownlint_resolver_fixtures(mod)
-    )
+    (
+        ci_legitimate,
+        ci_hash_rejected,
+        ci_lock_rejected,
+        ci_env_rejected,
+        ci_link_rejected,
+        ci_dependency_link_rejected,
+    ) = run_ci_markdownlint_resolver_fixtures(mod)
     check("VS015 CI resolver accepts exact pinned artifacts", ci_legitimate)
     check("VS015 CI resolver rejects altered Node executable", ci_hash_rejected)
+    check("VS015 CI resolver rejects altered dependency lockfile", ci_lock_rejected)
     check("VS015 CI resolver rejects spoofed CI environment", ci_env_rejected)
     check("VS015 CI resolver rejects linked Node path", ci_link_rejected)
+    check("VS015 CI resolver rejects linked sibling dependency", ci_dependency_link_rejected)
 
     # 7. VS036 must ignore target-config helper overrides and reject reparse paths.
     in_root_safe, traversal_safe = run_vs036_override_fixtures(mod)

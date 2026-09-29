@@ -86,8 +86,8 @@ def _sha256_file(path: str) -> str:
     return digest.hexdigest()
 
 
-def _sha256_directory(root: str) -> str:
-    """Hash a trusted package tree without following links or ambient paths."""
+def _trusted_directory_files(root: str) -> Tuple[Path, List[Path]]:
+    """List a trusted tree's files after rejecting links and reparse points."""
     root_path = Path(root)
     if not root_path.is_dir() or _is_reparse_point(str(root_path)):
         raise ValueError(f"trusted package root is missing or reparse-linked: {root}")
@@ -112,6 +112,12 @@ def _sha256_directory(root: str) -> str:
             if _is_reparse_point(str(file_path)):
                 raise ValueError(f"trusted package tree contains a reparse file: {file_path}")
             files.append(file_path)
+    return root_path, files
+
+
+def _sha256_directory(root: str) -> str:
+    """Hash a trusted package tree without following links or ambient paths."""
+    root_path, files = _trusted_directory_files(root)
     digest = hashlib.sha256()
     # Sort by the package-relative POSIX path. normcase() is platform-specific
     # (case-folding on Windows, identity on POSIX), so it gives the same tree a
@@ -186,7 +192,7 @@ def _resolve_trusted_markdownlint(params: Dict[str, Any]) -> List[str]:
 
 
 def _resolve_trusted_ci_markdownlint(params: Dict[str, Any]) -> List[str]:
-    """Resolve the pinned Markdownlint package installed by GitHub Actions."""
+    """Resolve Markdownlint installed from the repository's integrity-pinned lockfile."""
     if os.environ.get("GITHUB_ACTIONS", "").lower() != "true" or os.environ.get("CI", "").lower() != "true":
         raise ValueError("non-Windows markdownlint execution is restricted to GitHub Actions")
     if params.get("trusted_ci_node_root") != "runner_tool_cache":
@@ -215,9 +221,23 @@ def _resolve_trusted_ci_markdownlint(params: Dict[str, Any]) -> List[str]:
     if version_result.returncode != 0 or version_result.stdout.strip() != f"v{expected_version}":
         raise ValueError(f"trusted CI Node version must be {expected_version}")
 
-    install_prefix = Path(node_path).parent.parent
-    entrypoint = str(install_prefix / "lib" / "node_modules" / "markdownlint-cli" / "markdownlint.js")
-    if _has_reparse_component(entrypoint, str(install_prefix)) or not os.path.isfile(entrypoint):
+    workspace = os.environ.get("GITHUB_WORKSPACE")
+    if not workspace or _has_reparse_component(workspace, workspace):
+        raise ValueError("GitHub workspace is unavailable or link-routed")
+    install_root_token = params.get("trusted_ci_install_root")
+    if install_root_token != ".github/tools/markdownlint":
+        raise ValueError("CI markdownlint install root must be the approved repository path")
+    install_root = Path(workspace) / install_root_token
+    lockfile = install_root / "package-lock.json"
+    expected_lock = str(params.get("trusted_ci_lockfile_sha256", "")).lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_lock):
+        raise ValueError("trusted CI markdownlint lockfile hash is missing or malformed")
+    if not lockfile.is_file() or _has_reparse_component(str(lockfile), workspace):
+        raise ValueError("trusted CI markdownlint lockfile is unavailable or link-routed")
+    if _sha256_file(str(lockfile)) != expected_lock:
+        raise ValueError("trusted CI markdownlint lockfile hash mismatch")
+    entrypoint = str(install_root / "node_modules" / "markdownlint-cli" / "markdownlint.js")
+    if _has_reparse_component(entrypoint, workspace) or not os.path.isfile(entrypoint):
         raise ValueError("pinned CI markdownlint entrypoint is unavailable or link-routed")
     expected_entrypoint = str(params.get("trusted_entrypoint_sha256", "")).lower()
     if not re.fullmatch(r"[0-9a-f]{64}", expected_entrypoint):
@@ -225,8 +245,7 @@ def _resolve_trusted_ci_markdownlint(params: Dict[str, Any]) -> List[str]:
     if _sha256_file(entrypoint) != expected_entrypoint:
         raise ValueError("trusted markdownlint entrypoint hash mismatch")
 
-    package_root = str(Path(entrypoint).parent)
-    package_file = Path(package_root) / "package.json"
+    package_file = Path(entrypoint).parent / "package.json"
     if not package_file.is_file():
         raise ValueError("trusted markdownlint package metadata is missing")
     try:
@@ -235,11 +254,10 @@ def _resolve_trusted_ci_markdownlint(params: Dict[str, Any]) -> List[str]:
         raise ValueError("trusted markdownlint package metadata is unreadable") from exc
     if package.get("version") != params.get("trusted_package_version"):
         raise ValueError("trusted markdownlint package version mismatch")
-    expected_tree = str(params.get("trusted_package_tree_sha256", "")).lower()
-    if not re.fullmatch(r"[0-9a-f]{64}", expected_tree):
-        raise ValueError("trusted markdownlint package-tree hash is missing or malformed")
-    if _sha256_directory(package_root) != expected_tree:
-        raise ValueError("trusted markdownlint package-tree hash mismatch")
+    # npm ci validates each installed archive against the checked-in lockfile's
+    # integrity value. Validate every installed dependency for links too; a
+    # single portable tree digest is unsuitable for runner-installed packages.
+    _trusted_directory_files(str(install_root / "node_modules"))
     return [node_path, entrypoint]
 
 

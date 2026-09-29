@@ -41,6 +41,10 @@
 |   |-- PULL_REQUEST_TEMPLATE.md
 |   |-- copilot-instructions.md
 |   |-- dependabot.yml
+|   |-- tools/
+|   |   +-- markdownlint/
+|   |       |-- package-lock.json
+|   |       +-- package.json
 |   +-- workflows/
 |       +-- lint.yml
 |-- .gitignore
