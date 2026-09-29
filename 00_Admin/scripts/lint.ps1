@@ -16,6 +16,7 @@ $trustedMarkdownlintPackageSha256 = "21280478d4322f01e1e59b802a663b2d0c2a5d6ef26
 $trustedMarkdownlintVersion = "0.47.0"
 $trustedCiNodeVersion = "24.21.0"
 $trustedCiNodeSha256 = "7fde7b8afa198da66257f42ee2001d874c7355631e6d1579a5fb5ef1f246df4c"
+$trustedCiMarkdownlintLockSha256 = "6f7bb1e9a6ceb2f8c64a65abba98b08c670f3dc616d793011063d286a91e86da"
 
 function Test-WritableDirectory {
     param(
@@ -143,15 +144,45 @@ function Resolve-LinkFreeContainedPath {
     return $resolved
 }
 
+function Get-LfNormalizedSha256 {
+    param(
+        [Parameter(Mandatory = $true)][string] $Path
+    )
+
+    $text = [System.IO.File]::ReadAllText($Path)
+    $normalized = $text.Replace("`r`n", "`n")
+    $encoding = New-Object System.Text.UTF8Encoding($false)
+    $bytes = $encoding.GetBytes($normalized)
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $digest = $sha256.ComputeHash($bytes)
+        return ([System.BitConverter]::ToString($digest)).Replace("-", "").ToLowerInvariant()
+    }
+    finally {
+        $sha256.Dispose()
+    }
+}
+
 function Resolve-TrustedMarkdownlint {
     $isWindowsPlatform = [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
     if (-not $isWindowsPlatform) {
         if ($env:GITHUB_ACTIONS -ne "true" -or $env:CI -ne "true" -or [string]::IsNullOrWhiteSpace($env:RUNNER_TOOL_CACHE)) {
             throw "Non-Windows markdownlint execution is restricted to GitHub Actions."
         }
-        $nodeCommand = Get-Command node -CommandType Application -ErrorAction Stop
+        $nodeCommands = @(Get-Command node -CommandType Application -ErrorAction SilentlyContinue)
+        if ($nodeCommands.Count -eq 0) {
+            throw "Trusted CI Node command was not found."
+        }
+        # Follow PowerShell's normal PATH precedence, then validate that exact
+        # executable against RUNNER_TOOL_CACHE. Never fall through to another
+        # candidate after an out-of-root or hash failure.
+        $nodeCommand = $nodeCommands[0]
+        $nodeCommandPath = [string]$nodeCommand.Path
+        if ([string]::IsNullOrWhiteSpace($nodeCommandPath)) {
+            throw "Trusted CI Node command has no resolved executable path."
+        }
         $runnerRoot = (Resolve-Path -LiteralPath $env:RUNNER_TOOL_CACHE).Path
-        $nodePath = Resolve-LinkFreeContainedPath -Path $nodeCommand.Source -Root $runnerRoot
+        $nodePath = Resolve-LinkFreeContainedPath -Path $nodeCommandPath -Root $runnerRoot
         if ((Get-FileHash -LiteralPath $nodePath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $trustedCiNodeSha256) {
             throw "Trusted CI Node executable hash mismatch."
         }
@@ -159,9 +190,39 @@ function Resolve-TrustedMarkdownlint {
         if ($LASTEXITCODE -ne 0 -or $nodeVersion -ne "v$trustedCiNodeVersion") {
             throw "Trusted CI Node version must be $trustedCiNodeVersion."
         }
-        $installPrefix = Split-Path -Parent (Split-Path -Parent $nodePath)
-        $entrypoint = Resolve-LinkFreeContainedPath -Path (Join-Path $installPrefix "lib/node_modules/markdownlint-cli/markdownlint.js") -Root $installPrefix
-        $packageJson = Resolve-LinkFreeContainedPath -Path (Join-Path (Split-Path -Parent $entrypoint) "package.json") -Root $installPrefix
+        $workspaceRoot = (Resolve-Path -LiteralPath $repoRoot).Path
+        $lockfile = Resolve-LinkFreeContainedPath -Path (Join-Path $workspaceRoot ".github/tools/markdownlint/package-lock.json") -Root $workspaceRoot
+        $lockHash = Get-LfNormalizedSha256 -Path $lockfile
+        if ($lockHash -ne $trustedCiMarkdownlintLockSha256) {
+            throw "Trusted CI markdownlint lockfile hash mismatch."
+        }
+        $installRoot = Join-Path $workspaceRoot ".github/tools/markdownlint"
+        $entrypoint = Resolve-LinkFreeContainedPath -Path (Join-Path $installRoot "node_modules/markdownlint-cli/markdownlint.js") -Root $workspaceRoot
+        $packageJson = Resolve-LinkFreeContainedPath -Path (Join-Path (Split-Path -Parent $entrypoint) "package.json") -Root $workspaceRoot
+        $dependencyRoot = Join-Path $installRoot "node_modules"
+        $dependencyRootItem = Get-Item -LiteralPath $dependencyRoot -Force -ErrorAction Stop
+        if ($dependencyRootItem.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+            throw "Trusted CI markdownlint dependency root is a link: $dependencyRoot"
+        }
+        $pendingDirectories = New-Object 'System.Collections.Generic.Stack[string]'
+        $pendingDirectories.Push($dependencyRoot)
+        while ($pendingDirectories.Count -gt 0) {
+            $currentDirectory = $pendingDirectories.Pop()
+            foreach ($dependencyItem in (Get-ChildItem -LiteralPath $currentDirectory -Force -ErrorAction Stop)) {
+                if ($dependencyItem.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+                    throw "Trusted CI markdownlint dependency tree contains a link: $($dependencyItem.FullName)"
+                }
+                if ($dependencyItem.PSIsContainer) {
+                    if ($dependencyItem.Name -eq ".bin" -and (Split-Path -Leaf (Split-Path -Parent $dependencyItem.FullName)) -eq "node_modules") {
+                        # npm generates platform-specific command shims here.
+                        # The .bin directory itself was checked above; mirror
+                        # the validator by excluding only its contents.
+                        continue
+                    }
+                    $pendingDirectories.Push($dependencyItem.FullName)
+                }
+            }
+        }
         if ((Get-FileHash -LiteralPath $entrypoint -Algorithm SHA256).Hash.ToLowerInvariant() -ne $trustedMarkdownlintSha256) {
             throw "Trusted CI markdownlint entrypoint hash mismatch."
         }
