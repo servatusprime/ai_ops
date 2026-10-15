@@ -205,7 +205,7 @@ invocation cannot substitute for this final approval.
      Absolute `path` values are compared directly; relative values (e.g. `my_project/`)
      are joined with the workspace root before comparing. Read its `savepoint_validation` key.
      If no matching entry exists, record `validation_commands_run: []` and proceed.
-   - Run `minimum_commands` sequentially against `<repo_root>`.
+   - First run `python <ai_ops_root>/00_Admin/scripts/op_validate_config.py <ai_ops_root>/.ai_ops/local/config.yaml` and stop if it fails. Treat each `minimum_commands` entry as a validated argv array, never a shell string; execute it sequentially with `shell=False`, `cwd=<repo_root>`, and no command interpolation. Use the same trusted Python runtime that passed validation; never re-resolve a bare executable through a changed `PATH`. Reject an entry containing shell metacharacters, an unapproved executable, or a path outside `<repo_root>` / the workspace.
    - For commands in `network_sensitive_commands`: if a network/sandbox error occurs,
      retry once; if still failing, record `validation_skipped_reason` and skip
      if `allow_partial_on_network_failure: true`. Record `validation_escalated: true`.

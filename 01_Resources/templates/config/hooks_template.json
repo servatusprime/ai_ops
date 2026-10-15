@@ -1,5 +1,5 @@
 {
-  "_comment": "ai_ops hooks template. Copy content into .claude/settings.local.json at workspace root. SessionStart is read-only; PreToolUse is advisory. The dynamic PostToolUse npx Markdown hook is intentionally disabled pending an integrity-controlled local replacement.",
+  "_comment": "ai_ops hooks template. Copy content into .claude/settings.local.json at workspace root. SessionStart is read-only; PreToolUse includes the owner-applied blocking workspace guard plus an advisory Level 4 warning. The dynamic PostToolUse npx Markdown hook is intentionally disabled pending an integrity-controlled local replacement.",
   "permissions": {
     "allow": [
       "Bash(bash .ai_ops/setup/*.sh:*)",
@@ -9,11 +9,20 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|Write",
+        "matcher": "Edit|Write|NotebookEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "if echo \"$CLAUDE_TOOL_INPUT_FILE_PATH\" | grep -qE '(00_Admin/(policies|specs|configs)/|AGENTS\\.md|CONTRIBUTING\\.md|\\.ai_ops/workflows/)'; then echo \"[GOVERNANCE GUARD] Level 4 path detected: $CLAUDE_TOOL_INPUT_FILE_PATH — verify explicit L4 approval exists before proceeding.\"; fi; exit 0"
+            "command": "python -c \"import json,sys; p=json.load(sys.stdin).get('tool_input',{}).get('file_path',''); print('[GOVERNANCE GUARD] Level 4 path detected: '+p+' — verify explicit L4 approval exists before proceeding.') if any(x in p.replace('\\\\','/') for x in ('00_Admin/policies/','00_Admin/specs/','00_Admin/configs/','AGENTS.md','CONTRIBUTING.md','.ai_ops/workflows/')) else None\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python ai_ops/00_Admin/scripts/hooks/guard_workspace_writes.py --workspace-root . --config ai_ops/00_Admin/configs/workspace_containment.yaml --config-sha256 722349A58218FE2CF9363F89067C12366F6CB9E20EF78704C14B7BA2DCDC9AE1"
           }
         ]
       }

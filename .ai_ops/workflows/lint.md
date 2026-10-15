@@ -87,6 +87,9 @@ lint-specific branching.
   If no matching entry exists, record `validation_commands_run: []` and report.
   Do NOT claim the governed repo is lint-ready until at least one validator is confirmed
   discovered and run.
+  Before any configured validator runs, execute `op_validate_config.py` against the
+  local config and require `minimum_commands` to be shell-free argv arrays with
+  allowlisted executables and workspace-contained paths.
 - If `governed_mode: repo_native`, detect and run the repo's configured validators/linters
   (`.markdownlint.json`, `.yamllint`, `ruff.toml`, `.pre-commit-config.yaml`).
   Require explicit confirmation that validator discovery succeeded before reporting pass.

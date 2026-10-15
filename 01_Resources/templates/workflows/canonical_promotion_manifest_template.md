@@ -22,7 +22,7 @@ description: Reviewable source-to-canonical promotion, validation, rollback, and
 
 Complete this block for each canonical artifact that is promoted in this batch
 AND is depended-upon by later phases in the same session before a standalone
-commit (see `/closeout` Step 6 promote-forward clause).
+commit (see `/closeout` Step 7 promote-forward clause).
 
 ```yaml
 promote_forward_contract:

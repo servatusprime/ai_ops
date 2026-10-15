@@ -99,7 +99,7 @@ execute them only after the explicit approval and scope gates below pass:
 | push | `git -C <repo> push <approved remote> <approved branch>` | separate push approval |
 
 Resolve the repository, remote, branch, and include paths before invocation.
-Reject shell metacharacters, force/delete options, reparse paths, detached
+Reject shell metacharacters, force/delete options, `--no-verify`, reparse paths, detached
 heads, and any command assembled from free-form workflow text. A closeout
 state, hook, or generated wrapper cannot substitute for the operator approval.
 
@@ -200,7 +200,42 @@ state, hook, or generated wrapper cannot substitute for the operator approval.
     resolve the defect, and rerun completion crosscheck.
 14. Verify every operator decision row has decision, rationale, date, and actor;
     pending rows block closeout and convergence claims.
-15. Evaluate commit gate explicitly:
+15. **Container completion check (Workbundle/Workprogram):**
+
+    - **If inside a Workbundle:**
+      - Check if all workbooks in the workbundle are `completed`.
+      - If yes, prompt: "All workbooks in this workbundle are complete. Archive the entire workbundle to 99_Trash?"
+      - If no, report which workbooks remain incomplete.
+    - **If inside a Workprogram:**
+      - Check if all child workbundles/workbooks are `completed` or `archived`.
+      - If yes, prompt: "All items in this workprogram are complete. Archive the entire workprogram to 99_Trash?"
+
+16. Archive completed work artifacts to `99_Trash/`:
+    - Completed solitary workbook → move to Trash
+    - Completed workbundle (all workbooks complete, user confirmed) → move workbundle folder to Trash
+    - Completed workprogram (all workbundles complete) → move workprogram folder to Trash
+    - Partially complete artifacts → leave in place
+17. After relocation/archive actions, run stale-reference checks on touched
+    docs/indexes and fix or report broken references before staging.
+18. Update approval/validation log evidence required by policy or the active
+    workbook so the shipped commit contains the final archive paths and review
+    gate traceability.
+    Re-run the configured validation checks after all archive, stale-reference,
+    and log mutations; the final security receipt is built only from that
+    post-mutation state.
+19. Run the closeout security admission gate:
+    - Freeze the final include set after archive and stale-reference updates.
+    - Run the configured security pre-pass, then have the assigned reviewer read
+      every included file in full; use the diff only to locate the change.
+      Apply the configured T0/T1/T2 tier and token caps, and record the
+      reviewer packet and machine-local receipt.
+    - Do not stage until the separate commit approval names the final include
+      set. After approval, stage only that set and run the receipt validator
+      against staged blobs. A missing row, hash drift, incomplete full-file
+      coverage, unresolved candidate, or non-pass disposition blocks closeout.
+    - Include the validated `Closeout-Security` result in the commit message;
+      the installed pre-commit and commit-msg hooks recheck the staged bytes.
+20. Evaluate commit gate explicitly:
 
     - If required configured checks exist, all must pass before commit.
     - Require an explicit operator approval that names the final `include` set,
@@ -213,31 +248,11 @@ state, hook, or generated wrapper cannot substitute for the operator approval.
     - If any required check fails, stop closeout and transition to `/work` for
       remediation.
 
-16. **Container completion check (Workbundle/Workprogram):**
-
-    - **If inside a Workbundle:**
-      - Check if all workbooks in the workbundle are `completed`.
-      - If yes, prompt: "All workbooks in this workbundle are complete. Archive the entire workbundle to 99_Trash?"
-      - If no, report which workbooks remain incomplete.
-    - **If inside a Workprogram:**
-      - Check if all child workbundles/workbooks are `completed` or `archived`.
-      - If yes, prompt: "All items in this workprogram are complete. Archive the entire workprogram to 99_Trash?"
-
-17. Archive completed work artifacts to `99_Trash/`:
-    - Completed solitary workbook → move to Trash
-    - Completed workbundle (all workbooks complete, user confirmed) → move workbundle folder to Trash
-    - Completed workprogram (all workbundles complete) → move workprogram folder to Trash
-    - Partially complete artifacts → leave in place
-18. After relocation/archive actions, run stale-reference checks on touched
-    docs/indexes and fix or report broken references before staging.
-19. Update approval/validation log evidence required by policy or the active
-    workbook so the shipped commit contains the final archive paths and review
-    gate traceability.
-20. Stage changes and generate commit message summary.
-21. Commit with turbo authorization only when the commit gate passed and no
+21. Stage changes and generate commit message summary.
+22. Commit with turbo authorization only when the commit gate passed and no
     explicit user hold was given.
-22. Push to remote.
-23. Confirm closeout complete with summary of changes shipped.
+23. Push to remote.
+24. Confirm closeout complete with summary of changes shipped.
 
 ### External Repo (User)
 
@@ -263,22 +278,28 @@ state, hook, or generated wrapper cannot substitute for the operator approval.
    - Read per-repo override: find the entry in `workspace.work_repos` whose `path`, when resolved relative
      to the workspace root, matches `<target_repo>`, and read its `savepoint_validation.minimum_commands`.
      If no matching entry exists, use `governed_repo_validation.minimum_commands` only.
-   - If `governed_mode: ai_ops`: run each command in `minimum_commands` sequentially against `<repo_root>`.
+   - If `governed_mode: ai_ops`: first run `python <ai_ops_root>/00_Admin/scripts/op_validate_config.py <ai_ops_root>/.ai_ops/local/config.yaml` and stop if it fails. Treat each `minimum_commands` entry as a validated argv array, never a shell string; execute it sequentially with `shell=False`, `cwd=<repo_root>`, and no command interpolation. Use the same trusted Python runtime that passed validation; never re-resolve a bare executable through a changed `PATH`. Reject an entry containing shell metacharacters, an unapproved executable, or a path outside `<repo_root>` / the workspace.
      For commands in `network_sensitive_commands`: retry once on network/sandbox error; if still failing,
      record `validation_skipped_reason` and skip if `allow_partial_on_network_failure: true`.
      Record `validation_escalated: true` if any command was skipped.
    - If `governed_mode: repo_native`: detect repo-native linters (`.markdownlint.json`, `.yamllint`,
      pre-commit hooks) and run them. If none configured, offer to run common linters.
    - Record `validation_commands_run` in output.
-7. Stage changes and generate commit message summary.
-8. **Push Preflight** (if push is planned): verify `push_preflight_result` from Step 3 is `clean` or `shallow_clone`. If `detached_head`, stop before commit.
-9. Commit.
-10. **Push and failure handling**: Push to remote.
+7. Run the closeout security admission gate on the explicit external-repo
+   include manifest: read every included file in full, run the configured
+   tiered review and token cap, write the machine-local receipt, stage only the
+   manifest paths, and validate the staged blobs. Missing coverage, hash drift,
+   unresolved candidates, or a non-pass disposition blocks closeout.
+8. Stage changes and generate the commit message summary, including the
+   validated `Closeout-Security` trailer result.
+9. **Push Preflight** (if push is planned): verify `push_preflight_result` from Step 3 is `clean` or `shallow_clone`. If `detached_head`, stop before commit.
+10. Commit.
+11. **Push and failure handling**: Push to remote.
     - If push fails with `protected branch` or `remote rejected`: emit `push_escalation: pr_required` — create a PR against `<default_branch>` instead.
     - If push fails with authentication error: emit `push_escalation: auth_failure` — stop and report.
     - If push fails for any other reason: record exit code and stderr as `push_escalation: unknown` — stop and report.
-11. Summarize changes shipped.
-12. If the target repo implements a future-work registry + scorecard pattern,
+12. Summarize changes shipped.
+13. If the target repo implements a future-work registry + scorecard pattern,
     run that repo's generator only when the target registry changed in approved scope.
 
 ## Outputs

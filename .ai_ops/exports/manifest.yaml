@@ -15,11 +15,9 @@ targets:
 - codex
 - plugin
 generation_targets:
-- claude
-- codex
 - plugin
 workflow_count: 13
-output_count: 65
+output_count: 26
 manifest_output_count: 65
 workflows:
 - workflow: ai_ops_setup
@@ -65,7 +63,7 @@ workflows:
     sha256_12: 6bec19573c50
 - workflow: closeout
   source: .ai_ops/workflows/closeout.md
-  source_sha256_12: a435db0135b5
+  source_sha256_12: 78ad2e64f98b
   description: Finalize a work session with cleanup, lint, review, and approval-gated
     commit/push publication.
   outputs:
@@ -166,7 +164,7 @@ workflows:
     sha256_12: b0e04ceddb9e
 - workflow: lint
   source: .ai_ops/workflows/lint.md
-  source_sha256_12: 6488bfa6e18c
+  source_sha256_12: ad9d9384157a
   description: Run configured validators and linters against a target scope and report
     findings without modifying files.
   outputs:
@@ -248,7 +246,7 @@ workflows:
     sha256_12: faca4d486bb7
 - workflow: work_savepoint
   source: .ai_ops/workflows/work_savepoint.md
-  source_sha256_12: 0c7eaa3a2711
+  source_sha256_12: acc232603f8c
   description: Validate, commit, and push a scoped work-in-progress savepoint after
     explicit final approval.
   outputs:

@@ -259,6 +259,8 @@ command text: they cannot
 fully control operations performed through broadly allowed interpreters,
 alternate executable paths, or unrecognized wrappers. They provide an
 interactive approval layer; the human commit/push gate remains authoritative.
+File-write adapters may deny paths outside the workspace root; the guard hook
+joins the overlay allowlist.
 The settings synchronizer must reject workspace escapes, reparse points, and
 prompt-gated Git mutation/network additions before it writes, and must preserve the template's
 allow, ask, and deny rules.
