@@ -139,36 +139,11 @@ if defined has_entries if "!assume_yes!"=="0" if not "!force!"=="1" (
   )
 )
 
-REM Create .ai_ops\local\work_state.yaml if it doesn't already exist (idempotent)
-set "WORK_STATE_FILE=%REPO_ROOT%\.ai_ops\local\work_state.yaml"
-if "!dry_run!"=="1" (
-  if not exist "!WORK_STATE_FILE!" (
-    echo [dry-run] Would create: !WORK_STATE_FILE!
-  )
-) else (
-  if not exist "!WORK_STATE_FILE!" (
-    if not exist "%REPO_ROOT%\.ai_ops\local" mkdir "%REPO_ROOT%\.ai_ops\local"
-    (
-      echo # ai_ops work state ? machine-local, gitignored.
-      echo # Written by /work and /closeout. Never commit.
-      echo schema_version: "1.0.0"
-      echo work_context:
-      echo   active_artifacts: []
-      echo   updated_at: null
-      echo   checkpoints: []
-      echo telemetry:
-      echo   last_bootstrap_mode: null
-      echo   last_context_refresh: null
-    ) > "!WORK_STATE_FILE!"
-    echo Created .ai_ops\local\work_state.yaml ^(empty initial state^).
-  )
-)
-
 REM Both scopes route through the real generator; --install-root lets
 REM workspace scope use the same full-field renderer as repo scope. The
-REM fallback writer below remains only for environments without Python or the
-REM generator is unavailable.
+REM setup fails closed when the generator is unavailable.
 set "ran_generator=0"
+set "generator_failed=0"
 if exist "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" (
   where python >nul 2>&1
   if not errorlevel 1 (
@@ -185,8 +160,11 @@ if exist "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" (
         python "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" --targets plugin claude
       )
     )
-    if not errorlevel 1 (
+    set "generator_status=!ERRORLEVEL!"
+    if "!generator_status!"=="0" (
       set "ran_generator=1"
+    ) else (
+      set "generator_failed=1"
     )
   )
 )
@@ -201,53 +179,15 @@ if "!ran_generator!"=="1" (
   exit /b 0
 )
 
-echo Generator unavailable; falling back to local wrapper creation path.
-
-for %%f in (!WORKFLOW_DIR!\*.md) do (
-  set "skill_name=%%~nf"
-  set "skill_dir=!INSTALL_TARGET!\!skill_name!"
-  set "write_skill=1"
-
-  if exist "!skill_dir!\SKILL.md" (
-    if "!force!"=="0" (
-      echo Skip existing: !skill_dir!
-      set "write_skill=0"
-    )
-  )
-
-  if "!write_skill!"=="1" (
-    if "!dry_run!"=="1" (
-      echo Would create: !skill_dir!\SKILL.md
-    ) else (
-      mkdir "!skill_dir!" 2>nul
-
-      REM Extract description from frontmatter (first match only)
-      set "desc="
-      for /f "tokens=1,* delims=:" %%a in ('findstr /B "description:" "%%f"') do (
-        if not defined desc set "desc=%%b"
-      )
-      if not defined desc set "desc= Run ai_ops workflow !skill_name!"
-
-      > "!skill_dir!\SKILL.md" (
-        echo ---
-        echo name: !skill_name!
-        echo description:!desc!
-        echo ---
-        echo.
-        echo Read `!WORKFLOW_REL!/!skill_name!.md` and follow its instructions.
-      )
-      echo Created: !skill_dir!
-    )
-  )
+if "!generator_failed!"=="1" (
+  echo Generator refused the setup request; no fallback writes will be attempted.
+  endlocal
+  exit /b 1
 )
 
-echo.
-echo Installed skills to !INSTALL_TARGET!.
-echo Skills are now available as /work, /health, /closeout, etc.
-echo.
-
+echo Generator unavailable; refusing fallback writes because the generated export is authoritative.
 endlocal
-exit /b 0
+exit /b 127
 
 :usage
 echo Usage:

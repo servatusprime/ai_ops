@@ -1,0 +1,15 @@
+version: 0.1.0
+workspace:
+  temp_root: "<workspace-root>/tmp"
+overlay_allowlist:
+  allow:
+    - "Bash(bash .ai_ops/setup/*.sh:*)"
+    - "Bash(bash ai_ops/.ai_ops/setup/*.sh:*)"
+harness_exceptions:
+  - id: claude-project-memory
+    path: "<user-profile>/.claude/projects/<workspace-project>/memory"
+    reason: "Claude per-project memory folder derived from the workspace root; the only retained harness exception"
+escape_root_signatures:
+  - "<os-temp>/ai_ops"
+  - "<os-temp>/pytest-of-*"
+  - "C:/tmp"

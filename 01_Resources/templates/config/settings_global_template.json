@@ -3,8 +3,7 @@
   "_comment_permissions": "Git -C, push/commit/reset/checkout/clean/rm, network and remote Git operations, gh, curl, and PowerShell commands use Claude Code ask rules. These prompts are command-text controls, not an OS boundary; broadly allowed interpreters and alternate executable spellings remain outside their full control. The human commit/push gate remains authoritative.",
   "additionalDirectories": [
     "<workspace-root>\\ai_ops\\.claude\\skills",
-    "<workspace-root>\\.claude\\skills",
-    "<workspace-root>\\ai_ops\\.git\\hooks"
+    "<workspace-root>\\.claude\\skills"
   ],
   "effortLevel": "high",
   "permissions": {

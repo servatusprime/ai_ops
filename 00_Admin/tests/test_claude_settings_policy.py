@@ -5,6 +5,7 @@ from __future__ import annotations
 import fnmatch
 import importlib.util
 import json
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -183,6 +184,46 @@ class ClaudeSettingsPolicyTests(unittest.TestCase):
         self.assertIn("Bash(local-secret-reader:*)", perms["deny"])
         self.assertEqual(merged["projectSetting"], {"preserve": True})
 
+    def test_overlay_allowlist_rejects_shell_and_absolute_path_additions(self) -> None:
+        script = ROOT / "00_Admin" / "scripts" / "sync_claude_settings.py"
+        spec = importlib.util.spec_from_file_location("sync_claude_settings_overlay_guard", script)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        allowlist = {
+            "Bash(bash .ai_ops/setup/*.sh:*)",
+            "Bash(bash ai_ops/.ai_ops/setup/*.sh:*)",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            settings = root / ".claude" / "settings.json"
+            overlay = settings.parent / "settings.local.json"
+            settings.parent.mkdir()
+            settings.write_text("{}", encoding="utf-8")
+            overlay.write_text(
+                json.dumps({"permissions": {"allow": [
+                    "Bash(bash .ai_ops/setup/*.sh:*)",
+                    "Bash(python -:*)",
+                    "Bash(sed -i:*)",
+                    "Bash(/c/tmp/*:*)",
+                ]}}),
+                encoding="utf-8",
+            )
+            drift = module.check_overlay(settings, root, allowlist)
+            self.assertEqual(len(drift), 1)
+            self.assertIn("Bash(python -:*)", drift[0])
+            self.assertIn("Bash(sed -i:*)", drift[0])
+            self.assertIn("Bash(/c/tmp/*:*)", drift[0])
+            overlay.write_text(
+                json.dumps({"permissions": {"allow": [
+                    "Bash(bash .ai_ops/setup/*.sh:*)",
+                    "Bash(bash ai_ops/.ai_ops/setup/*.sh:*)",
+                ]}}),
+                encoding="utf-8",
+            )
+            self.assertEqual(module.check_overlay(settings, root, allowlist), [])
+
     def test_workspace_template_and_current_project_target_have_no_permission_drift(self) -> None:
         script = ROOT / "00_Admin" / "scripts" / "sync_claude_settings.py"
         spec = importlib.util.spec_from_file_location("sync_claude_settings_drift", script)
@@ -212,6 +253,34 @@ class ClaudeSettingsPolicyTests(unittest.TestCase):
                 )
                 self.assertIn(status, {module.STATUS_LOCAL_ADDS, module.STATUS_CLEAN}, drift)
                 self.assertEqual(drift, [])
+
+    def test_bulk_target_rejects_reparse_point_parent(self) -> None:
+        script = ROOT / "00_Admin" / "scripts" / "sync_claude_settings.py"
+        spec = importlib.util.spec_from_file_location("sync_claude_settings_reparse", script)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = Path(temp_dir) / "workspace"
+            repo = workspace / "repo"
+            external = Path(temp_dir) / "external"
+            repo.mkdir(parents=True)
+            external.mkdir()
+            link = repo / ".claude"
+            try:
+                link.symlink_to(external, target_is_directory=True)
+            except (OSError, NotImplementedError) as exc:
+                self.skipTest(f"symlink creation unavailable: {exc}")
+
+            with self.assertRaises(ValueError):
+                module.resolve_trusted(
+                    repo / ".claude" / "settings.json",
+                    repo,
+                    label="settings target",
+                    must_exist=False,
+                )
 
 if __name__ == "__main__":
     unittest.main()

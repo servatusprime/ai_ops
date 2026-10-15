@@ -60,6 +60,7 @@ DEFAULT_TEMPLATE = Path(
 )
 DEFAULT_TARGET = Path(".claude/settings.json")
 DEFAULT_CONFIG = Path("ai_ops/.ai_ops/local/config.yaml")
+DEFAULT_CONTAINMENT_CONFIG = Path("ai_ops/00_Admin/configs/workspace_containment.yaml")
 
 STATUS_CLEAN = "clean"            # all template entries present, no extra allows
 STATUS_LOCAL_ADDS = "local_adds"  # all template entries present, has extra allows
@@ -95,13 +96,16 @@ def assert_no_reparse_components(path: Path, root: Path, label: str) -> None:
     current = trusted
     for part in relative.parts:
         current = current / part
-        if current.exists() and is_reparse(current):
+        if os.path.lexists(os.fspath(current)) and is_reparse(current):
             raise ValueError(f"{label} crosses a symlink/reparse point: {path}")
 
 
 def resolve_trusted(path: str | Path, root: Path, *, label: str, must_exist: bool = False) -> Path:
     """Resolve a target while refusing workspace escapes and reparse paths."""
-    trusted = root.resolve(strict=True)
+    lexical_root = Path(os.path.abspath(os.fspath(root)))
+    if is_reparse(lexical_root):
+        raise ValueError(f"trusted root is a symlink/reparse point: {root}")
+    trusted = lexical_root.resolve(strict=True)
     candidate = Path(path)
     lexical = candidate if candidate.is_absolute() else trusted / candidate
     resolved = lexical.resolve(strict=False)
@@ -146,6 +150,42 @@ def extract_permissions(data: dict) -> tuple[list, list, list]:
     ask = [e for e in perms.get("ask", []) if isinstance(e, str)]
     deny = [e for e in perms.get("deny", []) if isinstance(e, str)]
     return allow, ask, deny
+
+
+def load_overlay_allowlist(path: Path) -> set[str]:
+    """Load the small, data-only allowlist for project-local overlays."""
+    try:
+        import yaml
+    except ImportError as exc:  # pragma: no cover - environment dependency
+        raise ValueError("PyYAML is required to validate settings.local.json") from exc
+    with path.open(encoding="utf-8") as stream:
+        data = yaml.safe_load(stream) or {}
+    rules = data.get("overlay_allowlist", {}).get("allow", [])
+    if not isinstance(rules, list) or not all(isinstance(rule, str) for rule in rules):
+        raise ValueError(f"overlay_allowlist.allow must be a string list: {path}")
+    return set(rules)
+
+
+def check_overlay(
+    settings_path: Path, trusted_root: Path, allowlist: set[str]
+) -> list[str]:
+    """Return drift lines for an existing settings.local.json overlay."""
+    overlay = resolve_trusted(
+        settings_path.parent / "settings.local.json",
+        trusted_root,
+        label="settings overlay",
+        must_exist=False,
+    )
+    if not overlay.exists():
+        return []
+    allow, _ask, _deny = extract_permissions(load_json(overlay))
+    extra = [rule for rule in allow if rule not in allowlist]
+    if not extra:
+        return []
+    return [
+        f"  overlay allowlist additions ({len(extra)}):\n"
+        + "\n".join(f"    {rule}" for rule in extra)
+    ]
 
 
 def merge_deny(template_deny: list, target_deny: list) -> list:
@@ -264,9 +304,13 @@ def build_merged(
     return result
 
 
-def write_target(path: Path, merged: dict) -> None:
-    """Atomically replace a trusted settings file with JSON."""
+def write_target(path: Path, merged: dict, *, trusted_root: Path) -> None:
+    """Atomically replace a target after re-validating its full parent chain."""
+    path = resolve_trusted(path, trusted_root, label="settings target", must_exist=False)
     path.parent.mkdir(parents=True, exist_ok=True)
+    # Re-check after parent creation and immediately before the temporary-file
+    # write so a derived child such as `.claude` cannot redirect the operation.
+    path = resolve_trusted(path, trusted_root, label="settings target", must_exist=False)
     if path.exists() and is_reparse(path):
         raise ValueError(f"refusing to replace symlink/reparse settings file: {path}")
     temp_name: str | None = None
@@ -317,14 +361,15 @@ def load_work_repos(config_path: Path, workspace_root: Path) -> list[Path]:
 
 
 def run_check(
-    targets: list[tuple[str, Path]],
+    targets: list[tuple[str, Path, Path]],
     template_allow: list,
     template_ask: list,
     template_deny: list,
+    overlay_allowlist: set[str],
 ) -> int:
     """Run --check against all targets. Return 0 if no drift, 1 if drift or error."""
     any_drift = False
-    for label, settings_path in targets:
+    for label, settings_path, trusted_root in targets:
         LOG.info("Target : %s", label)
         LOG.info("Path   : %s", settings_path)
         if not settings_path.exists():
@@ -342,6 +387,10 @@ def run_check(
         status, drift_lines, local_add_lines = check_target(
             template_allow, template_ask, template_deny, target_data
         )
+        overlay_drift = check_overlay(settings_path, trusted_root, overlay_allowlist)
+        drift_lines.extend(overlay_drift)
+        if overlay_drift:
+            status = STATUS_DRIFT
         LOG.info("Status : %s", status)
         for line in drift_lines:
             LOG.info("%s", line)
@@ -355,7 +404,7 @@ def run_check(
 
 
 def run_write(
-    targets: list[tuple[str, Path]],
+    targets: list[tuple[str, Path, Path]],
     template_allow: list,
     template_ask: list,
     template_deny: list,
@@ -364,7 +413,7 @@ def run_write(
 ) -> int:
     """Run --write against all targets. Return 0 on success, 1 on error."""
     any_error = False
-    for label, settings_path in targets:
+    for label, settings_path, trusted_root in targets:
         LOG.info("Target : %s", label)
         LOG.info("Path   : %s", settings_path)
         existing = load_json(settings_path)
@@ -372,7 +421,7 @@ def run_write(
             merged = build_merged(
                 template_allow, template_ask, template_deny, existing, strict=strict
             )
-            write_target(settings_path, merged)
+            write_target(settings_path, merged, trusted_root=trusted_root)
         except Exception as exc:  # noqa: BLE001
             LOG.error("Status : %s — %s", STATUS_ERROR, exc)
             any_error = True
@@ -397,24 +446,30 @@ def run_write(
 def resolve_targets(
     args: argparse.Namespace,
     root: Path,
-) -> list[tuple[str, Path]]:
+) -> list[tuple[str, Path, Path]]:
     """Return list of (label, settings_path) for all targets."""
     if args.all:
         config_path = resolve(args.config, root)
         LOG.debug("Config : %s", config_path)
         work_repos = load_work_repos(config_path, root)
-        targets: list[tuple[str, Path]] = [
-            ("workspace", resolve(DEFAULT_TARGET, root))
+        targets: list[tuple[str, Path, Path]] = [
+            ("workspace", resolve(DEFAULT_TARGET, root), root)
         ]
         for repo_root in work_repos:
             try:
                 label = str(repo_root.relative_to(root))
             except ValueError:
                 label = str(repo_root)
-            targets.append((label, repo_root / ".claude" / "settings.json"))
+            target = resolve_trusted(
+                repo_root / ".claude" / "settings.json",
+                repo_root,
+                label=f"{label} settings target",
+                must_exist=False,
+            )
+            targets.append((label, target, repo_root))
         return targets
 
-    return [("target", resolve(args.target, root))]
+    return [("target", resolve(args.target, root), root)]
 
 
 def parse_args() -> argparse.Namespace:
@@ -471,7 +526,15 @@ def main() -> int:
     args = parse_args()
     setup_logging(verbose=args.verbose)
 
-    root = Path(args.workspace_root).resolve()
+    root_lexical = Path(os.path.abspath(os.fspath(Path(args.workspace_root))))
+    if is_reparse(root_lexical):
+        LOG.error("ERROR: refusing a symlink/reparse workspace root: %s", root_lexical)
+        return 1
+    try:
+        root = root_lexical.resolve(strict=True)
+    except OSError as exc:
+        LOG.error("ERROR: workspace root could not be resolved: %s", exc)
+        return 1
     try:
         template_path = resolve(args.template, root)
     except (ValueError, FileNotFoundError) as exc:
@@ -495,7 +558,18 @@ def main() -> int:
         return 1
 
     if args.check:
-        return run_check(targets, template_allow, template_ask, template_deny)
+        containment_path = resolve(DEFAULT_CONTAINMENT_CONFIG, root)
+        if not containment_path.exists():
+            LOG.error("ERROR: containment config not found: %s", containment_path)
+            return 1
+        try:
+            overlay_allowlist = load_overlay_allowlist(containment_path)
+        except Exception as exc:  # noqa: BLE001 - fail closed on config parsing
+            LOG.error("ERROR: invalid containment config: %s", exc)
+            return 1
+        return run_check(
+            targets, template_allow, template_ask, template_deny, overlay_allowlist
+        )
     return run_write(
         targets, template_allow, template_ask, template_deny, strict=args.strict
     )

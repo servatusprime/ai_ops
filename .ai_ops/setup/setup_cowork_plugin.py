@@ -20,6 +20,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--skills-root", required=True)
     parser.add_argument("--manifest", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace an existing .plugin output after all safety checks.",
+    )
     return parser.parse_args()
 
 
@@ -42,7 +47,7 @@ def _assert_no_reparse_components(path: pathlib.Path, root: pathlib.Path, label:
     current = trusted
     for part in relative.parts:
         current = current / part
-        if current.exists() and _is_reparse(current):
+        if os.path.lexists(os.fspath(current)) and _is_reparse(current):
             raise ValueError(f"{label} crosses a symlink/reparse point: {path}")
 
 
@@ -61,6 +66,24 @@ def _inside(path: pathlib.Path, root: pathlib.Path, *, label: str, must_exist: b
     return resolved
 
 
+def _install_output(temp_name: str, output_path: pathlib.Path, *, force: bool) -> None:
+    """Install a completed package with exclusive creation by default."""
+    if force:
+        if output_path.exists() and _is_reparse(output_path):
+            raise ValueError("output became a symlink/reparse point before replacement")
+        pathlib.Path(temp_name).replace(output_path)
+        return
+    try:
+        # Hard-link creation is exclusive and atomic on the same filesystem;
+        # unlike replace(), it cannot clobber a destination created after the
+        # initial no-clobber check.
+        os.link(temp_name, output_path)
+    except FileExistsError as exc:
+        raise ValueError("output appeared during packaging; refusing to replace it") from exc
+    finally:
+        pathlib.Path(temp_name).unlink(missing_ok=True)
+
+
 def main() -> int:
     args = parse_args()
     workspace_root = pathlib.Path(__file__).resolve().parents[3]
@@ -72,8 +95,11 @@ def main() -> int:
         )
         if output_path.suffix.lower() != ".plugin":
             raise ValueError("output must use the .plugin extension")
-        if output_path.exists() and _is_reparse(output_path):
-            raise ValueError("output is a symlink/reparse point")
+        if output_path.exists():
+            if _is_reparse(output_path):
+                raise ValueError("output is a symlink/reparse point")
+            if not args.force:
+                raise ValueError("output already exists; pass --force to replace it")
     except ValueError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
@@ -110,9 +136,17 @@ def main() -> int:
         print("ERROR: No skills found", file=sys.stderr)
         return 1
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
     temp_name = None
     try:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path = _inside(
+            output_path, workspace_root, label="output", must_exist=False
+        )
+        if output_path.exists():
+            if _is_reparse(output_path):
+                raise ValueError("output became a symlink/reparse point")
+            if not args.force:
+                raise ValueError("output already exists; pass --force to replace it")
         with tempfile.NamedTemporaryFile(
             mode="wb", prefix=f".{output_path.stem}.", suffix=".tmp", dir=output_path.parent, delete=False
         ) as handle:
@@ -133,7 +167,8 @@ def main() -> int:
                 f"Skills: {', '.join(skills)}\n"
             )
             zf.writestr("README.md", readme)
-        pathlib.Path(temp_name).replace(output_path)
+        _install_output(temp_name, output_path, force=args.force)
+        temp_name = None
     except (OSError, zipfile.BadZipFile, ValueError) as exc:
         if temp_name:
             pathlib.Path(temp_name).unlink(missing_ok=True)

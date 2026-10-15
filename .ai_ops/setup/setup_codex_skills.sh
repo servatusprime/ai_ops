@@ -159,7 +159,7 @@ EOF
 
 run_codex_export_generator() {
   if [ ! -f "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" ]; then
-    return 1
+    return 127
   fi
 
   py_cmd=""
@@ -168,12 +168,13 @@ run_codex_export_generator() {
   elif command -v python3 >/dev/null 2>&1; then
     py_cmd="python3"
   else
-    return 1
+    return 127
   fi
 
+  generator_attempted="1"
+
   # Every scope routes through the generator; workspace/user scope pass
-  # --install-root so the full-field renderer writes there directly
-  # instead of falling to the local per-file fallback below.
+  # --install-root so the full-field renderer writes there directly.
   gen_scope="repo"
   gen_install_root="$REPO_ROOT"
   if [ "$scope" = "workspace" ]; then
@@ -205,32 +206,6 @@ run_codex_export_generator() {
   "$py_cmd" "$@"
 }
 
-# Create .ai_ops/local/work_state.yaml if it doesn't already exist (idempotent)
-LOCAL_DIR="$REPO_ROOT/.ai_ops/local"
-WORK_STATE_FILE="$LOCAL_DIR/work_state.yaml"
-if [ "$dry_run" = "1" ]; then
-  if [ ! -f "$WORK_STATE_FILE" ]; then
-    echo "[dry-run] Would create: $WORK_STATE_FILE"
-  fi
-else
-  if [ ! -f "$WORK_STATE_FILE" ]; then
-    mkdir -p "$LOCAL_DIR"
-    cat > "$WORK_STATE_FILE" << 'WSEOF'
-# ai_ops work state — machine-local, gitignored.
-# Written by /work and /closeout. Never commit.
-schema_version: "1.0.0"
-work_context:
-  active_artifacts: []
-  updated_at: null
-  checkpoints: []
-telemetry:
-  last_bootstrap_mode: null
-  last_context_refresh: null
-WSEOF
-    echo "Created .ai_ops/local/work_state.yaml (empty initial state)."
-  fi
-fi
-
 # Confirmation prompt: the generator always overwrites and takes no force
 # argument, so this is the only protection against an unprompted clobber.
 # Mirrors setup_claude_skills.sh's equivalent block.
@@ -247,6 +222,7 @@ if [ -n "$(ls -A "$PRIMARY_SKILLS_DIR" 2>/dev/null)" ] && [ "$force" != "1" ]; t
   fi
 fi
 
+generator_attempted="0"
 if run_codex_export_generator; then
   echo "Generated Codex wrappers via generate_workflow_exports.py."
   echo "Primary install target: $PRIMARY_SKILLS_DIR"
@@ -273,25 +249,13 @@ if run_codex_export_generator; then
   echo ""
   echo "In Codex VS Code chat, type '\$' to browse skills or run '/skills'."
   exit 0
-fi
-
-install_into_dir "$PRIMARY_SKILLS_DIR"
-echo "Primary install target: $PRIMARY_SKILLS_DIR"
-
-if [ "$install_compat" = "1" ]; then
-  install_into_dir "$COMPAT_SKILLS_DIR"
-  echo "Compatibility install target: $COMPAT_SKILLS_DIR"
 else
-  echo "Compatibility install skipped (on-demand). Use --compat to enable."
+  generator_status=$?
+  if [ "$generator_attempted" = "1" ] || [ "$generator_status" -ne 127 ]; then
+    echo "Generator refused the setup request (exit $generator_status); no fallback writes will be attempted."
+    exit "$generator_status"
+  fi
 fi
 
-echo ""
-echo "Usage quick reference:"
-echo "  Workspace install (recommended): ./.ai_ops/setup/setup_codex_skills.sh --workspace --force"
-echo "  Repo install (default):          ./.ai_ops/setup/setup_codex_skills.sh"
-echo "  User install:                    ./.ai_ops/setup/setup_codex_skills.sh --user"
-echo "  Include compat mirror:           ./.ai_ops/setup/setup_codex_skills.sh --compat"
-echo "  Skip confirmation prompt:        ./.ai_ops/setup/setup_codex_skills.sh --repo --force"
-echo "  Preview only:                    ./.ai_ops/setup/setup_codex_skills.sh --dry-run"
-echo ""
-echo "In Codex VS Code chat, type '\$' to browse skills or run '/skills'."
+echo "Generator unavailable; refusing fallback writes because the generated export is the authoritative source." >&2
+exit 127

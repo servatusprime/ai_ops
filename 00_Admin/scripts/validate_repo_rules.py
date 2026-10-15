@@ -15,7 +15,15 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-ALLOWED_STATUS = {"planned", "stub", "active", "completed", "deprecated"}
+ALLOWED_STATUS = {
+    "planned",
+    "stub",
+    "active",
+    "completed",
+    "deprecated",
+    "pending_owner_gate",
+}
+IMPLEMENTED_RULE_IDS = {f"VS{number:03d}" for number in range(1, 38)}
 _REPARSE_POINT = 0x400
 _MARKDOWNLINT_COMMAND = "markdownlint"
 _MARKDOWNLINT_FIXED_ARGS = ("--config", ".markdownlint.json")
@@ -691,7 +699,13 @@ def parse_config(path: str) -> Dict[str, Any]:
             continue
 
         if raw.strip().startswith("enabled:"):
-            current_rule["enabled"] = raw.split(":", 1)[1].strip().lower() == "true"
+            enabled_value = raw.split(":", 1)[1].strip().strip("'").strip('"')
+            if enabled_value.lower() in {"true", "false"}:
+                current_rule["enabled"] = enabled_value.lower() == "true"
+            else:
+                # Preserve invalid values so the envelope validator can fail
+                # closed instead of silently converting them to false.
+                current_rule["enabled"] = enabled_value
             continue
         if raw.strip().startswith("paths:"):
             in_paths = True
@@ -751,10 +765,14 @@ def validate_config_envelope(config: Dict[str, Any], config_path: str, repo_root
         if not isinstance(rule_id, str) or not re.fullmatch(r"VS\d{3}", rule_id):
             errors.append(f"VS-CONFIG: rule {index} has invalid id {rule_id!r}")
             continue
+        if rule_id not in IMPLEMENTED_RULE_IDS:
+            errors.append(f"VS-CONFIG: {rule_id} is not an implemented validator rule")
         if rule_id in seen:
             errors.append(f"VS-CONFIG: duplicate rule id {rule_id}")
         seen.add(rule_id)
-        if not isinstance(rule.get("enabled", True), bool):
+        if "enabled" not in rule:
+            errors.append(f"VS-CONFIG: {rule_id} must declare enabled: true or false")
+        elif not isinstance(rule["enabled"], bool):
             errors.append(f"VS-CONFIG: {rule_id} enabled must be boolean")
         paths = rule.get("paths", [])
         if not isinstance(paths, list):
@@ -1633,14 +1651,28 @@ def check_run_family_graph_contract(
         return
 
     validator_script, generator_script = helper_paths
-    registry = os.path.join(
-        repo_root,
-        params.get("registry", "00_Admin/runbooks/run_family_registry.yaml"),
-    )
-    runbooks_readme = os.path.join(
-        repo_root,
-        params.get("runbooks_readme", "00_Admin/runbooks/README.md"),
-    )
+    try:
+        registry = _validate_repo_path(
+            os.path.join(
+                repo_root,
+                params.get("registry", "00_Admin/runbooks/run_family_registry.yaml"),
+            ),
+            repo_root,
+            label="VS036 registry",
+            must_exist=False,
+        )
+        runbooks_readme = _validate_repo_path(
+            os.path.join(
+                repo_root,
+                params.get("runbooks_readme", "00_Admin/runbooks/README.md"),
+            ),
+            repo_root,
+            label="VS036 runbooks README",
+            must_exist=False,
+        )
+    except (OSError, TypeError, ValueError) as exc:
+        errors.append(f"VS036: configured input path could not be validated: {exc}")
+        return
     commands = (
         [
             sys.executable,

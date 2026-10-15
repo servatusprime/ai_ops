@@ -1,0 +1,54 @@
+version: "0.1.0"
+ruleset_version: "0.1.0"
+packet:
+  estimated_tokens_per_packet: 20000
+  session_token_budget: 120000
+  warn_threshold_pct: 80
+  park_threshold_pct: 100
+tiers:
+  T0:
+    reviewer_model: lowest-available
+    reviewer_runtime: ai-ops-reviewer
+    path_prefixes:
+      - "90_Sandbox/"
+      - "99_Trash/"
+    allowed_extensions: [".md", ".txt", ".yaml", ".yml", ".json", ".log"]
+    review: full_file_batched
+  T1:
+    reviewer_model: medium
+    reviewer_runtime: ai-ops-reviewer
+    path_prefixes:
+      - ""
+    review: full_file_plus_diff
+  T2:
+    reviewer_model: maximum
+    reviewer_runtime: ai-ops-reviewer
+    path_prefixes: []
+    review: full_file_plus_diff_plus_independent_pass
+forced_t2_prefixes:
+  - ".ai_ops/workflows/"
+  - "00_Admin/configs/"
+  - "00_Admin/policies/"
+  - "00_Admin/specs/"
+  - "plugins/"
+  - ".claude/"
+  - ".agents/"
+  - "01_Resources/templates/config/"
+forced_t2_files:
+  - "AGENTS.md"
+  - "CLAUDE.md"
+  - ".pre-commit-config.yaml"
+  - "SECURITY.md"
+generated_prefixes:
+  - ".ai_ops/exports/"
+  - "00_Admin/reports/generated/"
+binary_extensions: [".bin", ".png", ".jpg", ".jpeg", ".gif", ".pdf", ".qgz", ".gpkg", ".zip"]
+secret_patterns:
+  - "(?i)(api[_-]?key|secret|token|password)\\s*[:=]"
+instruction_patterns:
+  - "(?i)ignore\\s+(all|previous|prior)\\s+instructions"
+additional_tripwires:
+  - "(?i)-----BEGIN(?: [A-Z]+)? PRIVATE KEY-----"
+  - "(?i)\\b(?:Invoke-Expression|iex)\\b"
+  - "(?i)\\b(?:subprocess\\.(?:run|Popen|call)|os\\.system)\\b.*\\bshell\\s*=\\s*True\\b"
+  - "(?i)\\b(?:write_text|write_bytes|unlink|remove|move)\\s*\\("

@@ -19,6 +19,7 @@ ADMIN = Path(__file__).resolve().parents[1]
 SCRIPTS = ADMIN / "scripts"
 FIXTURES = Path(__file__).parent / "fixtures" / "run_family"
 VALID = FIXTURES / "run_family_shared_valid.yaml"
+TEST_TEMP_ROOT = ADMIN.parent.parent / "tmp" / "test_run_family_graph"
 
 
 def load_module(name: str):
@@ -49,6 +50,25 @@ def ensure_sibling_ai_ops_fixture(root: Path) -> None:
     )
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text("# fixture generator target\n", encoding="utf-8")
+
+
+def contained_temporary_directory() -> tempfile.TemporaryDirectory:
+    """Create test scratch under the repository-contained workspace temp root."""
+    TEST_TEMP_ROOT.mkdir(parents=True, exist_ok=True)
+    return tempfile.TemporaryDirectory(dir=TEST_TEMP_ROOT, prefix="run-family-")
+
+
+def assert_contained_paths(container: Path, *paths: Path) -> None:
+    """Fail if fixture outputs resolve outside the test's contained container."""
+    base = container.resolve(strict=True)
+    for path in paths:
+        resolved = path.resolve(strict=False)
+        try:
+            resolved.relative_to(base)
+        except ValueError as exc:
+            raise AssertionError(
+                f"fixture path escaped contained root: {resolved} not under {base}"
+            ) from exc
 
 
 class RunFamilyGraphTests(unittest.TestCase):
@@ -101,7 +121,7 @@ class RunFamilyGraphTests(unittest.TestCase):
         )
 
     def test_manifest_unknown_top_level_field_fails_closed(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with contained_temporary_directory() as tmp:
             path = Path(tmp) / "manifest.yaml"
             path.write_text(
                 """manifest_version: '0.1.0'
@@ -144,7 +164,7 @@ entry_artifacts: []
 consumes: []
 parameter_profiles: {}
 """
-        with tempfile.TemporaryDirectory() as tmp:
+        with contained_temporary_directory() as tmp:
             path = Path(tmp) / "manifest.yaml"
 
             path.write_text(base.replace("consumes: []\n", ""), encoding="utf-8")
@@ -182,7 +202,7 @@ content_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 consumes: []
 parameter_profiles: {}
 """
-        with tempfile.TemporaryDirectory() as tmp:
+        with contained_temporary_directory() as tmp:
             path = Path(tmp) / "manifest.yaml"
             path.write_text(base, encoding="utf-8")
             graph = validator.graph_from_manifests([path])
@@ -779,10 +799,13 @@ parameter_profiles: {}
     def test_generator_outputs_are_stable_across_hash_seeds(self):
         script = SCRIPTS / "generate_run_family_views.py"
         output_sets = []
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory) / "governed_root"
+        with contained_temporary_directory() as directory:
+            container = Path(directory) / "container"
+            root = container / "governed_root"
+            container.mkdir()
             root.mkdir()
             ensure_sibling_ai_ops_fixture(root)
+            assert_contained_paths(container, root.parent / "ai_ops")
             aggregate = load(VALID)
             for artifact in aggregate["artifacts"]:
                 manifest = {
@@ -839,10 +862,13 @@ parameter_profiles: {}
             self.assertEqual(len(set(output_sets)), 1)
 
     def test_governed_root_generator_provenance_resolves(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory) / "governed_root"
+        with contained_temporary_directory() as directory:
+            container = Path(directory) / "container"
+            root = container / "governed_root"
+            container.mkdir()
             root.mkdir()
             ensure_sibling_ai_ops_fixture(root)
+            assert_contained_paths(container, root.parent / "ai_ops")
             views = generator.build_views(load(VALID), root)
             for view in views.values():
                 self.assertEqual(
@@ -853,17 +879,24 @@ parameter_profiles: {}
                 self.assertEqual(view["generator_version"], generator.GENERATOR_VERSION)
 
     def test_governed_root_generator_provenance_rejects_missing_target(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory) / "governed_root"
+        with contained_temporary_directory() as directory:
+            container = Path(directory) / "container"
+            root = container / "governed_root"
+            container.mkdir()
             root.mkdir()
             (root.parent / "ai_ops").mkdir()
+            assert_contained_paths(container, root.parent / "ai_ops")
             with self.assertRaisesRegex(ValueError, "resolvable sibling ai_ops"):
                 generator.build_views(load(VALID), root)
 
     def test_governance_routing_projects_workflows_specs_and_vs036(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+        with contained_temporary_directory() as directory:
+            container = Path(directory) / "container"
+            root = container / "governed_root"
+            container.mkdir()
+            root.mkdir()
             ensure_sibling_ai_ops_fixture(root)
+            assert_contained_paths(container, root.parent / "ai_ops")
             routing = root / "00_Admin/configs/context_routing.yaml"
             validator_config = (
                 root / "00_Admin/configs/validator/validator_config.yaml"
@@ -928,9 +961,13 @@ parameter_profiles: {}
 
     def test_generator_write_check_and_drift_modes(self):
         script = SCRIPTS / "generate_run_family_views.py"
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+        with contained_temporary_directory() as directory:
+            container = Path(directory) / "container"
+            root = container / "governed_root"
+            container.mkdir()
+            root.mkdir()
             ensure_sibling_ai_ops_fixture(root)
+            assert_contained_paths(container, root.parent / "ai_ops")
             write = subprocess.run(
                 [
                     sys.executable, str(script), "--repo-root", str(root),
@@ -967,9 +1004,13 @@ parameter_profiles: {}
 
     def test_generator_skip_registry_limits_write_and_check_targets(self):
         script = SCRIPTS / "generate_run_family_views.py"
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+        with contained_temporary_directory() as directory:
+            container = Path(directory) / "container"
+            root = container / "governed_root"
+            container.mkdir()
+            root.mkdir()
             ensure_sibling_ai_ops_fixture(root)
+            assert_contained_paths(container, root.parent / "ai_ops")
             registry = root / "00_Admin" / "runbooks" / "run_family_registry.yaml"
             registry.parent.mkdir(parents=True, exist_ok=True)
             registry.write_text("local registry owner\n", encoding="utf-8")

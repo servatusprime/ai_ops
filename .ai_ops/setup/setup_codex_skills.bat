@@ -135,31 +135,6 @@ if "!dry_run!"=="1" (
   echo Dry-run mode enabled ^(no files will be written^).
 )
 
-REM Create .ai_ops\local\work_state.yaml if it doesn't already exist (idempotent)
-set "WORK_STATE_FILE=%REPO_ROOT%\.ai_ops\local\work_state.yaml"
-if "!dry_run!"=="1" (
-  if not exist "!WORK_STATE_FILE!" (
-    echo [dry-run] Would create: !WORK_STATE_FILE!
-  )
-) else (
-  if not exist "!WORK_STATE_FILE!" (
-    if not exist "%REPO_ROOT%\.ai_ops\local" mkdir "%REPO_ROOT%\.ai_ops\local"
-    (
-      echo # ai_ops work state ? machine-local, gitignored.
-      echo # Written by /work and /closeout. Never commit.
-      echo schema_version: "1.0.0"
-      echo work_context:
-      echo   active_artifacts: []
-      echo   updated_at: null
-      echo   checkpoints: []
-      echo telemetry:
-      echo   last_bootstrap_mode: null
-      echo   last_context_refresh: null
-    ) > "!WORK_STATE_FILE!"
-    echo Created .ai_ops\local\work_state.yaml ^(empty initial state^).
-  )
-)
-
 REM Every scope routes through the real generator; --install-root lets
 REM workspace/user scope write real, full-field wrappers via the same
 REM renderer as repo scope. Confirmation prompt below: the generator
@@ -183,6 +158,7 @@ if defined has_entries if not "!force!"=="1" (
 )
 
 set "ran_generator=0"
+set "generator_failed=0"
 set "gen_compat_arg="
 if "!install_compat!"=="1" set "gen_compat_arg=--codex-compat"
 set "gen_dry_arg="
@@ -199,8 +175,11 @@ if exist "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" (
     ) else (
       python "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" --targets plugin claude codex --scope repo !gen_compat_arg! !gen_dry_arg!
     )
-    if not errorlevel 1 (
+    set "generator_status=!ERRORLEVEL!"
+    if "!generator_status!"=="0" (
       set "ran_generator=1"
+    ) else (
+      set "generator_failed=1"
     )
   )
 )
@@ -236,97 +215,9 @@ if "!ran_generator!"=="1" (
   exit /b 0
 )
 
-call :install_to_dir "!PRIMARY_SKILLS_DIR!"
-if errorlevel 1 exit /b 1
-echo Primary install target: !PRIMARY_SKILLS_DIR!
-
-if /I not "!install_compat!"=="1" (
-  echo Compatibility install skipped ^(on-demand^). Use --compat to enable.
-) else (
-  goto install_compat
-)
-goto after_compat
-
-:install_compat
-call :install_to_dir "!COMPAT_SKILLS_DIR!"
-if errorlevel 1 exit /b 1
-echo Compatibility install target: !COMPAT_SKILLS_DIR!
-
-:after_compat
-
-echo.
-echo Usage quick reference:
-echo   Workspace install ^(recommended^): .ai_ops\setup\setup_codex_skills.bat --workspace --force
-echo   Repo install ^(default^):          .ai_ops\setup\setup_codex_skills.bat
-echo   User install:                    .ai_ops\setup\setup_codex_skills.bat --user
-echo   Include compat mirror:           .ai_ops\setup\setup_codex_skills.bat --compat
-echo   Skip confirmation prompt:        .ai_ops\setup\setup_codex_skills.bat --force
-echo   Preview only:                    .ai_ops\setup\setup_codex_skills.bat --dry-run
-echo.
-echo In Codex VS Code chat, type "$" to browse skills or run "/skills".
+echo Generator unavailable; refusing fallback writes because the generated export is authoritative.
 endlocal
-exit /b 0
-
-:install_to_dir
-set "SKILLS_DIR=%~1"
-if "!dry_run!"=="1" (
-  echo [dry-run] Would target install root: !SKILLS_DIR!
-) else (
-  if not exist "!SKILLS_DIR!" mkdir "!SKILLS_DIR!"
-)
-
-for %%f in (!WORKFLOW_DIR!\*.md) do (
-  set "skill_name=%%~nf"
-  set "skill_dir=!SKILLS_DIR!\!skill_name!"
-  set "write_skill=1"
-
-  if exist "!skill_dir!\SKILL.md" (
-    if "!force!"=="0" (
-      echo Skip existing: !skill_dir!
-      set "write_skill=0"
-    )
-  )
-
-  if "!write_skill!"=="1" (
-    if "!dry_run!"=="1" (
-      echo [dry-run] Would create: !skill_dir!\SKILL.md
-      echo [dry-run] Would create: !skill_dir!\agents\openai.yaml
-    ) else (
-      if not exist "!skill_dir!" mkdir "!skill_dir!"
-
-      REM Extract description from workflow frontmatter (first match only)
-      set "desc="
-      for /f "tokens=1,* delims=:" %%a in ('findstr /B "description:" "%%f"') do (
-        if not defined desc set "desc=%%b"
-      )
-      if not defined desc set "desc= Run ai_ops workflow !skill_name!"
-
-      REM Trim leading space from desc
-      for /f "tokens=*" %%d in ("!desc!") do set "desc=%%d"
-
-      > "!skill_dir!\SKILL.md" (
-        echo ---
-        echo name: !skill_name!
-        echo description: !desc!
-        echo metadata:
-        echo   short-description: !desc!
-        echo ---
-        echo.
-        echo # !skill_name!
-        echo.
-        echo Read `!WORKFLOW_REL!/!skill_name!.md` and follow its instructions.
-      )
-      if not exist "!skill_dir!\agents" mkdir "!skill_dir!\agents"
-      > "!skill_dir!\agents\openai.yaml" (
-        echo interface:
-        echo   display_name: "!skill_name!"
-        echo   short_description: "!desc!"
-      )
-      echo Installed: !skill_dir!
-    )
-  )
-)
-exit /b 0
+exit /b 127
 
 :usage
 echo Usage:

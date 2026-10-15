@@ -3,12 +3,13 @@ REM setup_cowork_plugin.bat
 REM Package ai_ops skills into a Cowork .plugin file.
 REM
 REM Usage:
-REM   setup_cowork_plugin.bat [--workspace | --repo] [--output <path>] [--dry-run] [--help]
+REM   setup_cowork_plugin.bat [--workspace | --repo] [--output <path>] [--force] [--dry-run] [--help]
 REM
 REM Options:
 REM   --workspace   Package skills from <workspace_root>/.claude/skills/  (default)
 REM   --repo        Package skills from <repo_root>/.claude/skills/
 REM   --output      Output path for .plugin file (default: <workspace_root>/ai-ops-skills.plugin)
+REM   --force       Replace an existing .plugin file after safety checks
 REM   --dry-run     Print resolved paths and skill count; do not write output file
 REM   --help        Show this help
 REM
@@ -23,6 +24,7 @@ setlocal enableextensions enabledelayedexpansion
 
 set "SCOPE=workspace"
 set "DRY_RUN=0"
+set "FORCE_ARG="
 set "OUTPUT_PATH="
 
 :parse_args
@@ -30,6 +32,7 @@ if "%~1"=="" goto :args_done
 if /i "%~1"=="--workspace"  ( set "SCOPE=workspace" & shift & goto :parse_args )
 if /i "%~1"=="--repo"       ( set "SCOPE=repo"      & shift & goto :parse_args )
 if /i "%~1"=="--dry-run"    ( set "DRY_RUN=1"       & shift & goto :parse_args )
+if /i "%~1"=="--force"      ( set "FORCE_ARG=--force" & shift & goto :parse_args )
 if /i "%~1"=="--output"     ( set "OUTPUT_PATH=%~2" & shift & shift & goto :parse_args )
 if /i "%~1"=="--help"       ( goto :print_usage )
 echo Unknown option: %~1
@@ -141,19 +144,20 @@ if not exist "%PACKAGER%" (
     exit /b 1
 )
 
-"!PY!" "%PACKAGER%" --skills-root "%SKILLS_ROOT%" --manifest "%MANIFEST_PATH%" --output "%OUTPUT_PATH%"
+"!PY!" "%PACKAGER%" --skills-root "%SKILLS_ROOT%" --manifest "%MANIFEST_PATH%" --output "%OUTPUT_PATH%" !FORCE_ARG!
 exit /b !ERRORLEVEL!
 
 :print_usage
 echo.
 echo Usage:
-echo   setup_cowork_plugin.bat [--workspace ^| --repo] [--output ^<path^>] [--dry-run] [--help]
+echo   setup_cowork_plugin.bat [--workspace ^| --repo] [--output ^<path^>] [--force] [--dry-run] [--help]
 echo.
 echo Options:
 echo   --workspace   Package skills from ^<workspace_root^>/.claude/skills/  (default)
 echo   --repo        Package skills from ^<repo_root^>/.claude/skills/
 echo   --output      Output path for .plugin file
 echo                 (default: ^<workspace_root^>/ai-ops-skills.plugin)
+echo   --force       Replace an existing .plugin file after safety checks
 echo   --dry-run     Print resolved paths and skill count; do not write output file
 echo   --help        Show this help
 echo.

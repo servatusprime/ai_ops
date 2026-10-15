@@ -51,7 +51,7 @@ external governed repos.
 
 ```yaml
 governed_repo_validation:
-  minimum_commands: []          # empty default; populated per repo in local config
+  minimum_commands: []          # argv arrays; empty default; populated per repo in local config
   network_sensitive_commands: []
   allow_partial_on_network_failure: true
   require_repo_root_resolution: true
@@ -69,7 +69,7 @@ workspace:
     - path: <your_repo>/
       sandbox_dir: 90_Sandbox
       savepoint_validation:
-        minimum_commands: []    # populate with repo-native validators when identified
+        minimum_commands: []    # argv arrays, e.g. [[python, scripts/validate.py]]
 ```
 
 Agents consuming this contract MUST:
@@ -83,6 +83,11 @@ Agents consuming this contract MUST:
 3. If no matching entry exists, record `validation_commands_run: []` and proceed.
 4. Never claim a governed repo is validation-ready when `minimum_commands` is empty
    and no per-repo validators have been confirmed.
+5. Treat every `minimum_commands` entry as an argv array. Reject free-form command
+   strings, shell metacharacters, non-allowlisted executables, PATH resolution that
+   differs from the trusted validator runtime, and paths outside the target
+   repository or workspace. Execute only with shell disabled after
+   `op_validate_config.py` accepts the configuration.
 
 ### Consumer Workflows
 

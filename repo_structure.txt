@@ -61,26 +61,29 @@
 |   |   +-- future_work_scorecard.md
 |   |-- configs/
 |   |   |-- README.md
+|   |   |-- closeout_security_tiers.yaml
 |   |   |-- context_routing.yaml
 |   |   |-- secrets/
 |   |   |   |-- .gitkeep
 |   |   |   +-- README.md
 |   |   |-- setup_contract.yaml
-|   |   +-- validator/
-|   |       |-- schema_aiops_session.yaml
-|   |       |-- schema_execution_graph.yaml
-|   |       |-- schema_execution_graph_run_state.yaml
-|   |       |-- schema_execution_state.yaml
-|   |       |-- schema_run_family_consumption.yaml
-|   |       |-- schema_run_family_context_pack.yaml
-|   |       |-- schema_run_family_intake_receipt.yaml
-|   |       |-- schema_run_family_manifest.yaml
-|   |       |-- schema_run_family_provider_receipt.yaml
-|   |       |-- schema_run_family_registry.yaml
-|   |       |-- schema_run_instance_lock.yaml
-|   |       |-- schema_run_receipt.yaml
-|   |       |-- schema_workflow_frontmatter.yaml
-|   |       +-- validator_config.yaml
+|   |   |-- validator/
+|   |   |   |-- schema_aiops_session.yaml
+|   |   |   |-- schema_closeout_security_receipt.yaml
+|   |   |   |-- schema_execution_graph.yaml
+|   |   |   |-- schema_execution_graph_run_state.yaml
+|   |   |   |-- schema_execution_state.yaml
+|   |   |   |-- schema_run_family_consumption.yaml
+|   |   |   |-- schema_run_family_context_pack.yaml
+|   |   |   |-- schema_run_family_intake_receipt.yaml
+|   |   |   |-- schema_run_family_manifest.yaml
+|   |   |   |-- schema_run_family_provider_receipt.yaml
+|   |   |   |-- schema_run_family_registry.yaml
+|   |   |   |-- schema_run_instance_lock.yaml
+|   |   |   |-- schema_run_receipt.yaml
+|   |   |   |-- schema_workflow_frontmatter.yaml
+|   |   |   +-- validator_config.yaml
+|   |   +-- workspace_containment.yaml
 |   |-- decisions/
 |   |   +-- decision_ledger.md
 |   |-- guides/
@@ -171,6 +174,7 @@
 |   |-- runbooks/
 |   |   |-- README.md
 |   |   |-- rb_bootstrap.md
+|   |   |-- rb_closeout_security_review_01.md
 |   |   |-- rb_codex_compat_mirror_01.md
 |   |   |-- rb_commit_push_streamlining_01.md
 |   |   |-- rb_packet_relocation_01.md
@@ -182,9 +186,11 @@
 |   |   +-- run_family_registry.yaml
 |   |-- scripts/
 |   |   |-- bootstrap_governed_repo.py
+|   |   |-- check_outside_writes.py
 |   |   |-- check_workflow_exports_drift.py
 |   |   |-- cleanup_sandbox.ps1
 |   |   |-- cleanup_trash.ps1
+|   |   |-- closeout_security_prepass.py
 |   |   |-- diagnose_file_locks.ps1
 |   |   |-- fixtures/
 |   |   |   |-- run_validate_repo_rules_fixtures.py
@@ -195,6 +201,9 @@
 |   |   |-- generate_repo_structure.py
 |   |   |-- generate_run_family_views.py
 |   |   |-- generate_workflow_exports.py
+|   |   |-- hooks/
+|   |   |   |-- guard_workspace_writes.py
+|   |   |   +-- validate_closeout_security_head.py
 |   |   |-- lint.ps1
 |   |   |-- op_validate_config.py
 |   |   |-- regenerate_profiles.py
@@ -204,6 +213,7 @@
 |   |   |-- sync_claude_settings.py
 |   |   |-- sync_validator_baseline.py
 |   |   |-- update_artifact_status.py
+|   |   |-- validate_closeout_security_receipt.py
 |   |   |-- validate_governed_repo_shape.py
 |   |   |-- validate_graph_artifact_closure.py
 |   |   |-- validate_ide_extensions.ps1
@@ -266,11 +276,15 @@
 |   |   |       |-- run_family_shared_valid.yaml
 |   |   |       |-- run_instance_lock_valid.yaml
 |   |   |       +-- run_receipt_valid.yaml
+|   |   |-- test_check_outside_writes.py
 |   |   |-- test_claude_settings_policy.py
+|   |   |-- test_closeout_security_receipt.py
 |   |   |-- test_future_work_registry_lifecycle.py
 |   |   |-- test_governance_seed_contracts.py
 |   |   |-- test_graph_artifact_closure.py
+|   |   |-- test_guard_workspace_writes.py
 |   |   |-- test_run_family_graph.py
+|   |   |-- test_validation_command_policy.py
 |   |   |-- test_work_savepoint_contract.py
 |   |   |-- test_workflow_export_workspace_preview.py
 |   |   +-- workflow_smoke_tests.yaml
@@ -294,7 +308,8 @@
 |       |-- README.md
 |       |-- config/
 |       |   |-- hooks_template.json
-|       |   +-- settings_global_template.json
+|       |   |-- settings_global_template.json
+|       |   +-- settings_workspace_env_template.json
 |       |-- documents/
 |       |   |-- decision_card_template.md
 |       |   |-- env_vars_template.md

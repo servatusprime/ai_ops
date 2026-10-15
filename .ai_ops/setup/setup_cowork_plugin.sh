@@ -3,12 +3,13 @@
 # Package ai_ops skills into a Cowork .plugin file.
 #
 # Usage:
-#   ./setup_cowork_plugin.sh [--workspace | --repo] [--output <path>] [--dry-run] [--help]
+#   ./setup_cowork_plugin.sh [--workspace | --repo] [--output <path>] [--force] [--dry-run] [--help]
 #
 # Options:
 #   --workspace   Package skills from <workspace_root>/.claude/skills/  (default)
 #   --repo        Package skills from <repo_root>/.claude/skills/
 #   --output      Output path for .plugin file (default: <workspace_root>/ai-ops-skills.plugin)
+#   --force       Replace an existing .plugin file after safety checks
 #   --dry-run     Print resolved paths and skill count; do not write output file
 #   --help        Show this help
 #
@@ -23,7 +24,7 @@ set -e
 print_usage() {
   cat <<EOF
 Usage:
-  ./setup_cowork_plugin.sh [--workspace|--repo] [--output <path>] [--dry-run] [--help]
+  ./setup_cowork_plugin.sh [--workspace|--repo] [--output <path>] [--force] [--dry-run] [--help]
 
 Options:
   -w, --workspace   Package skills from <workspace_root>/.claude/skills/  (default)
@@ -39,6 +40,7 @@ EOF
 
 scope="workspace"
 dry_run="0"
+force="0"
 output_path=""
 
 while [ $# -gt 0 ]; do
@@ -47,6 +49,7 @@ while [ $# -gt 0 ]; do
     --repo)         scope="repo" ;;
     -n|--dry-run)   dry_run="1" ;;
     -o|--output)    output_path="$2"; shift ;;
+    --force)        force="1" ;;
     -h|--help)      print_usage; exit 0 ;;
     *)
       echo "Unknown option: $1"
@@ -131,38 +134,23 @@ if [ -z "$PY" ]; then
   exit 1
 fi
 
-# Package the plugin using Python
-"$PY" - "$SKILLS_ROOT" "$MANIFEST_PATH" "$output_path" <<'PYEOF'
-import zipfile, json, pathlib, sys
-
-skills_root = pathlib.Path(sys.argv[1])
-manifest_path = pathlib.Path(sys.argv[2])
-output_path = sys.argv[3]
-
-manifest = json.loads(manifest_path.read_text('utf-8'))
-skills = sorted([
-    d.name for d in skills_root.iterdir()
-    if d.is_dir() and (d / 'SKILL.md').exists()
-])
-
-if not skills:
-    print('ERROR: No skills found', file=sys.stderr)
-    sys.exit(1)
-
-with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zf:
-    zf.writestr(
-        '.claude-plugin/plugin.json',
-        json.dumps(manifest, indent=2) + '\n'
-    )
-    for s in skills:
-        zf.write(str(skills_root / s / 'SKILL.md'), f'skills/{s}/SKILL.md')
-    readme = (
-        f"# {manifest.get('name', 'plugin')} Plugin\n\n"
-        f"{manifest.get('description', '')}\n\n"
-        f"Skills: {', '.join(skills)}\n"
-    )
-    zf.writestr('README.md', readme)
-
-print(f"Created: {output_path}")
-print(f"  Skills packaged ({len(skills)}): {', '.join(skills)}")
-PYEOF
+# Package through the hardened Python implementation. It rejects escapes,
+# symlink/reparse components, invalid extensions, and unsafe source entries
+# before performing the atomic replacement.
+PACKAGER="$REPO_ROOT/.ai_ops/setup/setup_cowork_plugin.py"
+if [ ! -f "$PACKAGER" ]; then
+  echo "ERROR: Packager helper not found: $PACKAGER"
+  exit 1
+fi
+if [ "$force" = "1" ]; then
+  "$PY" "$PACKAGER" \
+    --skills-root "$SKILLS_ROOT" \
+    --manifest "$MANIFEST_PATH" \
+    --output "$output_path" \
+    --force
+else
+  "$PY" "$PACKAGER" \
+    --skills-root "$SKILLS_ROOT" \
+    --manifest "$MANIFEST_PATH" \
+    --output "$output_path"
+fi

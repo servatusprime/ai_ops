@@ -1,0 +1,11 @@
+{
+  "_comment": "Owner-applied workspace overlay. Replace placeholders; keep raw machine settings out of the workbundle.",
+  "env": {
+    "TEMP": "<workspace-root>\\tmp",
+    "TMP": "<workspace-root>\\tmp",
+    "TMPDIR": "<workspace-root>\\tmp",
+    "CLAUDE_CODE_TMPDIR": "<workspace-root>\\tmp",
+    "PYTEST_ADDOPTS": "<append existing> --basetemp=<workspace-root>\\tmp\\pytest-claude-<pid>",
+    "PRE_COMMIT_HOME": "<workspace-root>\\tmp\\pre-commit"
+  }
+}
