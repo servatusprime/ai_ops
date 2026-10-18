@@ -5,6 +5,8 @@ from __future__ import annotations
 import fnmatch
 import importlib.util
 import json
+import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -27,6 +29,7 @@ def _matches(rule: str, tool: str, value: str = "") -> bool:
 class ClaudeSettingsPolicyTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
+        (ROOT / "tmp").mkdir(parents=True, exist_ok=True)
         cls.settings = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
         cls.permissions = cls.settings["permissions"]
 
@@ -93,21 +96,74 @@ class ClaudeSettingsPolicyTests(unittest.TestCase):
             with self.subTest(command=command):
                 self.assertEqual(self.classify("Bash", command), "allow")
 
-    def test_other_existing_local_git_mutations_remain_allowed_by_scope(self) -> None:
-        # Task 2.4 gates checkout/reset/rm/commit/push and network access.
-        # Keep the existing add/merge/stash/mv approvals to avoid expanding the
-        # separately recorded four-command removal decision.
+    def test_other_existing_local_git_mutations_remain_approval_gated(self) -> None:
+        # Merge and stash are approval-gated in the current portable template;
+        # add and mv remain locally allowed by scope.
         for command in (
             "git add file.txt",
-            "git merge topic",
-            "git stash push -m sample",
             "git mv old.txt new.txt",
         ):
             with self.subTest(command=command):
                 self.assertEqual(self.classify("Bash", command), "allow")
+        for command in ("git merge topic", "git stash push -m sample"):
+            with self.subTest(command=command):
+                self.assertEqual(self.classify("Bash", command), "ask")
 
     def test_force_push_deny_precedes_prompt_rules(self) -> None:
         self.assertEqual(self.classify("Bash", "git push --force origin main"), "deny")
+
+    def test_closeout_gate_bypass_routes_are_denied_and_bundled_flags_are_approval_gated(self) -> None:
+        for command in (
+            "git commit --no-verify -m bypass",
+            "git commit -n -m bypass",
+            "git commit -m bypass --no-verify",
+            "git commit -am bypass -n",
+            "git -C repo commit --no-verify -m bypass",
+            "git -c core.hooksPath=/dev/null commit",
+            "git push --no-verify origin main",
+            "git push origin main --no-verify",
+            "git -C repo push --no-verify origin main",
+            "git commit --amend --no-edit -n",
+            "git config core.hooksPath .git/hooks",
+            "git -C repo config core.hooksPath .git/hooks",
+            "git config CORE.HOOKSPATH .git/hooks",
+            "git config --global core.hooksPath .git/hooks",
+            "git -C repo config --global core.hooksPath .git/hooks",
+            "git update-ref refs/heads/main HEAD~1",
+            "git -C repo update-ref refs/heads/main HEAD~1",
+            "git show --output=packet.txt HEAD",
+            "git diff --output=packet.txt",
+            "git log --output=packet.txt",
+            "SKIP=ai-ops-closeout-security git commit -m bypass",
+            "git commit -sn -m bypass",
+            "git commit -vnm bypass",
+            "git commit -qn -m bypass",
+        ):
+            with self.subTest(command=command):
+                expected = "ask" if command in {
+                    "git commit -sn -m bypass",
+                    "git commit -vnm bypass",
+                    "git commit -qn -m bypass",
+                } else "deny"
+                self.assertEqual(self.classify("Bash", command), expected)
+        self.assertEqual(self.classify("Bash", "git commit -m ordinary"), "ask")
+        self.assertEqual(self.classify("Bash", "git push origin main"), "ask")
+        for command in ("git push -n origin main",):
+            self.assertEqual(self.classify("Bash", command), "ask")
+        for command in (
+            "python 00_Admin/scripts/example.py --output=report.json",
+            "python tool.py --output out.obj",
+            "python -m pytest -k SKIP=1",
+        ):
+            with self.subTest(command=command):
+                self.assertNotEqual(self.classify("Bash", command), "deny")
+        for command in (
+            'git commit -m "Harden closeout-security gate and guard"',
+            "git log --grep=commit",
+            "git branch --format='%(refname)'",
+        ):
+            with self.subTest(command=command):
+                self.assertEqual(self.classify("Bash", command), "ask")
 
     def test_synchronizer_flags_and_drops_prompt_gated_git_allows(self) -> None:
         script = ROOT / "00_Admin" / "scripts" / "sync_claude_settings.py"
@@ -195,7 +251,7 @@ class ClaudeSettingsPolicyTests(unittest.TestCase):
             "Bash(bash .ai_ops/setup/*.sh:*)",
             "Bash(bash ai_ops/.ai_ops/setup/*.sh:*)",
         }
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as tmp:
             root = Path(tmp)
             settings = root / ".claude" / "settings.json"
             overlay = settings.parent / "settings.local.json"
@@ -224,7 +280,7 @@ class ClaudeSettingsPolicyTests(unittest.TestCase):
             )
             self.assertEqual(module.check_overlay(settings, root, allowlist), [])
 
-    def test_workspace_template_and_current_project_target_have_no_permission_drift(self) -> None:
+    def test_settings_targets_report_missing_security_denies_in_a_temp_workspace(self) -> None:
         script = ROOT / "00_Admin" / "scripts" / "sync_claude_settings.py"
         spec = importlib.util.spec_from_file_location("sync_claude_settings_drift", script)
         self.assertIsNotNone(spec)
@@ -235,24 +291,31 @@ class ClaudeSettingsPolicyTests(unittest.TestCase):
         template_allow, template_ask, template_deny = module.extract_permissions(
             self.settings
         )
-        workspace_root = ROOT.parent
-        config_path = ROOT / ".ai_ops" / "local" / "config.yaml"
-        targets = [workspace_root / ".claude" / "settings.json"]
-        if config_path.exists():
-            targets.extend(
-                repo_root / ".claude" / "settings.json"
-                for repo_root in module.load_work_repos(config_path, workspace_root)
+        required_denies = [
+            "Bash(*git*commit* --no-verif*)",
+            "Bash(*git*commit* -n)",
+            "Bash(*git*commit* -n *)",
+            "Bash(*git*push* --no-verif*)",
+            "Bash(*git*config*--global*)",
+            "Bash(*git*update-ref *)",
+        ]
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as directory:
+            workspace_root = Path(directory) / "workspace"
+            target_path = workspace_root / "repo" / ".claude" / "settings.json"
+            target_path.parent.mkdir(parents=True)
+            target_path.write_text(
+                json.dumps({"permissions": {"allow": [], "ask": [], "deny": []}}),
+                encoding="utf-8",
             )
-        for target_path in targets:
-            if not target_path.is_file():
-                continue
-            with self.subTest(target=target_path.name):
-                target = module.load_json(target_path)
-                status, drift, _ = module.check_target(
-                    template_allow, template_ask, template_deny, target
-                )
-                self.assertIn(status, {module.STATUS_LOCAL_ADDS, module.STATUS_CLEAN}, drift)
-                self.assertEqual(drift, [])
+            target = module.load_json(target_path)
+            status, drift, _ = module.check_target(
+                template_allow, template_ask, template_deny, target
+            )
+            self.assertEqual(module.STATUS_DRIFT, status, drift)
+            drift_text = "\n".join(drift)
+            self.assertIn("deny missing", drift_text)
+            for rule in required_denies:
+                self.assertIn(rule, drift_text)
 
     def test_bulk_target_rejects_reparse_point_parent(self) -> None:
         script = ROOT / "00_Admin" / "scripts" / "sync_claude_settings.py"
@@ -262,25 +325,33 @@ class ClaudeSettingsPolicyTests(unittest.TestCase):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
-        with tempfile.TemporaryDirectory() as temp_dir:
+        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as temp_dir:
+            if os.name != "nt":
+                self.skipTest("directory junctions are a Windows-specific probe")
             workspace = Path(temp_dir) / "workspace"
             repo = workspace / "repo"
-            external = Path(temp_dir) / "external"
+            inside = repo / "junction-target"
             repo.mkdir(parents=True)
-            external.mkdir()
+            inside.mkdir()
             link = repo / ".claude"
+            created = subprocess.run(
+                ["cmd.exe", "/c", "mklink", "/J", str(link), str(inside)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if created.returncode:
+                self.skipTest(f"directory junction creation unavailable: {created.stderr.strip()}")
             try:
-                link.symlink_to(external, target_is_directory=True)
-            except (OSError, NotImplementedError) as exc:
-                self.skipTest(f"symlink creation unavailable: {exc}")
-
-            with self.assertRaises(ValueError):
-                module.resolve_trusted(
-                    repo / ".claude" / "settings.json",
-                    repo,
-                    label="settings target",
-                    must_exist=False,
-                )
+                with self.assertRaises(ValueError):
+                    module.resolve_trusted(
+                        repo / ".claude" / "settings.json",
+                        repo,
+                        label="settings target",
+                        must_exist=False,
+                    )
+            finally:
+                link.rmdir()
 
 if __name__ == "__main__":
     unittest.main()

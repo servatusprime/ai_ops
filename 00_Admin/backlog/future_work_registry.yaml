@@ -1,10 +1,10 @@
 ---
 title: future_work_registry
-version: 0.6.15
+version: 0.6.16
 status: active
 owner: ai_ops
 created: 2026-01-07
-updated: 2026-09-25
+updated: 2026-10-18
 relocation_note_2026_09_04: >-
   fw_20260904_01 (resolvable dependency manifest for governed execution repos)
   relocated to the named governed repo's own
@@ -669,9 +669,9 @@ entries:
       consumed by an application step, that its project mapping covers the
       declared required compatible roles, and that any apply-time style values
       are sourced from (or parity-checked against) the same canonical contract
-      used by the validator. The 2026-07-26 Maple replay exposed both gaps:
+      used by the validator. The 2026-07-26 seed-project replay exposed both gaps:
       RB-4 called the seed-transfer tool but its mapping carried only one of
-      seven Judas-established compatible authorities, and the soil no-data
+      seven previously established compatible authorities, and the soil no-data
       values applied by the tuning helper drifted from the values validated in
       `cartographic_conventions.yaml`. Report these as wiring/application
       parity failures, not successful health merely because executables and
@@ -705,7 +705,7 @@ entries:
       note: >-
         The comprehensive health report correctly found structural graph gaps
         but did not execute the runprogram-specific wiring validator. Later
-        Maple Grove traces proved that JSON/template validity alone missed an
+        Seed-project traces proved that JSON/template validity alone missed an
         unwired cleanup/atlas-refresh path, incomplete compatible-style
         transfer coverage, and a duplicate apply-time soil palette that had
         drifted from the canonical validator contract.
@@ -1166,3 +1166,94 @@ entries:
       Proposal seed only. Requires a scoped validator-governance workbook,
       rule-level evidence, changed-file-shape fixtures, and independent review
       before any canonical validator code or severity configuration changes.
+
+  - id: fw_20261015_01
+    title: Add repository-contained outside-write detection to /health
+    domain: validation
+    target_repo: both
+    source_workbook: null
+    completion_workbook: null
+    proposed_workbook: null
+    scope: >-
+      Extend the repo-wide `/health` workflow with a read-only, machine-readable
+      outside-write check that consumes the repository's declared containment
+      policy and escape-root signatures. The check must establish a scoped time
+      window and repository root, detect recent writes to OS temp, scratch,
+      unexpected sibling, and user-settings locations, distinguish expected
+      declared exceptions from unexplained writes, and report paths and
+      timestamps without deleting or moving anything. Define a stable receipt
+      schema, false-positive handling, external-repository portability,
+      cleanup handoff, and focused positive/negative fixtures. Preserve the
+      existing local contained-temp assertions; this item complements them at
+      repo-health scale and must not claim that an empty result proves absence
+      of historical writes outside the observation window.
+    priority: high
+    benefit: high
+    effort: m
+    readiness: partial
+    risk_if_deferred: high
+    activation_trigger: >-
+      The next `/health` command uplift, adoption of ai_ops containment rules
+      by an external repository, or a new incident/evidence showing agent or
+      tool output outside the declared workspace root.
+    next_review: 2026-11-15
+    status: planned
+    owner: ai_ops
+    created: 2026-10-15
+    compacted_context:
+      source: >-
+        P2 closeout-security execution identified that outside-write evidence
+        currently exists as contained test assertions and scoped probes rather
+        than a repo-wide health capability.
+      note: >-
+        This entry is self-contained and remains actionable if the originating
+        security workbundle is archived. It is a follow-on design/implementation
+        item, not evidence that the current P2 gate or a future health run has
+        already passed.
+    notes: >-
+      Requires a Level-3+ ai_ops workbook, current containment-policy review,
+      external-repository compatibility analysis, and independent crosscheck
+      before canonical health or validator surfaces are changed.
+
+  - id: fw_20261018_01
+    title: Parked closeout security gate rework and post-landing cost measurement
+    domain: validation
+    target_repo: ai_ops
+    source_workbook: null
+    completion_workbook: null
+    proposed_workbook: null
+    scope: >-
+      A finished but unlanded rework of the closeout security gate is parked in
+      the sandbox (patch plus full copies; +3,900 lines: pre-pass, validator,
+      commit shim, tiers config, schema, CI trailer check, per-file author map,
+      their tests). Decide whether any of it is worth landing only after
+      measuring the existing gate: record review token cost, time, and real
+      findings for the first five closeouts, then compare against the rework's
+      per-commit ceremony (author map, receipt, trailer, native stub, CI). If
+      the existing gate finds nothing real or costs too much, trim tiers instead
+      of landing the rework.
+    priority: low
+    benefit: medium
+    effort: l
+    readiness: partial
+    risk_if_deferred: low
+    activation_trigger: >-
+      Five real closeouts have run on the existing gate and the measurements
+      are recorded, or a real incident shows the existing gate was bypassed
+      by accident.
+    next_review: 2026-12-01
+    status: planned
+    owner: ai_ops
+    created: 2026-10-18
+    compacted_context:
+      source: >-
+        The security follow-on bundle descoped the gate rework on 2026-10-18
+        after repeated hardening rounds targeted a hostile author the accepted
+        structural limits already concede.
+      note: >-
+        Self-contained: the parked patch lives in the sandbox and is
+        reproducible with git diff against ad9ee2a if the sandbox is lost.
+    notes: >-
+      Do not resume hardening rounds without new evidence. Any resumption
+      needs a Level-3+ workbook, an explicit review-round cap, and a
+      stopping rule written before the first review.

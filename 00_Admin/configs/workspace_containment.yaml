@@ -2,9 +2,20 @@ version: 0.1.0
 workspace:
   temp_root: "<workspace-root>/tmp"
 overlay_allowlist:
-  allow:
-    - "Bash(bash .ai_ops/setup/*.sh:*)"
-    - "Bash(bash ai_ops/.ai_ops/setup/*.sh:*)"
+  allow: []
+agent_adapters:
+  - agent: claude
+    mechanism: "guard hook; file tools only; Bash unguarded"
+    status: runtime_unverified
+    last_verified: 2026-10-16
+  - agent: codex
+    mechanism: "OS-temp containment NOT enforced; detective report only"
+    status: runtime_unverified
+    last_verified: 2026-10-16
+  - agent: other
+    mechanism: "uncovered; no use without OS-level jail"
+    status: uncovered
+    last_verified: null
 harness_exceptions:
   - id: claude-project-memory
     path: "<user-profile>/.claude/projects/<workspace-project>/memory"

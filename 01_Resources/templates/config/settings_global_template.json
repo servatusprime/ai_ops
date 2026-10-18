@@ -17,9 +17,7 @@
       "Bash(git add:*)",
       "Bash(git check-ignore:*)",
       "Bash(git mv:*)",
-      "Bash(git stash:*)",
       "Bash(git show:*)",
-      "Bash(git merge:*)",
       "Bash(grep:*)",
       "Bash(rg:*)",
       "Bash(findstr:*)",
@@ -43,16 +41,19 @@
       "Bash(npx:*)",
       "Bash(pip:*)",
       "Bash(conda:*)",
-      "Bash(pre-commit run:*)",
-      "Bash(bash .ai_ops/setup/*.sh:*)",
-      "Bash(bash ai_ops/.ai_ops/setup/*.sh:*)"
+      "Bash(pre-commit run:*)"
     ],
     "ask": [
       "Bash(git -C:*)",
+      "Bash(git merge:*)",
+      "Bash(git stash:*)",
       "Bash(git push:*)",
       "Bash(git -* push:*)",
       "Bash(git commit:*)",
       "Bash(git -* commit:*)",
+      "Bash(*git*log --grep=*)",
+      "Bash(*git*branch --format=*)",
+      "Bash(*git*branch -f*)",
       "Bash(git reset:*)",
       "Bash(git -* reset:*)",
       "Bash(git checkout:*)",
@@ -102,7 +103,19 @@
       "Bash(rm -rf:*)",
       "Bash(*--force push*)",
       "Bash(*git push --force*)",
-      "Bash(*git push*--delete*)"
+      "Bash(*git push*--delete*)",
+      "Bash(*git*commit* --no-verif*)",
+      "Bash(*git*commit* -n)",
+      "Bash(*git*commit* -n *)",
+      "Bash(*git*push* --no-verif*)",
+      "Bash(*GIT_CONFIG_*)",
+      "Bash(*git*config*--global*)",
+      "Bash(*git*update-ref *)",
+      "Bash(*git*commit-tree *)",
+      "Bash(*git* --output=*)",
+      "Bash(*git* --output *)",
+      "Bash(*[cC][oO][rR][eE].[hH][oO][oO][kK][sS][pP][aA][tT][hH]*)",
+      "Bash(SKIP=*)"
     ]
   }
 }

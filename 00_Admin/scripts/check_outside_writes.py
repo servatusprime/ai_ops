@@ -6,13 +6,21 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 import time
 from pathlib import Path
 
 import yaml
-from hooks.guard_workspace_writes import expand
 
 ROOT = Path(__file__).resolve().parents[2]
+
+# Keep the shared helper import explicit so isolated execution cannot resolve a
+# repository-local module through an ambient working-directory search path.
+SCRIPTS_ROOT = Path(__file__).resolve().parent
+if str(SCRIPTS_ROOT) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_ROOT))
+
+from hooks.guard_workspace_writes import expand  # noqa: E402
 
 
 def load_report_signatures(config: Path, root: Path) -> list[Path]:
@@ -62,7 +70,11 @@ def main() -> int:
                 except OSError:
                     continue
                 if stat.st_mtime >= cutoff:
-                    rows.append({"path": str(target), "modified_epoch": stat.st_mtime, "root": str(base)})
+                    resolved_target = target.resolve()
+                    row = {"path": str(resolved_target), "modified_epoch": stat.st_mtime, "root": str(base)}
+                    if target.is_symlink():
+                        row["link_path"] = str(target)
+                    rows.append(row)
     rows.sort(key=lambda row: (str(row["path"]), float(row["modified_epoch"])))
     if args.format == "json":
         print(json.dumps({"workspace_root": str(root), "since_hours": args.since_hours, "files": rows}, indent=2))
