@@ -15,11 +15,9 @@ targets:
 - codex
 - plugin
 generation_targets:
-- claude
-- codex
 - plugin
 workflow_count: 13
-output_count: 65
+output_count: 26
 manifest_output_count: 65
 workflows:
 - workflow: ai_ops_setup
@@ -65,7 +63,7 @@ workflows:
     sha256_12: 6bec19573c50
 - workflow: closeout
   source: .ai_ops/workflows/closeout.md
-  source_sha256_12: 4241f3c02cb4
+  source_sha256_12: c78565fef3f0
   description: Finalize a work session with cleanup, lint, review, and approval-gated
     commit/push publication.
   outputs:

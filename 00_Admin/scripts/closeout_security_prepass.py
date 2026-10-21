@@ -9,7 +9,12 @@ receipt validator make those decisions.
 from __future__ import annotations
 
 import argparse
+import csv
+import fnmatch
 import hashlib
+import io
+import json
+import math
 import re
 import subprocess
 from pathlib import Path
@@ -23,6 +28,7 @@ except ImportError as exc:  # pragma: no cover - environment diagnostic
 
 ROOT = Path(__file__).resolve().parents[2]
 RECEIPT_VERSION = "0.2.0"
+DEFAULT_MAX_TOTAL_REVIEW_TOKENS = 120000
 MIN_FORCED_T2_PREFIXES = (
     ".ai_ops/workflows/",
     "00_Admin/configs/",
@@ -140,12 +146,22 @@ def contained_output(repo: Path, value: Path) -> Path:
     return target
 
 
+def read_paths_file(repo: Path, value: Path) -> list[str]:
+    target = contained_output(repo, value)
+    try:
+        text = target.read_text(encoding="utf-8")
+    except OSError as exc:
+        fail(f"cannot read paths file: {exc}")
+    return [line.strip() for line in text.splitlines() if line.strip()]
+
+
 def include_hash(paths: list[str]) -> str:
     return hashlib.sha256("\n".join(sorted(paths)).encode("utf-8")).hexdigest()
 
 
 def change_records(repo: Path, paths: list[str], source: str) -> dict[str, str]:
     """Return the frozen change status used by the receipt scope lock."""
+    requested = set(paths)
     if source == "staged":
         command = ["git", "-C", str(repo), "diff", "--cached", "--name-status", "--no-renames"]
     elif source == "worktree":
@@ -153,7 +169,7 @@ def change_records(repo: Path, paths: list[str], source: str) -> dict[str, str]:
     else:
         return {path: "H" for path in paths}
     completed = subprocess.run(
-        [*command, "--", *paths],
+        [*command, "--"],
         check=False,
         text=True,
         stdout=subprocess.PIPE,
@@ -164,10 +180,11 @@ def change_records(repo: Path, paths: list[str], source: str) -> dict[str, str]:
     records: dict[str, str] = {}
     for line in completed.stdout.splitlines():
         status, _, path = line.partition("\t")
-        if status and path:
-            records[path.replace("\\", "/")] = status[0]
+        normalized = path.replace("\\", "/")
+        if status and normalized in requested:
+            records[normalized] = status[0]
     untracked = subprocess.run(
-        ["git", "-C", str(repo), "ls-files", "--others", "--exclude-standard", "--", *paths],
+        ["git", "-C", str(repo), "ls-files", "--others", "--exclude-standard", "--"],
         check=False,
         text=True,
         stdout=subprocess.PIPE,
@@ -176,7 +193,9 @@ def change_records(repo: Path, paths: list[str], source: str) -> dict[str, str]:
     if untracked.returncode:
         fail(f"cannot inspect untracked paths: {untracked.stderr.strip()}")
     for path in untracked.stdout.splitlines():
-        records[path.replace("\\", "/")] = "A"
+        normalized = path.replace("\\", "/")
+        if normalized in requested:
+            records[normalized] = "A"
     return {path: records.get(path, "H") for path in paths}
 
 
@@ -216,12 +235,207 @@ def is_generated(path: str, config: dict[str, Any]) -> bool:
     return any(path.startswith(prefix) for prefix in config.get("generated_prefixes", []))
 
 
-def review_basis(file_kind: str, binary: bool) -> str:
+def _blocked_data_key(value: Any, blocked_keys: set[str], max_nodes: int) -> bool | None:
+    stack = [value]
+    visited = 0
+    while stack:
+        current = stack.pop()
+        visited += 1
+        if visited > max_nodes:
+            return None
+        if isinstance(current, dict):
+            for key, child in current.items():
+                if str(key).strip().lower() in blocked_keys:
+                    return True
+                if isinstance(child, (dict, list)):
+                    stack.append(child)
+        elif isinstance(current, list):
+            stack.extend(child for child in current if isinstance(child, (dict, list)))
+    return False
+
+
+def _geojson_bbox_valid(value: Any) -> bool:
+    return isinstance(value, list) and len(value) in {4, 6} and all(
+        isinstance(item, (int, float)) and not isinstance(item, bool) and math.isfinite(float(item))
+        for item in value
+    )
+
+
+def _geojson_position_valid(value: Any) -> bool:
+    return isinstance(value, list) and len(value) in {2, 3} and all(
+        isinstance(item, (int, float)) and not isinstance(item, bool) and math.isfinite(float(item))
+        for item in value
+    )
+
+
+def _geojson_coordinates_valid(value: Any, geometry_type: str) -> bool:
+    if geometry_type == "Point":
+        return _geojson_position_valid(value)
+    if geometry_type == "MultiPoint":
+        return isinstance(value, list) and all(_geojson_position_valid(item) for item in value)
+    if geometry_type == "LineString":
+        return isinstance(value, list) and len(value) >= 2 and all(_geojson_position_valid(item) for item in value)
+    if geometry_type == "MultiLineString":
+        return isinstance(value, list) and all(_geojson_coordinates_valid(item, "LineString") for item in value)
+    if geometry_type == "Polygon":
+        return isinstance(value, list) and all(
+            isinstance(ring, list)
+            and len(ring) >= 4
+            and ring[0] == ring[-1]
+            and all(_geojson_position_valid(item) for item in ring)
+            for ring in value
+        )
+    if geometry_type == "MultiPolygon":
+        return isinstance(value, list) and all(_geojson_coordinates_valid(item, "Polygon") for item in value)
+    return False
+
+
+def _geojson_geometry_valid(value: Any) -> bool:
+    if not isinstance(value, dict):
+        return False
+    geometry_type = value.get("type")
+    if geometry_type == "GeometryCollection":
+        if any(str(key) not in {"type", "geometries", "bbox"} for key in value):
+            return False
+        if "bbox" in value and not _geojson_bbox_valid(value["bbox"]):
+            return False
+        geometries = value.get("geometries")
+        return isinstance(geometries, list) and all(_geojson_geometry_valid(item) for item in geometries)
+    if any(str(key) not in {"type", "coordinates", "bbox"} for key in value):
+        return False
+    if "bbox" in value and not _geojson_bbox_valid(value["bbox"]):
+        return False
+    return geometry_type in {
+        "Point", "MultiPoint", "LineString", "MultiLineString", "Polygon", "MultiPolygon"
+    } and _geojson_coordinates_valid(value.get("coordinates"), geometry_type)
+
+
+def _geojson_structure(value: Any, blocked_keys: set[str], max_nodes: int) -> tuple[int, list[str]] | None:
+    if not isinstance(value, dict) or value.get("type") != "FeatureCollection":
+        return None
+    if any(str(key) not in {"type", "features", "bbox", "crs", "name"} for key in value):
+        return None
+    if "bbox" in value and not _geojson_bbox_valid(value["bbox"]):
+        return None
+    if "name" in value and not isinstance(value["name"], str):
+        return None
+    if "crs" in value:
+        crs = value["crs"]
+        if not isinstance(crs, dict) or any(str(key) not in {"type", "properties"} for key in crs):
+            return None
+        if not isinstance(crs.get("type"), str) or not isinstance(crs.get("properties", {}), dict):
+            return None
+        if _blocked_data_key(crs.get("properties", {}), blocked_keys, max_nodes) is not False:
+            return None
+    features = value.get("features")
+    if not isinstance(features, list):
+        return None
+    for feature in features:
+        if not isinstance(feature, dict) or any(
+            str(key) not in {"type", "geometry", "properties", "id", "bbox"} for key in feature
+        ):
+            return None
+        if "bbox" in feature and not _geojson_bbox_valid(feature["bbox"]):
+            return None
+        if "id" in feature and (
+            not isinstance(feature["id"], (str, int, float)) or isinstance(feature["id"], bool)
+        ):
+            return None
+        if feature.get("type") != "Feature" or not isinstance(feature.get("properties", {}), dict):
+            return None
+        if feature.get("geometry") is not None and not _geojson_geometry_valid(feature["geometry"]):
+            return None
+        blocked = _blocked_data_key(feature.get("properties", {}), blocked_keys, max_nodes)
+        if blocked is not False:
+            return None
+    return len(features), sorted(str(key) for key in value)[:100]
+
+
+def structured_data_summary(path: str, data: bytes, config: dict[str, Any]) -> str | None:
+    policy = config.get("large_deleted_data", {})
+    if not policy.get("enabled"):
+        return None
+    if len(data) < int(policy.get("min_source_bytes", 0)):
+        return None
+    approved_patterns = policy.get("approved_path_patterns", [])
+    if not approved_patterns or not any(fnmatch.fnmatch(path, pattern) for pattern in approved_patterns):
+        return None
+    suffix = Path(path).suffix.lower()
+    if suffix not in {str(value).lower() for value in policy.get("approved_extensions", [])}:
+        return None
+    blocked_keys = {
+        str(value).strip().lower() for value in policy.get("blocked_structure_keys", [])
+    }
+    max_nodes = int(policy.get("max_structure_nodes", 250000))
+    try:
+        text = data.decode("utf-8")
+        if suffix == ".csv":
+            reader = csv.reader(io.StringIO(text))
+            fields = next(reader, [])
+            normalized_fields = [str(field).strip().lower() for field in fields]
+            if (
+                len(normalized_fields) < 2
+                or len(set(normalized_fields)) != len(normalized_fields)
+                or any(field in blocked_keys for field in normalized_fields)
+            ):
+                return None
+            records = 0
+            for record in reader:
+                if len(record) != len(normalized_fields):
+                    return None
+                records += 1
+            structure = {
+                "format": "csv_tabular",
+                "fields": normalized_fields[:100],
+                "field_count": len(normalized_fields),
+                "records": records,
+            }
+        else:
+            value = json.loads(text)
+            geojson = _geojson_structure(value, blocked_keys, max_nodes)
+            if geojson is None:
+                return None
+            records, top_keys = geojson
+            structure = {
+                "format": "json",
+                "top_level": "geojson_feature_collection",
+                "top_keys": top_keys,
+                "records": records,
+            }
+    except (UnicodeDecodeError, json.JSONDecodeError, csv.Error, ValueError):
+        return None
+    encoded = json.dumps(structure, sort_keys=True, separators=(",", ":"))
+    return f"{encoded};summary_sha256={hashlib.sha256(encoded.encode('utf-8')).hexdigest()}"
+
+
+def review_basis(file_kind: str, binary: bool, structural_summary: str | None = None) -> str:
+    if file_kind == "deleted" and structural_summary is not None:
+        return "structured_deleted_data"
     if file_kind == "deleted_binary":
         return "hash_only_deleted_binary"
     if binary:
         return "digest_bound_binary"
     return "full_content"
+
+
+def positive_integer(value: Any, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        fail(f"packet {name} must be a positive integer")
+    return value
+
+
+def enforce_total_review_budget(packet_tokens: list[int], config: dict[str, Any]) -> int:
+    total = sum(packet_tokens)
+    configured = config.get("packet", {}).get(
+        "max_total_review_tokens", DEFAULT_MAX_TOTAL_REVIEW_TOKENS
+    )
+    maximum = positive_integer(configured, "max_total_review_tokens")
+    if total > maximum:
+        fail(
+            "review scope exceeds total token budget: "
+            f"estimated={total}; max={maximum}; split include paths or use bounded structural review"
+        )
+    return total
 
 
 def tier_for(path: str, config: dict[str, Any]) -> str:
@@ -263,7 +477,7 @@ def scan_text(path: str, data: bytes, config: dict[str, Any]) -> tuple[str, list
 
 
 def build_packet(
-    rows: list[dict[str, Any]], packet_path: Path, packet_budget: int
+    rows: list[dict[str, Any]], packet_path: Path, packet_budget: int, write_files: bool = True
 ) -> tuple[list[str], list[int], dict[str, int]]:
     header = [
         "# Closeout Security Reviewer Packet",
@@ -289,9 +503,18 @@ def build_packet(
             f"- patterns: `{', '.join(row.get('finding_refs', [])) or 'none'}`",
             "",
         ]
+        if row.get("structural_summary"):
+            prefix.extend([f"- structural_summary: `{row['structural_summary']}`", ""])
         content = row.get("content")
         if content is None:
-            note = "Binary content omitted from the text packet; review the byte digest and declared disposition."
+            note = (
+                "Content omitted from the text packet; review the byte digest and declared disposition."
+            )
+            if row.get("review_basis") == "structured_deleted_data":
+                note = (
+                    "Large deleted structured data content omitted; review the digest, generated structural "
+                    "summary, dependency evidence, and recovery evidence."
+                )
             sections.append(
                 prefix
                 + [
@@ -347,7 +570,6 @@ def build_packet(
             current = candidate
     if current != header:
         packets.append(current)
-    packet_path.parent.mkdir(parents=True, exist_ok=True)
     paths: list[str] = []
     token_counts: list[int] = []
     for index, packet in enumerate(packets, start=1):
@@ -356,10 +578,12 @@ def build_packet(
             if len(packets) == 1
             else packet_path.with_name(f"{packet_path.stem}-{index:03d}{packet_path.suffix}")
         )
-        target.write_text("\n".join(packet), encoding="utf-8", newline="\n")
+        if write_files:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("\n".join(packet), encoding="utf-8", newline="\n")
         paths.append(str(target))
         token_counts.append((len("\n".join(packet).encode("utf-8")) + 3) // 4)
-    if len(packets) > 1:
+    if write_files and len(packets) > 1:
         packet_path.write_text(
             "# Closeout Security Packet Manifest\n\n"
             + "\n".join(
@@ -374,18 +598,26 @@ def build_packet(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("paths", nargs="+", help="repository-relative include paths")
+    parser.add_argument("paths", nargs="*", help="repository-relative include paths")
     parser.add_argument("--repo-root", type=Path, default=ROOT)
     parser.add_argument("--config", type=Path)
     parser.add_argument("--source", choices=["head", "staged", "worktree"], default="head")
     parser.add_argument("--receipt-path", type=Path, required=True)
     parser.add_argument("--packet-path", type=Path)
+    parser.add_argument(
+        "--paths-file", type=Path, help="repository-contained UTF-8 file with one include path per line"
+    )
     args = parser.parse_args()
     repo = args.repo_root.resolve()
     args.receipt_path = contained_output(repo, args.receipt_path)
     if args.packet_path:
         args.packet_path = contained_output(repo, args.packet_path)
-    paths = [rel_path(value) for value in args.paths]
+    raw_paths = list(args.paths)
+    if args.paths_file:
+        raw_paths.extend(read_paths_file(repo, args.paths_file))
+    if not raw_paths:
+        fail("at least one include path or --paths-file is required")
+    paths = [rel_path(value) for value in raw_paths]
     if len(set(paths)) != len(paths):
         fail("include paths must be unique")
     config = load_config(repo, args.config if args.config else None)
@@ -394,7 +626,7 @@ def main() -> int:
     packet_budget = int(config.get("packet", {}).get("estimated_tokens_per_packet", 20000))
     for path in paths:
         deleted = is_deleted(repo, path, args.source)
-        data, basis = read_source(repo, path, args.source, deleted)
+        data, revision_basis = read_source(repo, path, args.source, deleted)
         binary = is_binary(path, data, config)
         if deleted and binary:
             kind = "deleted_binary"
@@ -407,12 +639,16 @@ def main() -> int:
         else:
             kind = "text"
         status, hits = scan_text(path, data, config)
+        structural_summary = (
+            structured_data_summary(path, data, config) if deleted and not binary and status == "clean" else None
+        )
+        basis = review_basis(kind, binary, structural_summary)
         row: dict[str, Any] = {
             "path": path,
             "sha256": hashlib.sha256(data).hexdigest(),
-            "revision_basis": basis,
+            "revision_basis": revision_basis,
             "file_kind": kind,
-            "review_basis": review_basis(kind, binary),
+            "review_basis": basis,
             "mode": git_mode(repo, path, args.source, deleted),
             "tier": tier_for(path, config),
             "coverage": "not_reviewed",
@@ -433,13 +669,15 @@ def main() -> int:
             "finding_refs": hits,
             "source_bytes": len(data),
             "content_bytes": len(data),
-            "coverage_notes": f"source_bytes={len(data)}; review_basis={review_basis(kind, binary)}",
+            "coverage_notes": f"source_bytes={len(data)}; review_basis={basis}",
         }
+        if structural_summary is not None:
+            row["structural_summary"] = structural_summary
         if tier_for(path, config) == "T0" and status == "candidate":
             row["tier"] = "T1"
             row["reviewer_model"] = config.get("tiers", {}).get("T1", {}).get("reviewer_model", "pending")
             row["reviewer_runtime"] = config.get("tiers", {}).get("T1", {}).get("reviewer_runtime", "pending")
-        if kind in {"text", "deleted", "generated"}:
+        if kind in {"text", "deleted", "generated"} and basis != "structured_deleted_data":
             row["content"] = data.decode("utf-8", errors="replace")
         packet_rows.append(dict(row))
         row.pop("content", None)
@@ -459,9 +697,13 @@ def main() -> int:
     }
     statuses = change_records(repo, paths, args.source)
     receipt["scope_lock_sha256"] = scope_lock(paths, rows, statuses)
-    args.receipt_path.parent.mkdir(parents=True, exist_ok=True)
-    args.receipt_path.write_text(yaml.safe_dump(receipt, sort_keys=False), encoding="utf-8", newline="\n")
-    packet_files, packet_tokens, chunk_counts = build_packet(packet_rows, packet_path, packet_budget)
+    packet_files, packet_tokens, chunk_counts = build_packet(
+        packet_rows, packet_path, packet_budget, write_files=False
+    )
+    total_review_tokens = enforce_total_review_budget(packet_tokens, config)
+    packet_files, packet_tokens, chunk_counts = build_packet(
+        packet_rows, packet_path, packet_budget, write_files=True
+    )
     for row in rows:
         row["chunk_count"] = chunk_counts[row["path"]]
     batches: list[dict[str, Any]] = []
@@ -490,7 +732,8 @@ def main() -> int:
             "packet_sha256": [hashlib.sha256(Path(item).read_bytes()).hexdigest() for item in current_files],
         })
     receipt["review_batches"] = batches
-    receipt["review_tokens_total"] = sum(packet_tokens)
+    receipt["review_tokens_total"] = total_review_tokens
+    args.receipt_path.parent.mkdir(parents=True, exist_ok=True)
     args.receipt_path.write_text(yaml.safe_dump(receipt, sort_keys=False), encoding="utf-8", newline="\n")
     print(f"PREPASS {len(rows)} files source={args.source} receipt={args.receipt_path}")
     print(f"include_set_sha256={receipt['include_set_sha256']}")

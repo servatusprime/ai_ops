@@ -1,8 +1,9 @@
-version: "0.2.0"
-ruleset_version: "0.2.0"
+version: "0.4.0"
+ruleset_version: "0.4.0"
 packet:
   estimated_tokens_per_packet: 20000
   session_token_budget: 120000
+  max_total_review_tokens: 120000
   warn_threshold_pct: 80
   park_threshold_pct: 100
 tiers:
@@ -52,3 +53,34 @@ additional_tripwires:
   - "(?i)\\b(?:Invoke-Expression|iex)\\b"
   - "(?i)\\b(?:subprocess\\.(?:run|Popen|call)|os\\.system)\\b.*\\bshell\\s*=\\s*True\\b"
   - "(?i)\\b(?:write_text|write_bytes|unlink|remove|move)\\s*\\("
+large_deleted_data:
+  enabled: true
+  min_source_bytes: 8388608
+  approved_path_patterns:
+    - "03_Projects/*/outputs/*"
+    - "90_Sandbox/*/outputs/*"
+    - "99_Trash/*"
+  approved_extensions: [".csv", ".geojson"]
+  blocked_structure_keys:
+    - "approval_state"
+    - "argv"
+    - "authority"
+    - "command"
+    - "commands"
+    - "controller"
+    - "environment"
+    - "executable"
+    - "instruction"
+    - "instructions"
+    - "job"
+    - "jobs"
+    - "permissions"
+    - "recovery"
+    - "runner"
+    - "script"
+    - "scripts"
+    - "step"
+    - "steps"
+    - "workflow"
+    - "workflows"
+  max_structure_nodes: 250000

@@ -9,9 +9,15 @@ floor, and rejects development-only worktree receipts.
 from __future__ import annotations
 
 import argparse
+import csv
+import fnmatch
 import hashlib
+import io
+import json
+import math
 import re
 import subprocess
+from datetime import datetime
 from pathlib import Path
 from typing import Any, NoReturn
 
@@ -23,6 +29,7 @@ except ImportError as exc:  # pragma: no cover - environment diagnostic
 
 ROOT = Path(__file__).resolve().parents[2]
 RECEIPT_VERSIONS = {"0.1.0", "0.2.0"}
+DEFAULT_MAX_TOTAL_REVIEW_TOKENS = 120000
 MIN_FORCED_T2_PREFIXES = (
     ".ai_ops/workflows/",
     "00_Admin/configs/",
@@ -45,6 +52,22 @@ MIN_FORCED_T2_FILES = (
 
 def fail(message: str) -> "NoReturn":
     raise SystemExit(f"closeout-security-validator: {message}")
+
+
+def positive_integer(value: Any, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        fail(f"packet {name} must be a positive integer")
+    return value
+
+
+def enforce_total_review_budget(packet_tokens: list[int], config: dict[str, Any]) -> None:
+    configured = config.get("packet", {}).get(
+        "max_total_review_tokens", DEFAULT_MAX_TOTAL_REVIEW_TOKENS
+    )
+    maximum = positive_integer(configured, "max_total_review_tokens")
+    total = sum(packet_tokens)
+    if total > maximum:
+        fail(f"review scope exceeds total token budget: estimated={total}; max={maximum}")
 
 
 def git_bytes(repo: Path, spec: str) -> bytes:
@@ -106,6 +129,179 @@ def is_generated(path: str, config: dict[str, Any]) -> bool:
     return any(path.startswith(prefix) for prefix in config.get("generated_prefixes", []))
 
 
+def _blocked_data_key(value: Any, blocked_keys: set[str], max_nodes: int) -> bool | None:
+    stack = [value]
+    visited = 0
+    while stack:
+        current = stack.pop()
+        visited += 1
+        if visited > max_nodes:
+            return None
+        if isinstance(current, dict):
+            for key, child in current.items():
+                if str(key).strip().lower() in blocked_keys:
+                    return True
+                if isinstance(child, (dict, list)):
+                    stack.append(child)
+        elif isinstance(current, list):
+            stack.extend(child for child in current if isinstance(child, (dict, list)))
+    return False
+
+
+def _geojson_bbox_valid(value: Any) -> bool:
+    return isinstance(value, list) and len(value) in {4, 6} and all(
+        isinstance(item, (int, float)) and not isinstance(item, bool) and math.isfinite(float(item))
+        for item in value
+    )
+
+
+def _geojson_position_valid(value: Any) -> bool:
+    return isinstance(value, list) and len(value) in {2, 3} and all(
+        isinstance(item, (int, float)) and not isinstance(item, bool) and math.isfinite(float(item))
+        for item in value
+    )
+
+
+def _geojson_coordinates_valid(value: Any, geometry_type: str) -> bool:
+    if geometry_type == "Point":
+        return _geojson_position_valid(value)
+    if geometry_type == "MultiPoint":
+        return isinstance(value, list) and all(_geojson_position_valid(item) for item in value)
+    if geometry_type == "LineString":
+        return isinstance(value, list) and len(value) >= 2 and all(_geojson_position_valid(item) for item in value)
+    if geometry_type == "MultiLineString":
+        return isinstance(value, list) and all(_geojson_coordinates_valid(item, "LineString") for item in value)
+    if geometry_type == "Polygon":
+        return isinstance(value, list) and all(
+            isinstance(ring, list)
+            and len(ring) >= 4
+            and ring[0] == ring[-1]
+            and all(_geojson_position_valid(item) for item in ring)
+            for ring in value
+        )
+    if geometry_type == "MultiPolygon":
+        return isinstance(value, list) and all(_geojson_coordinates_valid(item, "Polygon") for item in value)
+    return False
+
+
+def _geojson_geometry_valid(value: Any) -> bool:
+    if not isinstance(value, dict):
+        return False
+    geometry_type = value.get("type")
+    if geometry_type == "GeometryCollection":
+        if any(str(key) not in {"type", "geometries", "bbox"} for key in value):
+            return False
+        if "bbox" in value and not _geojson_bbox_valid(value["bbox"]):
+            return False
+        geometries = value.get("geometries")
+        return isinstance(geometries, list) and all(_geojson_geometry_valid(item) for item in geometries)
+    if any(str(key) not in {"type", "coordinates", "bbox"} for key in value):
+        return False
+    if "bbox" in value and not _geojson_bbox_valid(value["bbox"]):
+        return False
+    return geometry_type in {
+        "Point", "MultiPoint", "LineString", "MultiLineString", "Polygon", "MultiPolygon"
+    } and _geojson_coordinates_valid(value.get("coordinates"), geometry_type)
+
+
+def _geojson_structure(value: Any, blocked_keys: set[str], max_nodes: int) -> tuple[int, list[str]] | None:
+    if not isinstance(value, dict) or value.get("type") != "FeatureCollection":
+        return None
+    if any(str(key) not in {"type", "features", "bbox", "crs", "name"} for key in value):
+        return None
+    if "bbox" in value and not _geojson_bbox_valid(value["bbox"]):
+        return None
+    if "name" in value and not isinstance(value["name"], str):
+        return None
+    if "crs" in value:
+        crs = value["crs"]
+        if not isinstance(crs, dict) or any(str(key) not in {"type", "properties"} for key in crs):
+            return None
+        if not isinstance(crs.get("type"), str) or not isinstance(crs.get("properties", {}), dict):
+            return None
+        if _blocked_data_key(crs.get("properties", {}), blocked_keys, max_nodes) is not False:
+            return None
+    features = value.get("features")
+    if not isinstance(features, list):
+        return None
+    for feature in features:
+        if not isinstance(feature, dict) or any(
+            str(key) not in {"type", "geometry", "properties", "id", "bbox"} for key in feature
+        ):
+            return None
+        if "bbox" in feature and not _geojson_bbox_valid(feature["bbox"]):
+            return None
+        if "id" in feature and (
+            not isinstance(feature["id"], (str, int, float)) or isinstance(feature["id"], bool)
+        ):
+            return None
+        if feature.get("type") != "Feature" or not isinstance(feature.get("properties", {}), dict):
+            return None
+        if feature.get("geometry") is not None and not _geojson_geometry_valid(feature["geometry"]):
+            return None
+        blocked = _blocked_data_key(feature.get("properties", {}), blocked_keys, max_nodes)
+        if blocked is not False:
+            return None
+    return len(features), sorted(str(key) for key in value)[:100]
+
+
+def structured_data_summary(path: str, data: bytes, config: dict[str, Any]) -> str | None:
+    policy = config.get("large_deleted_data", {})
+    if not policy.get("enabled"):
+        return None
+    if len(data) < int(policy.get("min_source_bytes", 0)):
+        return None
+    approved_patterns = policy.get("approved_path_patterns", [])
+    if not approved_patterns or not any(fnmatch.fnmatch(path, pattern) for pattern in approved_patterns):
+        return None
+    suffix = Path(path).suffix.lower()
+    if suffix not in {str(value).lower() for value in policy.get("approved_extensions", [])}:
+        return None
+    blocked_keys = {
+        str(value).strip().lower() for value in policy.get("blocked_structure_keys", [])
+    }
+    max_nodes = int(policy.get("max_structure_nodes", 250000))
+    try:
+        text = data.decode("utf-8")
+        if suffix == ".csv":
+            reader = csv.reader(io.StringIO(text))
+            fields = next(reader, [])
+            normalized_fields = [str(field).strip().lower() for field in fields]
+            if (
+                len(normalized_fields) < 2
+                or len(set(normalized_fields)) != len(normalized_fields)
+                or any(field in blocked_keys for field in normalized_fields)
+            ):
+                return None
+            records = 0
+            for record in reader:
+                if len(record) != len(normalized_fields):
+                    return None
+                records += 1
+            structure = {
+                "format": "csv_tabular",
+                "fields": normalized_fields[:100],
+                "field_count": len(normalized_fields),
+                "records": records,
+            }
+        else:
+            value = json.loads(text)
+            geojson = _geojson_structure(value, blocked_keys, max_nodes)
+            if geojson is None:
+                return None
+            records, top_keys = geojson
+            structure = {
+                "format": "json",
+                "top_level": "geojson_feature_collection",
+                "top_keys": top_keys,
+                "records": records,
+            }
+    except (UnicodeDecodeError, json.JSONDecodeError, csv.Error, ValueError):
+        return None
+    encoded = json.dumps(structure, sort_keys=True, separators=(",", ":"))
+    return f"{encoded};summary_sha256={hashlib.sha256(encoded.encode('utf-8')).hexdigest()}"
+
+
 def expected_file_kind(path: str, data: bytes, config: dict[str, Any], deleted: bool) -> str:
     binary = is_binary(path, data, config)
     if deleted and binary:
@@ -119,7 +315,11 @@ def expected_file_kind(path: str, data: bytes, config: dict[str, Any], deleted: 
     return "text"
 
 
-def expected_review_basis(file_kind: str) -> str:
+def expected_review_basis(
+    path: str, data: bytes, config: dict[str, Any], file_kind: str, deleted: bool
+) -> str:
+    if file_kind == "deleted" and structured_data_summary(path, data, config) is not None:
+        return "structured_deleted_data"
     if file_kind == "deleted_binary":
         return "hash_only_deleted_binary"
     if file_kind == "binary":
@@ -178,6 +378,65 @@ def validate_evidence_ref(repo: Path, value: str, *, expected_hash: str | None =
         fail(f"evidence does not preserve the deleted artifact digest: {path}")
 
 
+def validate_structured_deleted_data_review(repo: Path, row: dict[str, Any]) -> None:
+    path = str(row["path"])
+    if row.get("file_kind") != "deleted" or row.get("review_basis") != "structured_deleted_data":
+        fail(f"structured deleted-data basis is inconsistent: {path}")
+    if row.get("prepass_status") != "clean":
+        fail(f"structured deleted-data review requires a clean pre-pass: {path}")
+    if row.get("review_method") != "structured-deletion-reference-review":
+        fail(f"structured deleted-data review method is incomplete: {path}")
+    notes = str(row.get("coverage_notes", ""))
+    references = note_value(notes, "references")
+    recovery = note_value(notes, "recovery")
+    structure = note_value(notes, "structure")
+    if any(
+        value in {None, "pending", "missing", "unknown", "none", "not_required"}
+        for value in (references, recovery, structure)
+    ):
+        fail(f"structured deleted-data evidence is incomplete: {path}")
+    if note_value(notes, "references_target_sha256") != str(row["sha256"]):
+        fail(f"reference evidence is not bound to the deleted artifact: {path}")
+    if note_value(notes, "recovery_target_sha256") != str(row["sha256"]):
+        fail(f"recovery evidence is not bound to the deleted artifact: {path}")
+    recovery_path, _, _ = str(recovery).rpartition("@")
+    if note_value(notes, "recovery_path") != recovery_path:
+        fail(f"recovery_path does not identify the recovered artifact: {path}")
+    summary = str(row.get("structural_summary", ""))
+    expected_summary_hash = hashlib.sha256(summary.encode("utf-8")).hexdigest()
+    if note_value(notes, "structure_summary_sha256") != expected_summary_hash:
+        fail(f"structural summary evidence is not bound to the receipt: {path}")
+    for key in ("producer", "consumers", "retention_owner", "retrieval_method"):
+        value = note_value(notes, key)
+        if value in {None, "pending", "missing", "unknown", "none", "not_required"}:
+            fail(f"structured deleted-data evidence lacks {key}: {path}")
+    validate_evidence_ref(repo, str(references))
+    validate_evidence_ref(repo, str(structure))
+    validate_evidence_ref(repo, str(recovery), expected_hash=str(row["sha256"]))
+
+
+def validate_review_approval(approval: Any, scope_lock: str) -> None:
+    if not isinstance(approval, dict):
+        fail("structured deleted-data review requires review_approval")
+    if approval.get("scope_lock_sha256") != scope_lock:
+        fail("review_approval is not bound to the frozen scope lock")
+    if approval.get("decision") != "approve":
+        fail("review_approval decision must be approve")
+    approved_by = approval.get("approved_by")
+    approved_at = approval.get("approved_at")
+    placeholders = {"", "pending", "unknown", "none", "missing", "not_required", "n/a"}
+    if not isinstance(approved_by, str) or approved_by.strip().casefold() in placeholders:
+        fail("review_approval lacks a valid approved_by identity")
+    if not isinstance(approved_at, str) or not approved_at.strip():
+        fail("review_approval lacks approved_at")
+    try:
+        timestamp = datetime.fromisoformat(approved_at.replace("Z", "+00:00"))
+    except ValueError:
+        fail("review_approval approved_at must be an ISO-8601 timestamp")
+    if timestamp.tzinfo is None:
+        fail("review_approval approved_at must include a timezone")
+
+
 def scope_lock(paths: list[str], rows: list[dict[str, Any]], statuses: dict[str, str]) -> str:
     row_by_path = {str(row["path"]): row for row in rows}
     material = "\n".join(
@@ -206,9 +465,10 @@ def staged_records(repo: Path) -> dict[str, str]:
 
 
 def worktree_records(repo: Path, paths: list[str]) -> dict[str, str]:
+    requested = set(paths)
     completed = subprocess.run(
         [
-            "git", "-C", str(repo), "diff", "HEAD", "--name-status", "--no-renames", "--", *paths
+            "git", "-C", str(repo), "diff", "HEAD", "--name-status", "--no-renames"
         ],
         check=False,
         text=True,
@@ -220,10 +480,10 @@ def worktree_records(repo: Path, paths: list[str]) -> dict[str, str]:
     records: dict[str, str] = {}
     for line in completed.stdout.splitlines():
         status, _, path = line.partition("\t")
-        if status and path:
+        if status and path and path in requested:
             records[safe_path(path)] = status[0]
     untracked = subprocess.run(
-        ["git", "-C", str(repo), "ls-files", "--others", "--exclude-standard", "--", *paths],
+        ["git", "-C", str(repo), "ls-files", "--others", "--exclude-standard"],
         check=False,
         text=True,
         stdout=subprocess.PIPE,
@@ -232,7 +492,8 @@ def worktree_records(repo: Path, paths: list[str]) -> dict[str, str]:
     if untracked.returncode:
         fail(f"cannot inspect untracked paths: {untracked.stderr.strip()}")
     for path in untracked.stdout.splitlines():
-        records[safe_path(path)] = "A"
+        if path in requested:
+            records[safe_path(path)] = "A"
     return {path: records.get(path, "H") for path in paths}
 
 
@@ -255,6 +516,8 @@ def validate_shape(receipt: dict[str, Any]) -> None:
     if missing:
         fail(f"receipt missing fields: {', '.join(missing)}")
     top_allowed = required | {"receipt_sha256"}
+    if version == "0.2.0":
+        top_allowed |= {"review_approval"}
     unknown_top = sorted(set(receipt) - top_allowed)
     if unknown_top:
         fail(f"receipt has unknown fields: {', '.join(unknown_top)}")
@@ -316,7 +579,14 @@ def validate_shape(receipt: dict[str, Any]) -> None:
         "finding_refs", "coverage_notes",
     }
     if version == "0.2.0":
-        row_allowed |= {"review_basis", "mode", "source_bytes", "independent_reviewer", "independent_evidence"}
+        row_allowed |= {
+            "review_basis",
+            "mode",
+            "source_bytes",
+            "independent_reviewer",
+            "independent_evidence",
+            "structural_summary",
+        }
     for row in receipt["rows"]:
         if not isinstance(row, dict):
             fail("receipt row must be a mapping")
@@ -352,7 +622,12 @@ def validate_shape(receipt: dict[str, Any]) -> None:
         ):
             fail(f"review attestation fields are invalid: {row.get('path')}")
         if version == "0.2.0":
-            if row.get("review_basis") not in {"full_content", "digest_bound_binary", "hash_only_deleted_binary"}:
+            if row.get("review_basis") not in {
+                "full_content",
+                "digest_bound_binary",
+                "hash_only_deleted_binary",
+                "structured_deleted_data",
+            }:
                 fail(f"invalid review_basis in receipt row: {row.get('path')}")
             if not isinstance(row.get("mode"), str) or not re.fullmatch(r"[0-9]{6}", row["mode"]):
                 fail(f"mode is invalid: {row.get('path')}")
@@ -361,6 +636,8 @@ def validate_shape(receipt: dict[str, Any]) -> None:
             for key in ("independent_reviewer", "independent_evidence"):
                 if not isinstance(row.get(key), str) or not row[key]:
                     fail(f"receipt row field {key} is required: {row.get('path')}")
+            if "structural_summary" in row and not isinstance(row["structural_summary"], str):
+                fail(f"structural_summary must be text: {row.get('path')}")
 
 
 def load_config(repo: Path, config_path: Path | None) -> dict[str, Any]:
@@ -587,6 +864,9 @@ def main() -> int:
         ]
     actual_packet_tokens: list[int] = []
     packet_sections: list[dict[str, Any]] = []
+    enforce_total_review_budget(
+        [token for _, _, tokens, _ in packet_groups for token in tokens], config
+    )
     for batch_id, packet_paths, packet_tokens, packet_digests in packet_groups:
         if any(value > packet_budget for value in packet_tokens):
             fail(f"packet token cap exceeded: max={packet_budget}")
@@ -620,6 +900,7 @@ def main() -> int:
     if str(receipt["receipt_version"]) == "0.2.0":
         if sum(actual_packet_tokens) != int(receipt["review_tokens_total"]):
             fail("review_tokens_total does not match reviewer packet bytes")
+        enforce_total_review_budget(actual_packet_tokens, config)
     rows = receipt["rows"]
     if not isinstance(rows, list) or not rows:
         fail("receipt rows must be a non-empty list")
@@ -663,11 +944,22 @@ def main() -> int:
             actual_mode = source_mode(repo, path, source, actual_kind)
             if str(row.get("file_kind")) != actual_kind:
                 fail(f"receipt file_kind does not match repository bytes for {path}: {actual_kind}")
-            if str(row.get("review_basis")) != expected_review_basis(actual_kind):
+            expected_status, expected_findings = scan_text(path, data, config)
+            expected_basis = (
+                expected_review_basis(path, data, config, actual_kind, deleted)
+                if expected_status == "clean"
+                else "full_content"
+            )
+            if str(row.get("review_basis")) != expected_basis:
                 fail(f"receipt review_basis does not match file_kind for {path}")
+            expected_summary = structured_data_summary(path, data, config)
+            if (
+                expected_basis == "structured_deleted_data"
+                and str(row.get("structural_summary", "")) != expected_summary
+            ):
+                fail(f"structural summary does not match repository bytes for {path}")
             if actual_mode != str(row["mode"]):
                 fail(f"mode mismatch for {path}: {actual_mode}")
-            expected_status, expected_findings = scan_text(path, data, config)
             if str(row.get("prepass_status")) != expected_status:
                 fail(f"pre-pass status does not match repository bytes for {path}: {expected_status}")
             if list(row.get("finding_refs", [])) != expected_findings:
@@ -710,6 +1002,8 @@ def main() -> int:
                     fail(f"deleted binary lacks references= and recovery= evidence: {path}")
                 validate_evidence_ref(repo, references)
                 validate_evidence_ref(repo, recovery)
+            elif review_basis == "structured_deleted_data":
+                validate_structured_deleted_data_review(repo, row)
             elif str(row.get("review_method")) != "full-file-plus-diff":
                 fail(f"review attestation is incomplete for {path}")
             if tier == "T2" and row.get("independent_pass") is not True:
@@ -773,7 +1067,8 @@ def main() -> int:
             fail(f"reviewer packet chunk numbering is incomplete: {path}")
         if any(int(section["chunk_count"]) != expected_count for section in sections):
             fail(f"reviewer packet declares inconsistent chunk counts: {path}")
-        if row["file_kind"] not in {"binary", "deleted_binary"}:
+        omitted_content = row.get("review_basis") == "structured_deleted_data"
+        if row["file_kind"] not in {"binary", "deleted_binary"} and not omitted_content:
             ordered = sorted(sections, key=lambda section: int(section["chunk"]))
             if any(section["content"] is None for section in ordered):
                 fail(f"reviewer packet omits text content: {path}")
@@ -804,6 +1099,8 @@ def main() -> int:
         actual_scope_lock = scope_lock(sorted(seen), rows, statuses)
         if actual_scope_lock != str(receipt["scope_lock_sha256"]):
             fail("scope lock does not match the frozen paths, statuses, and digests")
+        if args.gate and any(row.get("review_basis") == "structured_deleted_data" for row in rows):
+            validate_review_approval(receipt.get("review_approval"), str(receipt["scope_lock_sha256"]))
     receipt_digest = hashlib.sha256(canonical_receipt(receipt)).hexdigest()
     recorded_digest = receipt.get("receipt_sha256")
     if recorded_digest and recorded_digest != receipt_digest:

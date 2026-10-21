@@ -1,27 +1,31 @@
 $schema: https://json-schema.org/draft/2020-12/schema
-$id: urn:ai-ops:schema:closeout-security-receipt:0.1.0
+$id: urn:ai-ops:schema:closeout-security-receipt:0.3.0
 title: Closeout Security Receipt
-type: object
-additionalProperties: false
-required: [receipt_version, repo_root, base_head, source, include_set_sha256, tiers_config_version, ruleset_version, estimated_tokens_total, packet_files, packet_estimated_tokens, packet_sha256, rows]
-properties:
-  receipt_version: {const: "0.1.0"}
-  repo_root: {type: string, minLength: 1}
-  base_head: {type: string, pattern: '^[0-9a-f]{40}$'}
-  source: {enum: [head, staged, worktree]}
-  include_set_sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
-  receipt_sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
-  tiers_config_version: {type: string, minLength: 1}
-  ruleset_version: {type: string, minLength: 1}
-  estimated_tokens_total: {type: integer, minimum: 0}
-  packet_files: {type: array, items: {type: string, minLength: 1}}
-  packet_estimated_tokens: {type: array, items: {type: integer, minimum: 0}}
-  packet_sha256: {type: array, items: {type: string, pattern: '^[0-9a-f]{64}$'}}
-  rows:
-    type: array
-    items: {$ref: '#/$defs/row'}
+oneOf:
+  - $ref: '#/$defs/v1'
+  - $ref: '#/$defs/v2'
 $defs:
-  row:
+  v1:
+    type: object
+    additionalProperties: false
+    required: [receipt_version, repo_root, base_head, source, include_set_sha256, tiers_config_version, ruleset_version, estimated_tokens_total, packet_files, packet_estimated_tokens, packet_sha256, rows]
+    properties:
+      receipt_version: {const: "0.1.0"}
+      repo_root: {type: string, minLength: 1}
+      base_head: {type: string, pattern: '^[0-9a-f]{40}$'}
+      source: {enum: [head, staged, worktree]}
+      include_set_sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+      receipt_sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+      tiers_config_version: {type: string, minLength: 1}
+      ruleset_version: {type: string, minLength: 1}
+      estimated_tokens_total: {type: integer, minimum: 0}
+      packet_files: {type: array, items: {type: string, minLength: 1}}
+      packet_estimated_tokens: {type: array, items: {type: integer, minimum: 0}}
+      packet_sha256: {type: array, items: {type: string, pattern: '^[0-9a-f]{64}$'}}
+      rows:
+        type: array
+        items: {$ref: '#/$defs/v1_row'}
+  v1_row:
     type: object
     additionalProperties: false
     required: [path, sha256, revision_basis, file_kind, tier, coverage, reviewer, reviewer_model, reviewer_runtime, review_method, independent_pass, chunk_count, disposition]
@@ -38,6 +42,77 @@ $defs:
       reviewer_runtime: {type: string, minLength: 1}
       review_method: {type: string, minLength: 1}
       independent_pass: {type: boolean}
+      chunk_count: {type: integer, minimum: 1}
+      disposition: {enum: [pass, needs_work, escalate, pending]}
+      finding_refs: {type: array, items: {type: string}}
+      coverage_notes: {type: string}
+  v2:
+    type: object
+    additionalProperties: false
+    required: [receipt_version, repo_root, base_head, source, include_set_sha256, tiers_config_version, ruleset_version, scope_lock_sha256, source_bytes_total, review_tokens_total, review_batches, rows]
+    properties:
+      receipt_version: {const: "0.2.0"}
+      repo_root: {type: string, minLength: 1}
+      base_head: {type: string, pattern: '^[0-9a-f]{40}$'}
+      source: {enum: [head, staged, worktree]}
+      include_set_sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+      receipt_sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+      tiers_config_version: {type: string, minLength: 1}
+      ruleset_version: {type: string, minLength: 1}
+      scope_lock_sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+      source_bytes_total: {type: integer, minimum: 0}
+      review_tokens_total: {type: integer, minimum: 0}
+      review_approval:
+        type: object
+        additionalProperties: false
+        required: [scope_lock_sha256, approved_by, approved_at, decision]
+        properties:
+          scope_lock_sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+          approved_by:
+            type: string
+            minLength: 1
+            not: {enum: [pending, unknown, none, missing, not_required, n/a]}
+          approved_at: {type: string, format: date-time, minLength: 1}
+          decision: {const: "approve"}
+      review_batches:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          additionalProperties: false
+          required: [id, packet_files, packet_estimated_tokens, packet_sha256]
+          properties:
+            id: {type: string, minLength: 1}
+            packet_files: {type: array, items: {type: string, minLength: 1}}
+            packet_estimated_tokens: {type: array, items: {type: integer, minimum: 0}}
+            packet_sha256: {type: array, items: {type: string, pattern: '^[0-9a-f]{64}$'}}
+      rows:
+        type: array
+        minItems: 1
+        items: {$ref: '#/$defs/v2_row'}
+  v2_row:
+    type: object
+    additionalProperties: false
+    required: [path, sha256, revision_basis, file_kind, review_basis, mode, source_bytes, tier, coverage, prepass_status, reviewer, reviewer_model, reviewer_runtime, review_method, independent_pass, independent_reviewer, independent_evidence, chunk_count, disposition]
+    properties:
+      path: {type: string, minLength: 1}
+      sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+      revision_basis: {type: string, minLength: 1}
+      file_kind: {enum: [text, binary, generated, deleted, deleted_binary, unsupported]}
+      review_basis: {enum: [full_content, digest_bound_binary, hash_only_deleted_binary, structured_deleted_data]}
+      mode: {type: string, pattern: '^[0-9]{6}$'}
+      source_bytes: {type: integer, minimum: 0}
+      structural_summary: {type: string, minLength: 1}
+      tier: {enum: [T0, T1, T2]}
+      coverage: {enum: [fully_reviewed, partially_reviewed, unsupported, not_reviewed]}
+      prepass_status: {enum: [clean, candidate, not_run]}
+      reviewer: {type: string, minLength: 1}
+      reviewer_model: {type: string, minLength: 1}
+      reviewer_runtime: {type: string, minLength: 1}
+      review_method: {type: string, minLength: 1}
+      independent_pass: {type: boolean}
+      independent_reviewer: {type: string, minLength: 1}
+      independent_evidence: {type: string, minLength: 1}
       chunk_count: {type: integer, minimum: 1}
       disposition: {enum: [pass, needs_work, escalate, pending]}
       finding_refs: {type: array, items: {type: string}}

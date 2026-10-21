@@ -224,21 +224,28 @@ state, hook, or generated wrapper cannot substitute for the operator approval.
     and log mutations; the final security receipt is built only from that
     post-mutation state.
     When the closeout-security policy or validator itself is being upgraded,
-    use a compatibility bridge for the first landing: generate a legacy
-    v0.1 receipt against the HEAD policy and let the existing HEAD hook admit
-    that commit. Do not make the existing hook execute staged admission code.
-    After the policy upgrade lands, regenerate a v0.2 receipt and use the new
-    staged gate for subsequent closeouts.
+    stage the canonical policy and validator together and run the explicit
+    `--first-landing --config` gate manually against a separate first-landing
+    receipt. Do not install that receipt at the hook's `latest.yaml` path and
+    do not add a `Closeout-Security` trailer to this policy-upgrade commit: the
+    unchanged trusted HEAD hook must see an ordinary commit and must never
+    execute staged admission code. After the policy upgrade lands, regenerate
+    the normal v0.2 receipt at `latest.yaml` for subsequent closeouts.
 19. Run the closeout security admission gate:
     - Freeze the final include set after archive and stale-reference updates.
     - Run the configured security pre-pass, freeze its scope lock, and review
       every included row using its deterministic review basis. Full-content
       rows are read in full; deleted binary rows may use only the explicit
       hash-only deletion basis with hash-bound reference and recovery evidence
-      artifacts; live
+      artifacts; large deleted structured CSV/GeoJSON rows may use the
+      policy-bound structural basis only with actual recovery, dependency,
+      and affirmative frozen-scope approval evidence; live
       binary/generated rows require digest plus generator, parser, or render
-      evidence. Use bounded review batches within the configured per-session
-      token cap and record the reviewer packets and machine-local receipt.
+      evidence. Use bounded review batches within both the configured
+      per-session and total-receipt token caps; stop before reviewer admission
+      when the total cap would be exceeded, then split the explicit include set
+      or apply an eligible bounded structural basis. Record the reviewer
+      packets and machine-local receipt.
     - Do not stage until the separate commit approval names the final include
       set. After approval, stage only that set and run the receipt validator
       against staged blobs. A missing row, hash drift, stale scope lock,
@@ -299,9 +306,11 @@ state, hook, or generated wrapper cannot substitute for the operator approval.
 7. Run the closeout security admission gate on the explicit external-repo
    include manifest: freeze the scope lock, apply each row's deterministic
    review basis, run bounded review batches within the configured per-session
-   cap, write the machine-local receipt, stage only the manifest paths, and
-   validate the staged blobs. Missing coverage, hash drift, a stale scope lock,
-   unresolved candidates, or a non-pass disposition blocks closeout.
+   and total-receipt caps, write the machine-local receipt, stage only the
+   manifest paths, and validate the staged blobs. If the total cap is exceeded,
+   stop and split the explicit manifest rather than silently creating more
+   batches. Missing coverage, hash drift, a stale scope lock, unresolved
+   candidates, or a non-pass disposition blocks closeout.
 8. Stage changes and generate the commit message summary, including the
    validated `Closeout-Security` trailer result.
 9. **Push Preflight** (if push is planned): verify `push_preflight_result` from Step 3 is `clean` or `shallow_clone`. If `detached_head`, stop before commit.
