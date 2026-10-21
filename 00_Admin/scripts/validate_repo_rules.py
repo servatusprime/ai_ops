@@ -71,9 +71,22 @@ def _has_reparse_component(path: str, root: str) -> bool:
     return False
 
 
+def _normalize_configured_path(path: str, *, label: str) -> str:
+    """Interpret configured paths consistently across Windows and POSIX hosts."""
+    value = os.fspath(path)
+    if os.name != "nt":
+        # Configuration may be authored on Windows and evaluated in Linux CI.
+        # Treat backslashes as separators so ``..\\outside`` cannot become a
+        # harmless-looking filename inside the repository.
+        value = value.replace("\\", "/")
+        if re.match(r"^[A-Za-z]:/", value) or value.startswith("//"):
+            raise ValueError(f"{label} uses a foreign absolute path: {path}")
+    return value
+
+
 def _validate_repo_path(path: str, repo_root: str, *, label: str, must_exist: bool = True) -> str:
     """Inspect lexical identity before resolving a path for containment."""
-    lexical_path = os.path.abspath(path)
+    lexical_path = os.path.abspath(_normalize_configured_path(path, label=label))
     lexical_root = os.path.abspath(repo_root)
     if _has_reparse_component(lexical_path, lexical_root):
         raise ValueError(f"{label} crosses a symlink/reparse point: {path}")

@@ -130,11 +130,13 @@ class GovernanceSeedContractTests(unittest.TestCase):
             self.assertEqual("maybe", parsed["rules"][0]["enabled"])
 
     def test_vs036_rejects_configured_input_path_escape(self) -> None:
-        errors: list[str] = []
-        VALIDATOR.check_run_family_graph_contract(
-            {"registry": "..\\outside.yaml"}, str(ROOT), errors
-        )
-        self.assertTrue(any("configured input path" in error for error in errors))
+        for configured_path in ("../outside.yaml", r"..\outside.yaml"):
+            with self.subTest(configured_path=configured_path):
+                errors: list[str] = []
+                VALIDATOR.check_run_family_graph_contract(
+                    {"registry": configured_path}, str(ROOT), errors
+                )
+                self.assertTrue(any("configured input path" in error for error in errors))
 
 
 if __name__ == "__main__":
