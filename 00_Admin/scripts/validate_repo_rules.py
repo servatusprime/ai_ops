@@ -21,6 +21,7 @@ ALLOWED_STATUS = {
     "active",
     "completed",
     "deprecated",
+    "archived",
     "pending_owner_gate",
 }
 IMPLEMENTED_RULE_IDS = {f"VS{number:03d}" for number in range(1, 38)}

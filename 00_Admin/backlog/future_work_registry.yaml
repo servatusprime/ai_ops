@@ -1,10 +1,10 @@
 ---
 title: future_work_registry
-version: 0.6.16
+version: 0.6.17
 status: active
 owner: ai_ops
 created: 2026-01-07
-updated: 2026-10-18
+updated: 2026-10-19
 relocation_note_2026_09_04: >-
   fw_20260904_01 (resolvable dependency manifest for governed execution repos)
   relocated to the named governed repo's own
@@ -1224,7 +1224,7 @@ entries:
     proposed_workbook: null
     scope: >-
       A finished but unlanded rework of the closeout security gate is parked in
-      the sandbox (patch plus full copies; +3,900 lines: pre-pass, validator,
+      the gitignored 99_Trash archive (patch plus full copies; +3,900 lines: pre-pass, validator,
       commit shim, tiers config, schema, CI trailer check, per-file author map,
       their tests). Decide whether any of it is worth landing only after
       measuring the existing gate: record review token cost, time, and real
@@ -1251,8 +1251,10 @@ entries:
         after repeated hardening rounds targeted a hostile author the accepted
         structural limits already concede.
       note: >-
-        Self-contained: the parked patch lives in the sandbox and is
-        reproducible with git diff against ad9ee2a if the sandbox is lost.
+        Location: 99_Trash/wb_security_follow_on_01_2026-10-12_2026-10-18/parked_closeout_gate_rework/
+        (gitignored; its README has the restore command). That folder is the ONLY
+        copy: the rework was never committed, so it cannot be regenerated from
+        git history. Deleting it closes this item.
     notes: >-
       Do not resume hardening rounds without new evidence. Any resumption
       needs a Level-3+ workbook, an explicit review-round cap, and a
