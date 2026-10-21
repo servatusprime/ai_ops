@@ -1,5 +1,5 @@
-version: "0.1.0"
-ruleset_version: "0.1.0"
+version: "0.2.0"
+ruleset_version: "0.2.0"
 packet:
   estimated_tokens_per_packet: 20000
   session_token_budget: 120000

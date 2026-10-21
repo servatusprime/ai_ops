@@ -10,6 +10,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -53,6 +55,210 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
     def test_binary_and_generated_classification(self) -> None:
         self.assertTrue(PREPASS.is_binary("x.bin", b"text", self.config))
         self.assertTrue(PREPASS.is_generated("generated/out.yaml", self.config))
+        self.assertEqual(
+            "hash_only_deleted_binary",
+            PREPASS.review_basis("deleted_binary", True),
+        )
+        self.assertEqual("full_content", PREPASS.review_basis("deleted", False))
+        self.assertEqual("digest_bound_binary", PREPASS.review_basis("binary", True))
+
+    def test_scope_lock_binds_status_and_digest(self) -> None:
+        rows = [{"path": "a.txt", "mode": "100644", "sha256": "a" * 64}]
+        first = PREPASS.scope_lock(["a.txt"], rows, {"a.txt": "D"})
+        second = PREPASS.scope_lock(["a.txt"], rows, {"a.txt": "M"})
+        self.assertNotEqual(first, second)
+        self.assertEqual(first, PREPASS.scope_lock(["a.txt"], rows, {"a.txt": "D"}))
+
+    def test_evidence_references_are_hash_bound(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            evidence = repo / "evidence.txt"
+            data = b"evidence"
+            evidence.write_bytes(data)
+            digest = hashlib.sha256(data).hexdigest()
+            VALIDATOR.validate_evidence_ref(repo, f"evidence.txt@{digest}")
+            with self.assertRaises(SystemExit):
+                VALIDATOR.validate_evidence_ref(repo, f"missing.txt@{digest}")
+            with self.assertRaises(SystemExit):
+                VALIDATOR.validate_evidence_ref(repo, f"evidence.txt@{'0' * 64}")
+
+    def test_v2_shape_requires_batch_and_deletion_attestation_fields(self) -> None:
+        receipt = {
+            "receipt_version": "0.2.0",
+            "repo_root": str(ROOT),
+            "base_head": "a" * 40,
+            "source": "staged",
+            "include_set_sha256": "b" * 64,
+            "tiers_config_version": "0.2.0",
+            "ruleset_version": "0.2.0",
+            "scope_lock_sha256": "c" * 64,
+            "source_bytes_total": 10,
+            "review_tokens_total": 5,
+            "review_batches": [{
+                "id": "batch-001",
+                "packet_files": ["packet.md"],
+                "packet_estimated_tokens": [5],
+                "packet_sha256": ["d" * 64],
+            }],
+            "rows": [{
+                "path": "old.pdf",
+                "sha256": "e" * 64,
+                "revision_basis": "HEAD:old.pdf",
+                "file_kind": "deleted_binary",
+                "review_basis": "hash_only_deleted_binary",
+                "mode": "100644",
+                "source_bytes": 10,
+                "tier": "T1",
+                "coverage": "not_reviewed",
+                "prepass_status": "clean",
+                "reviewer": "pending",
+                "reviewer_model": "medium",
+                "reviewer_runtime": "ai-ops-reviewer",
+                "review_method": "pending",
+                "independent_pass": False,
+                "independent_reviewer": "pending",
+                "independent_evidence": "pending",
+                "chunk_count": 1,
+                "disposition": "pending",
+                "finding_refs": [],
+                "coverage_notes": "",
+            }],
+        }
+        VALIDATOR.validate_shape(receipt)
+        invalid = dict(receipt)
+        invalid["rows"] = [dict(receipt["rows"][0], review_basis="hash_only_deleted_text")]
+        with self.assertRaises(SystemExit):
+            VALIDATOR.validate_shape(invalid)
+
+    def test_v2_gate_accepts_hash_only_deleted_binary_with_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            (repo / "00_Admin/configs").mkdir(parents=True)
+            (repo / "00_Admin/configs/closeout_security_tiers.yaml").write_text(
+                yaml.safe_dump({
+                    "version": "0.2.0",
+                    "ruleset_version": "0.2.0",
+                    "packet": {"estimated_tokens_per_packet": 20000, "session_token_budget": 120000},
+                    "tiers": {
+                        "T0": {"path_prefixes": ["90_Sandbox/"]},
+                        "T1": {"path_prefixes": [""]},
+                        "T2": {"path_prefixes": []},
+                    },
+                    "forced_t2_files": [],
+                    "forced_t2_prefixes": [],
+                    "binary_extensions": [".pdf"],
+                    "generated_prefixes": [],
+                    "secret_patterns": [],
+                    "instruction_patterns": [],
+                }),
+                encoding="utf-8",
+            )
+            old = repo / "old.pdf"
+            old.write_bytes(b"%PDF-1.7\nfixture\n")
+            for command in (
+                ["git", "init", "--quiet"],
+                ["git", "config", "user.email", "test@example.invalid"],
+                ["git", "config", "user.name", "Closeout Test"],
+                ["git", "add", "00_Admin/configs/closeout_security_tiers.yaml", "old.pdf"],
+                ["git", "commit", "--quiet", "-m", "fixture"],
+                ["git", "rm", "--quiet", "old.pdf"],
+            ):
+                result = subprocess.run(command, cwd=repo, capture_output=True, text=True, check=False)
+                self.assertEqual(0, result.returncode, result.stderr)
+            receipt = repo / "receipt.yaml"
+            packet = repo / "packet.md"
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "00_Admin/scripts/closeout_security_prepass.py"),
+                    "--repo-root", str(repo), "--source", "staged",
+                    "--receipt-path", str(receipt), "--packet-path", str(packet), "old.pdf",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            data = yaml.safe_load(receipt.read_text(encoding="utf-8"))
+            row = data["rows"][0]
+            row.update({
+                "coverage": "fully_reviewed",
+                "reviewer": "Sol",
+                "review_method": "hash-only-deletion-reference-review",
+                "disposition": "pass",
+            })
+            evidence = repo / "deletion-review.txt"
+            evidence.write_text(f"artifact_sha256={row['sha256']}\n", encoding="utf-8")
+            evidence_digest = hashlib.sha256(evidence.read_bytes()).hexdigest()
+            valid_notes = (
+                "source_bytes=18; review_basis=hash_only_deleted_binary; "
+                f"references=deletion-review.txt@{evidence_digest}; "
+                f"recovery=deletion-review.txt@{evidence_digest}; "
+                f"references_target_sha256={row['sha256']}; recovery_target_sha256={row['sha256']}"
+            )
+            row["coverage_notes"] = valid_notes
+            row["file_kind"] = "deleted"
+            row["review_basis"] = "full_content"
+            row["review_method"] = "full-file-plus-diff"
+            receipt.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "00_Admin/scripts/validate_closeout_security_receipt.py"),
+                    "--repo-root", str(repo), "--receipt", str(receipt), "--gate", "--staged",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertNotEqual(0, result.returncode)
+            row["file_kind"] = "deleted_binary"
+            row["review_basis"] = "hash_only_deleted_binary"
+            row["review_method"] = "hash-only-deletion-reference-review"
+            row["coverage_notes"] = row["coverage_notes"].replace(
+                f"recovery=deletion-review.txt@{evidence_digest}", "recovery=missing"
+            )
+            receipt.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "00_Admin/scripts/validate_closeout_security_receipt.py"),
+                    "--repo-root", str(repo), "--receipt", str(receipt), "--gate", "--staged",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertNotEqual(0, result.returncode)
+            row["coverage_notes"] = row["coverage_notes"].replace(
+                "recovery=missing", f"recovery=missing/path@{'0' * 64}"
+            )
+            receipt.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "00_Admin/scripts/validate_closeout_security_receipt.py"),
+                    "--repo-root", str(repo), "--receipt", str(receipt), "--gate", "--staged",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertNotEqual(0, result.returncode)
+            row["coverage_notes"] = valid_notes
+            receipt.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "00_Admin/scripts/validate_closeout_security_receipt.py"),
+                    "--repo-root", str(repo), "--receipt", str(receipt), "--gate", "--staged",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn("PASS 1 rows source=staged gate=true", result.stdout)
 
     def test_safe_paths_and_include_hash_are_deterministic(self) -> None:
         self.assertEqual("a/b.txt", PREPASS.rel_path("./a\\b.txt"))

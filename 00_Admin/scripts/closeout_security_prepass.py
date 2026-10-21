@@ -22,6 +22,7 @@ except ImportError as exc:  # pragma: no cover - environment diagnostic
 
 
 ROOT = Path(__file__).resolve().parents[2]
+RECEIPT_VERSION = "0.2.0"
 MIN_FORCED_T2_PREFIXES = (
     ".ai_ops/workflows/",
     "00_Admin/configs/",
@@ -143,6 +144,69 @@ def include_hash(paths: list[str]) -> str:
     return hashlib.sha256("\n".join(sorted(paths)).encode("utf-8")).hexdigest()
 
 
+def change_records(repo: Path, paths: list[str], source: str) -> dict[str, str]:
+    """Return the frozen change status used by the receipt scope lock."""
+    if source == "staged":
+        command = ["git", "-C", str(repo), "diff", "--cached", "--name-status", "--no-renames"]
+    elif source == "worktree":
+        command = ["git", "-C", str(repo), "diff", "HEAD", "--name-status", "--no-renames"]
+    else:
+        return {path: "H" for path in paths}
+    completed = subprocess.run(
+        [*command, "--", *paths],
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if completed.returncode:
+        fail(f"cannot inspect change status: {completed.stderr.strip()}")
+    records: dict[str, str] = {}
+    for line in completed.stdout.splitlines():
+        status, _, path = line.partition("\t")
+        if status and path:
+            records[path.replace("\\", "/")] = status[0]
+    untracked = subprocess.run(
+        ["git", "-C", str(repo), "ls-files", "--others", "--exclude-standard", "--", *paths],
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if untracked.returncode:
+        fail(f"cannot inspect untracked paths: {untracked.stderr.strip()}")
+    for path in untracked.stdout.splitlines():
+        records[path.replace("\\", "/")] = "A"
+    return {path: records.get(path, "H") for path in paths}
+
+
+def scope_lock(paths: list[str], rows: list[dict[str, Any]], statuses: dict[str, str]) -> str:
+    row_by_path = {str(row["path"]): row for row in rows}
+    material = "\n".join(
+        f"{path}\t{statuses.get(path, 'H')}\t{row_by_path[path]['mode']}\t{row_by_path[path]['sha256']}"
+        for path in sorted(paths)
+    )
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+
+def git_mode(repo: Path, path: str, source: str, deleted: bool) -> str:
+    if deleted or source == "head":
+        command = ["git", "-C", str(repo), "ls-tree", "HEAD", "--", path]
+    else:
+        command = ["git", "-C", str(repo), "ls-files", "--stage", "--", path]
+    completed = subprocess.run(command, check=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if completed.returncode:
+        fail(f"cannot inspect mode for {path}: {completed.stderr.strip()}")
+    line = completed.stdout.splitlines()[0] if completed.stdout.splitlines() else ""
+    if source != "head" and not deleted and line:
+        return line.split(" ", 1)[0]
+    if line:
+        return line.split(" ", 1)[0]
+    if source == "worktree" and (repo / Path(path)).exists():
+        return "100644"
+    fail(f"cannot determine repository mode for {path}")
+
+
 def is_binary(path: str, data: bytes, config: dict[str, Any]) -> bool:
     suffix = Path(path).suffix.lower()
     return b"\x00" in data or suffix in set(config.get("binary_extensions", []))
@@ -150,6 +214,14 @@ def is_binary(path: str, data: bytes, config: dict[str, Any]) -> bool:
 
 def is_generated(path: str, config: dict[str, Any]) -> bool:
     return any(path.startswith(prefix) for prefix in config.get("generated_prefixes", []))
+
+
+def review_basis(file_kind: str, binary: bool) -> str:
+    if file_kind == "deleted_binary":
+        return "hash_only_deleted_binary"
+    if binary:
+        return "digest_bound_binary"
+    return "full_content"
 
 
 def tier_for(path: str, config: dict[str, Any]) -> str:
@@ -323,9 +395,12 @@ def main() -> int:
     for path in paths:
         deleted = is_deleted(repo, path, args.source)
         data, basis = read_source(repo, path, args.source, deleted)
-        if deleted:
+        binary = is_binary(path, data, config)
+        if deleted and binary:
+            kind = "deleted_binary"
+        elif deleted:
             kind = "deleted"
-        elif is_binary(path, data, config):
+        elif binary:
             kind = "binary"
         elif is_generated(path, config):
             kind = "generated"
@@ -337,6 +412,8 @@ def main() -> int:
             "sha256": hashlib.sha256(data).hexdigest(),
             "revision_basis": basis,
             "file_kind": kind,
+            "review_basis": review_basis(kind, binary),
+            "mode": git_mode(repo, path, args.source, deleted),
             "tier": tier_for(path, config),
             "coverage": "not_reviewed",
             "prepass_status": status,
@@ -349,11 +426,14 @@ def main() -> int:
             .get("reviewer_runtime", "pending"),
             "review_method": "pending",
             "independent_pass": False,
+            "independent_reviewer": "pending",
+            "independent_evidence": "pending",
             "chunk_count": max(1, (len(data) + (packet_budget * 4) - 1) // (packet_budget * 4)),
             "disposition": "pending",
             "finding_refs": hits,
+            "source_bytes": len(data),
             "content_bytes": len(data),
-            "coverage_notes": f"bytes={len(data)}; estimated_tokens={(len(data) + 3) // 4}",
+            "coverage_notes": f"source_bytes={len(data)}; review_basis={review_basis(kind, binary)}",
         }
         if tier_for(path, config) == "T0" and status == "candidate":
             row["tier"] = "T1"
@@ -367,27 +447,50 @@ def main() -> int:
         rows.append(row)
     packet_path = args.packet_path or args.receipt_path.with_suffix(".review.md")
     receipt = {
-        "receipt_version": "0.1.0",
+        "receipt_version": RECEIPT_VERSION,
         "repo_root": str(repo),
         "base_head": git_head(repo),
         "source": args.source,
         "include_set_sha256": include_hash(paths),
         "tiers_config_version": str(config.get("version", "unknown")),
         "ruleset_version": str(config.get("ruleset_version", "unknown")),
-        "estimated_tokens_total": sum(
-            (len(read_source(repo, path, args.source, is_deleted(repo, path, args.source))[0]) + 3) // 4
-            for path in paths
-        ),
+        "source_bytes_total": sum(row["source_bytes"] for row in rows),
         "rows": rows,
     }
+    statuses = change_records(repo, paths, args.source)
+    receipt["scope_lock_sha256"] = scope_lock(paths, rows, statuses)
     args.receipt_path.parent.mkdir(parents=True, exist_ok=True)
     args.receipt_path.write_text(yaml.safe_dump(receipt, sort_keys=False), encoding="utf-8", newline="\n")
     packet_files, packet_tokens, chunk_counts = build_packet(packet_rows, packet_path, packet_budget)
     for row in rows:
         row["chunk_count"] = chunk_counts[row["path"]]
-    receipt["packet_files"] = packet_files
-    receipt["packet_estimated_tokens"] = packet_tokens
-    receipt["packet_sha256"] = [hashlib.sha256(Path(path).read_bytes()).hexdigest() for path in packet_files]
+    batches: list[dict[str, Any]] = []
+    current_files: list[str] = []
+    current_tokens: list[int] = []
+    session_budget = int(config.get("packet", {}).get("session_token_budget", 120000))
+    for path, tokens in zip(packet_files, packet_tokens, strict=False):
+        if tokens > session_budget:
+            fail(f"single reviewer packet exceeds session token budget: {path}")
+        if current_files and sum(current_tokens) + tokens > session_budget:
+            batches.append({
+                "id": f"batch-{len(batches) + 1:03d}",
+                "packet_files": current_files,
+                "packet_estimated_tokens": current_tokens,
+                "packet_sha256": [hashlib.sha256(Path(item).read_bytes()).hexdigest() for item in current_files],
+            })
+            current_files = []
+            current_tokens = []
+        current_files.append(path)
+        current_tokens.append(tokens)
+    if current_files:
+        batches.append({
+            "id": f"batch-{len(batches) + 1:03d}",
+            "packet_files": current_files,
+            "packet_estimated_tokens": current_tokens,
+            "packet_sha256": [hashlib.sha256(Path(item).read_bytes()).hexdigest() for item in current_files],
+        })
+    receipt["review_batches"] = batches
+    receipt["review_tokens_total"] = sum(packet_tokens)
     args.receipt_path.write_text(yaml.safe_dump(receipt, sort_keys=False), encoding="utf-8", newline="\n")
     print(f"PREPASS {len(rows)} files source={args.source} receipt={args.receipt_path}")
     print(f"include_set_sha256={receipt['include_set_sha256']}")

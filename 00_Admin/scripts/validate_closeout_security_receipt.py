@@ -22,6 +22,7 @@ except ImportError as exc:  # pragma: no cover - environment diagnostic
 
 
 ROOT = Path(__file__).resolve().parents[2]
+RECEIPT_VERSIONS = {"0.1.0", "0.2.0"}
 MIN_FORCED_T2_PREFIXES = (
     ".ai_ops/workflows/",
     "00_Admin/configs/",
@@ -95,6 +96,97 @@ def include_hash(paths: list[str]) -> str:
     return hashlib.sha256("\n".join(sorted(paths)).encode("utf-8")).hexdigest()
 
 
+def is_binary(path: str, data: bytes, config: dict[str, Any]) -> bool:
+    return b"\x00" in data or Path(path).suffix.lower() in {
+        str(value).lower() for value in config.get("binary_extensions", [])
+    }
+
+
+def is_generated(path: str, config: dict[str, Any]) -> bool:
+    return any(path.startswith(prefix) for prefix in config.get("generated_prefixes", []))
+
+
+def expected_file_kind(path: str, data: bytes, config: dict[str, Any], deleted: bool) -> str:
+    binary = is_binary(path, data, config)
+    if deleted and binary:
+        return "deleted_binary"
+    if deleted:
+        return "deleted"
+    if binary:
+        return "binary"
+    if is_generated(path, config):
+        return "generated"
+    return "text"
+
+
+def expected_review_basis(file_kind: str) -> str:
+    if file_kind == "deleted_binary":
+        return "hash_only_deleted_binary"
+    if file_kind == "binary":
+        return "digest_bound_binary"
+    return "full_content"
+
+
+def scan_text(path: str, data: bytes, config: dict[str, Any]) -> tuple[str, list[str]]:
+    """Recompute the pre-pass classification from trusted bytes and policy."""
+    if is_binary(path, data, config):
+        return "clean", []
+    text = data.decode("utf-8", errors="replace")
+    patterns = list(config.get("secret_patterns", [])) + list(
+        config.get("instruction_patterns", [])
+    )
+    patterns += [
+        r"\bshell\s*=\s*True\b",
+        r"\bos\.system\s*\(",
+        r"\b(?:eval|exec)\s*\(",
+        r"\bpickle\.loads?\s*\(",
+        r"\byaml\.load\s*\(",
+    ]
+    patterns += list(config.get("additional_tripwires", []))
+    hits = [pattern for pattern in patterns if re.search(pattern, text)]
+    return ("candidate" if hits else "clean"), hits
+
+
+def note_value(notes: str, key: str) -> str | None:
+    match = re.search(rf"(?:^|[;\s]){re.escape(key)}\s*[:=]\s*([^;\s]+)", notes)
+    return match.group(1) if match else None
+
+
+def evidence_bytes(repo: Path, value: str) -> tuple[str, bytes]:
+    path = safe_path(value)
+    target = (repo / Path(path)).resolve()
+    try:
+        target.relative_to(repo.resolve())
+    except ValueError:
+        fail(f"evidence path escapes repository: {value}")
+    if target.exists():
+        return path, target.read_bytes()
+    if head_path_exists(repo, path):
+        return path, git_bytes(repo, f"HEAD:{path}")
+    fail(f"evidence path does not exist: {path}")
+
+
+def validate_evidence_ref(repo: Path, value: str, *, expected_hash: str | None = None) -> None:
+    path_value, separator, declared_hash = value.rpartition("@")
+    if not separator or not re.fullmatch(r"[0-9a-f]{64}", declared_hash):
+        fail(f"evidence reference must be path@sha256: {value}")
+    path, data = evidence_bytes(repo, path_value)
+    actual_hash = hashlib.sha256(data).hexdigest()
+    if actual_hash != declared_hash:
+        fail(f"evidence digest mismatch: {path}")
+    if expected_hash is not None and actual_hash != expected_hash:
+        fail(f"evidence does not preserve the deleted artifact digest: {path}")
+
+
+def scope_lock(paths: list[str], rows: list[dict[str, Any]], statuses: dict[str, str]) -> str:
+    row_by_path = {str(row["path"]): row for row in rows}
+    material = "\n".join(
+        f"{path}\t{statuses.get(path, 'H')}\t{row_by_path[path]['mode']}\t{row_by_path[path]['sha256']}"
+        for path in sorted(paths)
+    )
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+
 def staged_records(repo: Path) -> dict[str, str]:
     completed = subprocess.run(
         ["git", "-C", str(repo), "diff", "--cached", "--name-status", "--no-renames", "--diff-filter=ACDMRTUXB"],
@@ -113,12 +205,52 @@ def staged_records(repo: Path) -> dict[str, str]:
     return records
 
 
+def worktree_records(repo: Path, paths: list[str]) -> dict[str, str]:
+    completed = subprocess.run(
+        [
+            "git", "-C", str(repo), "diff", "HEAD", "--name-status", "--no-renames", "--", *paths
+        ],
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if completed.returncode:
+        fail(f"cannot inspect worktree paths: {completed.stderr.strip()}")
+    records: dict[str, str] = {}
+    for line in completed.stdout.splitlines():
+        status, _, path = line.partition("\t")
+        if status and path:
+            records[safe_path(path)] = status[0]
+    untracked = subprocess.run(
+        ["git", "-C", str(repo), "ls-files", "--others", "--exclude-standard", "--", *paths],
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if untracked.returncode:
+        fail(f"cannot inspect untracked paths: {untracked.stderr.strip()}")
+    for path in untracked.stdout.splitlines():
+        records[safe_path(path)] = "A"
+    return {path: records.get(path, "H") for path in paths}
+
+
 def validate_shape(receipt: dict[str, Any]) -> None:
+    version = str(receipt.get("receipt_version", ""))
+    if version not in RECEIPT_VERSIONS:
+        fail(f"unsupported receipt_version: {version}")
     required = {
         "receipt_version", "repo_root", "base_head", "source", "include_set_sha256",
         "tiers_config_version", "ruleset_version", "estimated_tokens_total",
         "packet_files", "packet_estimated_tokens", "packet_sha256", "rows",
     }
+    if version == "0.2.0":
+        required = {
+            "receipt_version", "repo_root", "base_head", "source", "include_set_sha256",
+            "tiers_config_version", "ruleset_version", "scope_lock_sha256",
+            "source_bytes_total", "review_tokens_total", "review_batches", "rows",
+        }
     missing = sorted(required - set(receipt))
     if missing:
         fail(f"receipt missing fields: {', '.join(missing)}")
@@ -128,23 +260,53 @@ def validate_shape(receipt: dict[str, Any]) -> None:
         fail(f"receipt has unknown fields: {', '.join(unknown_top)}")
     if receipt.get("source") not in {"head", "staged", "worktree"}:
         fail("receipt source is invalid")
-    if not isinstance(receipt.get("estimated_tokens_total"), int) or receipt["estimated_tokens_total"] < 0:
-        fail("estimated_tokens_total must be a non-negative integer")
-    if not all(
-        isinstance(receipt.get(key), list)
-        for key in ("packet_files", "packet_estimated_tokens", "packet_sha256")
-    ):
-        fail("packet files, token counts, and digests must be lists")
-    if len(receipt["packet_files"]) != len(receipt["packet_estimated_tokens"]) or (
-        len(receipt["packet_files"]) != len(receipt["packet_sha256"])
-    ):
-        fail("packet file, token-count, and digest lists must have equal length")
-    if not all(isinstance(value, str) and value for value in receipt["packet_files"]):
-        fail("packet_files must contain non-empty strings")
-    if not receipt["packet_files"] or not all(
-        re.fullmatch(r"[0-9a-f]{64}", str(value)) for value in receipt["packet_sha256"]
-    ):
-        fail("packet_sha256 must contain one lowercase digest per packet")
+    if version == "0.1.0":
+        if not isinstance(receipt.get("estimated_tokens_total"), int) or receipt["estimated_tokens_total"] < 0:
+            fail("estimated_tokens_total must be a non-negative integer")
+        if not all(
+            isinstance(receipt.get(key), list)
+            for key in ("packet_files", "packet_estimated_tokens", "packet_sha256")
+        ):
+            fail("packet files, token counts, and digests must be lists")
+        if len(receipt["packet_files"]) != len(receipt["packet_estimated_tokens"]) or (
+            len(receipt["packet_files"]) != len(receipt["packet_sha256"])
+        ):
+            fail("packet file, token-count, and digest lists must have equal length")
+        if not all(isinstance(value, str) and value for value in receipt["packet_files"]):
+            fail("packet_files must contain non-empty strings")
+        if not receipt["packet_files"] or not all(
+            re.fullmatch(r"[0-9a-f]{64}", str(value)) for value in receipt["packet_sha256"]
+        ):
+            fail("packet_sha256 must contain one lowercase digest per packet")
+    else:
+        if not re.fullmatch(r"[0-9a-f]{64}", str(receipt.get("scope_lock_sha256", ""))):
+            fail("scope_lock_sha256 must be a lowercase SHA-256")
+        for key in ("source_bytes_total", "review_tokens_total"):
+            if not isinstance(receipt.get(key), int) or receipt[key] < 0:
+                fail(f"{key} must be a non-negative integer")
+        batches = receipt.get("review_batches")
+        if not isinstance(batches, list) or not batches:
+            fail("review_batches must be a non-empty list")
+        batch_ids: set[str] = set()
+        for batch in batches:
+            if not isinstance(batch, dict) or not isinstance(batch.get("id"), str) or not batch["id"]:
+                fail("each review batch needs a non-empty id")
+            if batch["id"] in batch_ids:
+                fail(f"duplicate review batch id: {batch['id']}")
+            batch_ids.add(batch["id"])
+            for key in ("packet_files", "packet_estimated_tokens", "packet_sha256"):
+                if not isinstance(batch.get(key), list):
+                    fail(f"review batch {batch['id']} field {key} must be a list")
+            if (
+                not batch["packet_files"]
+                or len(batch["packet_files"]) != len(batch["packet_estimated_tokens"])
+                or len(batch["packet_files"]) != len(batch["packet_sha256"])
+            ):
+                fail(f"review batch {batch['id']} packet lists are inconsistent")
+            if not all(isinstance(value, str) and value for value in batch["packet_files"]):
+                fail(f"review batch {batch['id']} has an invalid packet path")
+            if not all(re.fullmatch(r"[0-9a-f]{64}", str(value)) for value in batch["packet_sha256"]):
+                fail(f"review batch {batch['id']} has an invalid packet digest")
     if not isinstance(receipt.get("rows"), list) or not receipt["rows"]:
         fail("receipt rows must be a non-empty list")
     row_allowed = {
@@ -153,6 +315,8 @@ def validate_shape(receipt: dict[str, Any]) -> None:
         "review_method", "independent_pass", "chunk_count", "disposition",
         "finding_refs", "coverage_notes",
     }
+    if version == "0.2.0":
+        row_allowed |= {"review_basis", "mode", "source_bytes", "independent_reviewer", "independent_evidence"}
     for row in receipt["rows"]:
         if not isinstance(row, dict):
             fail("receipt row must be a mapping")
@@ -170,7 +334,10 @@ def validate_shape(receipt: dict[str, Any]) -> None:
         ):
             if not isinstance(row.get(key), str) or not row[key]:
                 fail(f"receipt row field {key} is required")
-        if row.get("file_kind") not in {"text", "binary", "generated", "deleted", "unsupported"}:
+        allowed_kinds = {"text", "binary", "generated", "deleted", "unsupported"}
+        if version == "0.2.0":
+            allowed_kinds.add("deleted_binary")
+        if row.get("file_kind") not in allowed_kinds:
             fail(f"unsupported file_kind in receipt row: {row.get('path')}")
         if row.get("tier") not in {"T0", "T1", "T2"}:
             fail(f"invalid tier in receipt row: {row.get('path')}")
@@ -184,6 +351,16 @@ def validate_shape(receipt: dict[str, Any]) -> None:
             or row["chunk_count"] < 1
         ):
             fail(f"review attestation fields are invalid: {row.get('path')}")
+        if version == "0.2.0":
+            if row.get("review_basis") not in {"full_content", "digest_bound_binary", "hash_only_deleted_binary"}:
+                fail(f"invalid review_basis in receipt row: {row.get('path')}")
+            if not isinstance(row.get("mode"), str) or not re.fullmatch(r"[0-9]{6}", row["mode"]):
+                fail(f"mode is invalid: {row.get('path')}")
+            if not isinstance(row.get("source_bytes"), int) or row["source_bytes"] < 0:
+                fail(f"source_bytes is invalid: {row.get('path')}")
+            for key in ("independent_reviewer", "independent_evidence"):
+                if not isinstance(row.get(key), str) or not row[key]:
+                    fail(f"receipt row field {key} is required: {row.get('path')}")
 
 
 def load_config(repo: Path, config_path: Path | None) -> dict[str, Any]:
@@ -217,7 +394,7 @@ def forced_t2(path: str, config: dict[str, Any]) -> bool:
 
 
 def source_bytes(repo: Path, path: str, source: str, file_kind: str) -> tuple[bytes, str]:
-    if file_kind == "deleted":
+    if file_kind in {"deleted", "deleted_binary"}:
         return git_bytes(repo, f"HEAD:{path}"), f"HEAD:{path}"
     if source == "head":
         return git_bytes(repo, f"HEAD:{path}"), f"HEAD:{path}"
@@ -229,6 +406,22 @@ def source_bytes(repo: Path, path: str, source: str, file_kind: str) -> tuple[by
     except ValueError:
         fail(f"worktree path escapes repository: {path}")
     return target.read_bytes(), f"worktree:{path}"
+
+
+def source_mode(repo: Path, path: str, source: str, file_kind: str) -> str:
+    if file_kind in {"deleted", "deleted_binary"} or source == "head":
+        command = ["git", "-C", str(repo), "ls-tree", "HEAD", "--", path]
+    else:
+        command = ["git", "-C", str(repo), "ls-files", "--stage", "--", path]
+    completed = subprocess.run(command, check=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if completed.returncode:
+        fail(f"cannot inspect mode for {path}: {completed.stderr.strip()}")
+    line = completed.stdout.splitlines()[0] if completed.stdout.splitlines() else ""
+    if line:
+        return line.split(" ", 1)[0]
+    if source == "worktree" and (repo / Path(path)).exists():
+        return "100644"
+    fail(f"cannot determine repository mode for {path}")
 
 
 def parse_packet_sections(data: bytes) -> list[dict[str, Any]]:
@@ -324,12 +517,14 @@ def main() -> int:
         fail(f"cannot read receipt: {exc}")
     if not isinstance(receipt, dict):
         fail("receipt root must be a mapping")
-    if receipt.get("receipt_version") != "0.1.0":
+    if receipt.get("receipt_version") not in RECEIPT_VERSIONS:
         fail("unsupported receipt_version")
     validate_shape(receipt)
     repo = args.repo_root.resolve()
     if args.gate and not args.staged:
         fail("real gate mode requires --staged so the receipt covers the commit slug")
+    if args.gate and str(receipt["receipt_version"]) != "0.2.0":
+        fail("legacy receipt versions cannot pass the real gate; regenerate a v0.2.0 receipt")
     if args.gate and args.config and not args.first_landing:
         fail("real gate mode binds policy to HEAD; --config requires --first-landing")
     if args.first_landing and (not args.gate or not args.staged or not args.config):
@@ -349,12 +544,17 @@ def main() -> int:
         fail("receipt include_set_sha256 is not a lowercase SHA-256")
     if args.first_landing:
         config_path = (repo / args.config).resolve() if not args.config.is_absolute() else args.config.resolve()
-        if head_path_exists(repo, "00_Admin/configs/closeout_security_tiers.yaml"):
-            fail("--first-landing is only valid before the canonical policy exists on HEAD")
         staged = staged_records(repo)
         if staged.get("00_Admin/configs/closeout_security_tiers.yaml") not in {"A", "M"}:
             fail("--first-landing requires the canonical policy to be staged")
         config = load_staged_config(repo, config_path)
+        if head_path_exists(repo, "00_Admin/configs/closeout_security_tiers.yaml"):
+            head_config = load_head_config(repo)
+            if (
+                str(head_config.get("version")) == str(config.get("version"))
+                and str(head_config.get("ruleset_version")) == str(config.get("ruleset_version"))
+            ):
+                fail("--first-landing requires a new canonical policy version")
     elif args.gate:
         config = load_head_config(repo)
     else:
@@ -365,41 +565,76 @@ def main() -> int:
         fail("receipt ruleset_version does not match the active policy")
     packet = config.get("packet", {})
     packet_budget = int(packet.get("estimated_tokens_per_packet", 20000))
-    session_budget = int(packet.get("session_token_budget", 100000))
-    packet_tokens = [int(value) for value in receipt["packet_estimated_tokens"]]
-    if any(value > packet_budget for value in packet_tokens):
-        fail(f"packet token cap exceeded: max={packet_budget}")
-    if int(receipt["estimated_tokens_total"]) > session_budget or sum(packet_tokens) > session_budget:
-        fail(f"session token cap exceeded: max={session_budget}")
+    session_budget = int(packet.get("session_token_budget", 120000))
+    if str(receipt["receipt_version"]) == "0.2.0":
+        packet_groups = [
+            (
+                str(batch["id"]),
+                [str(value) for value in batch["packet_files"]],
+                [int(value) for value in batch["packet_estimated_tokens"]],
+                [str(value) for value in batch["packet_sha256"]],
+            )
+            for batch in receipt["review_batches"]
+        ]
+    else:
+        packet_groups = [
+            (
+                "legacy",
+                [str(value) for value in receipt["packet_files"]],
+                [int(value) for value in receipt["packet_estimated_tokens"]],
+                [str(value) for value in receipt["packet_sha256"]],
+            )
+        ]
     actual_packet_tokens: list[int] = []
     packet_sections: list[dict[str, Any]] = []
-    for packet_path, recorded_sha in zip(receipt["packet_files"], receipt["packet_sha256"], strict=False):
-        target = Path(str(packet_path))
-        if not target.is_absolute():
-            target = repo / target
-        target = target.resolve()
-        try:
-            target.relative_to(repo)
-        except ValueError:
-            fail(f"packet path escapes repository: {packet_path}")
-        try:
-            data = target.read_bytes()
-        except OSError as exc:
-            fail(f"cannot read reviewer packet {packet_path}: {exc}")
-        actual_sha = hashlib.sha256(data).hexdigest()
-        if actual_sha != str(recorded_sha):
-            fail(f"reviewer packet digest mismatch: {packet_path}")
-        actual_packet_tokens.append((len(data) + 3) // 4)
-        packet_sections.extend(parse_packet_sections(data))
-    if actual_packet_tokens != packet_tokens:
-        fail("reviewer packet token counts do not match packet bytes")
+    for batch_id, packet_paths, packet_tokens, packet_digests in packet_groups:
+        if any(value > packet_budget for value in packet_tokens):
+            fail(f"packet token cap exceeded: max={packet_budget}")
+        if sum(packet_tokens) > session_budget:
+            fail(f"review batch token cap exceeded: max={session_budget}; batch={batch_id}")
+        batch_actual_tokens: list[int] = []
+        for packet_path, recorded_sha in zip(packet_paths, packet_digests, strict=False):
+            target = Path(str(packet_path))
+            if not target.is_absolute():
+                target = repo / target
+            target = target.resolve()
+            try:
+                target.relative_to(repo)
+            except ValueError:
+                fail(f"packet path escapes repository: {packet_path}")
+            try:
+                data = target.read_bytes()
+            except OSError as exc:
+                fail(f"cannot read reviewer packet {packet_path}: {exc}")
+            actual_sha = hashlib.sha256(data).hexdigest()
+            if actual_sha != str(recorded_sha):
+                fail(f"reviewer packet digest mismatch: {packet_path}")
+            token_count = (len(data) + 3) // 4
+            actual_packet_tokens.append(token_count)
+            batch_actual_tokens.append(token_count)
+            for section in parse_packet_sections(data):
+                section["batch_id"] = batch_id
+                packet_sections.append(section)
+        if batch_actual_tokens != packet_tokens:
+            fail(f"reviewer packet token counts do not match packet bytes: batch={batch_id}")
+    if str(receipt["receipt_version"]) == "0.2.0":
+        if sum(actual_packet_tokens) != int(receipt["review_tokens_total"]):
+            fail("review_tokens_total does not match reviewer packet bytes")
     rows = receipt["rows"]
     if not isinstance(rows, list) or not rows:
         fail("receipt rows must be a non-empty list")
+    receipt_paths = [safe_path(str(row.get("path", ""))) for row in rows if isinstance(row, dict)]
+    if args.gate and source == "staged":
+        statuses = staged_records(repo)
+    elif source == "worktree":
+        statuses = worktree_records(repo, sorted(set(receipt_paths)))
+    else:
+        statuses = {path: "H" for path in receipt_paths}
     seen: set[str] = set()
     rows_by_path: dict[str, dict[str, Any]] = {}
     dispositions: list[str] = []
     actual_total_tokens = 0
+    actual_source_bytes_total = 0
     for row in rows:
         if not isinstance(row, dict):
             fail("receipt row must be a mapping")
@@ -408,19 +643,39 @@ def main() -> int:
             fail(f"duplicate receipt row: {path}")
         seen.add(path)
         rows_by_path[path] = row
+        change = statuses.get(path, "H")
+        deleted = change == "D"
         tier = str(row.get("tier", ""))
         if forced_t2(path, config) and tier != "T2":
             fail(f"forced-T2 path is under-tiered: {path}")
         if not re.fullmatch(r"[0-9a-f]{64}", str(row.get("sha256", ""))):
             fail(f"invalid row sha256 for {path}")
+        read_kind = "deleted" if deleted else str(row.get("file_kind", "text"))
         try:
-            data, basis = source_bytes(repo, path, source, str(row.get("file_kind", "text")))
+            data, basis = source_bytes(repo, path, source, read_kind)
         except OSError as exc:
             fail(f"cannot read {path}: {exc}")
         actual = hashlib.sha256(data).hexdigest()
         if actual != str(row.get("sha256", "")):
             fail(f"digest mismatch for {path} ({basis})")
+        if str(receipt["receipt_version"]) == "0.2.0":
+            actual_kind = expected_file_kind(path, data, config, deleted)
+            actual_mode = source_mode(repo, path, source, actual_kind)
+            if str(row.get("file_kind")) != actual_kind:
+                fail(f"receipt file_kind does not match repository bytes for {path}: {actual_kind}")
+            if str(row.get("review_basis")) != expected_review_basis(actual_kind):
+                fail(f"receipt review_basis does not match file_kind for {path}")
+            if actual_mode != str(row["mode"]):
+                fail(f"mode mismatch for {path}: {actual_mode}")
+            expected_status, expected_findings = scan_text(path, data, config)
+            if str(row.get("prepass_status")) != expected_status:
+                fail(f"pre-pass status does not match repository bytes for {path}: {expected_status}")
+            if list(row.get("finding_refs", [])) != expected_findings:
+                fail(f"pre-pass findings do not match repository bytes for {path}")
         actual_total_tokens += (len(data) + 3) // 4
+        actual_source_bytes_total += len(data)
+        if str(receipt["receipt_version"]) == "0.2.0" and int(row["source_bytes"]) != len(data):
+            fail(f"source_bytes does not match repository bytes for {path}")
         coverage = str(row.get("coverage", ""))
         disposition = str(row.get("disposition", ""))
         dispositions.append(disposition)
@@ -431,17 +686,61 @@ def main() -> int:
                 fail(f"non-pass disposition for {path}: {disposition}")
             if str(row.get("file_kind")) == "unsupported":
                 fail(f"unsupported file kind cannot pass the gate: {path}")
-            if str(row.get("reviewer")) == "pending" or str(row.get("review_method")) != "full-file-plus-diff":
+            if str(row.get("reviewer")) == "pending":
+                fail(f"review attestation is incomplete for {path}")
+            file_kind = str(row.get("file_kind"))
+            review_basis = str(row.get("review_basis", "full_content"))
+            if file_kind == "deleted_binary":
+                if (
+                    review_basis != "hash_only_deleted_binary"
+                    or str(row.get("review_method")) != "hash-only-deletion-reference-review"
+                ):
+                    fail(f"deleted binary review basis is incomplete for {path}")
+                notes = str(row.get("coverage_notes", ""))
+                references = note_value(notes, "references")
+                recovery = note_value(notes, "recovery")
+                references_target = note_value(notes, "references_target_sha256")
+                recovery_target = note_value(notes, "recovery_target_sha256")
+                if (
+                    references in {None, "pending", "missing", "unknown", "none"}
+                    or recovery in {None, "pending", "missing", "unknown", "not_required"}
+                    or references_target != str(row["sha256"])
+                    or recovery_target != str(row["sha256"])
+                ):
+                    fail(f"deleted binary lacks references= and recovery= evidence: {path}")
+                validate_evidence_ref(repo, references)
+                validate_evidence_ref(repo, recovery)
+            elif str(row.get("review_method")) != "full-file-plus-diff":
                 fail(f"review attestation is incomplete for {path}")
             if tier == "T2" and row.get("independent_pass") is not True:
                 fail(f"independent T2 pass is missing for {path}")
+            if tier == "T2":
+                independent_reviewer = str(row.get("independent_reviewer"))
+                independent_evidence = str(row.get("independent_evidence", ""))
+                snapshot = note_value(independent_evidence, "snapshot")
+                evidence_hash = note_value(independent_evidence, "evidence_sha256")
+                if (
+                    independent_reviewer in {"pending", str(row.get("reviewer"))}
+                    or snapshot in {None, "pending", "missing", "unknown"}
+                    or evidence_hash is None
+                    or not re.fullmatch(r"[0-9a-f]{64}", evidence_hash)
+                ):
+                    fail(f"independent T2 reviewer evidence is missing for {path}")
+                validate_evidence_ref(repo, f"{snapshot}@{evidence_hash}")
             if (
-                str(row.get("file_kind")) in {"binary", "generated"}
-                and "generator:" not in str(row.get("coverage_notes", ""))
+                file_kind in {"binary", "generated"}
+                and not any(
+                    marker in str(row.get("coverage_notes", ""))
+                    for marker in ("generator:", "parser:", "render:")
+                )
             ):
-                fail(f"binary/generated row lacks generator evidence: {path}")
-            if row.get("prepass_status") == "candidate" and not row.get("finding_refs"):
-                fail(f"candidate pre-pass row has no finding references: {path}")
+                fail(f"binary/generated row lacks generator, parser, or render evidence: {path}")
+            if row.get("prepass_status") == "candidate" and (
+                not row.get("finding_refs")
+                or note_value(str(row.get("coverage_notes", "")), "candidate_resolution")
+                not in {"resolved", "accepted", "closed"}
+            ):
+                fail(f"candidate pre-pass row lacks finding references or resolution: {path}")
     packet_by_path: dict[str, list[dict[str, Any]]] = {}
     for section in packet_sections:
         path = section["path"]
@@ -474,7 +773,7 @@ def main() -> int:
             fail(f"reviewer packet chunk numbering is incomplete: {path}")
         if any(int(section["chunk_count"]) != expected_count for section in sections):
             fail(f"reviewer packet declares inconsistent chunk counts: {path}")
-        if row["file_kind"] != "binary":
+        if row["file_kind"] not in {"binary", "deleted_binary"}:
             ordered = sorted(sections, key=lambda section: int(section["chunk"]))
             if any(section["content"] is None for section in ordered):
                 fail(f"reviewer packet omits text content: {path}")
@@ -485,20 +784,26 @@ def main() -> int:
     actual_include = include_hash(sorted(seen))
     if actual_include != str(receipt["include_set_sha256"]):
         fail("include-set hash does not match receipt rows")
-    if actual_total_tokens != int(receipt["estimated_tokens_total"]):
+    if str(receipt["receipt_version"]) == "0.2.0":
+        if actual_source_bytes_total != int(receipt["source_bytes_total"]):
+            fail(f"source_bytes_total does not match repository bytes: {actual_source_bytes_total}")
+    elif actual_total_tokens != int(receipt["estimated_tokens_total"]):
         fail(f"estimated token total does not match reviewed bytes: {actual_total_tokens}")
     if args.gate and source == "staged":
-        staged = staged_records(repo)
-        if set(staged) != seen:
-            missing = sorted(set(staged) - seen)
-            extra = sorted(seen - set(staged))
+        if set(statuses) != seen:
+            missing = sorted(set(statuses) - seen)
+            extra = sorted(seen - set(statuses))
             fail(f"receipt does not exactly cover staged paths; missing={missing}; extra={extra}")
         for row in rows:
-            change = staged[str(row["path"])]
-            if row["file_kind"] == "deleted" and change != "D":
+            change = statuses[str(row["path"])]
+            if row["file_kind"] in {"deleted", "deleted_binary"} and change != "D":
                 fail(f"row marks a non-deletion as deleted: {row['path']}")
-            if row["file_kind"] != "deleted" and change == "D":
+            if row["file_kind"] not in {"deleted", "deleted_binary"} and change == "D":
                 fail(f"staged deletion is not classified as deleted: {row['path']}")
+    if str(receipt["receipt_version"]) == "0.2.0":
+        actual_scope_lock = scope_lock(sorted(seen), rows, statuses)
+        if actual_scope_lock != str(receipt["scope_lock_sha256"]):
+            fail("scope lock does not match the frozen paths, statuses, and digests")
     receipt_digest = hashlib.sha256(canonical_receipt(receipt)).hexdigest()
     recorded_digest = receipt.get("receipt_sha256")
     if recorded_digest and recorded_digest != receipt_digest:

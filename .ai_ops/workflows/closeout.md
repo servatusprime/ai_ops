@@ -223,16 +223,27 @@ state, hook, or generated wrapper cannot substitute for the operator approval.
     Re-run the configured validation checks after all archive, stale-reference,
     and log mutations; the final security receipt is built only from that
     post-mutation state.
+    When the closeout-security policy or validator itself is being upgraded,
+    use a compatibility bridge for the first landing: generate a legacy
+    v0.1 receipt against the HEAD policy and let the existing HEAD hook admit
+    that commit. Do not make the existing hook execute staged admission code.
+    After the policy upgrade lands, regenerate a v0.2 receipt and use the new
+    staged gate for subsequent closeouts.
 19. Run the closeout security admission gate:
     - Freeze the final include set after archive and stale-reference updates.
-    - Run the configured security pre-pass, then have the assigned reviewer read
-      every included file in full; use the diff only to locate the change.
-      Apply the configured T0/T1/T2 tier and token caps, and record the
-      reviewer packet and machine-local receipt.
+    - Run the configured security pre-pass, freeze its scope lock, and review
+      every included row using its deterministic review basis. Full-content
+      rows are read in full; deleted binary rows may use only the explicit
+      hash-only deletion basis with hash-bound reference and recovery evidence
+      artifacts; live
+      binary/generated rows require digest plus generator, parser, or render
+      evidence. Use bounded review batches within the configured per-session
+      token cap and record the reviewer packets and machine-local receipt.
     - Do not stage until the separate commit approval names the final include
       set. After approval, stage only that set and run the receipt validator
-      against staged blobs. A missing row, hash drift, incomplete full-file
-      coverage, unresolved candidate, or non-pass disposition blocks closeout.
+      against staged blobs. A missing row, hash drift, stale scope lock,
+      incomplete coverage, unresolved candidate, unsupported review-basis
+      downgrade, or non-pass disposition blocks closeout.
     - Include the validated `Closeout-Security` result in the commit message;
       the installed pre-commit and commit-msg hooks recheck the staged bytes.
 20. Evaluate commit gate explicitly:
@@ -286,9 +297,10 @@ state, hook, or generated wrapper cannot substitute for the operator approval.
      pre-commit hooks) and run them. If none configured, offer to run common linters.
    - Record `validation_commands_run` in output.
 7. Run the closeout security admission gate on the explicit external-repo
-   include manifest: read every included file in full, run the configured
-   tiered review and token cap, write the machine-local receipt, stage only the
-   manifest paths, and validate the staged blobs. Missing coverage, hash drift,
+   include manifest: freeze the scope lock, apply each row's deterministic
+   review basis, run bounded review batches within the configured per-session
+   cap, write the machine-local receipt, stage only the manifest paths, and
+   validate the staged blobs. Missing coverage, hash drift, a stale scope lock,
    unresolved candidates, or a non-pass disposition blocks closeout.
 8. Stage changes and generate the commit message summary, including the
    validated `Closeout-Security` trailer result.
