@@ -1,6 +1,6 @@
 ---
 title: Future Work Registry Policy
-version: 0.2.0
+version: 0.3.0
 status: active
 license: Apache-2.0
 updated: 2026-06-11
@@ -40,6 +40,14 @@ closeout change and rely on the run log for history. Trashing an originating or
 intake workbook is not completion evidence by itself.
 
 During `/harvest` or closeout, remove or archive completed items as part of pruning.
+
+Before any archive or completion claim, record the candidate's tracked or
+ignored state, source hash, collision result, active-reference result, retention
+class, approval, recovery owner, and row-level outcome in the cleanup manifest.
+If the registry, run log, scorecard, or completion evidence is not in the same
+approved mutation plan, the item remains pending; a text occurrence of a
+workbook name is not completion evidence. A failed or partial cleanup parks the
+row with its exact resume point rather than silently skipping it.
 
 ## Entry Quality
 

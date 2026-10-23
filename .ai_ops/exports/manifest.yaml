@@ -15,9 +15,11 @@ targets:
 - codex
 - plugin
 generation_targets:
+- claude
+- codex
 - plugin
 workflow_count: 13
-output_count: 26
+output_count: 65
 manifest_output_count: 65
 workflows:
 - workflow: ai_ops_setup
@@ -63,25 +65,25 @@ workflows:
     sha256_12: 6bec19573c50
 - workflow: closeout
   source: .ai_ops/workflows/closeout.md
-  source_sha256_12: c78565fef3f0
-  description: Finalize a work session with cleanup, lint, review, and approval-gated
-    commit/push publication.
+  source_sha256_12: fe317173d88d
+  description: Prepare a read-only closeout packet, then publish only through exact
+    approval-gated commit and push steps.
   outputs:
   - path: plugins/ai-ops-governance/commands/closeout.md
     kind: plugin_command
-    sha256_12: dc58ebc95c8c
+    sha256_12: 51aa914df108
   - path: plugins/ai-ops-governance/skills/closeout/SKILL.md
     kind: plugin_skill
-    sha256_12: ed52f0fe78fb
+    sha256_12: b0e9951418cf
   - path: .claude/skills/closeout/SKILL.md
     kind: claude_skill
-    sha256_12: ed52f0fe78fb
+    sha256_12: b0e9951418cf
   - path: .agents/skills/closeout/SKILL.md
     kind: codex_skill_primary
-    sha256_12: 1bc21df9a238
+    sha256_12: 8b54ce899ae0
   - path: .agents/skills/closeout/agents/openai.yaml
     kind: codex_skill_primary_openai_yaml
-    sha256_12: 725253eaa0df
+    sha256_12: 99d5c844788d
 - workflow: crosscheck
   source: .ai_ops/workflows/crosscheck.md
   source_sha256_12: fc46e089c265
@@ -164,7 +166,7 @@ workflows:
     sha256_12: b0e04ceddb9e
 - workflow: lint
   source: .ai_ops/workflows/lint.md
-  source_sha256_12: ad9d9384157a
+  source_sha256_12: ede5c9fb2394
   description: Run configured validators and linters against a target scope and report
     findings without modifying files.
   outputs:
@@ -246,25 +248,25 @@ workflows:
     sha256_12: faca4d486bb7
 - workflow: work_savepoint
   source: .ai_ops/workflows/work_savepoint.md
-  source_sha256_12: acc232603f8c
-  description: Validate, commit, and push a scoped work-in-progress savepoint after
-    explicit final approval.
+  source_sha256_12: 565f2b1a7d39
+  description: Validate and record a scoped work-in-progress savepoint; publish only
+    after an explicit request and final approval.
   outputs:
   - path: plugins/ai-ops-governance/commands/work_savepoint.md
     kind: plugin_command
-    sha256_12: 42b3de05cf26
+    sha256_12: 5ee63403c6d2
   - path: plugins/ai-ops-governance/skills/work-savepoint/SKILL.md
     kind: plugin_skill
-    sha256_12: 45b49c3f66f9
+    sha256_12: af2693d23952
   - path: .claude/skills/work_savepoint/SKILL.md
     kind: claude_skill
-    sha256_12: d43aff9baad0
+    sha256_12: e6f927813d7a
   - path: .agents/skills/work_savepoint/SKILL.md
     kind: codex_skill_primary
-    sha256_12: 864bea72ccaa
+    sha256_12: 563a3c254c5c
   - path: .agents/skills/work_savepoint/agents/openai.yaml
     kind: codex_skill_primary_openai_yaml
-    sha256_12: 9981bd30a3a6
+    sha256_12: 64ae825ef9b1
 - workflow: work_status
   source: .ai_ops/workflows/work_status.md
   source_sha256_12: 6d70ed28cb7f

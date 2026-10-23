@@ -60,8 +60,9 @@ The marker only applies to the current scope. Any scope expansion requires a new
 3. Run validation/lint commands, including alternate direct lint handling when
    ignored `90_Sandbox/**` or `99_Trash/**` artifacts are part of the scope.
 4. Provide a change summary in the chat.
-5. If the turbo marker is present, treat the current-scope commit/push approval
-   gate as satisfied. Otherwise, pause for approval.
+5. Treat the turbo marker as descriptive only. Require one exact commit
+   approval naming the final include set and a separate push approval naming the
+   verified commit SHA, remote, and branch.
 6. Record approval evidence in the workbook/work proposal (when applicable) and
    in `00_Admin/logs/log_workbook_run.md` before commit.
 7. If executed workbooks/workbundles are in scope, archive them and repair

@@ -1,6 +1,6 @@
 ---
 title: Closeout Security Review
-version: 0.2.0
+version: 0.3.0
 status: active
 last_updated: 2026-10-14
 owner: ai_ops
@@ -22,9 +22,12 @@ set first; do not infer scope from a diff alone.
    scope lock binds every path, change status, and source digest to that
    frozen baseline.
 3. Run `closeout_security_prepass.py` with `--source worktree` or
-   `--source staged`.
+   `--source staged`. For ai_ops, use reviewer-read mode. For a governed
+   repository without the target policy or hook, use the explicit
+   `--admission-mode deterministic_admission --policy-source
+   missing_target_policy` form and record the operator approval reference.
    Keep output under `.ai_ops/local/closeout_security/`.
-4. Review each bounded batch within the configured session cap and total
+4. In reviewer-read mode, review each bounded batch within the configured session cap and total
    receipt cap. The pre-pass must stop before reviewer admission when the
    estimated receipt total exceeds `packet.max_total_review_tokens`; split the
    include set into explicit, independently locked lanes or use bounded
@@ -51,6 +54,11 @@ set first; do not infer scope from a diff alone.
    not full content reviews and must never be represented as such. A large
    scope must not be made admissible by silently creating more review batches.
 7. Validate the receipt with `validate_closeout_security_receipt.py --gate --staged`.
+   A deterministic-admission receipt is not a `pass`: it must declare
+   `overall_disposition: deterministic_admission`, contain no reviewer batches,
+   bind the scope and normalized tree manifest, and carry a non-pending operator
+   commit-approval reference. Known tripwire candidates produce
+   `split_required` and stop the gate.
    Missing coverage, a hash mismatch, a stale scope lock, an unresolved
    candidate, or `needs_work` blocks commit.
    For the first landing of a policy/ruleset upgrade, stage the canonical
@@ -60,8 +68,9 @@ set first; do not infer scope from a diff alone.
    do not add a `Closeout-Security` trailer to this policy-upgrade commit: the
    unchanged trusted HEAD hook must see an ordinary commit and must never
    execute staged admission code. After the policy lands, regenerate the
-   normal v0.2 receipt at `latest.yaml` and use the trailer for subsequent
-   closeouts.
+   normal v0.2 reviewer-read receipt at `latest.yaml` and use the trailer for
+   subsequent ai_ops closeouts. Deterministic receipts use schema 0.4.0 and
+   must retain their non-pass disposition in the trailer.
 8. On a discarded or superseded slug, use `--discard` and record the reason.
 
 The receipt is evidence for the commit gate, not a replacement for operator

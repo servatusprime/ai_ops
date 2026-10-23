@@ -331,6 +331,8 @@ governed_repo_validation:
   # Shared contract for governed-repo workflow lanes (work_savepoint, closeout, lint).
   # minimum_commands is empty by default; populate per-repo via the list entry in
   # .ai_ops/local/config.yaml workspace.work_repos[].savepoint_validation.
+  # Path-bearing validator argv may use --data-root VALUE or --data-root=VALUE;
+  # op_validate_config.py enforces repository/workspace containment for both.
   minimum_commands: []
   network_sensitive_commands: []
   allow_partial_on_network_failure: true

@@ -1,8 +1,8 @@
 ---
-description: Finalize a work session with cleanup, lint, review, and approval-gated commit/push publication.
+description: Prepare a read-only closeout packet, then publish only through exact approval-gated commit and push steps.
 name: closeout
 kind: workflow
-version: 0.3.4
+version: 0.4.0
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -14,10 +14,10 @@ claude:
   model: null
 codex:
   metadata:
-    short-description: Finalize a work session with cleanup, lint, review, and approval-gated commit/push publication.
+    short-description: Prepare a read-only closeout packet, then publish only through exact approval-gated commit and push steps.
   interface:
     display_name: closeout
-    short_description: Finalize a work session with cleanup, lint, and approval-gated commit/push publication.
+    short_description: Prepare a read-only closeout packet, then publish only through exact approval-gated commit and push steps.
   policy:
     allow_implicit_invocation: false
 exports:
@@ -37,7 +37,9 @@ exports:
 
 ## Purpose
 
-Finalize a work session with cleanup, lint, and approval-gated commit/push publication.
+Prepare a closeout without mutation, then publish only after the exact commit
+and push gates pass. Read-only preparation must not stage, commit, push,
+archive, delete, or repair content. Content remediation routes to `/work`.
 
 ## Inputs and Preconditions
 
@@ -86,6 +88,30 @@ closeout-specific branching.
 - Active work context: close out the selected context.
 
 ## Steps
+
+### Read-only Preparation Boundary
+
+The first closeout leg is deterministic and read-only. Resolve the active
+artifact and repository, capture the complete dirty-tree baseline, classify
+`include`, `related_scope_requires_confirmation`, `exclude`, and
+`ignored_unpublished`, run configured validation and the applicable security
+pre-pass, and project the proposed mutation plan, commit message, remote, and
+branch. Emit `bootstrap_path`, `resume_basis`, `reads_applied`, the scope echo,
+validation results, and security applicability. Do not stage, write a receipt to
+the repository, archive, delete, fix content, commit, or push during this leg.
+
+If preparation finds a content defect, return to `/work`. If it finds a cost,
+authority, policy, scope, tree, or stale-context change, emit `PARK` with the
+owner and exact resume point. A security outcome of `deterministic_admission`
+is not a `pass`; it is permitted only for a governed repository whose target
+policy or hook is absent and must be presented for explicit commit approval.
+ai_ops itself remains reviewer-read against the target `HEAD` policy and
+installed hook contract.
+
+`/work_savepoint` is the WIP lane: its default invocation validates and records
+a checkpoint only. It does not claim completion, archive authority, commit, or
+push. Its `--commit` option is an explicit publication request and still uses
+the same separate commit and push approvals.
 
 ### Publication Command Registry
 
@@ -211,6 +237,15 @@ state, hook, or generated wrapper cannot substitute for the operator approval.
       - If yes, prompt: "All items in this workprogram are complete. Archive the entire workprogram to 99_Trash?"
 
 16. Archive completed work artifacts to `99_Trash/`:
+    - Before any move, record each source's tracked state with
+      `git ls-files --error-unmatch -- <path>`, ignore evidence with
+      `git check-ignore -v -- <path>` (or `not_ignored`), source SHA-256,
+      collision result, active-reference result, retention class, approval,
+      recovery owner, and cleanup dependency in the cleanup manifest.
+    - If a tracked source would become local-only under an ignored destination,
+      PARK before moving it. The approved mutation plan must explicitly include
+      the tracked deletion or a tracked archive destination; an ignored trash
+      folder is not evidence of publication.
     - Completed solitary workbook → move to Trash
     - Completed workbundle (all workbooks complete, user confirmed) → move workbundle folder to Trash
     - Completed workprogram (all workbundles complete) → move workprogram folder to Trash
@@ -267,9 +302,12 @@ state, hook, or generated wrapper cannot substitute for the operator approval.
       remediation.
 
 21. Stage changes and generate commit message summary.
-22. Commit with turbo authorization only when the commit gate passed and no
-    explicit user hold was given.
-23. Push to remote.
+22. Commit only after the commit gate passed and the operator approved the
+    frozen include set and exact commit action. Turbo markers and workflow
+    metadata never substitute for that approval.
+23. Push only after a separate push/PR approval names the verified commit SHA,
+    remote, and branch. A failed push is reported and preserved; do not create
+    a PR or broaden the push command automatically.
 24. Confirm closeout complete with summary of changes shipped.
 
 ### External Repo (User)
@@ -281,8 +319,9 @@ state, hook, or generated wrapper cannot substitute for the operator approval.
    - **Unregistered repos**: if `target_repo` cannot be resolved, require explicit user-provided path. Stop and ask if none given.
    - **Windows**: normalize to forward-slash absolute path for all `git -C` calls.
    - Run `git -C <target_repo> rev-parse --show-toplevel` to confirm repo access and establish `repo_root`.
-     - If it fails with `dubious ownership`: run `git config --global --add safe.directory <target_repo>` and
-       re-run. Record `safe_directory_applied: true`. If the re-run also fails, stop and report.
+     - If it fails with `dubious ownership`, stop and request an explicit
+       operator-directed trust repair. Do not run `git config --global` from
+       the closeout lane. Record `safe_directory_applied: false`.
      - On success: capture output as `repo_root`. Record `safe_directory_applied: false`.
    - All subsequent git commands MUST use `-C <repo_root>` or run from `<repo_root>`.
 3. **Git Preflight**: Verify repo state using confirmed `repo_root` from Step 2.
@@ -316,7 +355,9 @@ state, hook, or generated wrapper cannot substitute for the operator approval.
 9. **Push Preflight** (if push is planned): verify `push_preflight_result` from Step 3 is `clean` or `shallow_clone`. If `detached_head`, stop before commit.
 10. Commit.
 11. **Push and failure handling**: Push to remote.
-    - If push fails with `protected branch` or `remote rejected`: emit `push_escalation: pr_required` — create a PR against `<default_branch>` instead.
+    - If push fails with `protected branch` or `remote rejected`: emit
+      `push_escalation: pr_required` and stop. A PR requires a separate explicit
+      request and approval; do not create one automatically.
     - If push fails with authentication error: emit `push_escalation: auth_failure` — stop and report.
     - If push fails for any other reason: record exit code and stderr as `push_escalation: unknown` — stop and report.
 12. Summarize changes shipped.
@@ -344,7 +385,7 @@ Default lane: Executor (execution); Linter for lint results.
 
 ## Risks and Limits
 
-- Inside repo, turbo authorization may skip pauses; confirm the user wants that.
+- Inside repo, turbo markers never bypass the exact commit and push approvals.
 - Closeout is fast; mistakes can be costly if scope is wrong.
 - Do not force push without explicit request.
 - Do not skip linters (unless user explicitly requests).

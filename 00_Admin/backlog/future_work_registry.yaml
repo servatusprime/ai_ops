@@ -1,10 +1,10 @@
 ---
 title: future_work_registry
-version: 0.6.17
+version: 0.6.19
 status: active
 owner: ai_ops
 created: 2026-01-07
-updated: 2026-10-19
+updated: 2026-10-23
 relocation_note_2026_09_04: >-
   fw_20260904_01 (resolvable dependency manifest for governed execution repos)
   relocated to the named governed repo's own
@@ -472,6 +472,13 @@ entries:
     notes: >-
       Seeded from the 2026-06-19 stop-approval correction; applies to any agent
       doing git work under a permission allowlist.
+      Update 2026-10-23: prompt reduction was deferred for the closeout rework (not a focus
+      of that patch). Levers recorded here for later: allow read-only `git rev-parse`,
+      `git config --get` and read-only `git -C` forms in the settings template while commit
+      and push stay prompt-gated; or change workflow command forms to run read-only commands
+      from the working directory. If git later runs inside approved scripts (see
+      `fw_20261023_01`), the effective per-command prompt gate on commit and push changes and
+      must be decided explicitly. Re-open when the operator makes prompt reduction a goal.
 
   - id: fw_20260716_01
     title: Advanced run-family version resolution and migration automation
@@ -1259,3 +1266,220 @@ entries:
       Do not resume hardening rounds without new evidence. Any resumption
       needs a Level-3+ workbook, an explicit review-round cap, and a
       stopping rule written before the first review.
+      First measurement (2026-10-22): one governed repository's include set was estimated at about
+      539,000 review tokens against the 120,000 cap, so the gate could not be met;
+      see `fw_20261022_01`.
+      Hook options recorded 2026-10-23 (the operator chose to leave the hook as designed for
+      now): the hook only checks commits that claim a receipt, so a commit without one passes.
+      Options kept here: require a valid receipt for commits that touch protected paths (needs
+      a hook change, and those commits then face the review cap), or a remote-side check on
+      push (the receipt is machine-local, so CI can only check a claim unless a receipt hash
+      is committed). Blocking every commit that lacks a receipt would recreate the unmeetable
+      gate and is not an option. A protected-path change landing without review counts as an
+      incident for the trigger above.
+
+  - id: fw_20261022_01
+    title: Closeout and savepoint rework, Tier 1 - gate disposition, publication rules, data root, archive checks
+    domain: workflow
+    target_repo: ai_ops
+    source_workbook: 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/work_proposal_closeout_rework_01.md
+    completion_workbook: null
+    proposed_workbook: 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/wb_closeout_rework_execute_01.md
+    scope: >-
+      The operator said on 2026-10-22, after closing out a governed-repo workbook, that the recent
+      closeout commands are highly problematic and must change, and that some recent changes are
+      regretted. Evidence from that closeout, stated generically: (1) The security admission gate
+      (full-content review of every included file, capped at 120,000 review tokens per receipt)
+      cannot be met by a realistic governed-repo scope. The pre-pass estimated about 539,000 tokens
+      for one repository's include set and about 570,000 for another repository's data ledgers and
+      staging alone, roughly fourteen independently locked commits with reviewer packets, in
+      repositories where the commit hook that would enforce the gate is not installed. The workflow
+      defines no disposition except splitting lanes; the operator had to waive the gate by hand.
+      (2) The external-repo closeout flow and `/work_savepoint` overlap and disagree: the savepoint
+      flow has no security gate, closeout requires it, and a workbook that named "the savepoint
+      workflow" was closed with `/closeout`. (3) The ceremony: container-completion prompts, scope
+      confirmations, a commit approval and a push approval, on top of tool-permission prompts, left
+      the operator reporting a whole mess of stop-approvals. (4) The validator contract cannot carry
+      required arguments or data roots: a governed repository's configured minimum command fails as
+      configured because the validator needs a data-root argument the contract has no field for.
+      (5) The archive step moves artifacts to `99_Trash/` and assumes that folder is ignored and the
+      evidence disposable; in a repository whose sandbox is tracked and whose trash is ignored,
+      archived tracked files silently become local-only, and nothing in the workflow checks it.
+      (6) Stale-reference checking covers touched documents only; a bundle rename left references in
+      a second repository that only a search found. (7) The registry completion rule (delete the
+      entry, add a run-log entry, regenerate the scorecard) is three manual steps with no check.
+      Wanted: one closeout flow per governed repository whose read-only preparation runs without
+      stopping and ends in one packet (include set, validation results, message, remote, branch)
+      and one commit approval, with push a second explicit approval only; a security review bounded
+      per commit slug with a defined operator-approved waiver path, or a gate sized to risk (code
+      and configuration read in full, data ledgers and generated evidence hashed with structural
+      checks); no duplicated lane between closeout and savepoint; validation commands that can carry
+      arguments and environment; a cross-repository stale-reference sweep; archive rules that check
+      ignore status and say what becomes local-only. Consider trimming back recent additions rather
+      than extending them.
+    priority: high
+    benefit: high
+    effort: m
+    readiness: ready
+    risk_if_deferred: medium
+    activation_trigger: >-
+      The next `/closeout` or `/work_savepoint` run on any repository, or the operator's request to
+      start the rework.
+    next_review: 2026-11-15
+    status: active
+    owner: ai_ops
+    created: 2026-10-22
+    compacted_context:
+      source: >-
+        Operator statement on 2026-10-22 at the end of a governed-repository workbook closeout, after
+        the security gate estimate showed the review could not fit the receipt cap.
+      note: >-
+        Self-contained. The first measured data point for the parked gate-rework and cost-measurement
+        item (`fw_20261018_01`) is the estimate recorded here.
+    notes: >-
+      Every surface it touches (workflows, policies, specs, configs, the receipt validator) is
+      Level 4: it needs a Level-3+ workbook, an independent crosscheck and the operator's approval
+      item by item. Decide first whether the gate stays at all for governed repositories that do
+      not install its hook.
+      Operator decisions, 2026-10-23: approve by tier, Tier 1 first. Tier 1 is the data-root
+      allowlist flag; the publication text corrections (turbo marker, broad staging, global
+      `safe.directory` writes in closeout and lint, automatic pull request after a failed push,
+      and the savepoint and closeout alignment, with savepoint validating and recording WIP by
+      default and publishing only on an explicit `--commit` with separate commit and push
+      approvals); the archive template columns and an ignore check; and the smallest form of
+      the gate decision (a deterministic, no-reviewer mode of the existing pre-pass, labeled
+      `deterministic_admission`, for governed repositories without the hook or policy, with
+      reviewer-read kept where both exist). Also approved: a manual closeout path for tooling
+      failures; four success metrics (time to a verified commit, closeouts needing a waiver or
+      restart, review tokens per closeout, stale references after a closeout) baselined on the
+      next five closeouts and checked at the review date; and leaving the closeout security
+      hook as designed (opt-in, so a commit without a receipt claim passes; hardening stays in
+      `fw_20261018_01`). Prompt reduction is not a focus of this patch (see `fw_20260619_02`).
+      Deferred to their own items: `fw_20261023_01` (packet builder and applier),
+      `fw_20261023_02` (relocation sweep), `fw_20261023_03` (completion command and receipt).
+
+  - id: fw_20261023_01
+    title: Closeout approval packet builder and applier (approval-to-tree binding), Tier 2
+    domain: workflow
+    target_repo: ai_ops
+    source_workbook: null
+    completion_workbook: null
+    proposed_workbook: null
+    scope: >-
+      Deferred Tier 2 of the closeout and savepoint rework (`fw_20261022_01`). Build a packet
+      builder and applier so one commit approval binds to the exact bytes committed: a
+      machine-local packet (scope lock, normalized blob and tree manifest, cost profile, frozen
+      clock, state) with a state mapping onto the existing approval, PDR and PARK vocabulary;
+      `git commit --only -- <approved paths>` with a cached name-status check before commit and
+      a `HEAD^{tree}` check after; push by verified commit SHA; and numeric stop limits
+      (repositories, roots, files, bytes, matches, elapsed time, retries) that park instead of
+      expanding. Design points to carry forward: the packet root must sit outside the
+      write-guarded `.ai_ops/local/` folder; new files need an explicit staging step before
+      `--only`; the structure-map hook rewrites a tracked file and the export-drift hook couples
+      workflow edits to the export manifest, so both belong in the projection; fixing hooks
+      (markdownlint, ruff) can change approved bytes after approval; the work is a packet
+      schema, a builder, an applier and tests, plus a limits block in the routing config.
+      Running git inside an approved script also changes the effective per-command prompt gate
+      on commit and push; decide that explicitly if this is built.
+    priority: low
+    benefit: medium
+    effort: l
+    readiness: partial
+    risk_if_deferred: low
+    activation_trigger: >-
+      Wrong-scope or drifted commits recur after the Tier 1 corrections land, or the existing
+      staged-names check proves insufficient, or the operator makes tree-bound approval a goal.
+    next_review: 2026-12-15
+    status: deferred
+    owner: ai_ops
+    created: 2026-10-23
+    compacted_context:
+      source: >-
+        Operator decision on 2026-10-23 to approve the closeout rework by tier and defer the
+        heavy machinery until the Tier 1 corrections are measured.
+      note: >-
+        Self-contained. The full design is in the local, gitignored closeout-rework proposal
+        bundle and its reviews. None of the seven evidenced pains in `fw_20261022_01` is a drift
+        between approval and commit.
+    notes: >-
+      Value is unproven: the savepoint flow already re-validates after approval, stages exact
+      paths and verifies that the staged names equal the approved set. Measure Tier 1 first.
+
+  - id: fw_20261023_02
+    title: Bounded read-only cross-repository relocation-reference sweep, Tier 3
+    domain: tooling
+    target_repo: ai_ops
+    source_workbook: null
+    completion_workbook: null
+    proposed_workbook: null
+    scope: >-
+      Deferred Tier 3 of the closeout and savepoint rework (`fw_20261022_01`, pain 6). After a
+      relocation or rename, search only the named repositories and roots from the machine-local
+      workspace set for the old path or identifier; report historical provenance matches
+      separately from active broken-reference candidates; write nothing; park at numeric limits
+      (proposed, unmeasured defaults: 4 repositories, 8 roots each, 25,000 files, 2 GiB, 2,000
+      matches, 120 seconds, 1 retry). Needs a script, a schema, a named block in the shared
+      routing config with its schema in the routing spec, and a test. Evidence: one bundle
+      rename left references in a second repository that only a manual search found. Interim
+      step until built: a documented `git grep` checklist across the named repositories.
+    priority: low
+    benefit: medium
+    effort: m
+    readiness: partial
+    risk_if_deferred: low
+    activation_trigger: >-
+      A second stale-reference miss after a rename or relocation, despite the interim checklist.
+    next_review: 2026-12-15
+    status: deferred
+    owner: ai_ops
+    created: 2026-10-23
+    compacted_context:
+      source: >-
+        Operator decision on 2026-10-23 to approve the closeout rework by tier; the sweep was
+        judged low frequency and costly relative to its evidence.
+      note: >-
+        Self-contained. Pairs with `fw_20261023_01`, which would enforce the same limits for the
+        packet builder.
+    notes: >-
+      A discovered match never grants permission to edit another repository; the sweep stays
+      read-only.
+
+  - id: fw_20261023_03
+    title: Future-work completion command, receipt and policy rewrite, Tier 3
+    domain: validation
+    target_repo: ai_ops
+    source_workbook: null
+    completion_workbook: null
+    proposed_workbook: null
+    scope: >-
+      Deferred Tier 3 of the closeout and savepoint rework (`fw_20261022_01`, pain 7).
+      Registry completion is three manual steps (delete the entry, add a run-log entry,
+      regenerate the scorecard), and the registry policy defines completion as the completion
+      workbook appearing in the run log. Replace this with a completion command that writes an
+      immutable receipt (registry id, run id, status of success, failed, pending or stale, exit
+      code, scope and artifact hashes, run-log marker and hash, scorecard source hash excluding
+      the generated date), a marked run-log block, a parity check, and a Level 4 policy rewrite;
+      only a success receipt may delete an entry. Needs the policy edit, a schema, a script and
+      tests with success, failed, pending, stale and text-only fixtures. Interim: the existing
+      stale-entry validator warning and a checklist.
+    priority: low
+    benefit: medium
+    effort: m
+    readiness: partial
+    risk_if_deferred: low
+    activation_trigger: >-
+      Two false completions, or a scorecard that was not regenerated after a completion.
+    next_review: 2026-12-15
+    status: deferred
+    owner: ai_ops
+    created: 2026-10-23
+    compacted_context:
+      source: >-
+        Operator decision on 2026-10-23 to approve the closeout rework by tier; completion
+        events are infrequent and the validator already warns about stale entries.
+      note: >-
+        Self-contained. Changing the completion rule is a policy change, not only a validator
+        change.
+    notes: >-
+      The receipt location, the run-log marker format and the scorecard parity rule (ignore the
+      generated date) were drafted in the closeout-rework proposal and should be reused.

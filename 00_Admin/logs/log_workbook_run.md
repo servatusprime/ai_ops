@@ -1,10 +1,10 @@
 ---
 title: Log: Workbook Runs
-version: 0.1.4
+version: 0.1.8
 status: active
 owner: ai_ops
 created: 2026-01-08
-updated: 2026-09-05
+updated: 2026-10-23
 ai_generated: true
 ---
 
@@ -15,6 +15,64 @@ ai_generated: true
 # Log: Workbook Runs
 
 ## Entries
+
+- 2026-10-23 | wb_closeout_rework_execute_01 | Processed the independent Sol
+  closeout-security review and remediated the remaining admission defects. The
+  canonical ai_ops policy was restored to its target-HEAD reviewer-read state;
+  deterministic admission now requires a genuinely applicable missing-policy
+  or missing-hook condition, and both prepass and validator recognize standard
+  pre-commit dispatchers wired to the closeout hook. The final targeted receipt
+  suite passed 26/26. Fresh reviewer-read receipts cover 29 paths in two lanes:
+  lane A 15 paths / 0 candidates;
+  lane B 14 paths / 225,404 source bytes / 58,141 review tokens / 5 benign
+  tripwire candidates.
+  Both receipts pass non-gate validation; all rows remain
+  not_reviewed/pending pending formal reviewer attestations and the staged
+  closeout gate. No staging, commit, push, archive, registry deletion, or
+  workspace installation was performed.
+
+- 2026-10-23 | wb_closeout_rework_execute_01 | Processed execution recheck 2
+  and began read-only `/closeout` preparation. Corrected L-02 in the bundle
+  README durable-output register and reconciled the workbook's M-01 local-wrapper
+  scope language. Closeout prepass against the 30-path worktree include set
+  stopped at the configured 120,000-token receipt cap at an estimated 126,722;
+  the set was split into two explicit reviewer-read lanes. Lane A covered 16
+  paths and lane B 14 paths; both prepasses completed, with candidate tripwires
+  retained for reviewer disposition. No staging, commit, push, archive,
+  registry deletion, settings mutation, or external workspace installation was
+  performed. Closeout remains PARKED at reviewer-read security admission and
+  separate commit/push approvals.
+
+- 2026-10-23 | wb_closeout_rework_execute_01 | Processed the execution recheck
+  findings in the existing closeout-rework bundle. M-01 was a bounded generated
+  wrapper mismatch, not a runtime or policy migration: the five exact repo-local
+  `.claude`/`.agents` closeout and work_savepoint wrappers were regenerated from
+  the canonical workflows. M-02 workbook/README/log state was synchronized and
+  L-01 closeout interface metadata was corrected. The strict source/output/
+  independent export drift check, full 112-test suite, repository validator,
+  workflow frontmatter, graph check, Markdownlint, and diff check were rerun;
+  the external workspace-root install lane remains excluded. No commit, push,
+  archive, registry deletion, settings mutation, or external workspace install
+  was performed.
+
+- 2026-10-23 | wb_closeout_rework_execute_01 | Executed the approved Tier 1
+  closeout/savepoint rework in `ai_ops`. Units A-E were applied within the
+  exact execution workbook path set: deterministic-admission receipt support,
+  read-only preparation and publication boundaries, data-root argument
+  validation, archive evidence requirements, registry pointer/scorecard
+  synchronization, workflow smoke coverage, generated plugin exports, and the
+  Phase 0 routing-graph repair. Tier 2 packet/tree binding and Tier 3
+  relocation/completion machinery remain deferred. Source:
+  `90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/wb_closeout_rework_execute_01.md`.
+  Registry: `fw_20261022_01` remains active with proposal and execution
+  workbook pointers. Self-Review Smoke Pass: pending final strict hybrid
+  crosscheck. Validation: targeted closeout/security, data-root, and savepoint
+  tests pass; the final crosscheck also tightened the deterministic-disposition
+  allowlist and its negative test. The full 112-test suite was rerun afterward.
+  Repository validation, workflow export generation/source-output drift,
+  scorecard generation, structure-map generation, and `git diff --check` pass.
+  No commit, push, archive, registry deletion, or workspace-local installation
+  was done.
 
 - 2026-03-13 | wb_ai_ops_oss_pub_prep_01 | Completed WB5 pre-public OSS
   preparation and final endpoint uplift for `ai_ops`; aligned README,

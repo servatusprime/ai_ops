@@ -1,7 +1,7 @@
 ---
 name: work-savepoint
-description: Validate, commit, and push a scoped work-in-progress savepoint after
-  explicit final approval.
+description: Validate and record a scoped work-in-progress savepoint; publish only
+  after an explicit request and final approval.
 disable-model-invocation: true
 ---
 
