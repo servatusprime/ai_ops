@@ -75,6 +75,177 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             VALIDATOR.enforce_total_review_budget([1], {**self.config, "packet": {"max_total_review_tokens": "100"}})
 
+    def test_deterministic_admission_is_machine_validated_without_review_packets(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            policy = repo / "external_closeout_policy.yaml"
+            policy.write_text(
+                yaml.safe_dump({
+                    **self.config,
+                    "version": "0.4.0",
+                    "ruleset_version": "0.4.0",
+                    "packet": {
+                        "estimated_tokens_per_packet": 20000,
+                        "session_token_budget": 120000,
+                        "max_total_review_tokens": 120000,
+                    },
+                    "admission": {
+                        "reviewer_read": {"enabled": True, "reviewer_packets": True},
+                        "deterministic_admission": {
+                            "enabled": True,
+                            "reviewer_packets": False,
+                            "allowed_policy_sources": ["missing_target_policy"],
+                        },
+                    },
+                    "forced_t2_files": [],
+                    "forced_t2_prefixes": [],
+                    "tiers": {
+                        "T0": {"path_prefixes": []},
+                        "T1": {"path_prefixes": [""]},
+                        "T2": {"path_prefixes": []},
+                    },
+                }),
+                encoding="utf-8",
+            )
+            note = repo / "note.txt"
+            note.write_text("before\n", encoding="utf-8")
+            for command in (
+                ["git", "init", "--quiet"],
+                ["git", "config", "user.email", "test@example.invalid"],
+                ["git", "config", "user.name", "Closeout Test"],
+                ["git", "add", "."],
+                ["git", "commit", "--quiet", "-m", "fixture"],
+            ):
+                result = subprocess.run(command, cwd=repo, capture_output=True, text=True, check=False)
+                self.assertEqual(0, result.returncode, result.stderr)
+            note.write_text("after\n", encoding="utf-8")
+            subprocess.run(["git", "add", "note.txt"], cwd=repo, check=True)
+            receipt = repo / ".ai_ops/local/receipt.yaml"
+            prepass = subprocess.run(
+                [
+                    sys.executable,
+                    str(PREPASS.__file__),
+                    "--repo-root", str(repo),
+                    "--source", "staged",
+                    "--config", str(policy),
+                    "--admission-mode", "deterministic_admission",
+                    "--policy-source", "missing_target_policy",
+                    "--operator-approval-ref", "decision-123",
+                    "--receipt-path", str(receipt),
+                    "note.txt",
+                ],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(0, prepass.returncode, prepass.stderr)
+            data = yaml.safe_load(receipt.read_text(encoding="utf-8"))
+            self.assertEqual("0.4.0", data["receipt_version"])
+            self.assertEqual("deterministic_admission", data["overall_disposition"])
+            self.assertEqual([], data["review_batches"])
+            self.assertEqual(0, data["review_tokens_total"])
+            validation = subprocess.run(
+                [
+                    sys.executable,
+                    str(VALIDATOR.__file__),
+                    "--repo-root", str(repo),
+                    "--receipt", str(receipt),
+                    "--config", str(policy),
+                    "--gate",
+                    "--staged",
+                ],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(0, validation.returncode, validation.stderr)
+            data["overall_disposition"] = "pass"
+            receipt.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+            invalid_deterministic = subprocess.run(
+                [
+                    sys.executable,
+                    str(VALIDATOR.__file__),
+                    "--repo-root", str(repo),
+                    "--receipt", str(receipt),
+                    "--config", str(policy),
+                    "--gate",
+                    "--staged",
+                ],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertNotEqual(0, invalid_deterministic.returncode)
+
+    def test_deterministic_admission_rejects_policy_and_hook_governed_repo(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            (repo / "00_Admin/configs").mkdir(parents=True)
+            policy = {
+                **self.config,
+                "version": "0.4.0",
+                "ruleset_version": "0.4.0",
+                "admission": {
+                    "deterministic_admission": {
+                        "enabled": True,
+                        "allowed_policy_sources": ["target_HEAD", "missing_target_policy"],
+                    }
+                },
+            }
+            (repo / "00_Admin/configs/closeout_security_tiers.yaml").write_text(
+                yaml.safe_dump(policy), encoding="utf-8"
+            )
+            (repo / ".pre-commit-config.yaml").write_text(
+                "repos:\n"
+                "  - repo: local\n"
+                "    hooks:\n"
+                "      - id: ai-ops-closeout-security\n"
+                "        entry: python 00_Admin/scripts/hooks/validate_closeout_security_head.py\n",
+                encoding="utf-8",
+            )
+            tracked = repo / "tracked.txt"
+            tracked.write_text("fixture\n", encoding="utf-8")
+            for command in (
+                ["git", "init", "--quiet"],
+                ["git", "config", "user.email", "test@example.invalid"],
+                ["git", "config", "user.name", "Closeout Test"],
+                ["git", "add", "."],
+                ["git", "commit", "--quiet", "-m", "fixture"],
+            ):
+                result = subprocess.run(command, cwd=repo, capture_output=True, text=True, check=False)
+                self.assertEqual(0, result.returncode, result.stderr)
+            (repo / ".git/hooks/pre-commit").write_text(
+                "#!/usr/bin/env bash\n"
+                "ARGS=(hook-impl --config=.pre-commit-config.yaml --hook-type=pre-commit)\n"
+                "exec pre-commit \"${ARGS[@]}\"\n",
+                encoding="utf-8",
+            )
+            receipt = repo / "receipt.yaml"
+            prepass = subprocess.run(
+                [
+                    sys.executable,
+                    str(PREPASS.__file__),
+                    "--repo-root", str(repo),
+                    "--source", "head",
+                    "--admission-mode", "deterministic_admission",
+                    "--policy-source", "target_HEAD",
+                    "--operator-approval-ref", "decision-123",
+                    "--receipt-path", str(receipt),
+                    "tracked.txt",
+                ],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertNotEqual(0, prepass.returncode)
+            self.assertIn("not applicable", prepass.stderr)
+            with self.assertRaises(SystemExit):
+                VALIDATOR.validate_deterministic_applicability(repo, policy, "target_HEAD")
+
     def test_large_deleted_structured_data_requires_parsed_safe_structure(self) -> None:
         config = {
             **self.config,

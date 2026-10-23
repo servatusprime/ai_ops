@@ -24,6 +24,7 @@ ALLOWED_VALIDATION_EXECUTABLE_TOKENS = ALLOWED_VALIDATION_EXECUTABLES | {
 }
 PATH_VALUE_FLAGS = {
     "--config",
+    "--data-root",
     "--file",
     "--install-root",
     "--manifest",

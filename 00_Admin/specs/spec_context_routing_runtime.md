@@ -58,6 +58,12 @@ governed_repo_validation:
   require_safe_directory_preflight: true
 ```
 
+Path-bearing validator flags may use either the separated form
+`--data-root <contained-path>` or the equals form `--data-root=<contained-path>`.
+The validator contract must validate both forms against the target repository or
+workspace containment boundary; it must not add arbitrary environment keys,
+alternate working directories, or unflagged path-like arguments.
+
 ### Per-Repo Extension Point
 
 Each governed repo populates its own minimum validator list in the machine-local
@@ -85,8 +91,8 @@ Agents consuming this contract MUST:
    and no per-repo validators have been confirmed.
 5. Treat every `minimum_commands` entry as an argv array. Reject free-form command
    strings, shell metacharacters, non-allowlisted executables, PATH resolution that
-   differs from the trusted validator runtime, and paths outside the target
-   repository or workspace. Execute only with shell disabled after
+   differs from the trusted validator runtime, and path-bearing arguments outside
+   the target repository or workspace. Execute only with shell disabled after
    `op_validate_config.py` accepts the configuration.
 
 ### Consumer Workflows

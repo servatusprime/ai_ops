@@ -954,7 +954,7 @@ workflow file.
 | --------------- | ------------------------ | ------------------------------------------ |
 | /work | Coordinator -> Executor | Establish work context, execute tasks |
 | /work_status | Coordinator | Summarize active work and blockers |
-| /work_savepoint | Executor | Preview and, after explicit final approval, commit/push a scoped WIP savepoint; `--no-commit` is checkpoint-only |
+| /work_savepoint | Executor | Default is a read-only WIP checkpoint; `--commit` requests publication and still requires exact commit and separate push approvals |
 | /harvest | Coordinator -> Executor | Harvest/prune artifacts |
 | /crosscheck | Reviewer | Review and report only |
 | /health | Reviewer | Report-only repo health check |

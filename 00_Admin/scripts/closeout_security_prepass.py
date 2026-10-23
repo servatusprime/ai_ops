@@ -27,7 +27,10 @@ except ImportError as exc:  # pragma: no cover - environment diagnostic
 
 
 ROOT = Path(__file__).resolve().parents[2]
-RECEIPT_VERSION = "0.2.0"
+REVIEW_RECEIPT_VERSION = "0.2.0"
+DETERMINISTIC_RECEIPT_VERSION = "0.4.0"
+POLICY_PATH = "00_Admin/configs/closeout_security_tiers.yaml"
+HOOK_MARKER = "validate_closeout_security_head.py"
 DEFAULT_MAX_TOTAL_REVIEW_TOKENS = 120000
 MIN_FORCED_T2_PREFIXES = (
     ".ai_ops/workflows/",
@@ -73,6 +76,80 @@ def git_bytes(repo: Path, spec: str) -> bytes:
     if completed.returncode:
         fail(f"cannot read {spec}: {completed.stderr.decode(errors='replace').strip()}")
     return completed.stdout
+
+
+def target_policy_present(repo: Path) -> bool:
+    """Return whether the target repository carries its canonical policy."""
+    if (repo / POLICY_PATH).is_file():
+        return True
+    completed = subprocess.run(
+        ["git", "-C", str(repo), "cat-file", "-e", f"HEAD:{POLICY_PATH}"],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    return completed.returncode == 0
+
+
+def closeout_hook_present(repo: Path) -> bool:
+    """Return whether an installed hook invokes the HEAD closeout validator."""
+    completed = subprocess.run(
+        ["git", "-C", str(repo), "config", "--get", "core.hooksPath"],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    configured = completed.stdout.decode("utf-8", errors="replace").strip()
+    if configured:
+        hook_dir = Path(configured)
+        if not hook_dir.is_absolute():
+            hook_dir = (repo / hook_dir).resolve()
+    else:
+        hook_dir = repo / ".git/hooks"
+    dispatcher_present = False
+    for name in ("pre-commit", "commit-msg", "pre-push", "pre-commit.dispatcher", "commit-msg.dispatcher"):
+        hook = hook_dir / name
+        if not hook.is_file():
+            continue
+        try:
+            text = hook.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if HOOK_MARKER in text or ".ai_ops/local/closeout_security/latest.yaml" in text:
+            return True
+        if (
+            name in {"pre-commit", "commit-msg", "pre-commit.dispatcher", "commit-msg.dispatcher"}
+            and "hook-impl" in text
+        ):
+            dispatcher_present = True
+    if dispatcher_present:
+        config = repo / ".pre-commit-config.yaml"
+        try:
+            text = config.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+        if HOOK_MARKER in text or "ai-ops-closeout-security" in text:
+            return True
+    return False
+
+
+def validate_deterministic_applicability(
+    repo: Path, config: dict[str, Any], policy_source: str
+) -> None:
+    """Keep deterministic admission away from a policy-and-hook governed repo."""
+    admission = config.get("admission", {}).get("deterministic_admission", {})
+    if not admission.get("enabled", False):
+        fail("deterministic admission is disabled by the active closeout security policy")
+    allowed_sources = set(admission.get("allowed_policy_sources", []))
+    if policy_source not in allowed_sources:
+        fail(f"policy source is not allowed for deterministic admission: {policy_source}")
+    policy_present = target_policy_present(repo)
+    if policy_source == "target_HEAD" and not policy_present:
+        fail("policy_source=target_HEAD requires a target closeout policy")
+    if policy_source == "missing_target_policy" and policy_present:
+        fail("policy_source=missing_target_policy is invalid when the target policy exists")
+    if policy_present and closeout_hook_present(repo):
+        fail("deterministic admission is not applicable when the target policy and closeout hook are both present")
 
 
 def git_head(repo: Path) -> str:
@@ -203,6 +280,16 @@ def scope_lock(paths: list[str], rows: list[dict[str, Any]], statuses: dict[str,
     row_by_path = {str(row["path"]): row for row in rows}
     material = "\n".join(
         f"{path}\t{statuses.get(path, 'H')}\t{row_by_path[path]['mode']}\t{row_by_path[path]['sha256']}"
+        for path in sorted(paths)
+    )
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+
+def tree_manifest_hash(paths: list[str], rows: list[dict[str, Any]]) -> str:
+    """Hash normalized path, mode, and blob identity without change status."""
+    row_by_path = {str(row["path"]): row for row in rows}
+    material = "\n".join(
+        f"{path}\t{row_by_path[path]['mode']}\t{row_by_path[path]['sha256']}"
         for path in sorted(paths)
     )
     return hashlib.sha256(material.encode("utf-8")).hexdigest()
@@ -602,6 +689,22 @@ def main() -> int:
     parser.add_argument("--repo-root", type=Path, default=ROOT)
     parser.add_argument("--config", type=Path)
     parser.add_argument("--source", choices=["head", "staged", "worktree"], default="head")
+    parser.add_argument(
+        "--admission-mode",
+        choices=["reviewer_read", "deterministic_admission"],
+        default="reviewer_read",
+        help="reviewer-read packet or bounded deterministic admission",
+    )
+    parser.add_argument(
+        "--policy-source",
+        choices=["target_HEAD", "missing_target_policy"],
+        help="policy applicability label for deterministic admission",
+    )
+    parser.add_argument(
+        "--operator-approval-ref",
+        default="pending_commit_approval",
+        help="durable approval reference for deterministic admission",
+    )
     parser.add_argument("--receipt-path", type=Path, required=True)
     parser.add_argument("--packet-path", type=Path)
     parser.add_argument(
@@ -621,6 +724,10 @@ def main() -> int:
     if len(set(paths)) != len(paths):
         fail("include paths must be unique")
     config = load_config(repo, args.config if args.config else None)
+    if args.admission_mode == "deterministic_admission" and not args.policy_source:
+        fail("deterministic admission requires --policy-source")
+    if args.admission_mode == "deterministic_admission":
+        validate_deterministic_applicability(repo, config, args.policy_source)
     rows: list[dict[str, Any]] = []
     packet_rows: list[dict[str, Any]] = []
     packet_budget = int(config.get("packet", {}).get("estimated_tokens_per_packet", 20000))
@@ -683,9 +790,66 @@ def main() -> int:
         row.pop("content", None)
         row.pop("content_bytes", None)
         rows.append(row)
+    statuses = change_records(repo, paths, args.source)
     packet_path = args.packet_path or args.receipt_path.with_suffix(".review.md")
+    if args.admission_mode == "deterministic_admission":
+        candidate_rows = [row["path"] for row in rows if row["prepass_status"] == "candidate"]
+        for row in rows:
+            row.update(
+                {
+                    "coverage": "not_reviewed",
+                    "reviewer": "not_applicable",
+                    "reviewer_model": "not_applicable",
+                    "reviewer_runtime": "not_applicable",
+                    "review_method": "deterministic-admission",
+                    "independent_reviewer": "not_applicable",
+                    "independent_evidence": "not_applicable",
+                    "disposition": "pending",
+                }
+            )
+        receipt = {
+            "receipt_version": DETERMINISTIC_RECEIPT_VERSION,
+            "repo_root": str(repo),
+            "base_head": git_head(repo),
+            "source": args.source,
+            "include_set_sha256": include_hash(paths),
+            "tiers_config_version": str(config.get("version", "unknown")),
+            "ruleset_version": str(config.get("ruleset_version", "unknown")),
+            "source_bytes_total": sum(row["source_bytes"] for row in rows),
+            "review_tokens_total": 0,
+            "review_batches": [],
+            "rows": rows,
+            "scope_lock_sha256": scope_lock(paths, rows, statuses),
+            "tree_manifest_sha256": tree_manifest_hash(paths, rows),
+            "overall_disposition": "split_required" if candidate_rows else "deterministic_admission",
+            "disposition_reason": (
+                "Known pre-pass candidates require a separate reviewed or waived lane."
+                if candidate_rows
+                else "Scope, tree, and known tripwire admission completed without reviewer packets."
+            ),
+            "policy_source": args.policy_source,
+            "policy_version": str(config.get("version", "unknown")),
+            "validator_mode": "deterministic_admission",
+            "packet_builder_version": "closeout_security_prepass/0.4.0",
+            "known_tripwire_results": {
+                "status": "candidate" if candidate_rows else "clean",
+                "candidate_rows": candidate_rows,
+            },
+            "operator_commit_approval_ref": args.operator_approval_ref,
+        }
+        args.receipt_path.parent.mkdir(parents=True, exist_ok=True)
+        args.receipt_path.write_text(yaml.safe_dump(receipt, sort_keys=False), encoding="utf-8", newline="\n")
+        print(
+            f"PREPASS {len(rows)} files source={args.source} "
+            f"admission=deterministic_admission receipt={args.receipt_path}"
+        )
+        print(f"include_set_sha256={receipt['include_set_sha256']}")
+        print(f"candidates={len(candidate_rows)}")
+        print("packet=none (deterministic admission)")
+        return 0
+
     receipt = {
-        "receipt_version": RECEIPT_VERSION,
+        "receipt_version": REVIEW_RECEIPT_VERSION,
         "repo_root": str(repo),
         "base_head": git_head(repo),
         "source": args.source,
@@ -695,7 +859,6 @@ def main() -> int:
         "source_bytes_total": sum(row["source_bytes"] for row in rows),
         "rows": rows,
     }
-    statuses = change_records(repo, paths, args.source)
     receipt["scope_lock_sha256"] = scope_lock(paths, rows, statuses)
     packet_files, packet_tokens, chunk_counts = build_packet(
         packet_rows, packet_path, packet_budget, write_files=False

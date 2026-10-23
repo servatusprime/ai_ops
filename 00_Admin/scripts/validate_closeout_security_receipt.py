@@ -28,7 +28,13 @@ except ImportError as exc:  # pragma: no cover - environment diagnostic
 
 
 ROOT = Path(__file__).resolve().parents[2]
-RECEIPT_VERSIONS = {"0.1.0", "0.2.0"}
+POLICY_PATH = "00_Admin/configs/closeout_security_tiers.yaml"
+HOOK_MARKER = "validate_closeout_security_head.py"
+RECEIPT_VERSIONS = {"0.1.0", "0.2.0", "0.4.0"}
+DETERMINISTIC_DISPOSITIONS = {
+    "deterministic_admission",
+    "split_required",
+}
 DEFAULT_MAX_TOTAL_REVIEW_TOKENS = 120000
 MIN_FORCED_T2_PREFIXES = (
     ".ai_ops/workflows/",
@@ -52,6 +58,80 @@ MIN_FORCED_T2_FILES = (
 
 def fail(message: str) -> "NoReturn":
     raise SystemExit(f"closeout-security-validator: {message}")
+
+
+def target_policy_present(repo: Path) -> bool:
+    """Return whether the target repository carries its canonical policy."""
+    if (repo / POLICY_PATH).is_file():
+        return True
+    completed = subprocess.run(
+        ["git", "-C", str(repo), "cat-file", "-e", f"HEAD:{POLICY_PATH}"],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    return completed.returncode == 0
+
+
+def closeout_hook_present(repo: Path) -> bool:
+    """Return whether an installed hook invokes the HEAD closeout validator."""
+    completed = subprocess.run(
+        ["git", "-C", str(repo), "config", "--get", "core.hooksPath"],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    configured = completed.stdout.decode("utf-8", errors="replace").strip()
+    if configured:
+        hook_dir = Path(configured)
+        if not hook_dir.is_absolute():
+            hook_dir = (repo / hook_dir).resolve()
+    else:
+        hook_dir = repo / ".git/hooks"
+    dispatcher_present = False
+    for name in ("pre-commit", "commit-msg", "pre-push", "pre-commit.dispatcher", "commit-msg.dispatcher"):
+        hook = hook_dir / name
+        if not hook.is_file():
+            continue
+        try:
+            text = hook.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if HOOK_MARKER in text or ".ai_ops/local/closeout_security/latest.yaml" in text:
+            return True
+        if (
+            name in {"pre-commit", "commit-msg", "pre-commit.dispatcher", "commit-msg.dispatcher"}
+            and "hook-impl" in text
+        ):
+            dispatcher_present = True
+    if dispatcher_present:
+        config = repo / ".pre-commit-config.yaml"
+        try:
+            text = config.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+        if HOOK_MARKER in text or "ai-ops-closeout-security" in text:
+            return True
+    return False
+
+
+def validate_deterministic_applicability(
+    repo: Path, config: dict[str, Any], policy_source: str
+) -> None:
+    """Keep deterministic admission away from a policy-and-hook governed repo."""
+    admission = config.get("admission", {}).get("deterministic_admission", {})
+    if not admission.get("enabled", False):
+        fail("deterministic admission is disabled by the active closeout security policy")
+    allowed_sources = set(admission.get("allowed_policy_sources", []))
+    if policy_source not in allowed_sources:
+        fail(f"policy source is not allowed for deterministic admission: {policy_source}")
+    policy_present = target_policy_present(repo)
+    if policy_source == "target_HEAD" and not policy_present:
+        fail("policy_source=target_HEAD requires a target closeout policy")
+    if policy_source == "missing_target_policy" and policy_present:
+        fail("policy_source=missing_target_policy is invalid when the target policy exists")
+    if policy_present and closeout_hook_present(repo):
+        fail("deterministic admission is not applicable when the target policy and closeout hook are both present")
 
 
 def positive_integer(value: Any, name: str) -> int:
@@ -446,6 +526,66 @@ def scope_lock(paths: list[str], rows: list[dict[str, Any]], statuses: dict[str,
     return hashlib.sha256(material.encode("utf-8")).hexdigest()
 
 
+def tree_manifest_hash(paths: list[str], rows: list[dict[str, Any]]) -> str:
+    row_by_path = {str(row["path"]): row for row in rows}
+    material = "\n".join(
+        f"{path}\t{row_by_path[path]['mode']}\t{row_by_path[path]['sha256']}"
+        for path in sorted(paths)
+    )
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+
+def validate_deterministic_admission(
+    receipt: dict[str, Any], rows: list[dict[str, Any]], actual_scope_lock: str,
+    actual_tree_manifest: str, *, gate: bool, repo: Path, config: dict[str, Any],
+) -> None:
+    disposition = str(receipt.get("overall_disposition", ""))
+    if disposition not in DETERMINISTIC_DISPOSITIONS:
+        fail(f"invalid deterministic overall_disposition: {disposition}")
+    if receipt.get("validator_mode") != "deterministic_admission":
+        fail("deterministic receipt must declare validator_mode=deterministic_admission")
+    policy_source = receipt.get("policy_source")
+    if policy_source not in {"target_HEAD", "missing_target_policy"}:
+        fail("deterministic receipt has an invalid policy_source")
+    validate_deterministic_applicability(repo, config, str(policy_source))
+    for key in ("policy_version", "packet_builder_version", "disposition_reason"):
+        if not isinstance(receipt.get(key), str) or not receipt[key].strip():
+            fail(f"deterministic receipt requires {key}")
+    approval_ref = str(receipt.get("operator_commit_approval_ref", "")).strip().casefold()
+    if gate and approval_ref in {"", "pending", "pending_commit_approval", "unknown", "missing"}:
+        fail("deterministic admission requires an operator commit-approval reference")
+    if receipt.get("review_tokens_total") != 0 or receipt.get("review_batches") != []:
+        fail("deterministic admission must not contain reviewer packet cost or batches")
+    if receipt.get("scope_lock_sha256") != actual_scope_lock:
+        fail("scope lock does not match the deterministic admission rows")
+    if receipt.get("tree_manifest_sha256") != actual_tree_manifest:
+        fail("tree manifest does not match the deterministic admission rows")
+    tripwires = receipt.get("known_tripwire_results")
+    if not isinstance(tripwires, dict) or tripwires.get("status") not in {"clean", "candidate"}:
+        fail("deterministic admission requires known_tripwire_results")
+    candidates = [str(row.get("path")) for row in rows if row.get("prepass_status") == "candidate"]
+    listed_candidates = tripwires.get("candidate_rows")
+    if listed_candidates != candidates:
+        fail("known tripwire candidate rows do not match receipt rows")
+    if candidates:
+        if disposition != "split_required":
+            fail("deterministic admission with candidates must be split_required")
+        if tripwires.get("status") != "candidate":
+            fail("candidate deterministic admission must declare candidate tripwires")
+    else:
+        if disposition != "deterministic_admission":
+            fail("clean deterministic admission must be deterministic_admission")
+        if tripwires.get("status") != "clean":
+            fail("clean deterministic admission must declare clean tripwire results")
+    if gate and disposition == "split_required":
+        fail("deterministic admission disposition cannot pass the commit gate: split_required")
+    for row in rows:
+        if row.get("coverage") != "not_reviewed" or row.get("review_method") != "deterministic-admission":
+            fail(f"deterministic row has reviewer coverage: {row.get('path')}")
+        if row.get("disposition") != "pending":
+            fail(f"deterministic row disposition must be pending: {row.get('path')}")
+
+
 def staged_records(repo: Path) -> dict[str, str]:
     completed = subprocess.run(
         ["git", "-C", str(repo), "diff", "--cached", "--name-status", "--no-renames", "--diff-filter=ACDMRTUXB"],
@@ -512,12 +652,24 @@ def validate_shape(receipt: dict[str, Any]) -> None:
             "tiers_config_version", "ruleset_version", "scope_lock_sha256",
             "source_bytes_total", "review_tokens_total", "review_batches", "rows",
         }
+    elif version == "0.4.0":
+        required = {
+            "receipt_version", "repo_root", "base_head", "source", "include_set_sha256",
+            "tiers_config_version", "ruleset_version", "scope_lock_sha256",
+            "source_bytes_total", "review_tokens_total", "review_batches", "rows",
+            "tree_manifest_sha256", "overall_disposition", "disposition_reason",
+            "policy_source", "policy_version", "validator_mode",
+            "packet_builder_version", "known_tripwire_results",
+            "operator_commit_approval_ref",
+        }
     missing = sorted(required - set(receipt))
     if missing:
         fail(f"receipt missing fields: {', '.join(missing)}")
     top_allowed = required | {"receipt_sha256"}
     if version == "0.2.0":
         top_allowed |= {"review_approval"}
+    elif version == "0.4.0":
+        top_allowed |= set()
     unknown_top = sorted(set(receipt) - top_allowed)
     if unknown_top:
         fail(f"receipt has unknown fields: {', '.join(unknown_top)}")
@@ -541,15 +693,32 @@ def validate_shape(receipt: dict[str, Any]) -> None:
             re.fullmatch(r"[0-9a-f]{64}", str(value)) for value in receipt["packet_sha256"]
         ):
             fail("packet_sha256 must contain one lowercase digest per packet")
-    else:
+    elif version in {"0.2.0", "0.4.0"}:
         if not re.fullmatch(r"[0-9a-f]{64}", str(receipt.get("scope_lock_sha256", ""))):
             fail("scope_lock_sha256 must be a lowercase SHA-256")
+        if version == "0.4.0":
+            if not re.fullmatch(r"[0-9a-f]{64}", str(receipt.get("tree_manifest_sha256", ""))):
+                fail("tree_manifest_sha256 must be a lowercase SHA-256")
+            if receipt.get("overall_disposition") not in DETERMINISTIC_DISPOSITIONS:
+                fail("overall_disposition is invalid")
+            if receipt.get("policy_source") not in {"target_HEAD", "missing_target_policy"}:
+                fail("policy_source is invalid")
+            for key in (
+                "disposition_reason", "policy_version", "validator_mode",
+                "packet_builder_version", "operator_commit_approval_ref",
+            ):
+                if not isinstance(receipt.get(key), str) or not receipt[key].strip():
+                    fail(f"{key} must be a non-empty string")
+            if receipt.get("validator_mode") != "deterministic_admission":
+                fail("validator_mode must be deterministic_admission")
         for key in ("source_bytes_total", "review_tokens_total"):
             if not isinstance(receipt.get(key), int) or receipt[key] < 0:
                 fail(f"{key} must be a non-negative integer")
         batches = receipt.get("review_batches")
-        if not isinstance(batches, list) or not batches:
-            fail("review_batches must be a non-empty list")
+        if not isinstance(batches, list) or (version == "0.2.0" and not batches):
+            fail("review_batches must be a list and non-empty for reviewer-read receipts")
+        if version == "0.4.0" and batches:
+            fail("deterministic admission must not contain reviewer batches")
         batch_ids: set[str] = set()
         for batch in batches:
             if not isinstance(batch, dict) or not isinstance(batch.get("id"), str) or not batch["id"]:
@@ -578,7 +747,7 @@ def validate_shape(receipt: dict[str, Any]) -> None:
         "review_method", "independent_pass", "chunk_count", "disposition",
         "finding_refs", "coverage_notes",
     }
-    if version == "0.2.0":
+    if version in {"0.2.0", "0.4.0"}:
         row_allowed |= {
             "review_basis",
             "mode",
@@ -605,7 +774,7 @@ def validate_shape(receipt: dict[str, Any]) -> None:
             if not isinstance(row.get(key), str) or not row[key]:
                 fail(f"receipt row field {key} is required")
         allowed_kinds = {"text", "binary", "generated", "deleted", "unsupported"}
-        if version == "0.2.0":
+        if version in {"0.2.0", "0.4.0"}:
             allowed_kinds.add("deleted_binary")
         if row.get("file_kind") not in allowed_kinds:
             fail(f"unsupported file_kind in receipt row: {row.get('path')}")
@@ -621,7 +790,7 @@ def validate_shape(receipt: dict[str, Any]) -> None:
             or row["chunk_count"] < 1
         ):
             fail(f"review attestation fields are invalid: {row.get('path')}")
-        if version == "0.2.0":
+        if version in {"0.2.0", "0.4.0"}:
             if row.get("review_basis") not in {
                 "full_content",
                 "digest_bound_binary",
@@ -800,10 +969,17 @@ def main() -> int:
     repo = args.repo_root.resolve()
     if args.gate and not args.staged:
         fail("real gate mode requires --staged so the receipt covers the commit slug")
-    if args.gate and str(receipt["receipt_version"]) != "0.2.0":
-        fail("legacy receipt versions cannot pass the real gate; regenerate a v0.2.0 receipt")
+    if args.gate and str(receipt["receipt_version"]) not in {"0.2.0", "0.4.0"}:
+        fail("legacy receipt versions cannot pass the real gate; regenerate a v0.2.0 or v0.4.0 receipt")
     if args.gate and args.config and not args.first_landing:
-        fail("real gate mode binds policy to HEAD; --config requires --first-landing")
+        if not (
+            str(receipt.get("receipt_version")) == "0.4.0"
+            and receipt.get("policy_source") == "missing_target_policy"
+        ):
+            fail(
+                "real gate mode binds policy to HEAD; --config requires "
+                "--first-landing unless the target policy is missing"
+            )
     if args.first_landing and (not args.gate or not args.staged or not args.config):
         fail("--first-landing requires --gate, --staged, and an explicit --config")
     source = "staged" if args.staged else str(receipt["source"])
@@ -832,6 +1008,8 @@ def main() -> int:
                 and str(head_config.get("ruleset_version")) == str(config.get("ruleset_version"))
             ):
                 fail("--first-landing requires a new canonical policy version")
+    elif args.gate and args.config:
+        config = load_config(repo, args.config)
     elif args.gate:
         config = load_head_config(repo)
     else:
@@ -853,6 +1031,8 @@ def main() -> int:
             )
             for batch in receipt["review_batches"]
         ]
+    elif str(receipt["receipt_version"]) == "0.4.0":
+        packet_groups = []
     else:
         packet_groups = [
             (
@@ -939,7 +1119,7 @@ def main() -> int:
         actual = hashlib.sha256(data).hexdigest()
         if actual != str(row.get("sha256", "")):
             fail(f"digest mismatch for {path} ({basis})")
-        if str(receipt["receipt_version"]) == "0.2.0":
+        if str(receipt["receipt_version"]) in {"0.2.0", "0.4.0"}:
             actual_kind = expected_file_kind(path, data, config, deleted)
             actual_mode = source_mode(repo, path, source, actual_kind)
             if str(row.get("file_kind")) != actual_kind:
@@ -966,12 +1146,12 @@ def main() -> int:
                 fail(f"pre-pass findings do not match repository bytes for {path}")
         actual_total_tokens += (len(data) + 3) // 4
         actual_source_bytes_total += len(data)
-        if str(receipt["receipt_version"]) == "0.2.0" and int(row["source_bytes"]) != len(data):
+        if str(receipt["receipt_version"]) in {"0.2.0", "0.4.0"} and int(row["source_bytes"]) != len(data):
             fail(f"source_bytes does not match repository bytes for {path}")
         coverage = str(row.get("coverage", ""))
         disposition = str(row.get("disposition", ""))
         dispositions.append(disposition)
-        if args.gate:
+        if args.gate and str(receipt["receipt_version"]) != "0.4.0":
             if coverage != "fully_reviewed":
                 fail(f"incomplete full-file coverage for {path}: {coverage}")
             if disposition != "pass":
@@ -1036,6 +1216,8 @@ def main() -> int:
             ):
                 fail(f"candidate pre-pass row lacks finding references or resolution: {path}")
     packet_by_path: dict[str, list[dict[str, Any]]] = {}
+    if str(receipt["receipt_version"]) == "0.4.0" and packet_sections:
+        fail("deterministic admission must not contain reviewer packet sections")
     for section in packet_sections:
         path = section["path"]
         if path not in rows_by_path:
@@ -1054,11 +1236,11 @@ def main() -> int:
         elif section["content_sha256"] != row["sha256"]:
             fail(f"omitted reviewer packet content is not bound to the file digest: {path}")
         packet_by_path.setdefault(path, []).append(section)
-    if set(packet_by_path) != seen:
+    if str(receipt["receipt_version"]) != "0.4.0" and set(packet_by_path) != seen:
         missing = sorted(seen - set(packet_by_path))
         extra = sorted(set(packet_by_path) - seen)
         fail(f"reviewer packets do not cover receipt rows; missing={missing}; extra={extra}")
-    for path, row in rows_by_path.items():
+    for path, row in rows_by_path.items() if str(receipt["receipt_version"]) != "0.4.0" else []:
         sections = packet_by_path[path]
         expected_count = int(row["chunk_count"])
         if len(sections) != expected_count:
@@ -1079,7 +1261,7 @@ def main() -> int:
     actual_include = include_hash(sorted(seen))
     if actual_include != str(receipt["include_set_sha256"]):
         fail("include-set hash does not match receipt rows")
-    if str(receipt["receipt_version"]) == "0.2.0":
+    if str(receipt["receipt_version"]) in {"0.2.0", "0.4.0"}:
         if actual_source_bytes_total != int(receipt["source_bytes_total"]):
             fail(f"source_bytes_total does not match repository bytes: {actual_source_bytes_total}")
     elif actual_total_tokens != int(receipt["estimated_tokens_total"]):
@@ -1095,18 +1277,35 @@ def main() -> int:
                 fail(f"row marks a non-deletion as deleted: {row['path']}")
             if row["file_kind"] not in {"deleted", "deleted_binary"} and change == "D":
                 fail(f"staged deletion is not classified as deleted: {row['path']}")
-    if str(receipt["receipt_version"]) == "0.2.0":
+    if str(receipt["receipt_version"]) in {"0.2.0", "0.4.0"}:
         actual_scope_lock = scope_lock(sorted(seen), rows, statuses)
         if actual_scope_lock != str(receipt["scope_lock_sha256"]):
             fail("scope lock does not match the frozen paths, statuses, and digests")
-        if args.gate and any(row.get("review_basis") == "structured_deleted_data" for row in rows):
+        if str(receipt["receipt_version"]) == "0.4.0":
+            validate_deterministic_admission(
+                receipt,
+                rows,
+                str(receipt["scope_lock_sha256"]),
+                tree_manifest_hash(sorted(seen), rows),
+                gate=args.gate,
+                repo=repo,
+                config=config,
+            )
+        if (
+            args.gate
+            and str(receipt["receipt_version"]) == "0.2.0"
+            and any(row.get("review_basis") == "structured_deleted_data" for row in rows)
+        ):
             validate_review_approval(receipt.get("review_approval"), str(receipt["scope_lock_sha256"]))
     receipt_digest = hashlib.sha256(canonical_receipt(receipt)).hexdigest()
     recorded_digest = receipt.get("receipt_sha256")
     if recorded_digest and recorded_digest != receipt_digest:
         fail("receipt_sha256 does not match receipt content")
     if args.trailer:
-        disposition = "pass" if args.gate else ("needs_work" if "needs_work" in dispositions else "pending")
+        if str(receipt["receipt_version"]) == "0.4.0":
+            disposition = str(receipt["overall_disposition"])
+        else:
+            disposition = "pass" if args.gate else ("needs_work" if "needs_work" in dispositions else "pending")
         check_trailer(args.trailer, disposition, actual_include, receipt_digest)
     print(f"PASS {len(rows)} rows source={source} gate={str(args.gate).lower()}")
     print(f"include_set_sha256={actual_include}")
