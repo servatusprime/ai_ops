@@ -13,6 +13,7 @@ ignore: |
   90_Sandbox/ai_workbooks/wb_security_remediation_01_2026-09-15/implementation_prechange_2026-09-17/context_fixture/config.yaml
   90_Sandbox/ai_workbooks/wb_security_remediation_01_2026-09-15/implementation_prechange_2026-09-17/context_fixture/manifest.yaml
   **/99_Trash/**
+  90_Sandbox/ai_workbooks/_closeout_packets/**
   .cache/**
   **/node_modules/**
 rules:

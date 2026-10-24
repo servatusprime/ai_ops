@@ -1213,6 +1213,60 @@ future_work_completion:
   - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_friction_followon_recheck3_2026-10-23.md
 ```
 
+### 2026-10-24 | closeout bundle archive and dependency vulnerability remediation
+
+- Completed and archived `wb_closeout_rework_01_2026-10-23` to
+  `99_Trash/wb_closeout_rework_01_2026-10-23/` after both contained workbooks
+  reached `completed` and the final closeout landed at `a287f48` on
+  `origin/main`.
+- Archive evidence is recorded in
+  `99_Trash/wb_closeout_rework_01_2026-10-23/archive_cleanup_manifest_2026-10-24.md`;
+  all 17 pre-existing bundle files were ignored, hashed, collision-checked,
+  retained, and moved as one recoverable folder. The manifest itself is
+  retained in the archive.
+- Updated the live `fw_20261022_01` registry references to the archived
+  proposal and execution workbook paths. Earlier receipt blocks in this log
+  retain their original source paths as historical event evidence; the archive
+  note above is the authoritative current location.
+- Remediated the tracked CI Markdownlint dependency surface:
+  `.github/tools/markdownlint/package.json` and `package-lock.json` now use
+  `markdownlint-cli` 0.49.1 with reviewed overrides for `js-yaml`,
+  `smol-toml`, and `katex`; the lockfile audit reports zero vulnerabilities.
+  Validator and lint trust hashes were updated in
+  `00_Admin/configs/validator/validator_config.yaml` and
+  `00_Admin/scripts/lint.ps1`.
+- Validation: `npm ci --ignore-scripts --omit=dev` passed with the existing
+  Node-engine warning for `ini@7.0.0`; `npm audit --json --omit=dev` returned
+  total vulnerabilities `0`; the trusted global Markdownlint executable is
+  `0.49.1` with the reviewed `js-yaml` `5.5.0`, `smol-toml` `1.9.1`, and
+  nested `katex` `0.18.2` floors; and the release-quality gate passed with
+  host permissions for its temporary Windows reparse-link fixtures. The
+  machine-local packet root is
+  excluded from repository-wide yamllint because it contains generated,
+  intermediate packet fragments; ordinary `90_Sandbox` work artifacts remain
+  linted.
+
+### 2026-10-24 | dependency remediation closeout preparation
+
+- Closeout scope is frozen to the seven tracked files changed by this batch:
+  the Markdownlint package and lockfile, `.yamllint`, future-work registry
+  archive references, validator/lint trust metadata, and this run log.
+- Bootstrap route: `resume_same_scope` for direct `ai_ops` maintenance;
+  `AGENTS.md`, the closeout workflow, context routing, validator config, and
+  release-quality runbook were read. No active ai_ops workbook/workbundle
+  remains; the archived closeout bundle is outside this commit scope.
+- Validation: `op_validate_config.py` passed; `validate_repo_rules.py` passed
+  with pre-existing VS022 non-ASCII warnings; the infrastructure dry-run and
+  full release-quality gate passed; all 52 validator fixtures passed; pre-commit
+  passed all hooks; `git diff --check` passed; and the dependency install/audit
+  returned zero vulnerabilities. The full gate used elevated host permissions
+  only for its temporary junction fixtures.
+- Rollback: revert the single closeout commit to restore the prior dependency
+  pins, trust metadata, lint scope, and registry references; owner: ai_ops
+  maintainer; trigger: any post-commit validation or review regression.
+- Commit and push remain separately approval-gated; no publication has occurred
+  in this preparation leg.
+
 ### Future-work completion receipt: 00000000-0000-4000-8000-202610240003
 
 ```yaml
