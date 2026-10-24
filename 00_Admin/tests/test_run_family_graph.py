@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import importlib.util
+import json
+import os
 import re
 import subprocess
 import sys
@@ -17,6 +19,7 @@ ADMIN = Path(__file__).resolve().parents[1]
 SCRIPTS = ADMIN / "scripts"
 FIXTURES = Path(__file__).parent / "fixtures" / "run_family"
 VALID = FIXTURES / "run_family_shared_valid.yaml"
+TEST_TEMP_ROOT = ADMIN.parent.parent / "tmp" / "test_run_family_graph"
 
 
 def load_module(name: str):
@@ -38,6 +41,34 @@ repo_validator = load_module("validate_repo_rules")
 
 def load(path: Path):
     return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+def ensure_sibling_ai_ops_fixture(root: Path) -> None:
+    target = (
+        root.resolve().parent
+        / "ai_ops/00_Admin/scripts/generate_run_family_views.py"
+    )
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("# fixture generator target\n", encoding="utf-8")
+
+
+def contained_temporary_directory() -> tempfile.TemporaryDirectory:
+    """Create test scratch under the repository-contained workspace temp root."""
+    TEST_TEMP_ROOT.mkdir(parents=True, exist_ok=True)
+    return tempfile.TemporaryDirectory(dir=TEST_TEMP_ROOT, prefix="run-family-")
+
+
+def assert_contained_paths(container: Path, *paths: Path) -> None:
+    """Fail if fixture outputs resolve outside the test's contained container."""
+    base = container.resolve(strict=True)
+    for path in paths:
+        resolved = path.resolve(strict=False)
+        try:
+            resolved.relative_to(base)
+        except ValueError as exc:
+            raise AssertionError(
+                f"fixture path escaped contained root: {resolved} not under {base}"
+            ) from exc
 
 
 class RunFamilyGraphTests(unittest.TestCase):
@@ -88,6 +119,110 @@ class RunFamilyGraphTests(unittest.TestCase):
         self.assertEqual(
             alpha_edge["idempotency"]["key_fields"], ["run_instance_id"]
         )
+
+    def test_manifest_unknown_top_level_field_fails_closed(self):
+        with contained_temporary_directory() as tmp:
+            path = Path(tmp) / "manifest.yaml"
+            path.write_text(
+                """manifest_version: '0.1.0'
+artifact_id: runprogram-alpha
+artifact_kind: runprogram
+canonical_home: 00_Admin/runbooks/runprogram-alpha/README.md
+artifact_version: 1.0.0
+interface_version: 1.0.0
+lifecycle: active
+promotion_target: 00_Admin/runbooks/runprogram-alpha/README.md
+promotion_gate: requestor approval
+steward: repo_maintainers
+content_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+entry_artifacts: []
+consumes: []
+parameter_profiles: {}
+routes: []
+""",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                validator.ContractError,
+                "unsupported manifest fields: routes",
+            ):
+                validator.graph_from_manifests([path])
+
+    def test_manifest_required_fields_and_types_fail_closed(self):
+        base = """manifest_version: '0.1.0'
+artifact_id: runprogram-alpha
+artifact_kind: runprogram
+canonical_home: 00_Admin/runbooks/runprogram-alpha/README.md
+artifact_version: 1.0.0
+interface_version: 1.0.0
+lifecycle: active
+promotion_target: 00_Admin/runbooks/runprogram-alpha/README.md
+promotion_gate: requestor approval
+steward: repo_maintainers
+content_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+entry_artifacts: []
+consumes: []
+parameter_profiles: {}
+"""
+        with contained_temporary_directory() as tmp:
+            path = Path(tmp) / "manifest.yaml"
+
+            path.write_text(base.replace("consumes: []\n", ""), encoding="utf-8")
+            with self.assertRaisesRegex(
+                validator.ContractError, "missing manifest fields: consumes"
+            ):
+                validator.graph_from_manifests([path])
+
+            path.write_text(base.replace("consumes: []", "consumes: null"), encoding="utf-8")
+            with self.assertRaisesRegex(
+                validator.ContractError, "manifest consumes must be a list"
+            ):
+                validator.graph_from_manifests([path])
+
+            path.write_text(
+                base.replace("parameter_profiles: {}", "parameter_profiles: null"),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                validator.ContractError,
+                "manifest parameter_profiles must be a mapping",
+            ):
+                validator.graph_from_manifests([path])
+
+    def test_legacy_manifest_fields_are_optional_but_validated(self):
+        base = """manifest_version: '0.1.0'
+artifact_id: runbook-legacy
+artifact_kind: runbook
+canonical_home: 02_Modules/example/docs/runbooks/runbook-legacy/README.md
+artifact_version: 1.0.0
+interface_version: 1.0.0
+lifecycle: active
+steward: repo_maintainers
+content_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+consumes: []
+parameter_profiles: {}
+"""
+        with contained_temporary_directory() as tmp:
+            path = Path(tmp) / "manifest.yaml"
+            path.write_text(base, encoding="utf-8")
+            graph = validator.graph_from_manifests([path])
+            self.assertEqual(graph["artifacts"][0]["artifact_id"], "runbook-legacy")
+
+            path.write_text(
+                base + "entry_artifacts: [7]\n", encoding="utf-8"
+            )
+            with self.assertRaisesRegex(
+                validator.ContractError,
+                "entry_artifacts must be a string array",
+            ):
+                validator.graph_from_manifests([path])
+
+            path.write_text(base + "promotion_gate: ''\n", encoding="utf-8")
+            with self.assertRaisesRegex(
+                validator.ContractError,
+                "manifest promotion_gate must be a non-empty string",
+            ):
+                validator.graph_from_manifests([path])
 
     def test_version_range_evaluation_is_sole_provider_only(self):
         self.assertTrue(validator.version_satisfies(">=1.2,<2", "1.2.0"))
@@ -182,6 +317,411 @@ class RunFamilyGraphTests(unittest.TestCase):
                 graph, receipt, {"runbook-shared"}
             )
 
+    def test_provider_receipt_valid_passes(self):
+        receipt = load(FIXTURES / "provider_receipt_valid.yaml")
+        self.assertIsNone(validator.validate_provider_receipt(receipt))
+
+    def test_provider_receipt_negatives_fail(self):
+        base = load(FIXTURES / "provider_receipt_valid.yaml")
+
+        unknown_top_level = {**base, "operator_note": "not in schema"}
+        with self.assertRaisesRegex(
+            validator.ContractError,
+            "provider receipt has unsupported fields: operator_note",
+        ):
+            validator.validate_provider_receipt(unknown_top_level)
+
+        unknown_nested = {**base}
+        unknown_nested["validated_capabilities"] = [
+            {"capability": "x", "evidence_ref": "e", "status": "pass"}
+        ]
+        with self.assertRaisesRegex(
+            validator.ContractError,
+            r"capability\[0\] has unsupported fields: status",
+        ):
+            validator.validate_provider_receipt(unknown_nested)
+
+        incomplete = {**base}
+        del incomplete["substantiated_by"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "missing fields: substantiated_by"
+        ):
+            validator.validate_provider_receipt(incomplete)
+
+        bad_capability = {**base, "validated_capabilities": [{"capability": "x"}]}
+        with self.assertRaisesRegex(
+            validator.ContractError, r"capability\[0\] needs capability and evidence_ref"
+        ):
+            validator.validate_provider_receipt(bad_capability)
+
+        bad_authority = {**base, "authority": "canonical"}
+        with self.assertRaisesRegex(
+            validator.ContractError, "authority must be derived_non_authoritative"
+        ):
+            validator.validate_provider_receipt(bad_authority)
+
+        bad_capability_type = {
+            **base,
+            "validated_capabilities": [{"capability": 1, "evidence_ref": "e"}],
+        }
+        with self.assertRaisesRegex(
+            validator.ContractError, r"capability\[0\] needs capability and evidence_ref"
+        ):
+            validator.validate_provider_receipt(bad_capability_type)
+
+        bad_artifact_type = {**base, "entry_artifacts": [7]}
+        with self.assertRaisesRegex(
+            validator.ContractError, "entry_artifacts must be a string array"
+        ):
+            validator.validate_provider_receipt(bad_artifact_type)
+
+    def test_intake_receipt_valid_passes(self):
+        receipt = load(FIXTURES / "intake_receipt_valid.yaml")
+        self.assertIsNone(validator.validate_intake_receipt(receipt))
+
+    def test_intake_receipt_negatives_fail(self):
+        no_disposition = load(FIXTURES / "intake_receipt_valid.yaml")
+        del no_disposition["items"][0]["disposition"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "disposition must be one of"
+        ):
+            validator.validate_intake_receipt(no_disposition)
+
+        unknown_top_level = load(FIXTURES / "intake_receipt_valid.yaml")
+        unknown_top_level["operator_note"] = "not in schema"
+        with self.assertRaisesRegex(
+            validator.ContractError,
+            "intake receipt has unsupported fields: operator_note",
+        ):
+            validator.validate_intake_receipt(unknown_top_level)
+
+        unknown_nested = load(FIXTURES / "intake_receipt_valid.yaml")
+        unknown_nested["items"][0]["provenance"]["timestamp"] = "not in schema"
+        with self.assertRaisesRegex(
+            validator.ContractError,
+            r"intake item existing_ground.xml provenance has unsupported fields: timestamp",
+        ):
+            validator.validate_intake_receipt(unknown_nested)
+
+        no_provenance = load(FIXTURES / "intake_receipt_valid.yaml")
+        del no_provenance["items"][0]["provenance"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "missing provenance"
+        ):
+            validator.validate_intake_receipt(no_provenance)
+
+        admitted_no_evidence = load(FIXTURES / "intake_receipt_valid.yaml")
+        del admitted_no_evidence["items"][0]["evidence_ref"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "requires evidence_ref"
+        ):
+            validator.validate_intake_receipt(admitted_no_evidence)
+
+        negative_size = load(FIXTURES / "intake_receipt_valid.yaml")
+        negative_size["items"][0]["provenance"]["size_bytes"] = -1
+        with self.assertRaisesRegex(
+            validator.ContractError, "size_bytes must be a non-negative integer"
+        ):
+            validator.validate_intake_receipt(negative_size)
+
+        integer_provider = load(FIXTURES / "intake_receipt_valid.yaml")
+        integer_provider["provider_id"] = 7
+        with self.assertRaisesRegex(
+            validator.ContractError, "provider_id must be a non-empty string"
+        ):
+            validator.validate_intake_receipt(integer_provider)
+
+        invalid_evidence_ref = load(FIXTURES / "intake_receipt_valid.yaml")
+        invalid_evidence_ref["items"][0]["disposition"] = "reference_only"
+        invalid_evidence_ref["items"][0]["evidence_ref"] = 7
+        with self.assertRaisesRegex(
+            validator.ContractError,
+            "evidence_ref must be a non-empty string",
+        ):
+            validator.validate_intake_receipt(invalid_evidence_ref)
+
+    def test_execution_graph_valid_passes(self):
+        graph = load(FIXTURES / "execution_graph_valid.yaml")
+        self.assertIsNone(validator.validate_execution_graph(graph))
+
+    def test_execution_graph_negatives_fail(self):
+        no_owner = load(FIXTURES / "execution_graph_valid.yaml")
+        del no_owner["reasoning_owner"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "missing fields: reasoning_owner"
+        ):
+            validator.validate_execution_graph(no_owner)
+
+        agentic_no_pack = load(FIXTURES / "execution_graph_valid.yaml")
+        del agentic_no_pack["nodes"][0]["onboarding"]
+        with self.assertRaisesRegex(
+            validator.ContractError, r"\(agentic\) needs a non-empty"
+        ):
+            validator.validate_execution_graph(agentic_no_pack)
+
+        det_no_hash = load(FIXTURES / "execution_graph_valid.yaml")
+        det_no_hash["nodes"][2]["determinism"]["content_hashed"] = False
+        with self.assertRaisesRegex(
+            validator.ContractError, r"\(deterministic\) must declare"
+        ):
+            validator.validate_execution_graph(det_no_hash)
+
+        unbounded_loop = load(FIXTURES / "execution_graph_valid.yaml")
+        del unbounded_loop["edges"][1]["loop"]["max_cycles"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "needs max_cycles"
+        ):
+            validator.validate_execution_graph(unbounded_loop)
+
+        bad_escalation = load(FIXTURES / "execution_graph_valid.yaml")
+        bad_escalation["edges"][1]["loop"]["on_exceed"]["escalate_to"] = "reviewer"
+        with self.assertRaisesRegex(
+            validator.ContractError, "reasoning_owner or operator"
+        ):
+            validator.validate_execution_graph(bad_escalation)
+
+        undeclared_cycle = load(FIXTURES / "execution_graph_valid.yaml")
+        undeclared_cycle["edges"].append(
+            {"from": "accept", "to": "intake", "condition": "restart"}
+        )
+        with self.assertRaisesRegex(
+            validator.ContractError, "undeclared cycle"
+        ):
+            validator.validate_execution_graph(undeclared_cycle)
+
+        unknown_node = load(FIXTURES / "execution_graph_valid.yaml")
+        unknown_node["edges"][0]["to"] = "ghost"
+        with self.assertRaisesRegex(
+            validator.ContractError, "unknown node id: ghost"
+        ):
+            validator.validate_execution_graph(unknown_node)
+
+        composition_leak = load(FIXTURES / "execution_graph_valid.yaml")
+        composition_leak["nodes"][0]["consumes"] = ["something"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "must not carry composition/identity"
+        ):
+            validator.validate_execution_graph(composition_leak)
+
+        agentic_no_gate = load(FIXTURES / "execution_graph_valid.yaml")
+        del agentic_no_gate["nodes"][1]["gate"]
+        with self.assertRaisesRegex(
+            validator.ContractError, r"\(agentic\) must declare a gate"
+        ):
+            validator.validate_execution_graph(agentic_no_gate)
+
+        agentic_no_handoff = load(FIXTURES / "execution_graph_valid.yaml")
+        del agentic_no_handoff["nodes"][1]["handoff"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "must declare handoff.return_contract"
+        ):
+            validator.validate_execution_graph(agentic_no_handoff)
+
+        duplicate_id = load(FIXTURES / "execution_graph_valid.yaml")
+        duplicate_id["nodes"][1]["id"] = "intake"
+        with self.assertRaisesRegex(
+            validator.ContractError, "node id is duplicated: intake"
+        ):
+            validator.validate_execution_graph(duplicate_id)
+
+        bad_checkpoint = load(FIXTURES / "execution_graph_valid.yaml")
+        bad_checkpoint["edges"][0]["checkpoint"] = "whenever"
+        with self.assertRaisesRegex(
+            validator.ContractError, "checkpoint must be one of"
+        ):
+            validator.validate_execution_graph(bad_checkpoint)
+
+        empty_evidence = load(FIXTURES / "execution_graph_valid.yaml")
+        empty_evidence["edges"][0]["entry_evidence"] = "  "
+        with self.assertRaisesRegex(
+            validator.ContractError, "entry_evidence must be a non-empty string"
+        ):
+            validator.validate_execution_graph(empty_evidence)
+
+        empty_owner = load(FIXTURES / "execution_graph_valid.yaml")
+        empty_owner["owner_id"] = ""
+        with self.assertRaisesRegex(
+            validator.ContractError, "owner_id must be a non-empty string"
+        ):
+            validator.validate_execution_graph(empty_owner)
+
+        agentic_no_write_scope = load(FIXTURES / "execution_graph_valid.yaml")
+        del agentic_no_write_scope["nodes"][0]["handoff"]["write_scope"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "must declare handoff.write_scope"
+        ):
+            validator.validate_execution_graph(agentic_no_write_scope)
+
+        extra_graph_field = load(FIXTURES / "execution_graph_valid.yaml")
+        extra_graph_field["foo"] = "bar"
+        with self.assertRaisesRegex(
+            validator.ContractError, "graph has unsupported fields: foo"
+        ):
+            validator.validate_execution_graph(extra_graph_field)
+
+        extra_node_field = load(FIXTURES / "execution_graph_valid.yaml")
+        extra_node_field["nodes"][0]["foo"] = "bar"
+        with self.assertRaisesRegex(
+            validator.ContractError, "node .* has unsupported fields: foo"
+        ):
+            validator.validate_execution_graph(extra_node_field)
+
+        extra_edge_field = load(FIXTURES / "execution_graph_valid.yaml")
+        extra_edge_field["edges"][0]["foo"] = "bar"
+        with self.assertRaisesRegex(
+            validator.ContractError, "edge .* has unsupported fields: foo"
+        ):
+            validator.validate_execution_graph(extra_edge_field)
+
+        critical_missing_control = load(FIXTURES / "execution_graph_valid.yaml")
+        del critical_missing_control["edges"][0]["checkpoint"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "is critical .* and must declare: checkpoint"
+        ):
+            validator.validate_execution_graph(critical_missing_control)
+
+        route_ghost = load(FIXTURES / "execution_graph_valid.yaml")
+        route_ghost["routes"][0]["sequence"][0]["node"] = "ghost"
+        with self.assertRaisesRegex(
+            validator.ContractError, "route .* references unknown node: ghost"
+        ):
+            validator.validate_execution_graph(route_ghost)
+
+        bad_depends = load(FIXTURES / "execution_graph_valid.yaml")
+        bad_depends["routes"][1]["depends_on_route"] = "nope"
+        with self.assertRaisesRegex(
+            validator.ContractError, "depends_on_route references unknown route: nope"
+        ):
+            validator.validate_execution_graph(bad_depends)
+
+        dup_route = load(FIXTURES / "execution_graph_valid.yaml")
+        dup_route["routes"][1]["route_id"] = "intake_main"
+        with self.assertRaisesRegex(
+            validator.ContractError, "route_id is duplicated: intake_main"
+        ):
+            validator.validate_execution_graph(dup_route)
+
+    def test_execution_graph_nested_parity_rejected(self):
+        base = load(FIXTURES / "execution_graph_valid.yaml")
+        cases = [
+            (lambda d: d["nodes"][0]["interface"].__setitem__("foo", "x"), "interface has unsupported"),
+            (lambda d: d["nodes"][0]["handoff"].__setitem__("foo", "x"), "handoff has unsupported"),
+            (lambda d: d["nodes"][2]["determinism"].__setitem__("foo", "x"), "determinism has unsupported"),
+            (lambda d: d["nodes"][0]["onboarding"].__setitem__("foo", "x"), "onboarding has unsupported"),
+            (lambda d: d["edges"][1]["loop"].__setitem__("foo", "x"), "loop has unsupported"),
+            (lambda d: d["edges"][1]["loop"]["on_exceed"].__setitem__("foo", "x"), "on_exceed has unsupported"),
+            (lambda d: d["edges"][0].__setitem__("critical", "true"), "critical must be a boolean"),
+            (lambda d: d["routes"][0].__setitem__("foo", "x"), "route .* has unsupported"),
+            (lambda d: d["routes"][0]["sequence"][0].__setitem__("foo", "x"), "step has unsupported"),
+            (lambda d: d["routes"][0].__setitem__("depends_on_route", "intake_main"), "cannot depend on itself"),
+            (lambda d: d["routes"][0]["sequence"][1].__setitem__("order", 1), "duplicate step order"),
+        ]
+        for mutate, message in cases:
+            with self.subTest(message=message):
+                graph = load(FIXTURES / "execution_graph_valid.yaml")
+                mutate(graph)
+                with self.assertRaisesRegex(validator.ContractError, message):
+                    validator.validate_execution_graph(graph)
+        self.assertIsNone(validator.validate_execution_graph(base))
+
+    def test_run_state_nested_parity_rejected(self):
+        graph = load(FIXTURES / "execution_graph_valid.yaml")
+        counter_extra = load(FIXTURES / "execution_graph_run_state_valid.yaml")
+        counter_extra["loop_counters"][0]["foo"] = "x"
+        with self.assertRaisesRegex(validator.ContractError, "loop_counter.* has unsupported"):
+            validator.validate_execution_graph_run_state(counter_extra, graph)
+        bad_receipt = load(FIXTURES / "execution_graph_run_state_valid.yaml")
+        bad_receipt["handoff_receipts"].append(123)
+        with self.assertRaisesRegex(validator.ContractError, "handoff_receipts must be non-empty"):
+            validator.validate_execution_graph_run_state(bad_receipt, graph)
+
+    def test_canonical_execution_graph_template_validates(self):
+        template = load(
+            ADMIN.parent
+            / "01_Resources/templates/workflows/execution_graph_template.yaml"
+        )
+        self.assertIsNone(validator.validate_execution_graph(template))
+
+    def test_execution_graph_run_state_valid_passes(self):
+        state = load(FIXTURES / "execution_graph_run_state_valid.yaml")
+        graph = load(FIXTURES / "execution_graph_valid.yaml")
+        self.assertIsNone(validator.validate_execution_graph_run_state(state, graph))
+        # standalone (no graph) still validates shape
+        self.assertIsNone(validator.validate_execution_graph_run_state(state))
+
+    def test_execution_graph_run_state_negatives_fail(self):
+        graph = load(FIXTURES / "execution_graph_valid.yaml")
+
+        running_no_current = load(FIXTURES / "execution_graph_run_state_valid.yaml")
+        del running_no_current["current_node"]
+        with self.assertRaisesRegex(
+            validator.ContractError, "status running needs current_node"
+        ):
+            validator.validate_execution_graph_run_state(running_no_current, graph)
+
+        wrong_hash = load(FIXTURES / "execution_graph_run_state_valid.yaml")
+        wrong_hash["graph_sha256"] = "0" * 64
+        with self.assertRaisesRegex(
+            validator.ContractError, "does not match the supplied graph"
+        ):
+            validator.validate_execution_graph_run_state(wrong_hash, graph)
+
+        loop_exceeds = load(FIXTURES / "execution_graph_run_state_valid.yaml")
+        loop_exceeds["loop_counters"][0]["count"] = 9
+        with self.assertRaisesRegex(
+            validator.ContractError, "exceeded max_cycles"
+        ):
+            validator.validate_execution_graph_run_state(loop_exceeds, graph)
+
+        ghost_node = load(FIXTURES / "execution_graph_run_state_valid.yaml")
+        ghost_node["current_node"] = "ghost"
+        with self.assertRaisesRegex(
+            validator.ContractError, "current_node is not a graph node"
+        ):
+            validator.validate_execution_graph_run_state(ghost_node, graph)
+
+        owner_mismatch = load(FIXTURES / "execution_graph_run_state_valid.yaml")
+        owner_mismatch["owner_id"] = "run_program_other"
+        with self.assertRaisesRegex(
+            validator.ContractError, "owner_id .* does not match graph owner_id"
+        ):
+            validator.validate_execution_graph_run_state(owner_mismatch, graph)
+
+        empty_state_owner = load(FIXTURES / "execution_graph_run_state_valid.yaml")
+        empty_state_owner["owner_id"] = ""
+        with self.assertRaisesRegex(
+            validator.ContractError, "owner_id must be a non-empty string"
+        ):
+            validator.validate_execution_graph_run_state(empty_state_owner)
+
+        extra_state_field = load(FIXTURES / "execution_graph_run_state_valid.yaml")
+        extra_state_field["foo"] = "bar"
+        with self.assertRaisesRegex(
+            validator.ContractError, "run-state has unsupported fields: foo"
+        ):
+            validator.validate_execution_graph_run_state(extra_state_field, graph)
+
+    def test_standalone_validator_cli_routes(self):
+        script = SCRIPTS / "validate_run_family_graph.py"
+        for arg, fixture in (
+            ("--execution-graph", "execution_graph_valid.yaml"),
+            ("--provider-receipt", "provider_receipt_valid.yaml"),
+            ("--intake-receipt", "intake_receipt_valid.yaml"),
+        ):
+            with self.subTest(arg=arg):
+                result = subprocess.run(
+                    [sys.executable, str(script), arg, str(FIXTURES / fixture)],
+                    check=False, capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+        # no source and no standalone arg -> contract error (exit 1)
+        empty = subprocess.run(
+            [sys.executable, str(script)], check=False,
+            capture_output=True, text=True,
+        )
+        self.assertEqual(empty.returncode, 1)
+        self.assertIn("supply a composition source", empty.stderr)
+
     def test_registry_readme_parity_fails(self):
         registry = {
             "artifacts": [
@@ -245,6 +785,8 @@ class RunFamilyGraphTests(unittest.TestCase):
         self.assertEqual(first, second)
         registry = first["registry"]
         self.assertEqual(registry["authority"], "derived_non_authoritative")
+        self.assertEqual(registry["registry_version"], generator.REGISTRY_VERSION)
+        self.assertEqual(registry["generator_version"], generator.GENERATOR_VERSION)
         shared_bundle = next(
             row for row in registry["artifacts"]
             if row["artifact_id"] == "runbundle-shared"
@@ -254,9 +796,107 @@ class RunFamilyGraphTests(unittest.TestCase):
             ["runprogram-alpha", "runprogram-beta"],
         )
 
+    def test_generator_outputs_are_stable_across_hash_seeds(self):
+        script = SCRIPTS / "generate_run_family_views.py"
+        output_sets = []
+        with contained_temporary_directory() as directory:
+            container = Path(directory) / "container"
+            root = container / "governed_root"
+            container.mkdir()
+            root.mkdir()
+            ensure_sibling_ai_ops_fixture(root)
+            assert_contained_paths(container, root.parent / "ai_ops")
+            aggregate = load(VALID)
+            for artifact in aggregate["artifacts"]:
+                manifest = {
+                    "manifest_version": "0.1.0",
+                    **artifact,
+                    "promotion_target": artifact["canonical_home"],
+                    "promotion_gate": "requestor approval",
+                    "entry_artifacts": [],
+                    "consumes": [
+                        edge
+                        for edge in aggregate["consumes"]
+                        if edge["consumer_id"] == artifact["artifact_id"]
+                    ],
+                    "parameter_profiles": {},
+                }
+                manifest_path = (
+                    root
+                    / "00_Admin/runbooks"
+                    / artifact["artifact_id"]
+                    / "manifest.yaml"
+                )
+                manifest_path.parent.mkdir(parents=True, exist_ok=True)
+                manifest_path.write_text(
+                    yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8"
+                )
+            for seed in ("0", "1", "7", "15"):
+                env = os.environ.copy()
+                env["PYTHONHASHSEED"] = seed
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        str(script),
+                        "--repo-root",
+                        str(root),
+                        "--write",
+                    ],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    env=env,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                output_sets.append(
+                    tuple(
+                        (root / target).read_bytes()
+                        for target in (
+                            "00_Admin/runbooks/run_family_registry.yaml",
+                            "00_Admin/reports/generated/graphs/run_family_graph.yaml",
+                            "00_Admin/reports/generated/graphs/artifact_dependency_graph.yaml",
+                            "00_Admin/reports/generated/graphs/governance_routing_graph.yaml",
+                        )
+                    )
+                )
+            self.assertEqual(len(set(output_sets)), 1)
+
+    def test_governed_root_generator_provenance_resolves(self):
+        with contained_temporary_directory() as directory:
+            container = Path(directory) / "container"
+            root = container / "governed_root"
+            container.mkdir()
+            root.mkdir()
+            ensure_sibling_ai_ops_fixture(root)
+            assert_contained_paths(container, root.parent / "ai_ops")
+            views = generator.build_views(load(VALID), root)
+            for view in views.values():
+                self.assertEqual(
+                    view["generated_by"],
+                    "../ai_ops/00_Admin/scripts/generate_run_family_views.py",
+                )
+                self.assertTrue((root / view["generated_by"]).resolve().is_file())
+                self.assertEqual(view["generator_version"], generator.GENERATOR_VERSION)
+
+    def test_governed_root_generator_provenance_rejects_missing_target(self):
+        with contained_temporary_directory() as directory:
+            container = Path(directory) / "container"
+            root = container / "governed_root"
+            container.mkdir()
+            root.mkdir()
+            (root.parent / "ai_ops").mkdir()
+            assert_contained_paths(container, root.parent / "ai_ops")
+            with self.assertRaisesRegex(ValueError, "resolvable sibling ai_ops"):
+                generator.build_views(load(VALID), root)
+
     def test_governance_routing_projects_workflows_specs_and_vs036(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+        with contained_temporary_directory() as directory:
+            container = Path(directory) / "container"
+            root = container / "governed_root"
+            container.mkdir()
+            root.mkdir()
+            ensure_sibling_ai_ops_fixture(root)
+            assert_contained_paths(container, root.parent / "ai_ops")
             routing = root / "00_Admin/configs/context_routing.yaml"
             validator_config = (
                 root / "00_Admin/configs/validator/validator_config.yaml"
@@ -321,8 +961,13 @@ class RunFamilyGraphTests(unittest.TestCase):
 
     def test_generator_write_check_and_drift_modes(self):
         script = SCRIPTS / "generate_run_family_views.py"
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+        with contained_temporary_directory() as directory:
+            container = Path(directory) / "container"
+            root = container / "governed_root"
+            container.mkdir()
+            root.mkdir()
+            ensure_sibling_ai_ops_fixture(root)
+            assert_contained_paths(container, root.parent / "ai_ops")
             write = subprocess.run(
                 [
                     sys.executable, str(script), "--repo-root", str(root),
@@ -357,6 +1002,42 @@ class RunFamilyGraphTests(unittest.TestCase):
             self.assertEqual(drift.returncode, 1)
             self.assertIn("drift:", drift.stderr)
 
+    def test_generator_skip_registry_limits_write_and_check_targets(self):
+        script = SCRIPTS / "generate_run_family_views.py"
+        with contained_temporary_directory() as directory:
+            container = Path(directory) / "container"
+            root = container / "governed_root"
+            container.mkdir()
+            root.mkdir()
+            ensure_sibling_ai_ops_fixture(root)
+            assert_contained_paths(container, root.parent / "ai_ops")
+            registry = root / "00_Admin" / "runbooks" / "run_family_registry.yaml"
+            registry.parent.mkdir(parents=True, exist_ok=True)
+            registry.write_text("local registry owner\n", encoding="utf-8")
+            write = subprocess.run(
+                [
+                    sys.executable, str(script), "--repo-root", str(root),
+                    "--input", str(VALID), "--skip-registry", "--write",
+                ],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertEqual(write.returncode, 0, write.stderr)
+            result = json.loads(write.stdout)
+            self.assertEqual(
+                set(result["outputs"]),
+                set(generator.DEFAULT_TARGETS) - {"registry"},
+            )
+            self.assertEqual(registry.read_text(encoding="utf-8"), "local registry owner\n")
+            check = subprocess.run(
+                [
+                    sys.executable, str(script), "--repo-root", str(root),
+                    "--input", str(VALID), "--skip-registry", "--check",
+                ],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertEqual(check.returncode, 0, check.stderr)
+            self.assertEqual(set(json.loads(check.stdout)["outputs"]), set(result["outputs"]))
+
     def test_dedicated_validator_cli_and_schema_yaml(self):
         script = SCRIPTS / "validate_run_family_graph.py"
         positive = subprocess.run(
@@ -386,6 +1067,10 @@ class RunFamilyGraphTests(unittest.TestCase):
             "schema_run_instance_lock.yaml",
             "schema_run_family_context_pack.yaml",
             "schema_run_receipt.yaml",
+            "schema_run_family_provider_receipt.yaml",
+            "schema_run_family_intake_receipt.yaml",
+            "schema_execution_graph.yaml",
+            "schema_execution_graph_run_state.yaml",
         ):
             schema = load(ADMIN / "configs" / "validator" / name)
             self.assertTrue(schema["$schema"].endswith("2020-12/schema"))
@@ -407,8 +1092,24 @@ class RunFamilyGraphTests(unittest.TestCase):
         self.assertTrue(required_edge_fields <= set(consumption_edge["required"]))
         self.assertTrue(required_edge_fields <= set(manifest_edge["required"]))
         self.assertIn("content_sha256", manifest["required"])
+        self.assertNotIn("promotion_target", manifest["required"])
+        self.assertNotIn("promotion_gate", manifest["required"])
+        self.assertNotIn("entry_artifacts", manifest["required"])
         self.assertTrue(
             validator.ARTIFACT_REQUIRED <= set(manifest["required"])
+        )
+        self.assertEqual(
+            list(validator.ARTIFACT_REQUIRED_ORDER),
+            [
+                "artifact_id",
+                "artifact_kind",
+                "canonical_home",
+                "artifact_version",
+                "interface_version",
+                "lifecycle",
+                "steward",
+                "content_sha256",
+            ],
         )
         self.assertTrue(
             validator.ARTIFACT_REQUIRED

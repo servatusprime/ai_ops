@@ -10,6 +10,13 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $repoName = Split-Path -Leaf $repoRoot
 $missing = @()
+$trustedNodeSha256 = "f13ac3ca23248dc389507e8fe38c34489ab7edb3e6d6700eb6da6a0b7e128eaf"
+$trustedMarkdownlintSha256 = "bb7c495c24811040b847c3d6f081b3b68924912e17e691bb9ca752769f4c8eb3"
+$trustedMarkdownlintPackageSha256 = "fe94d4e8bd6c4056a466de8a5a81732b0a5ca524e9fb0c661f4a63ddf1dd3051"
+$trustedMarkdownlintVersion = "0.49.1"
+$trustedCiNodeVersion = "24.21.0"
+$trustedCiNodeSha256 = "7fde7b8afa198da66257f42ee2001d874c7355631e6d1579a5fb5ef1f246df4c"
+$trustedCiMarkdownlintLockSha256 = "3d08e615c804651a820287246daba6b26c9ddf08306b5dc6d979188e158cd93d"
 
 function Test-WritableDirectory {
     param(
@@ -97,6 +104,170 @@ function Resolve-YamllintConfigPath {
     throw "yamllint config not found. Expected one of: $($candidates -join ', ')"
 }
 
+function Resolve-LinkFreeContainedPath {
+    param(
+        [Parameter(Mandatory = $true)][string] $Path,
+        [Parameter(Mandatory = $true)][string] $Root
+    )
+
+    $rootPath = [System.IO.Path]::GetFullPath($Root)
+    $candidatePath = [System.IO.Path]::GetFullPath($Path)
+    $separator = [System.IO.Path]::DirectorySeparatorChar
+    if ($candidatePath -ne $rootPath -and -not $candidatePath.StartsWith($rootPath + $separator, [System.StringComparison]::Ordinal)) {
+        throw "Trusted path is outside its root: $candidatePath"
+    }
+
+    $current = $rootPath
+    $rootItem = Get-Item -LiteralPath $current -Force -ErrorAction Stop
+    if ($rootItem.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+        throw "Trusted path root is a link: $current"
+    }
+    $relative = [System.IO.Path]::GetRelativePath($rootPath, $candidatePath)
+    if ($relative -ne ".") {
+        foreach ($part in $relative.Split(@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar), [System.StringSplitOptions]::RemoveEmptyEntries)) {
+            $current = Join-Path $current $part
+            if (Test-Path -LiteralPath $current) {
+                $item = Get-Item -LiteralPath $current -Force
+                if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+                    throw "Trusted path crosses a link: $current"
+                }
+            }
+        }
+    }
+    if (-not (Test-Path -LiteralPath $candidatePath -PathType Leaf)) {
+        throw "Trusted artifact is missing: $candidatePath"
+    }
+    $resolved = (Resolve-Path -LiteralPath $candidatePath).Path
+    if ($resolved -ne $rootPath -and -not $resolved.StartsWith($rootPath + $separator, [System.StringComparison]::Ordinal)) {
+        throw "Trusted path resolves outside its root: $candidatePath"
+    }
+    return $resolved
+}
+
+function Get-LfNormalizedSha256 {
+    param(
+        [Parameter(Mandatory = $true)][string] $Path
+    )
+
+    $text = [System.IO.File]::ReadAllText($Path)
+    $normalized = $text.Replace("`r`n", "`n")
+    $encoding = New-Object System.Text.UTF8Encoding($false)
+    $bytes = $encoding.GetBytes($normalized)
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $digest = $sha256.ComputeHash($bytes)
+        return ([System.BitConverter]::ToString($digest)).Replace("-", "").ToLowerInvariant()
+    }
+    finally {
+        $sha256.Dispose()
+    }
+}
+
+function Resolve-TrustedMarkdownlint {
+    $isWindowsPlatform = [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
+    if (-not $isWindowsPlatform) {
+        if ($env:GITHUB_ACTIONS -ne "true" -or $env:CI -ne "true" -or [string]::IsNullOrWhiteSpace($env:RUNNER_TOOL_CACHE)) {
+            throw "Non-Windows markdownlint execution is restricted to GitHub Actions."
+        }
+        $nodeCommands = @(Get-Command node -CommandType Application -ErrorAction SilentlyContinue)
+        if ($nodeCommands.Count -eq 0) {
+            throw "Trusted CI Node command was not found."
+        }
+        # Follow PowerShell's normal PATH precedence, then validate that exact
+        # executable against RUNNER_TOOL_CACHE. Never fall through to another
+        # candidate after an out-of-root or hash failure.
+        $nodeCommand = $nodeCommands[0]
+        $nodeCommandPath = [string]$nodeCommand.Path
+        if ([string]::IsNullOrWhiteSpace($nodeCommandPath)) {
+            throw "Trusted CI Node command has no resolved executable path."
+        }
+        $runnerRoot = (Resolve-Path -LiteralPath $env:RUNNER_TOOL_CACHE).Path
+        $nodePath = Resolve-LinkFreeContainedPath -Path $nodeCommandPath -Root $runnerRoot
+        if ((Get-FileHash -LiteralPath $nodePath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $trustedCiNodeSha256) {
+            throw "Trusted CI Node executable hash mismatch."
+        }
+        $nodeVersion = (& $nodePath --version).Trim()
+        if ($LASTEXITCODE -ne 0 -or $nodeVersion -ne "v$trustedCiNodeVersion") {
+            throw "Trusted CI Node version must be $trustedCiNodeVersion."
+        }
+        $workspaceRoot = (Resolve-Path -LiteralPath $repoRoot).Path
+        $lockfile = Resolve-LinkFreeContainedPath -Path (Join-Path $workspaceRoot ".github/tools/markdownlint/package-lock.json") -Root $workspaceRoot
+        $lockHash = Get-LfNormalizedSha256 -Path $lockfile
+        if ($lockHash -ne $trustedCiMarkdownlintLockSha256) {
+            throw "Trusted CI markdownlint lockfile hash mismatch."
+        }
+        $installRoot = Join-Path $workspaceRoot ".github/tools/markdownlint"
+        $entrypoint = Resolve-LinkFreeContainedPath -Path (Join-Path $installRoot "node_modules/markdownlint-cli/markdownlint.js") -Root $workspaceRoot
+        $packageJson = Resolve-LinkFreeContainedPath -Path (Join-Path (Split-Path -Parent $entrypoint) "package.json") -Root $workspaceRoot
+        $dependencyRoot = Join-Path $installRoot "node_modules"
+        $dependencyRootItem = Get-Item -LiteralPath $dependencyRoot -Force -ErrorAction Stop
+        if ($dependencyRootItem.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+            throw "Trusted CI markdownlint dependency root is a link: $dependencyRoot"
+        }
+        $pendingDirectories = New-Object 'System.Collections.Generic.Stack[string]'
+        $pendingDirectories.Push($dependencyRoot)
+        while ($pendingDirectories.Count -gt 0) {
+            $currentDirectory = $pendingDirectories.Pop()
+            foreach ($dependencyItem in (Get-ChildItem -LiteralPath $currentDirectory -Force -ErrorAction Stop)) {
+                if ($dependencyItem.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+                    throw "Trusted CI markdownlint dependency tree contains a link: $($dependencyItem.FullName)"
+                }
+                if ($dependencyItem.PSIsContainer) {
+                    if ($dependencyItem.Name -eq ".bin" -and (Split-Path -Leaf (Split-Path -Parent $dependencyItem.FullName)) -eq "node_modules") {
+                        # npm generates platform-specific command shims here.
+                        # The .bin directory itself was checked above; mirror
+                        # the validator by excluding only its contents.
+                        continue
+                    }
+                    $pendingDirectories.Push($dependencyItem.FullName)
+                }
+            }
+        }
+        if ((Get-FileHash -LiteralPath $entrypoint -Algorithm SHA256).Hash.ToLowerInvariant() -ne $trustedMarkdownlintSha256) {
+            throw "Trusted CI markdownlint entrypoint hash mismatch."
+        }
+        if ((Get-FileHash -LiteralPath $packageJson -Algorithm SHA256).Hash.ToLowerInvariant() -ne $trustedMarkdownlintPackageSha256) {
+            throw "Trusted CI markdownlint package metadata hash mismatch."
+        }
+        $package = Get-Content -LiteralPath $packageJson -Raw | ConvertFrom-Json
+        if ($package.version -ne $trustedMarkdownlintVersion) {
+            throw "Trusted CI markdownlint package version mismatch."
+        }
+        return @($nodePath, $entrypoint)
+    }
+    $programFiles = [Environment]::GetEnvironmentVariable("ProgramFiles", "Process")
+    $applicationData = [Environment]::GetFolderPath([Environment+SpecialFolder]::ApplicationData)
+    if ([string]::IsNullOrWhiteSpace($programFiles) -or [string]::IsNullOrWhiteSpace($applicationData)) {
+        throw "Trusted markdownlint roots are unavailable."
+    }
+    $nodePath = Join-Path $programFiles "nodejs\node.exe"
+    $entrypoint = Join-Path $applicationData "npm\node_modules\markdownlint-cli\markdownlint.js"
+    $packageJson = Join-Path (Split-Path -Parent $entrypoint) "package.json"
+    foreach ($path in @($nodePath, $entrypoint, $packageJson)) {
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            throw "Trusted markdownlint artifact is missing: $path"
+        }
+        $item = Get-Item -LiteralPath $path -Force
+        if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+            throw "Trusted markdownlint artifact is a reparse point: $path"
+        }
+    }
+    if ((Get-FileHash -LiteralPath $nodePath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $trustedNodeSha256) {
+        throw "Trusted Node executable hash mismatch."
+    }
+    if ((Get-FileHash -LiteralPath $entrypoint -Algorithm SHA256).Hash.ToLowerInvariant() -ne $trustedMarkdownlintSha256) {
+        throw "Trusted markdownlint entrypoint hash mismatch."
+    }
+    if ((Get-FileHash -LiteralPath $packageJson -Algorithm SHA256).Hash.ToLowerInvariant() -ne $trustedMarkdownlintPackageSha256) {
+        throw "Trusted markdownlint package metadata hash mismatch."
+    }
+    $package = Get-Content -LiteralPath $packageJson -Raw | ConvertFrom-Json
+    if ($package.version -ne $trustedMarkdownlintVersion) {
+        throw "Trusted markdownlint package version mismatch."
+    }
+    return @($nodePath, $entrypoint)
+}
+
 function Resolve-LintScope {
     param(
         [string] $RepoRoot,
@@ -126,7 +297,12 @@ function Resolve-LintScope {
 
     $resolved = (Resolve-Path -LiteralPath $candidate).Path
     $repoResolved = (Resolve-Path -LiteralPath $RepoRoot).Path
-    $inRepo = $resolved.StartsWith($repoResolved, [System.StringComparison]::OrdinalIgnoreCase)
+    $sep = [System.IO.Path]::DirectorySeparatorChar
+    $inRepo = ($resolved -eq $repoResolved) -or $resolved.StartsWith($repoResolved + $sep, [System.StringComparison]::OrdinalIgnoreCase)
+    $resolvedItem = Get-Item -LiteralPath $resolved -Force
+    if ($resolvedItem.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+        throw "Scope resolves through a symlink/reparse point: $Scope"
+    }
 
     if (-not $inRepo) {
         $isExplicitExternal = [System.IO.Path]::IsPathRooted($token) -or $token.StartsWith("..\") -or $token.StartsWith("../")
@@ -192,6 +368,7 @@ try {
     Write-Host "Lint scope: $($target.Display)" -ForegroundColor DarkGray
 
     $yamllintConfig = Resolve-YamllintConfigPath -PrimaryRoot $target.Root -FallbackRoot $repoRoot
+    $markdownlintCommand = Resolve-TrustedMarkdownlint
 
     $ruffSkippableExts = @(".py", ".pyi", ".ipynb")
     $skipRuff = $false
@@ -214,12 +391,12 @@ try {
     }
 
     if ($target.InRepo) {
-        Invoke-Step -Name "markdownlint" -CommandArgs @("npx", "markdownlint", $target.Path) -DryRun:$DryRun
+        Invoke-Step -Name "markdownlint" -CommandArgs @($markdownlintCommand + @("--config", ".markdownlint.json", $target.Path)) -DryRun:$DryRun
     }
     else {
         Push-Location $target.Root
         try {
-            Invoke-Step -Name "markdownlint" -CommandArgs @("npx", "markdownlint", ".") -DryRun:$DryRun
+            Invoke-Step -Name "markdownlint" -CommandArgs @($markdownlintCommand + @("--config", ".markdownlint.json", ".")) -DryRun:$DryRun
         }
         finally {
             Pop-Location

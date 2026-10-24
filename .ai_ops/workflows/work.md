@@ -2,7 +2,7 @@
 description: Signal that repo rules apply and establish work/run context.
 name: work
 kind: workflow
-version: 0.2.5
+version: 0.3.1
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -12,8 +12,6 @@ claude:
   user-invocable: true
   allowed-tools: null
   model: null
-  context: null
-  agent: null
 codex:
   metadata:
     short-description: Signal that repo rules apply and establish work/run context.
@@ -84,7 +82,7 @@ After bootstrap read order and before execution:
    - Canonical lanes (`Coordinator`, `Planner`, `Researcher`, `Executor`,
      `Builder`, `Reviewer`, `Linter`, `Closer`) are the upstream execution
      schema.
-   - Legacy broad-role keys (`Coordinator`, `Executor`, `Builder`,
+   - Deprecated broad-role keys (`Coordinator`, `Executor`, `Builder`,
      `Validator`) remain compatibility keys for `role_assignments`.
    - Profiles/riders are behavior presets and do not replace canonical lane
      semantics.
@@ -134,7 +132,10 @@ If any condition is unknown or false, use `fresh_bootstrap` or `recenter`.
 Do not force heavy topology/routing rereads when `resume_same_scope` is valid.
 
 For any resumed or multi-surface run, write a resume-delta block before
-changing state surfaces or advancing completion claims:
+changing state surfaces or advancing completion claims. Write it to the
+existing state surface -- the workbook Execution Notes, or the workbundle
+README when the bundle coordinates the run -- as one block per resume, not one
+per phase. Do not create a new file or ledger for it:
 
 - prior claimed state,
 - live evidence checked,
@@ -168,27 +169,14 @@ and which stop conditions remain hard-gated regardless of blanket approval.
 
 ## Pre-Write Authority Guard (Mandatory)
 
-Canonical source is `AGENTS.md`.
-
-| Path Pattern | Minimum Authority | Required Behavior |
-| --- | --- | --- |
-| `00_Admin/policies/**`, `00_Admin/specs/**`, `AGENTS.md`, `CONTRIBUTING.md` | Level 4 | Stop and require explicit human approval with rationale. |
-| `.ai_ops/workflows/**` | Level 4 | Stop and require explicit approval evidence before edits; record approval source in workbook/scratchpad. |
-| `00_Admin/configs/**` | Level 4 | Stop and require explicit human approval. |
-| `00_Admin/guides/**` | Level 3 | Require workbook scope and approval before edits. |
-| `90_Sandbox/**` | Level 1-2 | Proceed only when in-scope and user-requested. |
+Canonical table: `AGENTS.md` -> "Path-Based Authority Guard (Pre-Write)". Read it
+before any file write; it is the only copy.
 
 If classification is ambiguous, treat as higher authority and ask.
 
 ## Mode and Target Selection
 
-Mode depends on target repo:
-
-| Target | Mode | Behavior |
-| --- | --- | --- |
-| ai_ops repo | Direct | Work directly in ai_ops; workbook artifacts in ai_ops sandbox |
-| external repo with ai_ops governance | Governed | Apply ai_ops governance in target repo (validators/linters per validation policy) |
-| no ai_ops structure reachable | Standalone | Adapt to target repo conventions |
+Canonical table: `AGENTS.md` -> "Mode Detection". Resolve mode there first.
 
 Default expectation: external repos adopting ai_ops governance should use
 Governed mode unless the requestor explicitly identifies as a maintainer

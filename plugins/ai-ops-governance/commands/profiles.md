@@ -3,6 +3,7 @@ description: Manage rider/crew profile source data and regenerate deterministic 
   behavior files.
 argument-hint: '[mode]'
 allowed-tools: Read Grep Glob LS Write Edit Bash
+disable-model-invocation: true
 ---
 
 # /profiles

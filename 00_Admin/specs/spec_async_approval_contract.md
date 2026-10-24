@@ -4,9 +4,9 @@ id: spec_async_approval_contract
 module: admin
 status: active
 license: Apache-2.0
-version: 1.0.2
+version: 1.1.0
 created: 2026-04-23
-updated: 2026-07-07
+updated: 2026-08-26
 owner: ai_ops
 ai_generated: true
 spec_archetype: output_contract_spec
@@ -102,6 +102,32 @@ The context snapshot at `context_snapshot_path` MUST be CSCC-compliant:
 
 The `channel` field is informational; ai_ops does not send messages. The platform reads the
 `approval_contract:` output and dispatches notification via its own channel layer.
+
+## 4a. Approver Identity Verification (Required)
+
+ai_ops does not authenticate channel replies -- that is the platform's job. This section defines
+what an agent MUST require before treating `approval_state: APPROVED` as valid authorization,
+regardless of which channel the reply arrived on.
+
+- `approved_by` MUST match a pre-registered operator identity known independently of the reply
+  itself -- for example, the identity already used across ai_ops for L4 approval gates (see
+  `AGENTS.md` and workbook Approvals and Decisions sections for the current registered identity).
+  A free-text name typed in the reply is not sufficient on its own.
+- An agent MUST NOT resume a parked L3/L4 action solely because a message arrived on a configured
+  channel and contains an approval-shaped reply (e.g., "approved", "yes", a thumbs-up). The
+  platform layer is responsible for verifying the sender is the actual registered operator
+  (account-level authentication, not message content) before it is permitted to set
+  `approval_state: APPROVED` in the first place.
+- If an agent cannot establish that the platform performed sender verification -- for example, a
+  workbook's `approval_contract:` block was hand-edited to `APPROVED` with no corroborating
+  evidence of who set it or how -- treat the state as unverified and do not resume. Record the
+  ambiguity and require the requestor to reconfirm synchronously (`claude_code` channel) instead.
+- This requirement applies to every channel in the table above, including `openclaw_telegram` and
+  `openclaw_slack`: access to a shared channel is not equivalent to being the registered operator.
+- Rationale: an unauthenticated approval-shaped reply on a shared channel could let anyone with
+  channel access resume a gated action -- including a canonical write, commit, or push -- without
+  the actual operator ever approving it. This closes that gap; it does not weaken PARK/resume for
+  a genuinely verified approval.
 
 ## 5. Timeout Policy
 

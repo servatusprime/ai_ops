@@ -1,6 +1,7 @@
 ---
 name: customize
 description: Configure agent preferences and customization options.
+disable-model-invocation: true
 ---
 
 # customize

@@ -3,9 +3,9 @@ title: Spec - Context Routing Runtime Design
 id: spec_context_routing_runtime
 module: ai_ops
 status: active
-version: 0.2.1
+version: 0.2.2
 created: 2026-03-14
-updated: 2026-05-05
+updated: 2026-10-23
 owner: ai_ops
 ai_generated: true
 spec_archetype: runtime_design_spec
@@ -51,17 +51,23 @@ external governed repos.
 
 ```yaml
 governed_repo_validation:
-  minimum_commands: []          # empty default; populated per repo in local config
+  minimum_commands: []          # argv arrays; empty default; populated per repo in local config
   network_sensitive_commands: []
   allow_partial_on_network_failure: true
   require_repo_root_resolution: true
   require_safe_directory_preflight: true
 ```
 
+Path-bearing validator flags may use either the separated form
+`--data-root <contained-path>` or the equals form `--data-root=<contained-path>`.
+The validator contract must validate both forms against the target repository or
+workspace containment boundary; it must not add arbitrary environment keys,
+alternate working directories, or unflagged path-like arguments.
+
 ### Per-Repo Extension Point
 
-Each governed repo populates its own minimum validator list in the machine-local
-(gitignored) config at `.ai_ops/local/config.yaml`:
+Each governed repository populates its own minimum validator list in the
+machine-local (gitignored) config at `.ai_ops/local/config.yaml`:
 
 ```yaml
 workspace:
@@ -69,7 +75,7 @@ workspace:
     - path: <your_repo>/
       sandbox_dir: 90_Sandbox
       savepoint_validation:
-        minimum_commands: []    # populate with repo-native validators when identified
+        minimum_commands: []    # argv arrays, e.g. [[python, scripts/validate.py]]
 ```
 
 Agents consuming this contract MUST:
@@ -83,6 +89,11 @@ Agents consuming this contract MUST:
 3. If no matching entry exists, record `validation_commands_run: []` and proceed.
 4. Never claim a governed repo is validation-ready when `minimum_commands` is empty
    and no per-repo validators have been confirmed.
+5. Treat every `minimum_commands` entry as an argv array. Reject free-form command
+   strings, shell metacharacters, non-allowlisted executables, PATH resolution that
+   differs from the trusted validator runtime, and path-bearing arguments outside
+   the target repository or workspace. Execute only with shell disabled after
+   `op_validate_config.py` accepts the configuration.
 
 ### Consumer Workflows
 
@@ -91,6 +102,17 @@ Agents consuming this contract MUST:
 | `work_savepoint.md` | Governed Mode Step 3 | `workspace.work_repos[path=<repo>].savepoint_validation` |
 | `closeout.md` | External Repo Step 6 | same |
 | `lint.md` | Governed Decision Matrix | same |
+
+## Closeout Packet Cost Contract
+
+The `closeout_packet` block in `context_routing.yaml` is the canonical source
+for packet-builder cost limits. The builder records the block's version and
+SHA-256 in each packet and the applier rejects routing drift before staging.
+The block contains the repository-contained `packet_root` and positive integer
+limits for repositories, roots, files, bytes searched, and elapsed seconds.
+The builder records observed values and parks a packet when a limit is exceeded.
+A code default is permitted only for isolated test fixtures that do not provide
+`context_routing.yaml`; a governed repository must carry the config explicitly.
 
 ---
 

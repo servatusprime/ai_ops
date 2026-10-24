@@ -1,11 +1,11 @@
 ---
 title: Guide - Command Workflows
-version: 0.7.2
+version: 0.8.2
 status: active
 license: Apache-2.0
 created: 2026-01-25
-updated: 2026-03-19
-last_updated: 2026-03-19
+updated: 2026-09-06
+last_updated: 2026-09-06
 owner: ai_ops
 description: Guidance for ai_ops command workflows.
 ---
@@ -96,7 +96,7 @@ Direct support targets (setup scripts available):
 
 | Tool | Folder | Format |
 | --- | --- | --- |
-| Claude Code | `.claude/skills/` (workspace-root recommended), `.claude/commands/` (legacy) | Markdown wrappers |
+| Claude Code | `.claude/skills/` (workspace-root recommended) | Markdown wrappers |
 | Claude App (web/desktop) | none | Instructions-only via direct workflow reference |
 | Codex CLI | `.agents/skills/` (recommended), `.codex/skills/` (compat mirror) | Markdown wrappers |
 | Cursor | `.cursor/commands/` | Markdown |
@@ -174,7 +174,7 @@ Commands operate in two modes based on repo context:
    c. If ops_stack_root != current_repo -> EXTERNAL MODE (User)
 3. If not found:
    a. Check for .ai_ops/workflows/ folder
-   b. If present -> INSIDE MODE (legacy/fallback)
+   b. If present -> INSIDE MODE (fallback)
    c. If absent -> NO AI_OPS_STACK
 ```
 
@@ -285,37 +285,38 @@ Run a repo health check--verify the repo is consistent and clean.
 
 ### /closeout
 
-Finalize a work session with cleanup, lint, commit, and push.
+Prepare a read-only closeout, then publish only through exact approval-gated
+commit and separate push steps.
 
 | Mode | Behavior |
 | --- | --- |
-| Inside | Full turbo workflow: cleanup workbundle, harvest scratchpad, lint, commit, push |
-| External | Simplified workflow: cleanup work notes, lint, commit, push |
+| Inside | Read-only preparation, cleanup/harvest proposal, validation, exact commit approval, then separate push approval |
+| External | Read-only preparation, repo validation, exact commit approval, then separate push approval |
 
 **Closeout steps (Inside):**
 
-1. Update workbundle status and checkpoint notes
-2. Harvest keepers from scratchpad, archive or delete rest
-3. If `future_work_registry.yaml` changed, regenerate future work scorecard
-4. Run linters (markdownlint, yamllint, etc.)
-5. Stage changes with summary
-6. Commit with turbo authorization (streamlined, no pause)
-7. Push to remote
+1. Update workbundle status and checkpoint notes in the preparation report
+2. Harvest keepers and propose archive/prune treatment; do not mutate during preparation
+3. If `future_work_registry.yaml` changed, regenerate the scorecard in approved scope
+4. Run configured validation and linters
+5. Freeze exact include/exclude scope and security applicability
+6. Obtain one exact commit approval, then stage only the approved paths
+7. Obtain separate push approval naming the verified commit SHA, remote, and branch
 
 **Closeout steps (External):**
 
 1. Update any work tracking artifacts
-2. Run repo's configured linters (or common fallbacks)
-3. Stage changes with summary
-4. Commit (confirm before push)
-5. Push to remote
+2. Run repo's configured validators and linters
+3. Freeze exact include/exclude scope and security applicability
+4. Obtain exact commit approval and stage only the approved paths
+5. Obtain separate push approval naming the verified commit SHA, remote, and branch
 
 **Workflow:** `.ai_ops/workflows/closeout.md`
 **Runbook:** `00_Admin/runbooks/rb_commit_push_streamlining_01.md`
 
 **Minimum Inputs / Conditions**
 
-- Inside: active workbundle or staged changes; turbo authorization enabled.
+- Inside: active workbundle or staged changes; exact commit and push approvals remain required.
 - External: staged or unstaged changes; user confirms push.
 
 ### /bootstrap
@@ -430,17 +431,23 @@ Use existing artifacts:
 
 ### /work_savepoint
 
-Commit + push active work as a savepoint, then end the session. Pass `--no-commit` to end without committing.
+Save scoped work-in-progress and end the session without claiming completion.
+The first leg is read-only: resolve one target, validate it, classify every
+changed path, and show the exact include set, commit message, remote, and
+branch. The default invocation records a checkpoint and does not publish;
+`--commit` explicitly requests publication and still stops for final requestor
+approval before staging, committing, or pushing. `--no-commit` states the
+read-only intent explicitly.
 
 | Mode | Behavior |
 | --- | --- |
-| Inside | Stage, commit (`savepoint:` prefix), push; update compacted context |
-| External | Commit + push user work artifact; summarize next steps |
+| Direct | Preview exact scope; after final approval, stage exact paths, commit with `savepoint:` prefix, push, and keep work active |
+| Governed | Same publication contract as Direct, plus governed-repo validator preflight |
+| Standalone | Same preview, approval, exact-path staging, commit, push, and state-preservation contract |
 
 **Minimum Inputs / Conditions**
 
-- Inside: active workbook or workbundle.
-- External: active work context to save.
+- Active work context to save (workbook, workbundle, or user work context).
 
 **Workflow:** `.ai_ops/workflows/work_savepoint.md`
 
@@ -472,6 +479,21 @@ to separate workbooks.
 - **Decision:** Keep commands unprefixed (e.g., `/health` not `/aios_health`)
 - **Rationale:** Context (AGENTS.md + `.ai_ops/workflows/` presence) disambiguates
 - **Fallback:** If conflict detected, agent asks for clarification
+
+## Section Naming Crosswalk
+
+Several `.ai_ops/workflows/*.md` files solve the same structural need under
+different `##` heading names or positions. Standardizing the heading text
+is deliberately deferred until the mapping itself proves to be a
+recurring point of confusion in practice, not done pre-emptively -- a
+rename touches every reader/reference of the section it changes. This
+table documents the known mapping.
+
+| Concept | Canonical source | Heading name(s) actually used |
+| --- | --- | --- |
+| Direct/Governed/Standalone mode resolution | `AGENTS.md` `## Mode Detection` | `work.md`: `## Mode and Target Selection` (an inline pointer to `AGENTS.md`, not a duplicate table); `bootstrap.md`: `## Mode Detection` (matches, plus its own bootstrap-specific quick-reference table) |
+| Pre-write authority classification | `AGENTS.md` `### Path-Based Authority Guard (Pre-Write)` | `work.md`: `## Pre-Write Authority Guard (Mandatory)` (an inline pointer, not a duplicate table) |
+| Cold-start branching by active-artifact state | No single canonical source | `## Decision Matrix (Cold-Start)` in 10 of 13 commands; absent from `work.md`, `ai_ops_setup.md`, and `work_savepoint.md` (all three have equivalent branching logic under their own `(Mandatory)` gate sections or `## Steps` instead -- a presence variance, not purely a naming one) |
 
 ## Open Questions and Discussion
 

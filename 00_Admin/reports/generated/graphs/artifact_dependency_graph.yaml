@@ -1,6 +1,7 @@
 graph_version: 0.1.0
 authority: derived_non_authoritative
 generated_by: 00_Admin/scripts/generate_run_family_views.py
+generator_version: 0.2.0
 source_digest: c661c3d8aa87bde7d2dfff98acb1ff7f1384a34858addc5bfcdcdd740b197328
 graph_kind: artifact_dependency_graph
 nodes: []

@@ -1,6 +1,7 @@
-registry_version: 0.1.0
+registry_version: 0.2.0
 authority: derived_non_authoritative
 authoritative_source: colocated_run_family_manifest
 generated_by: 00_Admin/scripts/generate_run_family_views.py
+generator_version: 0.2.0
 source_digest: c661c3d8aa87bde7d2dfff98acb1ff7f1384a34858addc5bfcdcdd740b197328
 artifacts: []

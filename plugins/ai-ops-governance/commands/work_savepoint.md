@@ -1,6 +1,8 @@
 ---
-description: Commit and push active work as a savepoint, then end the ai_ops session.
-argument-hint: '[--no-commit]'
+description: Validate and record a scoped work-in-progress savepoint; publish only
+  after an explicit request and final approval.
+argument-hint: '[--commit] [--no-commit]'
+disable-model-invocation: true
 ---
 
 # /work_savepoint

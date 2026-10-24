@@ -1,0 +1,114 @@
+# Execution Control Graph -- colocated authority for run-family control flow.
+# Homes:
+#   run_program_<program_id>/execution_graph.yaml   (one per runprogram)
+#   rnb_<bundle_name>/execution_graph.yaml           (only if the bundle branches)
+# The README is this file's human projection; manifest.yaml stays authoritative
+# for identity and composition. Validate with:
+#   validate_run_family_graph.py --execution-graph <path>
+# Contract: 00_Admin/specs/spec_execution_control_graph.md
+#
+# This starter validates as-is (placeholder ids); replace <...> with real ids.
+
+graph_version: "0.1.0"
+authority: authored_control_surface
+scope: runprogram                      # runprogram | runbundle
+owner_id: run_program_<program_id>     # stable artifact_id this graph controls
+reasoning_owner: Coordinator           # exactly one end-to-end owner
+
+nodes:
+  - id: intake
+    kind: agentic                      # deterministic | agentic | operator
+    interface:                         # declared shape; bound per project
+      produces: [admitted_surface_pair, admission_receipt]
+      binding: resolved_per_run
+    onboarding:                        # bounded CSCC read set (agentic nodes)
+      required_context_pack:
+        - README.md
+        - manifest.yaml
+        - 00_Admin/specs/spec_run_family_composition.md
+    handoff:                           # agentic nodes MUST hand off evidence
+      return_contract: admission_receipt + disposition_table
+      write_scope: intake/** only
+    gate: all received items dispositioned   # agentic nodes MUST be gated
+
+  - id: reconcile
+    kind: agentic
+    interface:
+      consumes: [admitted_surface_pair]
+      produces: [reconciled_pair]
+      binding: resolved_per_run
+    executor_ref: rb_surface_reconciliation   # optional: what executes the node
+    onboarding:
+      required_context_pack: [manifest.yaml]
+    handoff:
+      return_contract: reconciled_pair + residual_report
+      write_scope: reconcile/** only
+    gate: vertical residual within tolerance
+
+  - id: normalize
+    kind: deterministic
+    interface:
+      consumes: [reconciled_pair]
+      produces: [normalized_pair]
+      binding: resolved_per_run
+    determinism:                       # required for deterministic nodes
+      idempotent: true
+      content_hashed: true
+
+  - id: accept
+    kind: operator                     # human gate
+    interface:
+      consumes: [normalized_pair]
+      produces: [accepted_pair]
+      binding: resolved_per_run
+    gate: operator accepts visual and vertical evidence
+
+edges:
+  - from: intake
+    to: reconcile
+    condition: all items dispositioned
+    # optional transition controls (adopted from governed-repo edge-controls)
+    entry_evidence: admitted_surface_pair present
+    exit_evidence: reconciled_pair accepted
+    receipt_contract: runbundle_edge_receipt_v1
+    checkpoint: before_edge_and_after_receipt
+    critical: true                     # fail-closed: the 4 controls above are required
+
+  - from: reconcile
+    to: reconcile
+    condition: re-run reconciliation
+    loop:                              # bounded loop
+      condition: vertical residual exceeds tolerance
+      max_cycles: 3
+      on_exceed:
+        escalate_to: operator          # reasoning_owner | operator
+
+  - from: reconcile
+    to: normalize
+    condition: residual within tolerance
+
+  - from: normalize
+    to: accept
+    condition: normalized outputs ready
+
+# Optional named routes for multi-route programs. The graph -- not the manifest
+# route_order -- is the authority for multi-route sequencing. The same node may
+# appear in several routes with a route-specific profile.
+routes:
+  - route_id: <route_a>
+    sequence:
+      - node: intake
+        order: 1
+      - node: reconcile
+        order: 2
+        profile: <profile_establishment>
+      - node: accept
+        order: 3
+  - route_id: <route_b>
+    depends_on_route: <route_a>
+    sequence:
+      - node: reconcile
+        order: 1
+        profile: <project_validation>
+      - node: accept
+        order: 2

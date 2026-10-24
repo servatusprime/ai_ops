@@ -3,7 +3,7 @@ title: Guide: Parallel Execution
 version: 0.1.0
 status: active
 license: Apache-2.0
-last_updated: 2026-02-03
+last_updated: 2026-07-22
 owner: ai_ops
 related:
   - ./guide_workflows.md
@@ -32,7 +32,8 @@ Use workbook/runbook frontmatter:
 
 ## Safety Rules
 
-1. Do not run parallel edits on the same file unless `lock_scope` is managed.
+1. Do not assign parallel lanes the same write target. If overlap is
+   unavoidable, name a single merge owner and sequence the writes.
 2. Keep one source of truth for status (active workbook or spine).
 3. Re-sync compacted context at each merge checkpoint.
 4. Run validation after each parallel branch merges.

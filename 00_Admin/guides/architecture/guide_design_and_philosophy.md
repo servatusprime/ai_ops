@@ -1,10 +1,10 @@
 ---
 title: "ai_ops: Design and Philosophy"
-version: 0.4.1
+version: 0.4.3
 status: active
 license: Apache-2.0
 created: 2026-02-21
-last_updated: 2026-03-19
+last_updated: 2026-07-22
 owner: ai_ops
 description: >
   Consolidated design philosophy and principles for ai_ops. Human-audience
@@ -368,11 +368,6 @@ flowchart LR
 contract for a type of work. A topology uses lanes; a lane is not a topology.
 See `AGENTS.md §Topology and Lane Concepts` for the canonical definition.
 
-**Director topology (design note, not yet implemented):** A Director pattern
-allows one primary session to spawn Coordinator subagents per project for
-concurrent work streams. Implementation deferred -- requires a Coordinator
-native agent file with the `Agent` tool. See `AGENTS.md §Topology and Lane Concepts`.
-
 ### Riders: behavioral archetypes
 
 A rider is a behavioral archetype -- a named preset that shapes how the agent approaches work
@@ -437,10 +432,6 @@ Default to Level 2 when unsure. Model level is set per workbook via `model_profi
 (level-name: `low`/`medium`/`high`/`maximum`). `activated_lanes` declares canonical
 lane participation. See `AGENTS.md §AI Model Level Reference` for per-lane escalation
 conditions.
-
-Operators may declare a **model-ID-to-level binding** in `.ai_ops/local/config.yaml`
-under `customizations.model_capabilities.model_level_map` (populated via `/customize`).
-This binding resolves workbook level references to concrete model IDs at runtime.
 
 ### Subagents: specialization without fragmentation
 
@@ -619,7 +610,7 @@ These are predictable failure modes that ai_ops is designed to prevent:
 | --- | --- | --- |
 | `/work` | Starting or resuming work | Establishes context and execution path |
 | `/work_status` | Need current state | Summarizes active work and blockers |
-| `/work_savepoint` | Stopping mid-task | Commits + pushes savepoint, then ends session |
+| `/work_savepoint` | Stopping mid-task | Previews and, after explicit final approval, commits/pushes a scoped WIP savepoint; leaves work active |
 | `/closeout` | Work is complete | Runs validation and closeout workflow |
 | `/crosscheck` | Need review feedback | Runs structured review workflow |
 | `/health` | Repo seems inconsistent | Runs report-only health analysis |

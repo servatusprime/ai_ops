@@ -1,0 +1,16 @@
+receipt_version: "0.1.0"
+authority: derived_non_authoritative
+provider_id: runbundle-shared
+interface_version: "2"
+entry_artifacts:
+  - admitted_surface_pair
+exit_artifacts:
+  - analysis_ready_surface_pair
+validated_capabilities:
+  - capability: surface_pair_reconciliation
+    evidence_ref: reports/run/receipt-001.json#reconciliation
+known_limits:
+  - excludes public-DEM-derived cells
+substantiated_by:
+  kind: run_receipt
+  ref: reports/run/receipt-001.json

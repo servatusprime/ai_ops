@@ -1,9 +1,9 @@
 ---
 title: "Guide: ai_ops"
-version: 2.3.5
+version: 2.3.6
 status: active
 license: Apache-2.0
-last_updated: 2026-03-13
+last_updated: 2026-07-22
 owner: ai_ops
 related:
   - ./guide_ai_ops_vocabulary.md
@@ -194,11 +194,6 @@ declare the overall tier and active lane set. The `model` parameter on the Agent
 tool controls the actual model used when spawning. (`role_assignments` broad-role
 keys are deprecated -- see `AGENTS.md` AI Model Level Reference.)
 
-**model_level_map:** Operators may bind concrete model IDs to ai_ops reasoning
-levels (1-4) in `.ai_ops/local/config.yaml` under
-`customizations.model_capabilities.model_level_map` (populated via `/customize`).
-This binding resolves workbook `model_profile` level references at runtime.
-
 **Enhanced Crosscheck Mode:** A pattern where the executor spawns a higher-tier
 sub-agent specifically for the crosscheck phase, enabling a more capable model to
 review the work. Enable by setting a higher review tier in workbook frontmatter
@@ -224,10 +219,6 @@ lanes are in scope -- it does not determine the topology.
 
 For the canonical topology table and topology/lane concepts, see `AGENTS.md`
 section `### Topology and Lane Concepts`.
-
-**Director topology (design note, not yet implemented):** A Director pattern
-allows one primary session to spawn Coordinator subagents per project for
-concurrent work streams. See `AGENTS.md Section Topology and Lane Concepts`.
 
 ### Lane Extensibility
 
@@ -263,7 +254,8 @@ handoff, execution, and review.
 - Reference documents by path; do not inline large materials.
 
 Workprograms SHOULD reference their workbooks/workbundles by path or ID and include an Execution
-Spine. Runprograms SHOULD reference their runbooks by path or ID and include an Execution Spine.
+Spine. Runprograms SHOULD reference their runbooks by path or ID and include an execution control
+graph (`execution_graph.yaml`); runprograms do not use a spine.
 
 **Compacted Context placement:**
 
@@ -298,7 +290,8 @@ compacted_context:
     date: YYYY-MM-DD
   references:
     workbook_path: <path>
-    execution_spine: <path>    # if used
+    execution_spine: <path>    # work-family, if used
+    execution_graph: <path>    # run-family runprograms
     specs: []                  # file paths
     contracts: []              # file paths
 ```

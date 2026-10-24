@@ -39,6 +39,11 @@ cost_governance:  # Work-family: MAY self-impose limits. Run-family: SHOULD popu
 Define canonical sequencing, dependency gates, and validation checkpoints for
 this program. This artifact is the authority for sequence/gate decisions.
 
+The spine is a **work-family** (workprogram/workbundle) artifact. Run-family
+runprograms use the authored execution control graph (`execution_graph.yaml`,
+`spec_execution_control_graph.md`) instead; do not create a spine for a
+runprogram.
+
 ## Authority Source and Boundaries
 
 - Authority source:

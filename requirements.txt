@@ -1,0 +1,10 @@
+# ai_ops runtime dependencies.
+#
+# This repo has no build/package artifact -- these are the third-party
+# packages its own scripts (00_Admin/scripts/**) import at runtime. pyyaml is
+# the only non-stdlib import anywhere in the repo; keep this file in sync if
+# that changes.
+#
+# Install with: pip install -r requirements.txt
+
+pyyaml>=6.0

@@ -90,7 +90,7 @@ pwsh ./ai_ops/00_Admin/scripts/validate_ide_extensions.ps1 -InstallMissing
 - Repo line length baseline is **120** (`ruff.toml`).
 - Python formatting/linting baseline is Ruff + Pylance.
 - Markdown and YAML formatting baseline is Prettier.
-- Avoid deprecated/legacy IDE settings in workspace config.
+- Avoid deprecated IDE settings in workspace config.
 
 ### Troubleshooting
 

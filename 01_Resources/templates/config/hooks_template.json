@@ -1,40 +1,13 @@
 {
-  "_comment": "ai_ops hooks template. Copy content into .claude/settings.local.json at workspace root. Adjust paths to match your workspace layout.",
-  "permissions": {
-    "allow": [
-      "Bash(bash .ai_ops/setup/*.sh:*)",
-      "Bash(bash ai_ops/.ai_ops/setup/*.sh:*)"
-    ]
-  },
+  "_comment": "ai_ops hooks template. Before installation replace <ai-ops-root> and <workspace-root> with absolute paths; relative hook paths are not valid when the host changes cwd. Copy content into .claude/settings.local.json at workspace root. PreToolUse contains the owner-applied blocking workspace guard. The fallback is POSIX-shell/Bash syntax and must run under Bash; if Python or a hook path is unavailable, it emits the deny response on stderr and exits 2. The dynamic PostToolUse npx Markdown hook is intentionally disabled pending an integrity-controlled local replacement.",
   "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "if echo \"$CLAUDE_TOOL_INPUT_FILE_PATH\" | grep -qE '\\.md$'; then npx --yes markdownlint-cli2 \"$CLAUDE_TOOL_INPUT_FILE_PATH\" 2>&1; fi; exit 0"
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
-        "matcher": "Edit|Write",
+        "matcher": "Edit|Write|NotebookEdit|MultiEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "if echo \"$CLAUDE_TOOL_INPUT_FILE_PATH\" | grep -qE '(00_Admin/(policies|specs|configs)/|AGENTS\\.md|CONTRIBUTING\\.md|\\.ai_ops/workflows/)'; then echo \"[GOVERNANCE GUARD] Level 4 path detected: $CLAUDE_TOOL_INPUT_FILE_PATH — verify explicit L4 approval exists before proceeding.\"; fi; exit 0"
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo \"{\\\"additionalContext\\\": \\\"Branch: $(git branch --show-current 2>/dev/null || echo none). Active artifacts: $(grep -c 'type:' ai_ops/.ai_ops/local/work_state.yaml 2>/dev/null || echo 0) in work_state.yaml.\\\"}\""
+            "command": "python -I \"<ai-ops-root>/00_Admin/scripts/hooks/guard_workspace_writes.py\" --workspace-root \"<workspace-root>\" --config \"<ai-ops-root>/00_Admin/configs/workspace_containment.yaml\" --config-sha256 20FEC564D881482683509BEE4B7BE3948DABBA38343453C2979A4E67ED8F0D5B || { printf '%s\\n' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"cause=workspace guard unavailable; owner=workspace owner; next=restore Python and the configured ai_ops hook\"}}' >&2; exit 2; }"
           }
         ]
       }

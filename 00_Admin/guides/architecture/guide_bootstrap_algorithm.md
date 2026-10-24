@@ -3,7 +3,7 @@ title: Guide: Bootstrap Algorithm
 version: 0.2.1
 status: active
 license: Apache-2.0
-last_updated: 2026-03-24
+last_updated: 2026-07-22
 owner: ai_ops
 related:
   - ../ai_operations/guide_workflows.md
@@ -112,7 +112,6 @@ If `.aiops_session` exists but is unparseable or corrupted:
 ## Session Coordination (Baseline)
 
 - Last-write-wins with timestamp comparison
-- Lock TTL: 30 minutes of inactivity
 - Roles:
   - Reader: read-only
   - Writer: read/write

@@ -1,6 +1,8 @@
 ---
 name: work-savepoint
-description: Commit and push active work as a savepoint, then end the ai_ops session.
+description: Validate and record a scoped work-in-progress savepoint; publish only
+  after an explicit request and final approval.
+disable-model-invocation: true
 ---
 
 # work-savepoint

@@ -251,10 +251,15 @@ def extract_python_commands(workbook: Path, repo_root: Path) -> List[CommandRef]
 
 
 def resolve_script_path(ref: CommandRef, repo_root: Path) -> Path | None:
+    # SEC-AIOPS-011: script_token comes from a workbook's fenced code block --
+    # repo content, not necessarily trustworthy. Only ever resolve/read a
+    # candidate that stays inside repo_root; an absolute path or a "../" escape
+    # in a workbook is reported as unresolved, never read.
     token_path = Path(ref.script_token)
+    repo_root_resolved = repo_root.resolve()
     candidates: List[Path] = []
     if token_path.is_absolute():
-        candidates.append(token_path)
+        candidates.append(token_path.resolve())
     else:
         candidates.extend(
             [
@@ -265,6 +270,8 @@ def resolve_script_path(ref: CommandRef, repo_root: Path) -> Path | None:
             ]
         )
     for candidate in candidates:
+        if not candidate.is_relative_to(repo_root_resolved):
+            continue
         if candidate.exists() and candidate.is_file():
             return candidate
     return None

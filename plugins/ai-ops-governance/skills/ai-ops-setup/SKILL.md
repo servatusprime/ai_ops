@@ -2,6 +2,7 @@
 name: ai-ops-setup
 description: Run ai_ops setup scripts for skills, commands, and supported instruction
   surfaces
+disable-model-invocation: true
 ---
 
 # ai-ops-setup

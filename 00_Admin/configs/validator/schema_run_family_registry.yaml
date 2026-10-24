@@ -1,5 +1,5 @@
 $schema: https://json-schema.org/draft/2020-12/schema
-$id: urn:ai-ops:schema:run-family-registry:0.1.0
+$id: urn:ai-ops:schema:run-family-registry:0.2.0
 title: Derived Run-Family Registry
 type: object
 additionalProperties: false
@@ -8,18 +8,22 @@ required:
   - authority
   - authoritative_source
   - generated_by
+  - generator_version
   - source_digest
   - artifacts
 properties:
   registry_version:
-    const: "0.1.0"
+    const: "0.2.0"
   authority:
     const: derived_non_authoritative
   authoritative_source:
     const: colocated_run_family_manifest
   generated_by:
     type: string
-    const: 00_Admin/scripts/generate_run_family_views.py
+    pattern: '^(00_Admin/scripts/generate_run_family_views\.py|\.[.]/ai_ops/00_Admin/scripts/generate_run_family_views\.py)$'
+  generator_version:
+    type: string
+    pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
   source_digest:
     type: string
     pattern: '^[a-f0-9]{64}$'

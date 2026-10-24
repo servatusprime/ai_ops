@@ -16,7 +16,7 @@ activated_lanes:  # List canonical lane names. Add Planner, Researcher, Builder,
   - Coordinator
   - Executor
   - Reviewer
-delegation_policy: explicit_only  # explicit_only | coordinator_judgment | open
+delegation_policy: coordinator_judgment  # none | explicit_only | coordinator_judgment | conditional | proactive_allowed
 convergence_profile: iterative_convergence_minimal
 parallel_coordination_id: null
 depends_on: []
@@ -113,6 +113,27 @@ execution queue, selfcheck.
 ### Pre-Authorized
 
 - [ ] Workbook scope: [echo the scope in one sentence] -- authorized by requestor [date]
+
+### Human Authorization Evidence Record (required for Level 3/4 decisions)
+
+For every Level 3 or Level 4 approval, record a durable evidence row before
+execution begins. The row must contain the exact quoted human instruction,
+the human actor and `emitted_by` value, the conversation date (without
+inventing a timestamp), the approved scope, explicit exclusions, and a link
+to the approval/preflight or decision-card artifact. A third-person statement
+such as "the requestor authorized" is incomplete by itself. If the quote is
+unavailable, leave the decision provenance `pending` or `limited` and stop at
+the applicable gate; do not reconstruct or paraphrase approval as evidence.
+
+| Decision | Verbatim human instruction | Human actor | `emitted_by` | Conversation date | Scope | Exclusions | Artifact link | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `<decision_id>` | `"<exact quote>"` | `<requestor/role; identity limits>` | `<human actor or lane emitting the record>` | `<YYYY-MM-DD; timestamp unavailable if applicable>` | `<exact admitted scope>` | `<explicit exclusions>` | `<relative path>` | `pending, recorded, or limited` |
+
+Do not use the executor's narrative as a substitute for the human quote.
+`emitted_by` identifies the actor that emitted the durable record; it does not
+convert an agent into the approving human. For a Level 4 work proposal, link
+the same record from the proposal and workbook so the approval details cannot
+drift.
 
 <!-- Add one line per pre-authorized decision or approval -->
 

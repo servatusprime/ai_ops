@@ -70,30 +70,63 @@ program:
 
 Rule:
 
-- If `execution_spine.md` or `runprogram_pipeline_<nn>.md` encodes strict
+- If `execution_graph.yaml` or `runprogram_pipeline_<nn>.md` encodes strict
   order, apply `rb_NN_` naming for affected books.
 - If order is informal or parallel-safe, numbering is optional.
 
 Batch-sequenced parallel guidance:
 
 - For staged execution with parallel batches, define explicit batch gates in
-  `execution_spine.md` or `runprogram_pipeline_<nn>.md`.
+  `execution_graph.yaml` or `runprogram_pipeline_<nn>.md`.
 - Runbooks may run in parallel within a batch only when `execution_mode` and
   lock declarations allow it.
 - Rule: batch `NN+1` cannot start until all required runbooks in batch `NN`
   satisfy completion gates.
 
+## Staged Reconciliation and Identity Preservation (Conditional)
+
+Complete this section when the runprogram reconciles, blends, or composes inputs
+across **ordered stages** (for example: normalize -> reconcile source A ->
+reconcile source B against the A-derived result). Omit it for programs whose
+runbundles are independent and orderless.
+
+- **Distinct identities persist across stages.** Each source and each stage
+  output is a separately identifiable artifact end to end. A stage MUST NOT
+  collapse two distinct sources into one identity, and a later stage's output
+  MUST NOT overwrite the identity of an input it consumed.
+- **Explicit stage order and boundaries.** State the stage sequence and the
+  boundary/relationship assumptions between stages (inputs may coincide,
+  overlap, or differ; do not assume they coincide). Encode strict order in
+  `execution_graph.yaml` or the pipeline artifact and apply `rb_NN_` naming.
+- **Per-stage acceptance disposition.** Each stage output carries a disposition:
+  `candidate` -> `validated` (passed the stage's QA/residual checks) ->
+  `accepted` (approved for downstream consumption). Downstream stages consume
+  only `accepted` artifacts unless a stage explicitly declares otherwise.
+- **Provenance retained.** Blended or composite outputs record which sources and
+  which stage produced them, so a consumer can trace any cell/feature back to
+  its origin and exclusion rules.
+
+Stage table starter:
+
+| Stage | Inputs (identities) | Output (identity) | Acceptance gate | Disposition |
+| --- | --- | --- | --- | --- |
+| `NN` | `<source_a>`, `<source_b>` | `<stage_output>` | `<QA/residual gate>` | `candidate/validated/accepted` |
+
 ## Authority Source
 
-- Membership authority: `<path/to/runprogram_manifest.yaml>`
-- Sequence/gate authority (if present): `execution_spine.md`
+- Membership authority: colocated `manifest.yaml` (the run-family discovery name;
+  do not use a `runprogram_manifest.yaml` variant)
+- Control-flow authority: colocated `execution_graph.yaml` (routing, gates,
+  bounded loops, escalation; see `spec_execution_control_graph.md`). Runprograms
+  use the control graph, not a work-family execution spine.
 - Queue mirror (optional): `runprogram_pipeline_<nn>.md`
-- Conflict rule: spine wins; pipeline is synced after spine updates.
+- Conflict rule: the control graph governs control flow; the pipeline is a synced
+  queue mirror.
 
 ## CSCC Preflight
 
 - [ ] Consumer manifest IDs, constraints, profiles, and resolved homes are valid.
-- [ ] Runprogram README/spine/pipeline references are valid.
+- [ ] Runprogram README/`execution_graph.yaml`/pipeline references are valid.
 - [ ] Runbundle inventory reflects current execution scope.
 - [ ] Compacted context source is known (runprogram or runbundle README).
 - [ ] Gate owners/approval mode are explicit.
@@ -119,5 +152,5 @@ Batch-sequenced parallel guidance:
 ## References
 
 - `<path/to/runbook_or_guide>`
-- `execution_spine.md` (optional but recommended for governed runs)
+- `execution_graph.yaml` (colocated control surface; see `spec_execution_control_graph.md`)
 - `runprogram_pipeline_<nn>.md` (optional)

@@ -1,5 +1,6 @@
 ---
-description: Finalize a work session with cleanup, lint, commit, and push.
+description: Prepare a read-only closeout packet, then publish only through exact
+  approval-gated commit and push steps.
 ---
 
 # /closeout

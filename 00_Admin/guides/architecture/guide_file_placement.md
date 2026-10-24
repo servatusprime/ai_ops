@@ -148,9 +148,10 @@ Ask: **"How many different contexts need this information?"**
 
 Run-family containers:
 
-- Runbundle (group of runbooks for one bounded run lane):
-  `00_Admin/runbooks/run_program_<id>/run_bundles/rnb_<bundle_name>/`
-  or module-local equivalents.
+- Runbundle (group of runbooks for one bounded run lane): a neutral home
+  `00_Admin/runbooks/rnb_<bundle_name>/` or
+  `02_Modules/<module>/docs/runbooks/rnb_<bundle_name>/` -- never nested under a
+  consuming runprogram; consumed by stable ID.
 - Runprogram (program-level run-family coordination):
   `00_Admin/runbooks/run_program_<id>/` or
   `02_Modules/<module>/docs/runbooks/run_program_<id>/`.
@@ -179,8 +180,9 @@ Work-family containers:
 - Workprogram (program-level work-family coordination):
   `90_Sandbox/ai_workbooks/work_program_<id>/`.
 - Pipeline artifacts are optional queue mirrors and should be co-located with
-  the bundle/program root; execution spine remains gate/authority source when
-  both exist.
+  the bundle/program root. For runprograms, the colocated
+  `execution_graph.yaml` is the gate/control authority; the work-family
+  execution spine is the authority for workprograms.
 
 ## By Scope
 

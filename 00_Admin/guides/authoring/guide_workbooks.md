@@ -1,9 +1,9 @@
 ---
 title: Guide: AI Workbooks
-version: 1.10.0
+version: 1.11.1
 status: active
 license: Apache-2.0
-last_updated: 2026-06-11
+last_updated: 2026-07-22
 owner: ai_ops
 related:
 - ./guide_markdown_authoring.md
@@ -517,7 +517,7 @@ activated_lanes:
   - Coordinator
   - Executor
   - Reviewer
-delegation_policy: none | explicit_only | conditional | proactive_allowed
+delegation_policy: none | explicit_only | coordinator_judgment | conditional | proactive_allowed
 convergence_profile: iterative_convergence_minimal | iterative_convergence_standard | <custom>
 parallel_coordination_id: <string-or-omit>
 ```
@@ -525,11 +525,15 @@ parallel_coordination_id: <string-or-omit>
 Rules:
 
 - `execution_topology` declares whether the run stays in one lead agent,
-  explicitly uses subagents, or mixes both patterns.
+  explicitly uses subagents, or mixes both patterns. It is an initial routing
+  value for cold-start parsing, not an operating-policy preference; where a
+  schema requires a value, `single_agent` is the cheap initialization.
 - `activated_lanes` declares only the canonical lanes actually participating in
   this run. It is not an inventory of every lane ai_ops knows about.
 - `delegation_policy` describes how child work may be spawned. It is not a
-  permission override.
+  permission override. Under `coordinator_judgment` the lead decides per task
+  whether local work or a bounded sidecar has the better net benefit; neither
+  single-agent nor multi-agent execution is normatively preferred.
 - `convergence_profile` names the review/rework loop posture for the lane.
 - `parallel_coordination_id` is conditional. Use it only when sibling active
   artifacts may run concurrently and need a shared coordination identifier.
@@ -545,14 +549,15 @@ Canonical lanes:
 - `Linter`
 - `Closer`
 
-Single-agent default:
+Baseline lane sequence:
 
 - Use `Coordinator -> Executor -> Reviewer` unless the task shape clearly
-  requires additional lanes.
+  requires additional lanes. This is a lane baseline, not a topology
+  preference; `delegation_policy` governs whether any lane is delegated.
 
 ### `role_assignments` (optional; compatibility field)
 
-Declares per-role model tier overrides for legacy compatibility while the
+Declares per-role model tier overrides for compatibility while the
 canonical lane model is being promoted. When present, it allows a workbook to
 specify different model tiers for the broad compatibility keys
 (`coordinator`, `executor`, `validator`, `builder`). All fields are optional;
@@ -571,15 +576,9 @@ role_assignments:
 Elevated Crosscheck while `activated_lanes` expresses the richer canonical lane
 path.
 
-**model_level_map:** If your environment uses non-standard model IDs, declare a
-`model_level_map` in `.ai_ops/local/config.yaml` under
-`customizations.model_capabilities.model_level_map` (via `/customize`). This
-binding resolves `model_profile` level references to concrete model IDs at runtime.
-See `AGENTS.md §AI Model Level Reference`.
-
 | Field | Type | Description |
 | --- | --- | --- |
-| `role_assignments` | optional object | Per-role compatibility overrides (`low`/`medium`/`high`) for the legacy broad-role keys |
+| `role_assignments` | optional object | Per-role compatibility overrides (`low`/`medium`/`high`) for deprecated broad-role keys |
 
 ### Delegation Intent Markers (conditional)
 
@@ -600,6 +599,13 @@ Rules:
 - Keep model tiers to `low`, `medium`, or `high`.
 - Add a one-line `Delegation Brief:` directly below the delegated step so the
   task objective, boundaries, and expected output shape travel with the step.
+- The brief names the canonical tool or script the lane is expected to use, or
+  states that no canonical capability covers the need (see the Reuse-First
+  Capability Check). This prevents a delegated lane from reimplementing an
+  existing tool with divergent semantics. It introduces no second tool registry
+  or wrapper policy.
+- If the delegated step writes, the brief declares a single `write_target`
+  path, and a `merge_owner` when overlap with another lane is unavoidable.
 - Do not embed provider-specific runtime vocabulary in canonical templates or
   workbook guidance.
 - Put surface-specific delegation recipes in skills, governed-repo runbooks,
@@ -642,9 +648,8 @@ execution_topology_contract:
     - "Reviewer -> Executor"
   escalation_loopbacks:
     - "Any ambiguity -> Requestor"
-  surface_interpretation_notes:
-    codex: "<explicit delegation expectation>"
-    claude: "<auto-delegation constraint>"
+  write_target: "<single path a delegated write may touch>"
+  merge_owner: "<one named lane, only when overlap is unavoidable>"
 ```
 
 Rules:
@@ -688,12 +693,35 @@ lanes, not personality labels:
 - `Linter`: performs mechanical validation and reports evidence-backed defects.
 - `Closer`: finalizes completion and closeout readiness.
 
-Legacy compatibility:
+Compatibility:
 
 - `Coordinator`, `Executor`, `Builder`, and `Validator` remain the compatibility
   keys for `role_assignments`.
 - Profile labels (`ai-ops-planner`, `ai-ops-reviewer`, `ai-ops-closer`, etc.)
-  are derivative subagent presets. They do not replace canonical lanes.
+  are derivative subagent presets, generated by `/profiles`
+  (`00_Admin/scripts/regenerate_profiles.py`) from
+  `.ai_ops/local/profiles/active_crew.yaml`. They do not replace canonical
+  lanes -- they are one way to execute a lane's work when a task is
+  delegated (see AGENTS.md's Subagent Routing section for when to use one).
+  Each preset carries a fixed `model`, preloaded `skills`, and a `tools`/
+  `permissionMode` envelope already tuned for that lane's risk profile:
+
+  | Lane | Profile | Model | Preloaded skills |
+  | --- | --- | --- | --- |
+  | Coordinator | *(none -- lead lane, no worker profile)* | -- | -- |
+  | Planner | `ai-ops-planner` | sonnet | `work`, `bootstrap`, `work_status` |
+  | Executor | `ai-ops-executor` | sonnet | `work`, `scratchpad`, `customize` |
+  | Builder | `ai-ops-builder` | sonnet | `work`, `customize` |
+  | Reviewer | `ai-ops-reviewer` | opus | `crosscheck`, `health` |
+  | Researcher | `ai-ops-researcher` | sonnet | `work` |
+  | Linter | `ai-ops-linter` | haiku (background) | `lint` |
+  | Closer | `ai-ops-closer` | sonnet | `closeout`, `harvest` |
+
+  Availability of these custom subagent types depends on the launch
+  environment's own discovery of `.claude/agents/` (repo root and,
+  where installed, the workspace root -- see `/ai_ops_setup`'s
+  `setup_claude_agents.*` step); if unavailable, apply the profile's
+  envelope manually rather than assuming it is reachable by name.
 
 ### CSCC Context Contract (Workbook Execution)
 
@@ -722,7 +750,7 @@ Compacted Context placement: the workbundle README is the canonical handoff reco
 workprogram, the workbook MUST include a compacted context section for handoff continuity. Treat compacted context
 as persistent domain memory tied to the workbook; update it when decisions, scope, or constraints change.
 
-Legacy note: older workprograms may use `wp_<program_id>_<YYYY-MM-DD>/`.
+Older workprograms may use `wp_<program_id>_<YYYY-MM-DD>/`.
 New workprograms should use `work_program_<program_id>/` per
 `00_Admin/guides/ai_operations/guide_workflows.md`. Workbundles should use the
 canonical `wb_` prefix.
@@ -894,6 +922,11 @@ Workbook authors MUST ensure every execution workbook includes:
 - explicit pre-execution readiness gate,
 - ordered execution queue,
 - verification checklist,
+- acceptance evidence capable of observing the claim it supports: a structural
+  or existence check does not substantiate a semantic or output-appearance
+  claim, and a claim about rendered or visual output requires evidence that can
+  actually observe that output. This applies to acceptance claims only; it does
+  not impose visual review on non-visual work,
 - selfcheck results table,
 - requestor review gate.
 - initial-draft selfcheck evidence row (iteration `0`) when the workbook is new
@@ -948,7 +981,6 @@ constraints carry forward, and what is still open.
 
 **When to use:**
 
-- Director-to-Coordinator dispatch (replaces full state re-read).
 - Coordinator-to-Executor phase handoff within a multi-phase workbook.
 - Workbundle closeout hand-off to a follow-on workbundle or workprogram.
 - Any lane transition where the next agent would otherwise need to read 3+
@@ -1070,25 +1102,37 @@ Status table, `work_state.yaml` active artifacts entry, and harvest/plan docs.
 
 ### Normative Rules
 
-- Agents MUST update required surfaces on every phase transition.
+- Agents MUST update required surfaces when a **material** change occurs:
+  disposition, next owner, next required gate, scope, or an actionable
+  validation finding. A phase transition that changes none of those -- for
+  example an internal Executor-to-Reviewer shift inside one agent's own
+  context -- requires no update. This matches the event-driven rule in
+  `AGENTS.md` Context Management; do not reintroduce a per-transition cadence.
   Optional surfaces MAY be updated at agent discretion.
 - Required surfaces are the minimum signal set for resumption and crosscheck. Omitting
   them creates context gaps that increase cold-start overhead.
 - `work_state.yaml` is always required because it is the single canonical active-artifact
   index. Update it on activation, on status change, and on closeout.
 - The bundle README Status table is required for all workbundle tiers because it provides
-  the Director/operator at-a-glance view without reading individual workbooks.
+  the operator at-a-glance view without reading individual workbooks.
+- `00_Admin/scripts/update_artifact_status.py --id <artifact_id> --status <status>
+  [--note "<text>"]` updates both the `work_state.yaml` entry and the matching bundle
+  README Status table row in one step (use `--dry-run` to preview; `--no-readme` to skip
+  the README update). Prefer it over hand-editing both surfaces separately.
 - Harvest docs and plan docs are optional because they are supplementary artifacts —
   their absence does not block resumption.
 
 ### Update Cadence
 
-Required surfaces MUST be updated at these triggers:
+Required surfaces MUST be updated at these material triggers:
 
 1. Workbook/workbundle activated (status: planned → active)
-2. Phase completion (workbook phase checkbox swept, frontmatter version bumped)
+2. Phase completion **that changes disposition, next owner, or the next
+   required gate** — a phase whose completion changes none of those needs no
+   update
 3. Scope change or new dependency discovered
-4. Completion / closeout (status: active → completed)
+4. An actionable validation finding (a result requiring action)
+5. Completion / closeout (status: active → completed)
 
 Optional surfaces SHOULD be updated at the same triggers when they exist.
 
@@ -1132,7 +1176,7 @@ separate checkpoint file is needed.
 No re-authorization is required for a restart after interruption. The original
 delegation scope, authority level, and workbook design decisions apply unchanged
 to the resumed or restarted lane. The resuming agent does not need a new dispatch
-from the Coordinator or Director tier unless the scope has changed.
+from the Coordinator unless the scope has changed.
 
 ### Merge Behavior
 
@@ -1359,7 +1403,7 @@ Scope: Standardize runbook references and update documentation
 
 ```text
 
-Note: `rb_` is the canonical prefix for runbooks per `guide_naming_conventions.md`. Do not confuse this with legacy
+Note: `rb_` is the canonical prefix for runbooks per `guide_naming_conventions.md`. Do not confuse this with an older
 `runbook_` naming, which is deprecated.
 
 ### Anti-Pattern 5: Over-Documenting Workbundles

@@ -7,6 +7,8 @@ license: Apache-2.0
 last_updated: 2026-06-10
 owner: ai_ops
 ai_role: executor
+promotion_target: "<repo-relative canonical home or none - project local>"
+promotion_gate: "<named approval required for promotion>"
 model_profile: "<model_a>:<reasoning_level> | <model_b>:<reasoning_level>"
 # model_profile guidance: select tier based on task complexity:
 #   low (haiku-class)   -- research, read-only, bounded repeatable steps
@@ -194,6 +196,11 @@ See `00_Admin/guides/authoring/guide_workbooks.md` section
   that must preserve behavior, define a parity check vs. an accepted baseline
   and record the result (see `00_Admin/guides/authoring/guide_workbooks.md` Behavior-Parity pattern);
   otherwise `not_applicable`
+- [ ] Source immutability: if this run ingests external inputs, confirm
+  originals are preserved unmodified and an inventory (names, paths, sizes,
+  hashes, timestamps) plus admission dispositions are recorded before
+  conversion (see `runbundle_readme_template.md` Intake / Admission Contract);
+  otherwise `not_applicable`
 
 ### Runtime Environment & External Data Gate (Conditional)
 
@@ -277,6 +284,14 @@ python 00_Admin/scripts/validate_repo_rules.py --config 00_Admin/configs/validat
 - Validation commands executed
 - Outputs created/updated
 - Postconditions met
+
+**Evidence adequacy.** Acceptance evidence MUST be capable of observing the
+claim it supports. Structural or metadata checks (file exists, XML parses,
+schema valid, counts match) are **supporting evidence only**. When a claim is
+about usability, appearance, or runtime behavior (a rendered view, a loaded
+layer, an interactive result), it requires **live/rendered/operator evidence**
+(screenshot, named-view capture, or operator disposition); a structural check
+alone does not close it. See `guide_runbooks.md` Evidence Adequacy.
 
 ---
 

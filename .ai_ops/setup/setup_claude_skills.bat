@@ -5,6 +5,37 @@ REM on supported Copilot surfaces.
 
 setlocal enableextensions enabledelayedexpansion
 
+REM Capture the script's own location BEFORE the arg-parse loop runs.
+REM Plain `shift` shifts %0 along with %1-%9 in Windows batch; resolving
+REM %~f0 after the loop can silently produce a wrong-but-plausible path
+REM once flags are parsed.
+set "REPO_ROOT="
+set "SCRIPT_DIR="
+for %%I in ("%~f0") do set "SCRIPT_DIR=%%~dpI"
+if defined SCRIPT_DIR (
+  set "AIOPS_DOT="
+  for %%I in ("!SCRIPT_DIR!..") do set "AIOPS_DOT=%%~fI"
+  if defined AIOPS_DOT if exist "!AIOPS_DOT!\workflows\" (
+    for %%I in ("!AIOPS_DOT!\..") do set "REPO_ROOT=%%~fI"
+  )
+)
+if not defined REPO_ROOT if exist "%CD%\ai_ops\.ai_ops\workflows\" (
+  set "REPO_ROOT=%CD%\ai_ops"
+)
+if not defined REPO_ROOT if exist "%CD%\..\ai_ops\.ai_ops\workflows\" (
+  set "REPO_ROOT=%CD%\..\ai_ops"
+)
+if not defined REPO_ROOT if exist "%CD%\.ai_ops\workflows\" (
+  set "REPO_ROOT=%CD%"
+)
+if not defined REPO_ROOT (
+  echo Could not resolve ai_ops repo root from script or current directory.
+  echo Script directory: !SCRIPT_DIR!
+  echo Current directory: !CD!
+  exit /b 1
+)
+set "WORKFLOW_DIR=%REPO_ROOT%\.ai_ops\workflows"
+
 set "scope=repo"
 set "dry_run=0"
 set "assume_yes=0"
@@ -63,33 +94,6 @@ echo Unknown option: %~1
 goto usage_error
 
 :args_done
-set "REPO_ROOT="
-set "SCRIPT_DIR="
-for %%I in ("%~f0") do set "SCRIPT_DIR=%%~dpI"
-if defined SCRIPT_DIR (
-  set "AIOPS_DOT="
-  for %%I in ("!SCRIPT_DIR!..") do set "AIOPS_DOT=%%~fI"
-  if defined AIOPS_DOT if exist "!AIOPS_DOT!\workflows\" (
-    for %%I in ("!AIOPS_DOT!\..") do set "REPO_ROOT=%%~fI"
-  )
-)
-if not defined REPO_ROOT if exist "%CD%\ai_ops\.ai_ops\workflows\" (
-  set "REPO_ROOT=%CD%\ai_ops"
-)
-if not defined REPO_ROOT if exist "%CD%\..\ai_ops\.ai_ops\workflows\" (
-  set "REPO_ROOT=%CD%\..\ai_ops"
-)
-if not defined REPO_ROOT if exist "%CD%\.ai_ops\workflows\" (
-  set "REPO_ROOT=%CD%"
-)
-if not defined REPO_ROOT (
-  echo Could not resolve ai_ops repo root from script or current directory.
-  echo Script directory: !SCRIPT_DIR!
-  echo Current directory: !CD!
-  exit /b 1
-)
-set "WORKFLOW_DIR=%REPO_ROOT%\.ai_ops\workflows"
-
 REM Resolve install target and workflow relative path based on scope
 if /I "!scope!"=="workspace" (
   for %%I in ("%REPO_ROOT%\..") do set "WORKSPACE_ROOT=%%~fI"
@@ -135,45 +139,32 @@ if defined has_entries if "!assume_yes!"=="0" if not "!force!"=="1" (
   )
 )
 
-REM Create .ai_ops\local\work_state.yaml if it doesn't already exist (idempotent)
-set "WORK_STATE_FILE=%REPO_ROOT%\.ai_ops\local\work_state.yaml"
-if "!dry_run!"=="1" (
-  if not exist "!WORK_STATE_FILE!" (
-    echo [dry-run] Would create: !WORK_STATE_FILE!
-  )
-) else (
-  if not exist "!WORK_STATE_FILE!" (
-    if not exist "%REPO_ROOT%\.ai_ops\local" mkdir "%REPO_ROOT%\.ai_ops\local"
-    (
-      echo # ai_ops work state ? machine-local, gitignored.
-      echo # Written by /work and /closeout. Never commit.
-      echo schema_version: "1.0.0"
-      echo work_context:
-      echo   active_artifacts: []
-      echo   updated_at: null
-      echo   checkpoints: []
-      echo telemetry:
-      echo   last_bootstrap_mode: null
-      echo   last_context_refresh: null
-    ) > "!WORK_STATE_FILE!"
-    echo Created .ai_ops\local\work_state.yaml ^(empty initial state^).
-  )
-)
-
-REM Workspace scope bypasses the generator (generator resolves to repo scope only).
+REM Both scopes route through the real generator; --install-root lets
+REM workspace scope use the same full-field renderer as repo scope. The
+REM setup fails closed when the generator is unavailable.
 set "ran_generator=0"
-if /I not "!scope!"=="workspace" (
-  if exist "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" (
-    where python >nul 2>&1
-    if not errorlevel 1 (
+set "generator_failed=0"
+if exist "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" (
+  where python >nul 2>&1
+  if not errorlevel 1 (
+    if /I "!scope!"=="workspace" (
+      if "!dry_run!"=="1" (
+        python "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" --targets claude --scope workspace --install-root "!WORKSPACE_ROOT!" --dry-run
+      ) else (
+        python "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" --targets claude --scope workspace --install-root "!WORKSPACE_ROOT!"
+      )
+    ) else (
       if "!dry_run!"=="1" (
         python "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" --targets plugin claude --dry-run
       ) else (
         python "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" --targets plugin claude
       )
-      if not errorlevel 1 (
-        set "ran_generator=1"
-      )
+    )
+    set "generator_status=!ERRORLEVEL!"
+    if "!generator_status!"=="0" (
+      set "ran_generator=1"
+    ) else (
+      set "generator_failed=1"
     )
   )
 )
@@ -188,55 +179,15 @@ if "!ran_generator!"=="1" (
   exit /b 0
 )
 
-if /I not "!scope!"=="workspace" (
-  echo Generator unavailable; falling back to legacy wrapper creation path.
+if "!generator_failed!"=="1" (
+  echo Generator refused the setup request; no fallback writes will be attempted.
+  endlocal
+  exit /b 1
 )
 
-for %%f in (!WORKFLOW_DIR!\*.md) do (
-  set "skill_name=%%~nf"
-  set "skill_dir=!INSTALL_TARGET!\!skill_name!"
-  set "write_skill=1"
-
-  if exist "!skill_dir!\SKILL.md" (
-    if "!force!"=="0" (
-      echo Skip existing: !skill_dir!
-      set "write_skill=0"
-    )
-  )
-
-  if "!write_skill!"=="1" (
-    if "!dry_run!"=="1" (
-      echo Would create: !skill_dir!\SKILL.md
-    ) else (
-      mkdir "!skill_dir!" 2>nul
-
-      REM Extract description from frontmatter (first match only)
-      set "desc="
-      for /f "tokens=1,* delims=:" %%a in ('findstr /B "description:" "%%f"') do (
-        if not defined desc set "desc=%%b"
-      )
-      if not defined desc set "desc= Run ai_ops workflow !skill_name!"
-
-      > "!skill_dir!\SKILL.md" (
-        echo ---
-        echo name: !skill_name!
-        echo description:!desc!
-        echo ---
-        echo.
-        echo Read `!WORKFLOW_REL!/!skill_name!.md` and follow its instructions.
-      )
-      echo Created: !skill_dir!
-    )
-  )
-)
-
-echo.
-echo Installed skills to !INSTALL_TARGET!.
-echo Skills are now available as /work, /health, /closeout, etc.
-echo.
-
+echo Generator unavailable; refusing fallback writes because the generated export is authoritative.
 endlocal
-exit /b 0
+exit /b 127
 
 :usage
 echo Usage:
