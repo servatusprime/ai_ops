@@ -1191,3 +1191,45 @@ future_work_completion:
   - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_friction_followon_reconciled_2026-10-23.md
   - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_rework_execution_recheck2_2026-10-23.md
 ```
+
+### Future-work completion receipt: 00000000-0000-4000-8000-202610240001
+
+```yaml
+future_work_completion:
+  registry_id: fw_20261023_01
+  run_id: 00000000-0000-4000-8000-202610240001
+  status: success
+  exit_code: 0
+  scope_sha256: 20fe74a665ad2f6d67d104e3ab54d1319221c8458272c4dd9365791c4a7a9c13
+  completion_artifact_sha256: 6f88c2e7bc77ccd3a7eac12468adf8783b552c56878261618c8d3cf2e0053090
+  completion_workbook: 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/wb_closeout_friction_followon_01_2026-10-23.md
+  completion_state: ready_for_receipt
+  actor: codex-closer
+  scorecard_source_sha256: 7968d6c3ce5c38e891d2eaaa06ce7e6c576d62ac34e477dd026259f311afdd3e
+  evidence_refs:
+  - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_friction_followon_recheck3_2026-10-23.md
+  - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_live_sol_2026-10-24.md
+  review_refs:
+  - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_friction_followon_recheck3_2026-10-23.md
+```
+
+### Future-work completion receipt: 00000000-0000-4000-8000-202610240003
+
+```yaml
+future_work_completion:
+  registry_id: fw_20261023_03
+  run_id: 00000000-0000-4000-8000-202610240003
+  status: success
+  exit_code: 0
+  scope_sha256: 9309e8f034ecbc7500a41fbe17087d4ba4e8cf1b37bd80f166493b8cd52e03f8
+  completion_artifact_sha256: 6f88c2e7bc77ccd3a7eac12468adf8783b552c56878261618c8d3cf2e0053090
+  completion_workbook: 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/wb_closeout_friction_followon_01_2026-10-23.md
+  completion_state: ready_for_receipt
+  actor: codex-closer
+  scorecard_source_sha256: 69abece600aaea0088175197454455be9ce408fba788fd11cba532ea80489540
+  evidence_refs:
+  - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_friction_followon_recheck3_2026-10-23.md
+  - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_live_sol_2026-10-24.md
+  review_refs:
+  - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_friction_followon_recheck3_2026-10-23.md
+```

@@ -373,11 +373,15 @@ def expand_patterns(repo_root: str, patterns: List[str]) -> List[str]:
 
 def filter_machine_local_artifacts(paths: List[str], repo_root: str) -> List[str]:
     """Keep ignored closeout packets out of governed document validation."""
-    packet_prefix = os.path.normpath(os.path.join("90_Sandbox", "ai_workbooks", "_closeout_packets"))
+    packet_prefix = os.path.normpath(
+        os.path.join("90_Sandbox", "ai_workbooks", "_closeout_packets")
+    ).casefold()
     return [
         path
         for path in paths
-        if not os.path.normpath(os.path.relpath(path, repo_root)).startswith(packet_prefix + os.sep)
+        if not os.path.normpath(os.path.relpath(path, repo_root)).casefold().startswith(
+            packet_prefix + os.sep
+        )
     ]
 
 
@@ -1146,6 +1150,9 @@ def check_prefix_in_dir(dir_path: str, prefix: str, warnings: List[str], rule_id
 
 def check_workbook_prefix(base_dir: str, warnings: List[str]) -> None:
     for root, dirs, files in os.walk(base_dir):
+        if "_closeout_packets" in {part.casefold() for part in Path(root).parts}:
+            dirs[:] = []
+            continue
         if (
             "wp_" in os.path.basename(root)
             or "wb_" in os.path.basename(root)

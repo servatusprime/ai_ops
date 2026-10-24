@@ -2,7 +2,7 @@
 title: Future Work Scorecard
 version: 0.1.0
 status: active
-updated: '2026-10-23'
+updated: '2026-10-24'
 source_registry: 00_Admin/backlog/future_work_registry.yaml
 generated_by: 00_Admin/scripts/generate_future_work_scorecard.py
 ---
@@ -39,9 +39,7 @@ generated_by: 00_Admin/scripts/generate_future_work_scorecard.py
 | fw_20260817_02 | Stable atlas-controller layer id in build_project_layouts.py | tooling | governed_repo | low | medium | m | deferred | medium | 2026-11-01 |
 | fw_20260817_04 | Dead group-comparison branch in build_project_layouts.py's patch_startup_state | tooling | governed_repo | low | low | s | deferred | low | 2026-11-01 |
 | fw_20261018_01 | Parked closeout security gate rework and post-landing cost measurement | validation | ai_ops | low | medium | l | partial | low | 2026-12-01 |
-| fw_20261023_01 | Closeout approval packet builder and applier (approval-to-tree binding), Tier 2 | workflow | ai_ops | low | medium | l | ready | low | 2026-12-15 |
 | fw_20261023_02 | Bounded read-only cross-repository relocation-reference sweep, Tier 3 | tooling | ai_ops | low | medium | m | partial | low | 2026-12-15 |
-| fw_20261023_03 | Future-work completion command, receipt and policy rewrite, Tier 3 | validation | ai_ops | low | medium | m | ready | low | 2026-12-15 |
 <!-- markdownlint-enable MD013 -->
 
 ## Notes

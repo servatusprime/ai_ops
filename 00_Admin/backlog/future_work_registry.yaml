@@ -1365,45 +1365,6 @@ entries:
       remains receipt-backed. `fw_20261023_02` (relocation sweep) remains
       deferred under its own trigger.
 
-  - id: fw_20261023_01
-    title: Closeout approval packet builder and applier (approval-to-tree binding), Tier 2
-    domain: workflow
-    target_repo: ai_ops
-    source_workbook: null
-    completion_workbook: null
-    proposed_workbook: 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/wb_closeout_friction_followon_01_2026-10-23.md
-    scope: >-
-      Implement and verify a machine-local closeout packet builder and applier
-      that binds one commit approval to the exact approved bytes, frozen routing
-      and hook state, projected tree, cost profile, base HEAD, branch and index
-      projection. The route must normalize multi-line commit messages, fail
-      closed on recomputed cost limits, and expose a verified push-readiness
-      check without pushing.
-    priority: low
-    benefit: medium
-    effort: l
-    readiness: ready
-    risk_if_deferred: low
-    activation_trigger: >-
-      Wrong-scope or drifted commits recur after the Tier 1 corrections land,
-      or the operator makes tree-bound approval a goal.
-    next_review: 2026-12-15
-    status: active
-    owner: ai_ops
-    created: 2026-10-23
-    compacted_context:
-      source: >-
-        Operator decision on 2026-10-23 to proceed with the follow-on friction
-        workbook and its bounded packet implementation slice.
-      note: >-
-        The implementation exists in the current working tree and recheck3
-        accepts it with notes; the live HEAD entry still has a null
-        `proposed_workbook`, so a fresh completion receipt remains gated.
-    notes: >-
-      Prior success receipts are superseded evidence. Do not apply the pending
-      closeout packet or create a success receipt until the exact workbook
-      binding is present at HEAD; then rebuild the packet from the final
-      synchronized tree.
 
   - id: fw_20261023_02
     title: Bounded read-only cross-repository relocation-reference sweep, Tier 3
@@ -1443,40 +1404,3 @@ entries:
     notes: >-
       A discovered match never grants permission to edit another repository; the sweep stays
       read-only.
-
-  - id: fw_20261023_03
-    title: Future-work completion command, receipt and policy rewrite, Tier 3
-    domain: validation
-    target_repo: ai_ops
-    source_workbook: null
-    completion_workbook: null
-    proposed_workbook: 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/wb_closeout_friction_followon_01_2026-10-23.md
-    scope: >-
-      Replace manual future-work deletion, run-log and scorecard synchronization
-      with a receipt-backed completion transaction. Require a completed workbook,
-      retained non-blocking review evidence, exact registry parity, independent
-      scorecard parity and recovery evidence; only success may delete the entry,
-      while failed, pending and stale outcomes preserve it.
-    priority: low
-    benefit: medium
-    effort: m
-    readiness: ready
-    risk_if_deferred: low
-    activation_trigger: >-
-      Two false completions, or a scorecard that was not regenerated after a
-      completion.
-    next_review: 2026-12-15
-    status: active
-    owner: ai_ops
-    created: 2026-10-23
-    compacted_context:
-      source: >-
-        Operator decision on 2026-10-23 to proceed with the follow-on friction
-        workbook and its bounded completion transaction slice.
-      note: >-
-        The implementation exists in the current working tree and recheck3
-        accepts it with notes; the live HEAD entry still has a null
-        `proposed_workbook`, so a fresh completion receipt remains gated.
-    notes: >-
-      Receipt artifact hashes are point-in-time facts. The durable run-log marker
-      and registry state are verified; prior six receipts remain superseded.
