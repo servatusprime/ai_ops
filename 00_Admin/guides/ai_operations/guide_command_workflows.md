@@ -285,37 +285,38 @@ Run a repo health check--verify the repo is consistent and clean.
 
 ### /closeout
 
-Finalize a work session with cleanup, lint, commit, and push.
+Prepare a read-only closeout, then publish only through exact approval-gated
+commit and separate push steps.
 
 | Mode | Behavior |
 | --- | --- |
-| Inside | Full turbo workflow: cleanup workbundle, harvest scratchpad, lint, commit, push |
-| External | Simplified workflow: cleanup work notes, lint, commit, push |
+| Inside | Read-only preparation, cleanup/harvest proposal, validation, exact commit approval, then separate push approval |
+| External | Read-only preparation, repo validation, exact commit approval, then separate push approval |
 
 **Closeout steps (Inside):**
 
-1. Update workbundle status and checkpoint notes
-2. Harvest keepers from scratchpad, archive or delete rest
-3. If `future_work_registry.yaml` changed, regenerate future work scorecard
-4. Run linters (markdownlint, yamllint, etc.)
-5. Stage changes with summary
-6. Commit with turbo authorization (streamlined, no pause)
-7. Push to remote
+1. Update workbundle status and checkpoint notes in the preparation report
+2. Harvest keepers and propose archive/prune treatment; do not mutate during preparation
+3. If `future_work_registry.yaml` changed, regenerate the scorecard in approved scope
+4. Run configured validation and linters
+5. Freeze exact include/exclude scope and security applicability
+6. Obtain one exact commit approval, then stage only the approved paths
+7. Obtain separate push approval naming the verified commit SHA, remote, and branch
 
 **Closeout steps (External):**
 
 1. Update any work tracking artifacts
-2. Run repo's configured linters (or common fallbacks)
-3. Stage changes with summary
-4. Commit (confirm before push)
-5. Push to remote
+2. Run repo's configured validators and linters
+3. Freeze exact include/exclude scope and security applicability
+4. Obtain exact commit approval and stage only the approved paths
+5. Obtain separate push approval naming the verified commit SHA, remote, and branch
 
 **Workflow:** `.ai_ops/workflows/closeout.md`
 **Runbook:** `00_Admin/runbooks/rb_commit_push_streamlining_01.md`
 
 **Minimum Inputs / Conditions**
 
-- Inside: active workbundle or staged changes; turbo authorization enabled.
+- Inside: active workbundle or staged changes; exact commit and push approvals remain required.
 - External: staged or unstaged changes; user confirms push.
 
 ### /bootstrap
@@ -433,10 +434,10 @@ Use existing artifacts:
 Save scoped work-in-progress and end the session without claiming completion.
 The first leg is read-only: resolve one target, validate it, classify every
 changed path, and show the exact include set, commit message, remote, and
-branch. The workflow then stops for explicit final requestor approval before
-staging, committing, or pushing. `--no-commit` selects a read-only checkpoint;
-`--commit` is accepted as an explicit spelling of save intent but cannot bypass
-the preview and approval gate.
+branch. The default invocation records a checkpoint and does not publish;
+`--commit` explicitly requests publication and still stops for final requestor
+approval before staging, committing, or pushing. `--no-commit` states the
+read-only intent explicitly.
 
 | Mode | Behavior |
 | --- | --- |

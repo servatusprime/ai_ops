@@ -33,6 +33,53 @@ class ValidationCommandPolicyTests(unittest.TestCase):
             )
             self.assertEqual([], errors)
 
+    def test_accepts_separated_and_equals_data_root_forms(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = Path(temp_dir) / "workspace"
+            repo = workspace / "repo"
+            (workspace / "ai_ops" / "00_Admin" / "scripts").mkdir(parents=True)
+            (repo / "scripts").mkdir(parents=True)
+            (repo / "data").mkdir()
+            script = repo / "scripts" / "validate.py"
+            script.write_text("", encoding="utf-8")
+
+            for command in (
+                ["python", "scripts/validate.py", "--data-root", "data"],
+                ["python", "scripts/validate.py", "--data-root=data"],
+            ):
+                with self.subTest(command=command):
+                    self.assertEqual(
+                        [],
+                        MODULE.validate_command_argv(
+                            command,
+                            label="command",
+                            repo_root=repo,
+                            workspace_root=workspace,
+                        ),
+                    )
+
+    def test_rejects_data_root_outside_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = Path(temp_dir) / "workspace"
+            repo = workspace / "repo"
+            (workspace / "ai_ops" / "00_Admin" / "scripts").mkdir(parents=True)
+            (repo / "scripts").mkdir(parents=True)
+            (repo / "scripts" / "validate.py").write_text("", encoding="utf-8")
+
+            for command in (
+                ["python", "scripts/validate.py", "--data-root", "../../outside"],
+                ["python", "scripts/validate.py", "--data-root=C:\\outside"],
+            ):
+                with self.subTest(command=command):
+                    self.assertTrue(
+                        MODULE.validate_command_argv(
+                            command,
+                            label="command",
+                            repo_root=repo,
+                            workspace_root=workspace,
+                        )
+                    )
+
     def test_rejects_shell_strings_shell_metacharacters_and_escape_paths(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace = Path(temp_dir) / "workspace"

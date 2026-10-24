@@ -259,16 +259,29 @@ command text: they cannot
 fully control operations performed through broadly allowed interpreters,
 alternate executable paths, or unrecognized wrappers. They provide an
 interactive approval layer; the human commit/push gate remains authoritative.
-File-write adapters may deny paths outside the workspace root; the guard hook
-joins the overlay allowlist.
+File-write adapters may deny paths outside the workspace root.
 The settings synchronizer must reject workspace escapes, reparse points, and
 prompt-gated Git mutation/network additions before it writes, and must preserve the template's
 allow, ask, and deny rules.
 
-`.claude/settings.local.json` is a machine-local overlay. It may retain the two
-setup-shell permissions, the read-only SessionStart context hook, and the
-advisory Level 4 PreToolUse warning. Dynamic package execution from hooks is
-disabled until a repository-local integrity-controlled replacement is adopted.
+The portable deny rules block high-confidence literal forms of commit
+verification bypasses (`--no-verify` and a standalone commit `-n`), hook-path
+configuration, `git config --global`, `git update-ref`, and the documented
+output redirection forms. They intentionally do not deny arbitrary bundled
+short-option text; ordinary branch/log commands stay allowed except that
+`git log --grep=`, `git branch --format=`, and `git branch -f` remain
+approval-gated. Commit messages that contain the denied text (for example
+` -n ` or `--no-verify`) are denied too; pass the message with
+`git commit -F <file>`.
+These rules are a deterrent, not enforcement: an allowed
+interpreter can still run Git, and `--no-verify` skips client-side hooks. No
+agent (Claude, Codex, or other) may use these routes to bypass the closeout
+security gate.
+
+`.claude/settings.local.json` is a machine-local overlay. It may retain the
+workspace write-guard hook and the contained temp-directory environment.
+Dynamic package execution from hooks is disabled until a repository-local
+integrity-controlled replacement is adopted.
 Local overlays never promote permissions into the portable template, and
 workspace-root settings changes require workspace-owner authority.
 
@@ -941,7 +954,7 @@ workflow file.
 | --------------- | ------------------------ | ------------------------------------------ |
 | /work | Coordinator -> Executor | Establish work context, execute tasks |
 | /work_status | Coordinator | Summarize active work and blockers |
-| /work_savepoint | Executor | Preview and, after explicit final approval, commit/push a scoped WIP savepoint; `--no-commit` is checkpoint-only |
+| /work_savepoint | Executor | Default is a read-only WIP checkpoint; `--commit` requests publication and still requires exact commit and separate push approvals |
 | /harvest | Coordinator -> Executor | Harvest/prune artifacts |
 | /crosscheck | Reviewer | Review and report only |
 | /health | Reviewer | Report-only repo health check |

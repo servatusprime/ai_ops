@@ -13,6 +13,7 @@
 .cache/
 .ruff_cache/
 .lint_repo_validator.log
+/tmp/
 
 # Python
 __pycache__/

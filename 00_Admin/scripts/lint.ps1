@@ -11,12 +11,12 @@ $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $repoName = Split-Path -Leaf $repoRoot
 $missing = @()
 $trustedNodeSha256 = "f13ac3ca23248dc389507e8fe38c34489ab7edb3e6d6700eb6da6a0b7e128eaf"
-$trustedMarkdownlintSha256 = "644e27c3425f651751382d6963b3b6ca6a2395764c2f64efe7e03fc71e604e12"
-$trustedMarkdownlintPackageSha256 = "21280478d4322f01e1e59b802a663b2d0c2a5d6ef26c76a6ce3e3c025d4703ec"
-$trustedMarkdownlintVersion = "0.47.0"
+$trustedMarkdownlintSha256 = "bb7c495c24811040b847c3d6f081b3b68924912e17e691bb9ca752769f4c8eb3"
+$trustedMarkdownlintPackageSha256 = "fe94d4e8bd6c4056a466de8a5a81732b0a5ca524e9fb0c661f4a63ddf1dd3051"
+$trustedMarkdownlintVersion = "0.49.1"
 $trustedCiNodeVersion = "24.21.0"
 $trustedCiNodeSha256 = "7fde7b8afa198da66257f42ee2001d874c7355631e6d1579a5fb5ef1f246df4c"
-$trustedCiMarkdownlintLockSha256 = "6f7bb1e9a6ceb2f8c64a65abba98b08c670f3dc616d793011063d286a91e86da"
+$trustedCiMarkdownlintLockSha256 = "3d08e615c804651a820287246daba6b26c9ddf08306b5dc6d979188e158cd93d"
 
 function Test-WritableDirectory {
     param(

@@ -69,10 +69,13 @@
 |   |   |-- setup_contract.yaml
 |   |   |-- validator/
 |   |   |   |-- schema_aiops_session.yaml
+|   |   |   |-- schema_closeout_approval.yaml
+|   |   |   |-- schema_closeout_approval_packet.yaml
 |   |   |   |-- schema_closeout_security_receipt.yaml
 |   |   |   |-- schema_execution_graph.yaml
 |   |   |   |-- schema_execution_graph_run_state.yaml
 |   |   |   |-- schema_execution_state.yaml
+|   |   |   |-- schema_future_work_completion_receipt.yaml
 |   |   |   |-- schema_run_family_consumption.yaml
 |   |   |   |-- schema_run_family_context_pack.yaml
 |   |   |   |-- schema_run_family_intake_receipt.yaml
@@ -185,12 +188,15 @@
 |   |   |-- rb_workflow_frontmatter_validation_01.md
 |   |   +-- run_family_registry.yaml
 |   |-- scripts/
+|   |   |-- apply_closeout_packet.py
 |   |   |-- bootstrap_governed_repo.py
+|   |   |-- build_closeout_packet.py
 |   |   |-- check_outside_writes.py
 |   |   |-- check_workflow_exports_drift.py
 |   |   |-- cleanup_sandbox.ps1
 |   |   |-- cleanup_trash.ps1
 |   |   |-- closeout_security_prepass.py
+|   |   |-- complete_future_work.py
 |   |   |-- diagnose_file_locks.ps1
 |   |   |-- fixtures/
 |   |   |   |-- run_validate_repo_rules_fixtures.py
@@ -278,7 +284,9 @@
 |   |   |       +-- run_receipt_valid.yaml
 |   |   |-- test_check_outside_writes.py
 |   |   |-- test_claude_settings_policy.py
+|   |   |-- test_closeout_packet_contract.py
 |   |   |-- test_closeout_security_receipt.py
+|   |   |-- test_future_work_completion.py
 |   |   |-- test_future_work_registry_lifecycle.py
 |   |   |-- test_governance_seed_contracts.py
 |   |   |-- test_graph_artifact_closure.py

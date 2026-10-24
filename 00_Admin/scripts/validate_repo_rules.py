@@ -21,6 +21,7 @@ ALLOWED_STATUS = {
     "active",
     "completed",
     "deprecated",
+    "archived",
     "pending_owner_gate",
 }
 IMPLEMENTED_RULE_IDS = {f"VS{number:03d}" for number in range(1, 38)}
@@ -71,9 +72,22 @@ def _has_reparse_component(path: str, root: str) -> bool:
     return False
 
 
+def _normalize_configured_path(path: str, *, label: str) -> str:
+    """Interpret configured paths consistently across Windows and POSIX hosts."""
+    value = os.fspath(path)
+    if os.name != "nt":
+        # Configuration may be authored on Windows and evaluated in Linux CI.
+        # Treat backslashes as separators so ``..\\outside`` cannot become a
+        # harmless-looking filename inside the repository.
+        value = value.replace("\\", "/")
+        if re.match(r"^[A-Za-z]:/", value) or value.startswith("//"):
+            raise ValueError(f"{label} uses a foreign absolute path: {path}")
+    return value
+
+
 def _validate_repo_path(path: str, repo_root: str, *, label: str, must_exist: bool = True) -> str:
     """Inspect lexical identity before resolving a path for containment."""
-    lexical_path = os.path.abspath(path)
+    lexical_path = os.path.abspath(_normalize_configured_path(path, label=label))
     lexical_root = os.path.abspath(repo_root)
     if _has_reparse_component(lexical_path, lexical_root):
         raise ValueError(f"{label} crosses a symlink/reparse point: {path}")
@@ -357,8 +371,22 @@ def expand_patterns(repo_root: str, patterns: List[str]) -> List[str]:
     return sorted(set(results))
 
 
+def filter_machine_local_artifacts(paths: List[str], repo_root: str) -> List[str]:
+    """Keep ignored closeout packets out of governed document validation."""
+    packet_prefix = os.path.normpath(
+        os.path.join("90_Sandbox", "ai_workbooks", "_closeout_packets")
+    ).casefold()
+    return [
+        path
+        for path in paths
+        if not os.path.normpath(os.path.relpath(path, repo_root)).casefold().startswith(
+            packet_prefix + os.sep
+        )
+    ]
+
+
 def list_tracked_files(root: str) -> List[str]:
-    result = subprocess.run(
+    tracked = subprocess.run(
         ["git", "-c", "core.quotepath=false", "-C", root, "ls-files"],
         capture_output=True,
         text=True,
@@ -366,9 +394,32 @@ def list_tracked_files(root: str) -> List[str]:
         errors="replace",
         check=False,
     )
-    if result.returncode != 0:
+    untracked = subprocess.run(
+        [
+            "git",
+            "-c",
+            "core.quotepath=false",
+            "-C",
+            root,
+            "ls-files",
+            "--others",
+            "--exclude-standard",
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+    if tracked.returncode != 0 or untracked.returncode != 0:
         return []
-    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    return sorted(
+        {
+            line.strip()
+            for line in tracked.stdout.splitlines() + untracked.stdout.splitlines()
+            if line.strip()
+        }
+    )
 
 
 def _should_exclude_repo_path(parts: List[str]) -> bool:
@@ -1099,6 +1150,9 @@ def check_prefix_in_dir(dir_path: str, prefix: str, warnings: List[str], rule_id
 
 def check_workbook_prefix(base_dir: str, warnings: List[str]) -> None:
     for root, dirs, files in os.walk(base_dir):
+        if "_closeout_packets" in {part.casefold() for part in Path(root).parts}:
+            dirs[:] = []
+            continue
         if (
             "wp_" in os.path.basename(root)
             or "wb_" in os.path.basename(root)
@@ -1176,9 +1230,24 @@ def check_future_work_registry(path: str, warnings: List[str]) -> None:
             completion_workbook = match.group(1).strip("'\"")
             if completion_workbook.lower() in {"null", "~"}:
                 continue
-            if completion_workbook in log_text:
+            marker = re.compile(
+                r"###\s+Future-work completion receipt:\s+[^\n]+\n\n```yaml\n"
+                r"future_work_completion:\n(?P<body>.*?)\n```",
+                flags=re.MULTILINE | re.DOTALL,
+            )
+            completed_markers = [match.group("body") for match in marker.finditer(log_text)]
+            if any(
+                re.search(
+                    rf"^\s*registry_id:\s*{re.escape(entry.splitlines()[0].split(':', 1)[-1].strip())}\s*$",
+                    body,
+                    re.MULTILINE,
+                )
+                and re.search(r"^\s*status:\s*success\s*$", body, re.MULTILINE)
+                and re.search(rf"^\s*completion_workbook:\s*{re.escape(completion_workbook)}\s*$", body, re.MULTILINE)
+                for body in completed_markers
+            ):
                 warnings.append(
-                    "VS012: completion_workbook completed in run log: "
+                    "VS012: success completion receipt found in run log: "
                     f"{completion_workbook}"
                 )
 
@@ -1880,7 +1949,9 @@ def main() -> int:
             continue
         rule_id = rule.get("id")
         try:
-            paths = expand_patterns(repo_root, rule.get("paths", []))
+            paths = filter_machine_local_artifacts(
+                expand_patterns(repo_root, rule.get("paths", [])), repo_root
+            )
         except ValueError as exc:
             errors.append(f"{rule_id}: {exc}")
             continue

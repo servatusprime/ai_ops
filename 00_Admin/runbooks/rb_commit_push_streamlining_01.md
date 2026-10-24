@@ -1,10 +1,10 @@
 ---
 title: Runbook: Commit/Push Streamlining
-version: 0.2.0
+version: 0.3.0
 status: active
 license: Apache-2.0
 created: 2026-01-24
-updated: 2026-08-26
+updated: 2026-10-23
 owner: ai_ops
 ---
 
@@ -60,15 +60,50 @@ The marker only applies to the current scope. Any scope expansion requires a new
 3. Run validation/lint commands, including alternate direct lint handling when
    ignored `90_Sandbox/**` or `99_Trash/**` artifacts are part of the scope.
 4. Provide a change summary in the chat.
-5. If the turbo marker is present, treat the current-scope commit/push approval
-   gate as satisfied. Otherwise, pause for approval.
+5. Treat the turbo marker as descriptive only. Require one exact commit
+   approval naming the final include set and a separate push approval naming the
+   verified commit SHA, remote, and branch.
 6. Record approval evidence in the workbook/work proposal (when applicable) and
    in `00_Admin/logs/log_workbook_run.md` before commit.
 7. If executed workbooks/workbundles are in scope, archive them and repair
    stale references before staging.
-8. Stage, commit, and push.
-9. Report shipped commit/branch details in chat; add a second in-repo log
+8. For a stable exact include set, use the tree-bound packet route documented
+   in `.ai_ops/workflows/closeout.md`; write approval files against
+  `00_Admin/configs/validator/schema_closeout_approval.yaml`; the approval
+  names the run, prepared packet hash, base HEAD, branch, include set,
+  mutation plan, projected tree, actor, timestamp, and reference. Its applier
+  stages and commits only the approved paths and verifies the resulting tree.
+  Otherwise stage and commit the exact approved paths. Push remains a separate
+  approval in both cases.
+9. Push only after the separate push approval names the verified commit SHA,
+   remote, and branch.
+10. Report shipped commit/branch details in chat; add a second in-repo log
    update only when repo policy explicitly requires post-push metadata.
+
+The packet route's single approved script invocation is a ceremony reduction,
+not a permission-policy change. Host prompts are not measured by this runbook;
+until a five-closeout measurement slice exists, keep prompt behavior explicit
+and gated. If a prompt or packet tool fails, stop, preserve the packet and
+staging evidence, and use the manual approved path rather than changing an
+allowlist or substituting a new Git command form.
+When a pre-commit hook is installed, the packet applier runs it once in an
+isolated preflight and once against the actual staged index immediately before
+commit creation, then leaves the installed native pre-commit and commit-msg
+hooks enabled for the ordinary commit. A disposable-clone dry run against the
+real ai_ops shims passed on 2026-10-23 after supplying the ignored generated
+wrapper outputs required by export-drift validation.
+
+Before pushing a packet-applied commit, run:
+
+```powershell
+python 00_Admin/scripts/apply_closeout_packet.py --verify-push --packet <packet>
+```
+
+Treat the returned SHA as the only commit eligible for the separate push
+approval. If packet tooling fails, follow the manual fallback in
+`.ai_ops/workflows/closeout.md`: preserve the packet and evidence, stage only
+the approved paths, verify the staged names and commit binding, then obtain a
+separate push approval.
 
 ## Postconditions
 

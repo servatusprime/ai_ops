@@ -14,7 +14,7 @@ class WorkSavepointContractTests(unittest.TestCase):
     def test_publication_requires_preview_and_final_approval(self) -> None:
         required = (
             "## Purpose",
-            "Invocation expresses",
+            "default invocation is a read-only checkpoint",
             "Publication Preview and Final Approval Gate",
             "exact repo-relative `include`",
             "proposed `savepoint: <brief description>` commit message",
@@ -30,18 +30,18 @@ class WorkSavepointContractTests(unittest.TestCase):
 
     def test_flags_cannot_bypass_approval(self) -> None:
         self.assertIn(
-            "Pass `--no-commit` to create a read-only checkpoint",
+            "Pass `--no-commit` to state the read-only intent explicitly",
             self.workflow,
         )
         self.assertIn(
-            "an explicit spelling of the default save intent",
+            "`--commit` to request publication",
             self.normalized,
         )
         self.assertIn(
             "initial invocation cannot substitute for this final approval",
             self.normalized,
         )
-        self.assertNotIn("Any compatibility `--commit` flag remains inert", self.workflow)
+        self.assertNotIn("an explicit spelling of the default save intent", self.workflow)
 
     def test_scope_and_failure_guards_are_explicit(self) -> None:
         required = (

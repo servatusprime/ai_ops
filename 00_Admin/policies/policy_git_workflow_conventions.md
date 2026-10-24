@@ -64,17 +64,19 @@ git diff --stat -- <path1> <path2> ...
    - Capture evidence before remediation:
      - `icacls .git`
      - exact failing command + error text
-   - Run the ACL/ACE recovery script lane when available (future canonical script), then retry `git add`/`git commit`.
-   - If recovery cannot be completed in-session, stop commit/push and record a blocker note in the active workbook and
-     `00_Admin/logs/log_workbook_run.md`.
+   - Run the ACL/ACE recovery script lane when available (future canonical
+     script), then retry `git add`/`git commit` only after the operator has
+     directed that repair.
+   - If recovery cannot be completed in-session, stop commit/push and record a
+     blocker note in the active workbook and `00_Admin/logs/log_workbook_run.md`.
 3. **Requestor Review Gate (Level 3+ Required)**
    - After validation, provide a change summary (files touched, key edits, validation results).
    - For Level 3+ changes, obtain explicit requestor approval before commit/push (staging is allowed).
    - For Level 4 changes, record approval in the Work Proposal and the execution workbook.
    - For Level 2 changes, use this gate when scope is non-trivial or the requestor asks.
    - Record approval in `00_Admin/logs/log_workbook_run.md`.
-   - If the requestor uses the turbo marker from `rb_commit_push_streamlining_01.md`, proceed without pausing again for
-     the same scope.
+   - A turbo marker never replaces the exact current-turn commit approval or
+     the separate push approval.
 4. **Trash Executed Workbooks**
    - Before staging, move any executed workbooks, workbundles, and companion artifacts from `90_Sandbox/` to
      `99_Trash/` as required by `00_Admin/guides/authoring/guide_workbooks.md`.
@@ -88,13 +90,13 @@ git diff --stat -- <path1> <path2> ...
    - Humans SHOULD run the same step before staging when repo structure changes are expected.
    - In monorepo mode, `<git_root>` may be the workspace root. In split mode, `<git_root>` is the standalone repo root.
 6. **Stage**
-   - `git add -A` and re-check `git status -sb`.
+   - `git add -- <approved include paths>` and re-check `git status -sb`.
 7. **Commit**
    - If no message is provided, the agent selects a short scope-based message and logs it in
      `00_Admin/logs/log_workbook_run.md`.
-   - `git commit -m "summary"`.
+   - `git commit -m "summary"` only after the approved include set is staged.
 8. **Push**
-   - `git push`.
+   - `git push <approved remote> <approved branch>` only after separate push approval.
 
 ## Commit/Push Log (Required)
 

@@ -185,8 +185,9 @@ check, not permission to download one.
    - **Unregistered repos**: require explicit user-provided path if not resolvable. Stop and ask if none given.
    - **Windows**: normalize to forward-slash absolute path.
    - Run `git -C <target_repo> rev-parse --show-toplevel` to confirm repo access and establish `repo_root`.
-     If it fails with `dubious ownership`, run `git config --global --add safe.directory <target_repo>` and
-     re-run. Record `safe_directory_applied: true/false`.
+     If it fails with `dubious ownership`, stop and report the exact target.
+     Do not run `git config --global` from the lint lane. Record
+     `safe_directory_applied: false`.
 2. Confirm target scope.
 3. Read `customizations.validation_policy.governed_mode` from `.ai_ops/local/config.yaml` if governed mode applies.
 4. Detect repo-native validation tools.

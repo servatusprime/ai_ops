@@ -1,8 +1,8 @@
 ---
-description: Validate, commit, and push a scoped work-in-progress savepoint after explicit final approval.
+description: Validate and record a scoped work-in-progress savepoint; publish only after an explicit request and final approval.
 name: work_savepoint
 kind: workflow
-version: 1.3.0
+version: 1.5.0
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -14,10 +14,10 @@ claude:
   model: null
 codex:
   metadata:
-    short-description: Validate, commit, and push a scoped work-in-progress savepoint after explicit final approval.
+    short-description: Validate and record a scoped work-in-progress savepoint; publish only after an explicit request and final approval.
   interface:
     display_name: work_savepoint
-    short_description: Validate, commit, and push a scoped work-in-progress savepoint after explicit final approval.
+    short_description: Validate and record a scoped work-in-progress savepoint; publish only after an explicit request and final approval.
   policy:
     allow_implicit_invocation: false
 exports:
@@ -37,15 +37,11 @@ exports:
 
 ## Purpose
 
-Save selected work-in-progress to the repository and its configured Git remote,
-then end the ai_ops session without claiming completion. Invocation expresses
-save intent. The workflow first validates and previews the exact scope, commit
-message, remote, and branch, then waits for explicit final requestor approval
-before it stages, commits, or pushes.
-
-Pass `--no-commit` to create a read-only checkpoint. `--commit` is accepted as
-an explicit spelling of the default save intent, but it never bypasses the
-final approval gate.
+Validate and record selected work-in-progress, then end the ai_ops session
+without claiming completion. The default invocation is a read-only checkpoint;
+it does not stage, commit, or push. Pass `--commit` to request publication.
+Publication still requires the preview and explicit final requestor approval
+below. Pass `--no-commit` to state the read-only intent explicitly.
 
 ## Inputs and Preconditions
 
@@ -70,7 +66,10 @@ contract.
 5. Emit route metadata: `bootstrap_path`, `resume_basis`, and `reads_applied`.
 6. Do not make content or remediation edits from `/work_savepoint`; transition
    to `/work` for requested changes. Git publication may run only through the
-   approval-gated steps below.
+   approval-gated steps below. When the packet route is used, the approval
+   binds the prepared packet hash, base HEAD, branch, include set, mutation
+   plan, and projected tree; a parked or cost-exceeded packet cannot be
+   released by editing and rehashing its state.
 
 ## Steps
 
@@ -105,10 +104,10 @@ invocation cannot substitute for this final approval.
 
 - No active artifact or explicit target: report that there is nothing scoped
   to save and stop without Git mutation.
-- `--no-commit`: prepare the checkpoint summary and resume instructions, then
-  stop without asking for publication approval.
-- Active work with changes: prepare the scoped publication proposal and final
-  approval gate below.
+- no flag or `--no-commit`: prepare the checkpoint summary and resume
+  instructions, then stop without asking for publication approval.
+- `--commit`: prepare the scoped publication proposal and final approval gate
+  below.
 
 1. **Repo-Root Resolution**: Resolve the target repository root before any git operations.
    - Resolve `target_repo` from: explicit user scope → active artifact `repo` field → `.ai_ops/local/config.yaml` `workspace.work_repos` list.
@@ -155,7 +154,7 @@ invocation cannot substitute for this final approval.
    All required checks must pass. A skipped network-sensitive check is allowed
    only when the configured contract explicitly permits it and the preview
    labels the result partial.
-5. **Publication Preview and Final Approval Gate**: Show:
+5. **Publication Preview and Final Approval Gate** (`--commit` only): Show:
    - selected artifact and repository;
    - exact repo-relative `include`, `related_scope_requires_confirmation`,
      `exclude`, and `ignored_unpublished` lists;
@@ -167,18 +166,44 @@ invocation cannot substitute for this final approval.
 
    Stop and ask for explicit approval to stage the displayed include set,
    create the displayed commit, and push it to the displayed remote/branch.
-   Do not mutate Git until that answer is received. If `--no-commit` was used,
-   emit the same scope summary without a publication request and proceed to
-   Step 10.
+   Do not mutate Git until that answer is received. If no flag or `--no-commit`
+   was used, emit the scope summary without a publication request and proceed
+   to Step 10.
 6. **Revalidation After Approval**: Re-run status and the safety preflight.
    Stop if the branch, remote, HEAD, include-set content, or dirty-tree scope
    changed since the preview. Never silently widen or substitute the approved
    set.
-7. **Stage Exact Paths**: Run `git -C <repo_root> add --
-   <approved_include_paths...>`. Verify `git diff --cached --name-only` equals
-   the approved include set exactly. Stop before commit on any mismatch.
-8. **Commit**: Commit with the approved `savepoint:` message. If commit fails,
-   report the staged state and stop without reset or cleanup.
+7. **Stage Exact Paths**: Prefer the shared tree-bound packet route when the
+    savepoint has a stable include set: build a packet with
+    `00_Admin/scripts/build_closeout_packet.py`, obtain an approval file that
+    validates against `00_Admin/configs/validator/schema_closeout_approval.yaml`
+    and binds its packet/tree hashes, and apply it with
+    `00_Admin/scripts/apply_closeout_packet.py`. The applier uses
+     an isolated approved-scope pre-commit preflight followed by a second
+     run against the actual staged index immediately before an ordinary exact
+     `git commit --only`. The installed native pre-commit and commit-msg hooks
+     remain enabled for the commit; a disposable-clone dry run against the
+     real ai_ops shims passed on 2026-10-23. It preserves unrelated staged entries and
+     fails closed on index, hook, policy, projection, cost, or post-commit tree
+     drift. Before any push, verify the packet with
+     `apply_closeout_packet.py --verify-push` and obtain a separate approval
+     naming the returned commit SHA, remote and branch.
+     Without a
+    packet, run `git -C <repo_root> add -- <approved_include_paths...>` and
+    verify `git diff --cached --name-only` equals the approved include set
+    exactly. Stop before commit on any mismatch. If packet tooling fails, use
+    the canonical manual fallback in `.ai_ops/workflows/closeout.md`; preserve
+    the packet and do not widen the scope or bypass hooks.
+8. **Commit**: Commit with the approved `savepoint:` message. If staging,
+     hook preflight, or commit fails, the packet route attempts to unstage only
+     its included paths, records whether cleanup succeeded, and parks the
+     packet for inspection; unrelated staged entries remain preserved. The
+     packet route never pushes.
+     The fixed packet invocation is intended to reduce command-boundary
+     ceremony, not to change host permission policy. Prompt behavior remains
+     platform-dependent; if a prompt or tooling failure persists, stop at the
+     same approval gate and use the manual path rather than widening an
+     allowlist or silently retrying with a different command form.
 9. **Push**: Push the new commit to the approved remote and branch. Do not
    force, create a PR, change the remote, or retry with a wider command. If the
    push fails, preserve and report the local commit hash and exact failure.
@@ -193,8 +218,8 @@ invocation cannot substitute for this final approval.
 
 - No active artifact or explicit target: report that there is nothing scoped
   to save and stop.
-- `--no-commit`: run the read-only checkpoint path.
-- Active user artifacts: proceed with the approval-gated savepoint path.
+- no flag or `--no-commit`: run the read-only checkpoint path.
+- `--commit`: proceed with the approval-gated savepoint path.
 
 1. **Repo-Root Resolution**: Same as Direct Mode Step 1.
 2. **Git Preflight**: Same as Direct Mode Step 2.
@@ -210,7 +235,8 @@ invocation cannot substitute for this final approval.
      retry once; if still failing, record `validation_skipped_reason` and skip
      if `allow_partial_on_network_failure: true`. Record `validation_escalated: true`.
    - Record `validation_commands_run` in output.
-4. Proceed with Direct Mode Steps 3–10 (Identify scope through End session).
+4. Proceed with Direct Mode Steps 3–10 (Identify scope through End session);
+   only `--commit` enters the publication preview and approval gate.
 
 ### Standalone Mode
 
@@ -219,8 +245,8 @@ invocation cannot substitute for this final approval.
    classification, validation, preview, final approval, revalidation,
    exact-path staging, commit, push, and state-preservation contract used in
    Direct Mode.
-3. `--no-commit` selects the read-only checkpoint path. `--commit` states save
-   intent but does not bypass the preview and final approval gate.
+3. No flag or `--no-commit` selects the read-only checkpoint path. `--commit`
+   requests publication but does not bypass the preview and final approval gate.
 
 ## Outputs
 
@@ -228,7 +254,7 @@ invocation cannot substitute for this final approval.
   message, remote, branch, and a pending final-approval state.
 - Published savepoint confirmation with commit hash, branch, remote, and push
   status after approval and successful execution.
-- Read-only checkpoint confirmation when `--no-commit` is passed.
+- Read-only checkpoint confirmation when no flag or `--no-commit` is passed.
 - Report exactly which artifact(s) were included in the savepoint message.
 - Output metadata fields: `target_repo`, `repo_root`, `git_root`,
   `safe_directory_applied`, `push_preflight_result`, `core_longpaths`,

@@ -9,7 +9,12 @@ receipt validator make those decisions.
 from __future__ import annotations
 
 import argparse
+import csv
+import fnmatch
 import hashlib
+import io
+import json
+import math
 import re
 import subprocess
 from pathlib import Path
@@ -22,6 +27,11 @@ except ImportError as exc:  # pragma: no cover - environment diagnostic
 
 
 ROOT = Path(__file__).resolve().parents[2]
+REVIEW_RECEIPT_VERSION = "0.2.0"
+DETERMINISTIC_RECEIPT_VERSION = "0.4.0"
+POLICY_PATH = "00_Admin/configs/closeout_security_tiers.yaml"
+HOOK_MARKER = "validate_closeout_security_head.py"
+DEFAULT_MAX_TOTAL_REVIEW_TOKENS = 200000
 MIN_FORCED_T2_PREFIXES = (
     ".ai_ops/workflows/",
     "00_Admin/configs/",
@@ -66,6 +76,80 @@ def git_bytes(repo: Path, spec: str) -> bytes:
     if completed.returncode:
         fail(f"cannot read {spec}: {completed.stderr.decode(errors='replace').strip()}")
     return completed.stdout
+
+
+def target_policy_present(repo: Path) -> bool:
+    """Return whether the target repository carries its canonical policy."""
+    if (repo / POLICY_PATH).is_file():
+        return True
+    completed = subprocess.run(
+        ["git", "-C", str(repo), "cat-file", "-e", f"HEAD:{POLICY_PATH}"],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    return completed.returncode == 0
+
+
+def closeout_hook_present(repo: Path) -> bool:
+    """Return whether an installed hook invokes the HEAD closeout validator."""
+    completed = subprocess.run(
+        ["git", "-C", str(repo), "config", "--get", "core.hooksPath"],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    configured = completed.stdout.decode("utf-8", errors="replace").strip()
+    if configured:
+        hook_dir = Path(configured)
+        if not hook_dir.is_absolute():
+            hook_dir = (repo / hook_dir).resolve()
+    else:
+        hook_dir = repo / ".git/hooks"
+    dispatcher_present = False
+    for name in ("pre-commit", "commit-msg", "pre-push", "pre-commit.dispatcher", "commit-msg.dispatcher"):
+        hook = hook_dir / name
+        if not hook.is_file():
+            continue
+        try:
+            text = hook.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if HOOK_MARKER in text or ".ai_ops/local/closeout_security/latest.yaml" in text:
+            return True
+        if (
+            name in {"pre-commit", "commit-msg", "pre-commit.dispatcher", "commit-msg.dispatcher"}
+            and "hook-impl" in text
+        ):
+            dispatcher_present = True
+    if dispatcher_present:
+        config = repo / ".pre-commit-config.yaml"
+        try:
+            text = config.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            text = ""
+        if HOOK_MARKER in text or "ai-ops-closeout-security" in text:
+            return True
+    return False
+
+
+def validate_deterministic_applicability(
+    repo: Path, config: dict[str, Any], policy_source: str
+) -> None:
+    """Keep deterministic admission away from a policy-and-hook governed repo."""
+    admission = config.get("admission", {}).get("deterministic_admission", {})
+    if not admission.get("enabled", False):
+        fail("deterministic admission is disabled by the active closeout security policy")
+    allowed_sources = set(admission.get("allowed_policy_sources", []))
+    if policy_source not in allowed_sources:
+        fail(f"policy source is not allowed for deterministic admission: {policy_source}")
+    policy_present = target_policy_present(repo)
+    if policy_source == "target_HEAD" and not policy_present:
+        fail("policy_source=target_HEAD requires a target closeout policy")
+    if policy_source == "missing_target_policy" and policy_present:
+        fail("policy_source=missing_target_policy is invalid when the target policy exists")
+    if policy_present and closeout_hook_present(repo):
+        fail("deterministic admission is not applicable when the target policy and closeout hook are both present")
 
 
 def git_head(repo: Path) -> str:
@@ -139,8 +223,94 @@ def contained_output(repo: Path, value: Path) -> Path:
     return target
 
 
+def read_paths_file(repo: Path, value: Path) -> list[str]:
+    target = contained_output(repo, value)
+    try:
+        text = target.read_text(encoding="utf-8")
+    except OSError as exc:
+        fail(f"cannot read paths file: {exc}")
+    return [line.strip() for line in text.splitlines() if line.strip()]
+
+
 def include_hash(paths: list[str]) -> str:
     return hashlib.sha256("\n".join(sorted(paths)).encode("utf-8")).hexdigest()
+
+
+def change_records(repo: Path, paths: list[str], source: str) -> dict[str, str]:
+    """Return the frozen change status used by the receipt scope lock."""
+    requested = set(paths)
+    if source == "staged":
+        command = ["git", "-C", str(repo), "diff", "--cached", "--name-status", "--no-renames"]
+    elif source == "worktree":
+        command = ["git", "-C", str(repo), "diff", "HEAD", "--name-status", "--no-renames"]
+    else:
+        return {path: "H" for path in paths}
+    completed = subprocess.run(
+        [*command, "--"],
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if completed.returncode:
+        fail(f"cannot inspect change status: {completed.stderr.strip()}")
+    records: dict[str, str] = {}
+    for line in completed.stdout.splitlines():
+        status, _, path = line.partition("\t")
+        normalized = path.replace("\\", "/")
+        if status and normalized in requested:
+            records[normalized] = status[0]
+    untracked = subprocess.run(
+        ["git", "-C", str(repo), "ls-files", "--others", "--exclude-standard", "--"],
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if untracked.returncode:
+        fail(f"cannot inspect untracked paths: {untracked.stderr.strip()}")
+    for path in untracked.stdout.splitlines():
+        normalized = path.replace("\\", "/")
+        if normalized in requested:
+            records[normalized] = "A"
+    return {path: records.get(path, "H") for path in paths}
+
+
+def scope_lock(paths: list[str], rows: list[dict[str, Any]], statuses: dict[str, str]) -> str:
+    row_by_path = {str(row["path"]): row for row in rows}
+    material = "\n".join(
+        f"{path}\t{statuses.get(path, 'H')}\t{row_by_path[path]['mode']}\t{row_by_path[path]['sha256']}"
+        for path in sorted(paths)
+    )
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+
+def tree_manifest_hash(paths: list[str], rows: list[dict[str, Any]]) -> str:
+    """Hash normalized path, mode, and blob identity without change status."""
+    row_by_path = {str(row["path"]): row for row in rows}
+    material = "\n".join(
+        f"{path}\t{row_by_path[path]['mode']}\t{row_by_path[path]['sha256']}"
+        for path in sorted(paths)
+    )
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+
+def git_mode(repo: Path, path: str, source: str, deleted: bool) -> str:
+    if deleted or source == "head":
+        command = ["git", "-C", str(repo), "ls-tree", "HEAD", "--", path]
+    else:
+        command = ["git", "-C", str(repo), "ls-files", "--stage", "--", path]
+    completed = subprocess.run(command, check=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if completed.returncode:
+        fail(f"cannot inspect mode for {path}: {completed.stderr.strip()}")
+    line = completed.stdout.splitlines()[0] if completed.stdout.splitlines() else ""
+    if source != "head" and not deleted and line:
+        return line.split(" ", 1)[0]
+    if line:
+        return line.split(" ", 1)[0]
+    if source == "worktree" and (repo / Path(path)).exists():
+        return "100644"
+    fail(f"cannot determine repository mode for {path}")
 
 
 def is_binary(path: str, data: bytes, config: dict[str, Any]) -> bool:
@@ -150,6 +320,209 @@ def is_binary(path: str, data: bytes, config: dict[str, Any]) -> bool:
 
 def is_generated(path: str, config: dict[str, Any]) -> bool:
     return any(path.startswith(prefix) for prefix in config.get("generated_prefixes", []))
+
+
+def _blocked_data_key(value: Any, blocked_keys: set[str], max_nodes: int) -> bool | None:
+    stack = [value]
+    visited = 0
+    while stack:
+        current = stack.pop()
+        visited += 1
+        if visited > max_nodes:
+            return None
+        if isinstance(current, dict):
+            for key, child in current.items():
+                if str(key).strip().lower() in blocked_keys:
+                    return True
+                if isinstance(child, (dict, list)):
+                    stack.append(child)
+        elif isinstance(current, list):
+            stack.extend(child for child in current if isinstance(child, (dict, list)))
+    return False
+
+
+def _geojson_bbox_valid(value: Any) -> bool:
+    return isinstance(value, list) and len(value) in {4, 6} and all(
+        isinstance(item, (int, float)) and not isinstance(item, bool) and math.isfinite(float(item))
+        for item in value
+    )
+
+
+def _geojson_position_valid(value: Any) -> bool:
+    return isinstance(value, list) and len(value) in {2, 3} and all(
+        isinstance(item, (int, float)) and not isinstance(item, bool) and math.isfinite(float(item))
+        for item in value
+    )
+
+
+def _geojson_coordinates_valid(value: Any, geometry_type: str) -> bool:
+    if geometry_type == "Point":
+        return _geojson_position_valid(value)
+    if geometry_type == "MultiPoint":
+        return isinstance(value, list) and all(_geojson_position_valid(item) for item in value)
+    if geometry_type == "LineString":
+        return isinstance(value, list) and len(value) >= 2 and all(_geojson_position_valid(item) for item in value)
+    if geometry_type == "MultiLineString":
+        return isinstance(value, list) and all(_geojson_coordinates_valid(item, "LineString") for item in value)
+    if geometry_type == "Polygon":
+        return isinstance(value, list) and all(
+            isinstance(ring, list)
+            and len(ring) >= 4
+            and ring[0] == ring[-1]
+            and all(_geojson_position_valid(item) for item in ring)
+            for ring in value
+        )
+    if geometry_type == "MultiPolygon":
+        return isinstance(value, list) and all(_geojson_coordinates_valid(item, "Polygon") for item in value)
+    return False
+
+
+def _geojson_geometry_valid(value: Any) -> bool:
+    if not isinstance(value, dict):
+        return False
+    geometry_type = value.get("type")
+    if geometry_type == "GeometryCollection":
+        if any(str(key) not in {"type", "geometries", "bbox"} for key in value):
+            return False
+        if "bbox" in value and not _geojson_bbox_valid(value["bbox"]):
+            return False
+        geometries = value.get("geometries")
+        return isinstance(geometries, list) and all(_geojson_geometry_valid(item) for item in geometries)
+    if any(str(key) not in {"type", "coordinates", "bbox"} for key in value):
+        return False
+    if "bbox" in value and not _geojson_bbox_valid(value["bbox"]):
+        return False
+    return geometry_type in {
+        "Point", "MultiPoint", "LineString", "MultiLineString", "Polygon", "MultiPolygon"
+    } and _geojson_coordinates_valid(value.get("coordinates"), geometry_type)
+
+
+def _geojson_structure(value: Any, blocked_keys: set[str], max_nodes: int) -> tuple[int, list[str]] | None:
+    if not isinstance(value, dict) or value.get("type") != "FeatureCollection":
+        return None
+    if any(str(key) not in {"type", "features", "bbox", "crs", "name"} for key in value):
+        return None
+    if "bbox" in value and not _geojson_bbox_valid(value["bbox"]):
+        return None
+    if "name" in value and not isinstance(value["name"], str):
+        return None
+    if "crs" in value:
+        crs = value["crs"]
+        if not isinstance(crs, dict) or any(str(key) not in {"type", "properties"} for key in crs):
+            return None
+        if not isinstance(crs.get("type"), str) or not isinstance(crs.get("properties", {}), dict):
+            return None
+        if _blocked_data_key(crs.get("properties", {}), blocked_keys, max_nodes) is not False:
+            return None
+    features = value.get("features")
+    if not isinstance(features, list):
+        return None
+    for feature in features:
+        if not isinstance(feature, dict) or any(
+            str(key) not in {"type", "geometry", "properties", "id", "bbox"} for key in feature
+        ):
+            return None
+        if "bbox" in feature and not _geojson_bbox_valid(feature["bbox"]):
+            return None
+        if "id" in feature and (
+            not isinstance(feature["id"], (str, int, float)) or isinstance(feature["id"], bool)
+        ):
+            return None
+        if feature.get("type") != "Feature" or not isinstance(feature.get("properties", {}), dict):
+            return None
+        if feature.get("geometry") is not None and not _geojson_geometry_valid(feature["geometry"]):
+            return None
+        blocked = _blocked_data_key(feature.get("properties", {}), blocked_keys, max_nodes)
+        if blocked is not False:
+            return None
+    return len(features), sorted(str(key) for key in value)[:100]
+
+
+def structured_data_summary(path: str, data: bytes, config: dict[str, Any]) -> str | None:
+    policy = config.get("large_deleted_data", {})
+    if not policy.get("enabled"):
+        return None
+    if len(data) < int(policy.get("min_source_bytes", 0)):
+        return None
+    approved_patterns = policy.get("approved_path_patterns", [])
+    if not approved_patterns or not any(fnmatch.fnmatch(path, pattern) for pattern in approved_patterns):
+        return None
+    suffix = Path(path).suffix.lower()
+    if suffix not in {str(value).lower() for value in policy.get("approved_extensions", [])}:
+        return None
+    blocked_keys = {
+        str(value).strip().lower() for value in policy.get("blocked_structure_keys", [])
+    }
+    max_nodes = int(policy.get("max_structure_nodes", 250000))
+    try:
+        text = data.decode("utf-8")
+        if suffix == ".csv":
+            reader = csv.reader(io.StringIO(text))
+            fields = next(reader, [])
+            normalized_fields = [str(field).strip().lower() for field in fields]
+            if (
+                len(normalized_fields) < 2
+                or len(set(normalized_fields)) != len(normalized_fields)
+                or any(field in blocked_keys for field in normalized_fields)
+            ):
+                return None
+            records = 0
+            for record in reader:
+                if len(record) != len(normalized_fields):
+                    return None
+                records += 1
+            structure = {
+                "format": "csv_tabular",
+                "fields": normalized_fields[:100],
+                "field_count": len(normalized_fields),
+                "records": records,
+            }
+        else:
+            value = json.loads(text)
+            geojson = _geojson_structure(value, blocked_keys, max_nodes)
+            if geojson is None:
+                return None
+            records, top_keys = geojson
+            structure = {
+                "format": "json",
+                "top_level": "geojson_feature_collection",
+                "top_keys": top_keys,
+                "records": records,
+            }
+    except (UnicodeDecodeError, json.JSONDecodeError, csv.Error, ValueError):
+        return None
+    encoded = json.dumps(structure, sort_keys=True, separators=(",", ":"))
+    return f"{encoded};summary_sha256={hashlib.sha256(encoded.encode('utf-8')).hexdigest()}"
+
+
+def review_basis(file_kind: str, binary: bool, structural_summary: str | None = None) -> str:
+    if file_kind == "deleted" and structural_summary is not None:
+        return "structured_deleted_data"
+    if file_kind == "deleted_binary":
+        return "hash_only_deleted_binary"
+    if binary:
+        return "digest_bound_binary"
+    return "full_content"
+
+
+def positive_integer(value: Any, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        fail(f"packet {name} must be a positive integer")
+    return value
+
+
+def enforce_total_review_budget(packet_tokens: list[int], config: dict[str, Any]) -> int:
+    total = sum(packet_tokens)
+    configured = config.get("packet", {}).get(
+        "max_total_review_tokens", DEFAULT_MAX_TOTAL_REVIEW_TOKENS
+    )
+    maximum = positive_integer(configured, "max_total_review_tokens")
+    if total > maximum:
+        fail(
+            "review scope exceeds total token budget: "
+            f"estimated={total}; max={maximum}; split include paths or use bounded structural review"
+        )
+    return total
 
 
 def tier_for(path: str, config: dict[str, Any]) -> str:
@@ -191,7 +564,7 @@ def scan_text(path: str, data: bytes, config: dict[str, Any]) -> tuple[str, list
 
 
 def build_packet(
-    rows: list[dict[str, Any]], packet_path: Path, packet_budget: int
+    rows: list[dict[str, Any]], packet_path: Path, packet_budget: int, write_files: bool = True
 ) -> tuple[list[str], list[int], dict[str, int]]:
     header = [
         "# Closeout Security Reviewer Packet",
@@ -217,9 +590,18 @@ def build_packet(
             f"- patterns: `{', '.join(row.get('finding_refs', [])) or 'none'}`",
             "",
         ]
+        if row.get("structural_summary"):
+            prefix.extend([f"- structural_summary: `{row['structural_summary']}`", ""])
         content = row.get("content")
         if content is None:
-            note = "Binary content omitted from the text packet; review the byte digest and declared disposition."
+            note = (
+                "Content omitted from the text packet; review the byte digest and declared disposition."
+            )
+            if row.get("review_basis") == "structured_deleted_data":
+                note = (
+                    "Large deleted structured data content omitted; review the digest, generated structural "
+                    "summary, dependency evidence, and recovery evidence."
+                )
             sections.append(
                 prefix
                 + [
@@ -275,7 +657,6 @@ def build_packet(
             current = candidate
     if current != header:
         packets.append(current)
-    packet_path.parent.mkdir(parents=True, exist_ok=True)
     paths: list[str] = []
     token_counts: list[int] = []
     for index, packet in enumerate(packets, start=1):
@@ -284,10 +665,12 @@ def build_packet(
             if len(packets) == 1
             else packet_path.with_name(f"{packet_path.stem}-{index:03d}{packet_path.suffix}")
         )
-        target.write_text("\n".join(packet), encoding="utf-8", newline="\n")
+        if write_files:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("\n".join(packet), encoding="utf-8", newline="\n")
         paths.append(str(target))
         token_counts.append((len("\n".join(packet).encode("utf-8")) + 3) // 4)
-    if len(packets) > 1:
+    if write_files and len(packets) > 1:
         packet_path.write_text(
             "# Closeout Security Packet Manifest\n\n"
             + "\n".join(
@@ -302,41 +685,78 @@ def build_packet(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("paths", nargs="+", help="repository-relative include paths")
+    parser.add_argument("paths", nargs="*", help="repository-relative include paths")
     parser.add_argument("--repo-root", type=Path, default=ROOT)
     parser.add_argument("--config", type=Path)
     parser.add_argument("--source", choices=["head", "staged", "worktree"], default="head")
+    parser.add_argument(
+        "--admission-mode",
+        choices=["reviewer_read", "deterministic_admission"],
+        default="reviewer_read",
+        help="reviewer-read packet or bounded deterministic admission",
+    )
+    parser.add_argument(
+        "--policy-source",
+        choices=["target_HEAD", "missing_target_policy"],
+        help="policy applicability label for deterministic admission",
+    )
+    parser.add_argument(
+        "--operator-approval-ref",
+        default="pending_commit_approval",
+        help="durable approval reference for deterministic admission",
+    )
     parser.add_argument("--receipt-path", type=Path, required=True)
     parser.add_argument("--packet-path", type=Path)
+    parser.add_argument(
+        "--paths-file", type=Path, help="repository-contained UTF-8 file with one include path per line"
+    )
     args = parser.parse_args()
     repo = args.repo_root.resolve()
     args.receipt_path = contained_output(repo, args.receipt_path)
     if args.packet_path:
         args.packet_path = contained_output(repo, args.packet_path)
-    paths = [rel_path(value) for value in args.paths]
+    raw_paths = list(args.paths)
+    if args.paths_file:
+        raw_paths.extend(read_paths_file(repo, args.paths_file))
+    if not raw_paths:
+        fail("at least one include path or --paths-file is required")
+    paths = [rel_path(value) for value in raw_paths]
     if len(set(paths)) != len(paths):
         fail("include paths must be unique")
     config = load_config(repo, args.config if args.config else None)
+    if args.admission_mode == "deterministic_admission" and not args.policy_source:
+        fail("deterministic admission requires --policy-source")
+    if args.admission_mode == "deterministic_admission":
+        validate_deterministic_applicability(repo, config, args.policy_source)
     rows: list[dict[str, Any]] = []
     packet_rows: list[dict[str, Any]] = []
     packet_budget = int(config.get("packet", {}).get("estimated_tokens_per_packet", 20000))
     for path in paths:
         deleted = is_deleted(repo, path, args.source)
-        data, basis = read_source(repo, path, args.source, deleted)
-        if deleted:
+        data, revision_basis = read_source(repo, path, args.source, deleted)
+        binary = is_binary(path, data, config)
+        if deleted and binary:
+            kind = "deleted_binary"
+        elif deleted:
             kind = "deleted"
-        elif is_binary(path, data, config):
+        elif binary:
             kind = "binary"
         elif is_generated(path, config):
             kind = "generated"
         else:
             kind = "text"
         status, hits = scan_text(path, data, config)
+        structural_summary = (
+            structured_data_summary(path, data, config) if deleted and not binary and status == "clean" else None
+        )
+        basis = review_basis(kind, binary, structural_summary)
         row: dict[str, Any] = {
             "path": path,
             "sha256": hashlib.sha256(data).hexdigest(),
-            "revision_basis": basis,
+            "revision_basis": revision_basis,
             "file_kind": kind,
+            "review_basis": basis,
+            "mode": git_mode(repo, path, args.source, deleted),
             "tier": tier_for(path, config),
             "coverage": "not_reviewed",
             "prepass_status": status,
@@ -349,45 +769,134 @@ def main() -> int:
             .get("reviewer_runtime", "pending"),
             "review_method": "pending",
             "independent_pass": False,
+            "independent_reviewer": "pending",
+            "independent_evidence": "pending",
             "chunk_count": max(1, (len(data) + (packet_budget * 4) - 1) // (packet_budget * 4)),
             "disposition": "pending",
             "finding_refs": hits,
+            "source_bytes": len(data),
             "content_bytes": len(data),
-            "coverage_notes": f"bytes={len(data)}; estimated_tokens={(len(data) + 3) // 4}",
+            "coverage_notes": f"source_bytes={len(data)}; review_basis={basis}",
         }
+        if structural_summary is not None:
+            row["structural_summary"] = structural_summary
         if tier_for(path, config) == "T0" and status == "candidate":
             row["tier"] = "T1"
             row["reviewer_model"] = config.get("tiers", {}).get("T1", {}).get("reviewer_model", "pending")
             row["reviewer_runtime"] = config.get("tiers", {}).get("T1", {}).get("reviewer_runtime", "pending")
-        if kind in {"text", "deleted", "generated"}:
+        if kind in {"text", "deleted", "generated"} and basis != "structured_deleted_data":
             row["content"] = data.decode("utf-8", errors="replace")
         packet_rows.append(dict(row))
         row.pop("content", None)
         row.pop("content_bytes", None)
         rows.append(row)
+    statuses = change_records(repo, paths, args.source)
     packet_path = args.packet_path or args.receipt_path.with_suffix(".review.md")
+    if args.admission_mode == "deterministic_admission":
+        candidate_rows = [row["path"] for row in rows if row["prepass_status"] == "candidate"]
+        for row in rows:
+            row.update(
+                {
+                    "coverage": "not_reviewed",
+                    "reviewer": "not_applicable",
+                    "reviewer_model": "not_applicable",
+                    "reviewer_runtime": "not_applicable",
+                    "review_method": "deterministic-admission",
+                    "independent_reviewer": "not_applicable",
+                    "independent_evidence": "not_applicable",
+                    "disposition": "pending",
+                }
+            )
+        receipt = {
+            "receipt_version": DETERMINISTIC_RECEIPT_VERSION,
+            "repo_root": str(repo),
+            "base_head": git_head(repo),
+            "source": args.source,
+            "include_set_sha256": include_hash(paths),
+            "tiers_config_version": str(config.get("version", "unknown")),
+            "ruleset_version": str(config.get("ruleset_version", "unknown")),
+            "source_bytes_total": sum(row["source_bytes"] for row in rows),
+            "review_tokens_total": 0,
+            "review_batches": [],
+            "rows": rows,
+            "scope_lock_sha256": scope_lock(paths, rows, statuses),
+            "tree_manifest_sha256": tree_manifest_hash(paths, rows),
+            "overall_disposition": "split_required" if candidate_rows else "deterministic_admission",
+            "disposition_reason": (
+                "Known pre-pass candidates require a separate reviewed or waived lane."
+                if candidate_rows
+                else "Scope, tree, and known tripwire admission completed without reviewer packets."
+            ),
+            "policy_source": args.policy_source,
+            "policy_version": str(config.get("version", "unknown")),
+            "validator_mode": "deterministic_admission",
+            "packet_builder_version": "closeout_security_prepass/0.4.0",
+            "known_tripwire_results": {
+                "status": "candidate" if candidate_rows else "clean",
+                "candidate_rows": candidate_rows,
+            },
+            "operator_commit_approval_ref": args.operator_approval_ref,
+        }
+        args.receipt_path.parent.mkdir(parents=True, exist_ok=True)
+        args.receipt_path.write_text(yaml.safe_dump(receipt, sort_keys=False), encoding="utf-8", newline="\n")
+        print(
+            f"PREPASS {len(rows)} files source={args.source} "
+            f"admission=deterministic_admission receipt={args.receipt_path}"
+        )
+        print(f"include_set_sha256={receipt['include_set_sha256']}")
+        print(f"candidates={len(candidate_rows)}")
+        print("packet=none (deterministic admission)")
+        return 0
+
     receipt = {
-        "receipt_version": "0.1.0",
+        "receipt_version": REVIEW_RECEIPT_VERSION,
         "repo_root": str(repo),
         "base_head": git_head(repo),
         "source": args.source,
         "include_set_sha256": include_hash(paths),
         "tiers_config_version": str(config.get("version", "unknown")),
         "ruleset_version": str(config.get("ruleset_version", "unknown")),
-        "estimated_tokens_total": sum(
-            (len(read_source(repo, path, args.source, is_deleted(repo, path, args.source))[0]) + 3) // 4
-            for path in paths
-        ),
+        "source_bytes_total": sum(row["source_bytes"] for row in rows),
         "rows": rows,
     }
-    args.receipt_path.parent.mkdir(parents=True, exist_ok=True)
-    args.receipt_path.write_text(yaml.safe_dump(receipt, sort_keys=False), encoding="utf-8", newline="\n")
-    packet_files, packet_tokens, chunk_counts = build_packet(packet_rows, packet_path, packet_budget)
+    receipt["scope_lock_sha256"] = scope_lock(paths, rows, statuses)
+    packet_files, packet_tokens, chunk_counts = build_packet(
+        packet_rows, packet_path, packet_budget, write_files=False
+    )
+    total_review_tokens = enforce_total_review_budget(packet_tokens, config)
+    packet_files, packet_tokens, chunk_counts = build_packet(
+        packet_rows, packet_path, packet_budget, write_files=True
+    )
     for row in rows:
         row["chunk_count"] = chunk_counts[row["path"]]
-    receipt["packet_files"] = packet_files
-    receipt["packet_estimated_tokens"] = packet_tokens
-    receipt["packet_sha256"] = [hashlib.sha256(Path(path).read_bytes()).hexdigest() for path in packet_files]
+    batches: list[dict[str, Any]] = []
+    current_files: list[str] = []
+    current_tokens: list[int] = []
+    session_budget = int(config.get("packet", {}).get("session_token_budget", 200000))
+    for path, tokens in zip(packet_files, packet_tokens, strict=False):
+        if tokens > session_budget:
+            fail(f"single reviewer packet exceeds session token budget: {path}")
+        if current_files and sum(current_tokens) + tokens > session_budget:
+            batches.append({
+                "id": f"batch-{len(batches) + 1:03d}",
+                "packet_files": current_files,
+                "packet_estimated_tokens": current_tokens,
+                "packet_sha256": [hashlib.sha256(Path(item).read_bytes()).hexdigest() for item in current_files],
+            })
+            current_files = []
+            current_tokens = []
+        current_files.append(path)
+        current_tokens.append(tokens)
+    if current_files:
+        batches.append({
+            "id": f"batch-{len(batches) + 1:03d}",
+            "packet_files": current_files,
+            "packet_estimated_tokens": current_tokens,
+            "packet_sha256": [hashlib.sha256(Path(item).read_bytes()).hexdigest() for item in current_files],
+        })
+    receipt["review_batches"] = batches
+    receipt["review_tokens_total"] = total_review_tokens
+    args.receipt_path.parent.mkdir(parents=True, exist_ok=True)
     args.receipt_path.write_text(yaml.safe_dump(receipt, sort_keys=False), encoding="utf-8", newline="\n")
     print(f"PREPASS {len(rows)} files source={args.source} receipt={args.receipt_path}")
     print(f"include_set_sha256={receipt['include_set_sha256']}")
