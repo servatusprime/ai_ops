@@ -2,7 +2,7 @@
 description: Prepare a read-only closeout packet, then publish only through exact approval-gated commit and push steps.
 name: closeout
 kind: workflow
-version: 0.4.0
+version: 0.6.1
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -124,10 +124,81 @@ execute them only after the explicit approval and scope gates below pass:
 | commit | `git -C <repo> commit -m <approved summary>` | explicit commit approval naming the include set |
 | push | `git -C <repo> push <approved remote> <approved branch>` | separate push approval |
 
+### Tree-Bound Approval Packet Route
+
+When the target is `ai_ops` or another repository with the packet scripts
+available, use the packet route to reduce repeated scope reconstruction:
+
+1. During read-only preparation, run
+   `python 00_Admin/scripts/build_closeout_packet.py --repo-root <repo> --include
+   <approved-path> --message <approved-summary>` once for the complete include
+   set. The builder writes only to the machine-local packet root
+   `90_Sandbox/ai_workbooks/_closeout_packets/<repo>/<run_id>/` and never stages,
+   commits, pushes, or edits target content.
+2. Present the packet's `run_id`, `prepared_packet_sha256`, HEAD, branch,
+   include-set hash, mutation-plan hash, projected tree hash, and cost result
+   for approval. A
+   `PARKED` packet stops until its named limit is resolved; it cannot be
+   widened silently.
+3. After explicit commit approval, the operator writes an approval file with
+   `decision: approve`, a non-placeholder `approved_by`, `approved_at`, and
+   `approval_ref`, bound to the exact run ID, prepared packet hash, HEAD,
+   branch, include-set hash, mutation-plan hash, and projected-tree hash using
+   `00_Admin/configs/validator/schema_closeout_approval.yaml`, then run
+   `python 00_Admin/scripts/apply_closeout_packet.py --packet <packet> --approval-file <approval-file>`.
+   The applier stages only the packet paths, commits with `git commit --only`,
+   rechecks the packet digest, independently recomputed cost stop, routing
+   contract, full index fingerprint, staged blob/mode entries, runs the frozen
+   pre-commit hook as a preflight, and verifies the resulting
+   `HEAD^{tree}`, commit parent/message, and included worktree bytes.
+4. A divergence, hook change, policy change, index change, or failed commit
+   preserves or fails the packet and makes it not push-ready. Before any push,
+   run `python 00_Admin/scripts/apply_closeout_packet.py --verify-push
+   --packet <packet>` and separately approve the returned commit SHA, remote,
+   and branch.
+
 Resolve the repository, remote, branch, and include paths before invocation.
-Reject shell metacharacters, force/delete options, `--no-verify`, reparse paths, detached
-heads, and any command assembled from free-form workflow text. A closeout
-state, hook, or generated wrapper cannot substitute for the operator approval.
+Reject shell metacharacters, force/delete options, any `--no-verify`, reparse paths,
+detached heads, and any command assembled from free-form workflow text. The fixed
+packet applier runs the frozen pre-commit hook against an isolated approved-scope
+index and then against the actual staged index immediately before commit. It
+uses the installed native hook path for the ordinary commit after the isolated
+and real-index preflights; pre-commit and commit-msg remain enforced at the
+commit boundary. A disposable-clone dry run against the real ai_ops shims
+passed on 2026-10-23 after supplying the ignored generated wrapper outputs
+that the export-drift hook requires. The applier also verifies the resulting
+tree/worktree, so a late hook or post-commit drift fails closed and is not
+push-ready.
+A closeout state, hook, or generated wrapper cannot substitute for the operator approval.
+The packet route is one approved script invocation, but host permission prompts are
+platform-dependent: the workflow makes no allowlist or prompt-reduction claim. If the
+host still prompts, continue with the same explicit approval boundary or stop and use
+the documented manual closeout path; do not broaden settings or change command forms
+implicitly. The packet route requires the target repository's
+`00_Admin/configs/context_routing.yaml` to contain the `closeout_packet`
+contract, and the packet and approval files must remain inside that target
+repository's configured packet root.
+The packet's HEAD-bound policy snapshot is a cheap change tripwire; the exact
+HEAD binding remains the authoritative base-repository check.
+
+### Manual Closeout Fallback
+
+Use this path only when packet preparation or application fails and the exact
+approved scope is still known. Preserve the failed packet and its evidence;
+do not widen the scope or use `--no-verify`.
+
+1. Re-read the failed packet's `include` set and verify the current branch,
+   HEAD, remote and dirty-tree boundary. Unstage only paths from the approved
+   set if cleanup is required.
+2. Run the required validators, then stage only the approved paths with
+   `git -C <repo> add -- <approved paths>` and verify that
+   `git -C <repo> diff --cached --name-only` is exactly that set.
+3. With a separate commit approval, create one exact commit using the approved
+   normalized message. Do not use broad staging, `--no-verify`, force options,
+   or a new free-form command shape.
+4. Verify the new commit's SHA, parent, tree, message, worktree bytes and
+   unrelated index projection. Push is a separate approval naming that SHA,
+   remote and branch.
 
 ### Inside Repo (Maintainer)
 
@@ -209,8 +280,17 @@ state, hook, or generated wrapper cannot substitute for the operator approval.
    `record_pending` or `mirrors_pending` with affected paths, owner, and retry
    surface.
 
-11. If `00_Admin/backlog/future_work_registry.yaml` changed, regenerate scorecard:
-   `python ai_ops/00_Admin/scripts/generate_future_work_scorecard.py`.
+11. If a future-work item is being completed, prepare the execution workbook
+    for the receipt handoff before the first publication commit. The workbook
+    may remain `status: active` only when it has
+    `execution_status: completed` and
+    `completion_state: ready_for_receipt`, with a matching
+    `checklist_allowance.kind: forward_handoff` for the receipt/finalization
+    items. Do not run the success completion command in this pre-commit leg:
+    its HEAD-binding check must see the registry binding in an already-created
+    commit. Failed, pending, and stale receipts preserve the registry entry.
+    For registry edits outside the completion command, regenerate the scorecard
+    with `python ai_ops/00_Admin/scripts/generate_future_work_scorecard.py`.
 
 12. Run configured validation checks in this order:
    repo-defined validators/checks from the active closeout contract, then
@@ -246,6 +326,10 @@ state, hook, or generated wrapper cannot substitute for the operator approval.
       PARK before moving it. The approved mutation plan must explicitly include
       the tracked deletion or a tracked archive destination; an ignored trash
       folder is not evidence of publication.
+    - If a future-work receipt handoff is active, defer this archive decision
+      until after the receipt-sync phase and final workbook status change. A
+      workbook in `ready_for_receipt` handoff state remains active and must not
+      be archived.
     - Completed solitary workbook → move to Trash
     - Completed workbundle (all workbooks complete, user confirmed) → move workbundle folder to Trash
     - Completed workprogram (all workbundles complete) → move workprogram folder to Trash
@@ -260,9 +344,13 @@ state, hook, or generated wrapper cannot substitute for the operator approval.
     post-mutation state.
     When the closeout-security policy or validator itself is being upgraded,
     stage the canonical policy and validator together and run the explicit
-    `--first-landing --config` gate manually against a separate first-landing
-    receipt. Do not install that receipt at the hook's `latest.yaml` path and
-    do not add a `Closeout-Security` trailer to this policy-upgrade commit: the
+    `--first-landing --config` gate against a separate first-landing receipt.
+    The packet route validates the supplied reviewed receipt after staging and before
+    the commit gate when invoked with `--first-landing-receipt
+    <repo-contained path>`; the receipt must already exist and is never
+    overwritten by the applier.
+    Do not install that receipt at the hook's `latest.yaml` path and do not
+    add a `Closeout-Security` trailer to this policy-upgrade commit: the
     unchanged trusted HEAD hook must see an ordinary commit and must never
     execute staged admission code. After the policy upgrade lands, regenerate
     the normal v0.2 receipt at `latest.yaml` for subsequent closeouts.
@@ -280,7 +368,11 @@ state, hook, or generated wrapper cannot substitute for the operator approval.
       per-session and total-receipt token caps; stop before reviewer admission
       when the total cap would be exceeded, then split the explicit include set
       or apply an eligible bounded structural basis. Record the reviewer
-      packets and machine-local receipt.
+      packets and machine-local receipt. The default policy keeps reviewer
+      packets at 20,000 estimated tokens and raises the aggregate
+      session/receipt ceiling to 200,000; do not split a scope merely because
+      it exceeds the retired 120,000 ceiling. Split only when the active cap,
+      packet cap, evidence tier, or an unresolved candidate requires it.
     - Do not stage until the separate commit approval names the final include
       set. After approval, stage only that set and run the receipt validator
       against staged blobs. A missing row, hash drift, stale scope lock,
@@ -301,14 +393,31 @@ state, hook, or generated wrapper cannot substitute for the operator approval.
     - If any required check fails, stop closeout and transition to `/work` for
       remediation.
 
-21. Stage changes and generate commit message summary.
+21. If a tree-bound approval packet was prepared, use its applier after the
+    commit gate. When the packet includes a closeout-security policy upgrade,
+    pass `--first-landing-receipt` so the applier validates the supplied
+    separate staged receipt before the commit gate. Otherwise stage the frozen
+    include set and generate the commit message summary using the fixed
+    commands above.
 22. Commit only after the commit gate passed and the operator approved the
     frozen include set and exact commit action. Turbo markers and workflow
-    metadata never substitute for that approval.
-23. Push only after a separate push/PR approval names the verified commit SHA,
-    remote, and branch. A failed push is reported and preserved; do not create
-    a PR or broaden the push command automatically.
-24. Confirm closeout complete with summary of changes shipped.
+    metadata never substitute for that approval. The packet applier's
+    post-commit tree binding is required when the packet route is used.
+23. When a future-work receipt handoff is in scope, verify the first commit's
+    exact HEAD binding, then run `complete_future_work.py` once per registry ID
+    with the receipt-ready workbook, exact artifact set, actor, and retained
+    review references. Run `--verify` for every resulting receipt. Do not
+    manually delete registry rows or infer completion from a log mention.
+24. Finalize the workbook to `status: completed`, close the receipt-handoff
+    checklist items, synchronize the registry/scorecard/run-log/workbook
+    surfaces, and run the final validators. Build a second closeout packet for
+    these receipt-sync/finalization changes and obtain a new exact commit
+    approval before publishing the second commit. A failed receipt or failed
+    final validation keeps the workbook active and preserves the registry row.
+25. Push only after a separate push/PR approval names the verified final commit
+    SHA, remote, and branch. A failed push is reported and preserved; do not
+    create a PR or broaden the push command automatically.
+26. Confirm closeout complete with summary of all commits and receipts shipped.
 
 ### External Repo (User)
 

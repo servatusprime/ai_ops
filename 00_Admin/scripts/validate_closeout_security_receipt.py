@@ -35,7 +35,7 @@ DETERMINISTIC_DISPOSITIONS = {
     "deterministic_admission",
     "split_required",
 }
-DEFAULT_MAX_TOTAL_REVIEW_TOKENS = 120000
+DEFAULT_MAX_TOTAL_REVIEW_TOKENS = 200000
 MIN_FORCED_T2_PREFIXES = (
     ".ai_ops/workflows/",
     "00_Admin/configs/",
@@ -1020,7 +1020,7 @@ def main() -> int:
         fail("receipt ruleset_version does not match the active policy")
     packet = config.get("packet", {})
     packet_budget = int(packet.get("estimated_tokens_per_packet", 20000))
-    session_budget = int(packet.get("session_token_budget", 120000))
+    session_budget = int(packet.get("session_token_budget", 200000))
     if str(receipt["receipt_version"]) == "0.2.0":
         packet_groups = [
             (

@@ -31,7 +31,7 @@ REVIEW_RECEIPT_VERSION = "0.2.0"
 DETERMINISTIC_RECEIPT_VERSION = "0.4.0"
 POLICY_PATH = "00_Admin/configs/closeout_security_tiers.yaml"
 HOOK_MARKER = "validate_closeout_security_head.py"
-DEFAULT_MAX_TOTAL_REVIEW_TOKENS = 120000
+DEFAULT_MAX_TOTAL_REVIEW_TOKENS = 200000
 MIN_FORCED_T2_PREFIXES = (
     ".ai_ops/workflows/",
     "00_Admin/configs/",
@@ -872,7 +872,7 @@ def main() -> int:
     batches: list[dict[str, Any]] = []
     current_files: list[str] = []
     current_tokens: list[int] = []
-    session_budget = int(config.get("packet", {}).get("session_token_budget", 120000))
+    session_budget = int(config.get("packet", {}).get("session_token_budget", 200000))
     for path, tokens in zip(packet_files, packet_tokens, strict=False):
         if tokens > session_budget:
             fail(f"single reviewer packet exceeds session token budget: {path}")

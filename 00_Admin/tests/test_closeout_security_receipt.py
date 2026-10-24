@@ -75,6 +75,17 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             VALIDATOR.enforce_total_review_budget([1], {**self.config, "packet": {"max_total_review_tokens": "100"}})
 
+    def test_default_review_budget_matches_policy_headroom(self) -> None:
+        policy = yaml.safe_load(
+            (ROOT / "00_Admin/configs/closeout_security_tiers.yaml").read_text(encoding="utf-8")
+        )
+        packet = policy["packet"]
+        self.assertEqual(200000, packet["session_token_budget"])
+        self.assertEqual(200000, packet["max_total_review_tokens"])
+        self.assertEqual(200000, PREPASS.DEFAULT_MAX_TOTAL_REVIEW_TOKENS)
+        self.assertEqual(200000, VALIDATOR.DEFAULT_MAX_TOTAL_REVIEW_TOKENS)
+        self.assertEqual(128846, PREPASS.enforce_total_review_budget([128846], {}))
+
     def test_deterministic_admission_is_machine_validated_without_review_packets(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repo = Path(temp_dir)

@@ -65,7 +65,7 @@ workflows:
     sha256_12: 6bec19573c50
 - workflow: closeout
   source: .ai_ops/workflows/closeout.md
-  source_sha256_12: fe317173d88d
+  source_sha256_12: bebf87b705f9
   description: Prepare a read-only closeout packet, then publish only through exact
     approval-gated commit and push steps.
   outputs:
@@ -248,7 +248,7 @@ workflows:
     sha256_12: faca4d486bb7
 - workflow: work_savepoint
   source: .ai_ops/workflows/work_savepoint.md
-  source_sha256_12: 565f2b1a7d39
+  source_sha256_12: 07c2ba173503
   description: Validate and record a scoped work-in-progress savepoint; publish only
     after an explicit request and final approval.
   outputs:

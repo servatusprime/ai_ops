@@ -2,7 +2,7 @@
 description: Validate and record a scoped work-in-progress savepoint; publish only after an explicit request and final approval.
 name: work_savepoint
 kind: workflow
-version: 1.4.0
+version: 1.5.0
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -66,7 +66,10 @@ contract.
 5. Emit route metadata: `bootstrap_path`, `resume_basis`, and `reads_applied`.
 6. Do not make content or remediation edits from `/work_savepoint`; transition
    to `/work` for requested changes. Git publication may run only through the
-   approval-gated steps below.
+   approval-gated steps below. When the packet route is used, the approval
+   binds the prepared packet hash, base HEAD, branch, include set, mutation
+   plan, and projected tree; a parked or cost-exceeded packet cannot be
+   released by editing and rehashing its state.
 
 ## Steps
 
@@ -170,11 +173,37 @@ invocation cannot substitute for this final approval.
    Stop if the branch, remote, HEAD, include-set content, or dirty-tree scope
    changed since the preview. Never silently widen or substitute the approved
    set.
-7. **Stage Exact Paths**: Run `git -C <repo_root> add --
-   <approved_include_paths...>`. Verify `git diff --cached --name-only` equals
-   the approved include set exactly. Stop before commit on any mismatch.
-8. **Commit**: Commit with the approved `savepoint:` message. If commit fails,
-   report the staged state and stop without reset or cleanup.
+7. **Stage Exact Paths**: Prefer the shared tree-bound packet route when the
+    savepoint has a stable include set: build a packet with
+    `00_Admin/scripts/build_closeout_packet.py`, obtain an approval file that
+    validates against `00_Admin/configs/validator/schema_closeout_approval.yaml`
+    and binds its packet/tree hashes, and apply it with
+    `00_Admin/scripts/apply_closeout_packet.py`. The applier uses
+     an isolated approved-scope pre-commit preflight followed by a second
+     run against the actual staged index immediately before an ordinary exact
+     `git commit --only`. The installed native pre-commit and commit-msg hooks
+     remain enabled for the commit; a disposable-clone dry run against the
+     real ai_ops shims passed on 2026-10-23. It preserves unrelated staged entries and
+     fails closed on index, hook, policy, projection, cost, or post-commit tree
+     drift. Before any push, verify the packet with
+     `apply_closeout_packet.py --verify-push` and obtain a separate approval
+     naming the returned commit SHA, remote and branch.
+     Without a
+    packet, run `git -C <repo_root> add -- <approved_include_paths...>` and
+    verify `git diff --cached --name-only` equals the approved include set
+    exactly. Stop before commit on any mismatch. If packet tooling fails, use
+    the canonical manual fallback in `.ai_ops/workflows/closeout.md`; preserve
+    the packet and do not widen the scope or bypass hooks.
+8. **Commit**: Commit with the approved `savepoint:` message. If staging,
+     hook preflight, or commit fails, the packet route attempts to unstage only
+     its included paths, records whether cleanup succeeded, and parks the
+     packet for inspection; unrelated staged entries remain preserved. The
+     packet route never pushes.
+     The fixed packet invocation is intended to reduce command-boundary
+     ceremony, not to change host permission policy. Prompt behavior remains
+     platform-dependent; if a prompt or tooling failure persists, stop at the
+     same approval gate and use the manual path rather than widening an
+     allowlist or silently retrying with a different command form.
 9. **Push**: Push the new commit to the approved remote and branch. Do not
    force, create a PR, change the remote, or retry with a wider command. If the
    push fails, preserve and report the local commit hash and exact failure.

@@ -16,6 +16,61 @@ ai_generated: true
 
 ## Entries
 
+- 2026-10-23 | wb_closeout_friction_followon_01_2026-10-23 | Final focused
+  completion recheck: `crosscheck_closeout_friction_followon_recheck3_2026-10-23.md`
+  returned `ACCEPTABLE WITH NOTES`. F-01 through F-08 are resolved for the
+  reviewed implementation scope. N-01 remains an enforced admission gate:
+  both live HEAD registry entries have null `proposed_workbook` bindings, so
+  completion receipts correctly stop before mutation. No new receipt,
+  registry deletion, packet application, commit, or push was performed.
+
+- 2026-10-23 | wb_closeout_friction_followon_01_2026-10-23 | N-02 test
+  maintenance: the text-only completion negative now binds the test workbook
+  to the fixture's HEAD entry and reaches the intended planned-workbook guard.
+  The focused test suite was rerun after this correction.
+
+- 2026-10-23 | wb_closeout_friction_followon_01_2026-10-23 | Native-hook
+  validation evidence: a true disposable clone (not a linked worktree) ran
+  native `git commit --only` with the real ai_ops pre-commit and commit-msg
+  shims; markdownlint, repo-structure, export-drift, closeout-security and
+  commit-msg hooks passed. An earlier linked-worktree setup leaked a temporary
+  hooks path and dummy identity into the shared local Git config; both local
+  settings were restored and the linked worktree was removed. The native route
+  remains selected, with no temporary hooks override.
+
+- 2026-10-23 | wb_closeout_friction_followon_01_2026-10-23 | Superseded
+  completion evidence register: the six earlier success markers are retained
+  for historical traceability only and do not authorize registry deletion after
+  the blocking focused recheck. Superseded run ids:
+  `0ae82809-166e-492c-a0e0-539c205d1722`,
+  `c92c6ab9-6582-474c-99b1-a316fb6627f1`,
+  `abec86a7-3769-4dc7-993e-1af1b1f2075a`,
+  `8cb3ba29-5a32-4f55-8f64-c62f2f17a0a2`,
+  `c9c345cb-8fb5-4a0e-9ffb-6ec1d886e827`, and
+  `dd014bf5-4025-4dac-b8d0-4de4b9410595`. The `fw_20261023_01` and
+  `fw_20261023_03` rows are restored as active pending remediation, a retained
+  non-blocking review, and fresh success receipts. No prior receipt was edited.
+  Source: `90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_friction_followon_recheck_2026-10-23.md`.
+
+- 2026-10-23 | wb_closeout_friction_followon_01_2026-10-23 | The reconciled
+  completion crosscheck reopened this follow-on as remediation-active. The
+  prior packets were invalidated, and the prior completion receipts for
+  `fw_20261023_01` and `fw_20261023_03` are superseded evidence because they
+  were rewritten after creation and do not carry a retained independent-review
+  trace. New receipts will be created only after the remediation, fresh strict
+  crosscheck, and completed workbook state; they will not be edited after
+  creation. Source: `90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_friction_followon_reconciled_2026-10-23.md`.
+
+- 2026-10-23 | wb_closeout_friction_followon_01_2026-10-23 | Initial
+  implementation evidence is superseded by the reconciled completion
+  crosscheck. The packet/receipt slices are being remediated for short-path
+  containment, HEAD policy hashing, approval/base/tree/cost binding, staged
+  blob/mode verification, schema depth, journal recovery, and receipt-marker
+  verification. The earlier test counts and completion claims must not be used
+  as final evidence; `fw_20261023_01` and `fw_20261023_03` are restored pending
+  new receipts. `fw_20260619_02` remains measurement-only and
+  `fw_20261023_02` remains deferred.
+
 - 2026-10-23 | wb_closeout_rework_execute_01 | Processed the independent Sol
   closeout-security review and remediated the remaining admission defects. The
   canonical ai_ops policy was restored to its target-HEAD reviewer-read state;
@@ -1026,3 +1081,113 @@ ai_generated: true
   landing remains on `origin/main` pending requestor disposition; no
   retroactive commit/push approval is recorded, and no revert, amend, commit,
   or push is authorized by this remediation turn.
+
+### Future-work completion receipt: 0ae82809-166e-492c-a0e0-539c205d1722
+
+```yaml
+future_work_completion:
+  registry_id: fw_20261023_01
+  run_id: 0ae82809-166e-492c-a0e0-539c205d1722
+  status: success
+  exit_code: 0
+  scope_sha256: d1af3440061b4dc17948a0a5f6270d08061439030b950c15e164a144c9338aae
+  completion_artifact_sha256: 121dd107d2ade1fe9f9527d647be7b542158410841c3e425d092c2c1ccc8e9e2
+  completion_workbook: 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/wb_closeout_friction_followon_01_2026-10-23.md
+  actor: codex
+  scorecard_source_sha256: 019fdaf4d18e02dced173a49ec776b22ea2c70d167be2322c868498ec7ac98b9
+  evidence_refs:
+    - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_rework_execution_recheck2_2026-10-23.md
+    - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_rework_followup_2026-10-23.md
+    - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/work_proposal_closeout_rework_01.md
+```
+
+### Future-work completion receipt: c92c6ab9-6582-474c-99b1-a316fb6627f1
+
+```yaml
+future_work_completion:
+  registry_id: fw_20261023_03
+  run_id: c92c6ab9-6582-474c-99b1-a316fb6627f1
+  status: success
+  exit_code: 0
+  scope_sha256: 82d2ea173a207daf2c39b4c8e0a29e3ba306a22c872bedbd4facd99f40cafe60
+  completion_artifact_sha256: 121dd107d2ade1fe9f9527d647be7b542158410841c3e425d092c2c1ccc8e9e2
+  completion_workbook: 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/wb_closeout_friction_followon_01_2026-10-23.md
+  actor: codex
+  scorecard_source_sha256: 69abece600aaea0088175197454455be9ce408fba788fd11cba532ea80489540
+  evidence_refs:
+    - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_rework_execution_recheck2_2026-10-23.md
+    - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_rework_followup_2026-10-23.md
+    - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/work_proposal_closeout_rework_01.md
+```
+
+### Future-work completion receipt: abec86a7-3769-4dc7-993e-1af1b1f2075a
+
+```yaml
+future_work_completion:
+  registry_id: fw_20261023_01
+  run_id: abec86a7-3769-4dc7-993e-1af1b1f2075a
+  status: success
+  exit_code: 0
+  scope_sha256: b932e1774b3c34b910d766d02050048d2aa17330a3b1fef033f7143847c4ab0e
+  completion_artifact_sha256: 16e59e330069e717b97b4920553a61ab6963ee5b1386422c59b9eaae2e680b51
+  completion_workbook: 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/wb_closeout_friction_followon_01_2026-10-23.md
+  actor: requestor-authorized-coordinator
+  scorecard_source_sha256: 019fdaf4d18e02dced173a49ec776b22ea2c70d167be2322c868498ec7ac98b9
+  evidence_refs:
+  - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_friction_followon_reconciled_2026-10-23.md
+  - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_rework_execution_recheck2_2026-10-23.md
+```
+
+### Future-work completion receipt: 8cb3ba29-5a32-4f55-8f64-c62f2f17a0a2
+
+```yaml
+future_work_completion:
+  registry_id: fw_20261023_03
+  run_id: 8cb3ba29-5a32-4f55-8f64-c62f2f17a0a2
+  status: success
+  exit_code: 0
+  scope_sha256: df9c7de415960400b5a14fa86ba3c46b748ec5861a5a9f63b2681f2d0c0f643f
+  completion_artifact_sha256: 16e59e330069e717b97b4920553a61ab6963ee5b1386422c59b9eaae2e680b51
+  completion_workbook: 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/wb_closeout_friction_followon_01_2026-10-23.md
+  actor: requestor-authorized-coordinator
+  scorecard_source_sha256: 69abece600aaea0088175197454455be9ce408fba788fd11cba532ea80489540
+  evidence_refs:
+  - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_friction_followon_reconciled_2026-10-23.md
+  - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_rework_execution_recheck2_2026-10-23.md
+```
+
+### Future-work completion receipt: c9c345cb-8fb5-4a0e-9ffb-6ec1d886e827
+
+```yaml
+future_work_completion:
+  registry_id: fw_20261023_01
+  run_id: c9c345cb-8fb5-4a0e-9ffb-6ec1d886e827
+  status: success
+  exit_code: 0
+  scope_sha256: ac84a1d00dd127e42163ebb73d42b96c4098a39fc74b955bb7477578039b74ca
+  completion_artifact_sha256: a7174c051e6a1a5c36dbf5fbe68ab259050001bbe185111d68121d4fe97a7c9c
+  completion_workbook: 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/wb_closeout_friction_followon_01_2026-10-23.md
+  actor: requestor-authorized-coordinator
+  scorecard_source_sha256: 019fdaf4d18e02dced173a49ec776b22ea2c70d167be2322c868498ec7ac98b9
+  evidence_refs:
+  - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_friction_followon_reconciled_2026-10-23.md
+  - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_rework_execution_recheck2_2026-10-23.md
+```
+
+### Future-work completion receipt: dd014bf5-4025-4dac-b8d0-4de4b9410595
+
+```yaml
+future_work_completion:
+  registry_id: fw_20261023_03
+  run_id: dd014bf5-4025-4dac-b8d0-4de4b9410595
+  status: success
+  exit_code: 0
+  scope_sha256: 1044a4970b559907b7fa76be01bc5df97173710d27b68701351b173613eaaf18
+  completion_artifact_sha256: a7174c051e6a1a5c36dbf5fbe68ab259050001bbe185111d68121d4fe97a7c9c
+  completion_workbook: 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/wb_closeout_friction_followon_01_2026-10-23.md
+  actor: requestor-authorized-coordinator
+  scorecard_source_sha256: 69abece600aaea0088175197454455be9ce408fba788fd11cba532ea80489540
+  evidence_refs:
+  - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_friction_followon_reconciled_2026-10-23.md
+  - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_rework_execution_recheck2_2026-10-23.md
+```

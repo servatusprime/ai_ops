@@ -123,7 +123,7 @@ scorecard_sync:
 #   proposed_workbook: repo-relative path to planned workbook (null if not yet proposed)
 #   resolution: (optional) why a non-null completion_workbook resolved the item, used when the
 #     resolution was supersession rather than delivery; the entry is deleted at closeout per the
-#     Completion and Deletion Rule once completion_workbook appears in log_workbook_run.md
+#     Completion and Deletion Rule once a success receipt and exact run-log marker exist
 #   scope: detailed description of what needs to be done
 #   priority: low | medium | high
 #   benefit: low | medium | high
@@ -1355,8 +1355,15 @@ entries:
       next five closeouts and checked at the review date; and leaving the closeout security
       hook as designed (opt-in, so a commit without a receipt claim passes; hardening stays in
       `fw_20261018_01`). Prompt reduction is not a focus of this patch (see `fw_20260619_02`).
-      Deferred to their own items: `fw_20261023_01` (packet builder and applier),
-      `fw_20261023_02` (relocation sweep), `fw_20261023_03` (completion command and receipt).
+      The follow-on workbook advanced `fw_20261023_01` (packet builder and applier)
+      and `fw_20261023_03` (completion command and receipt) into implementation.
+      Their rows were restored after the 2026-10-23 strict recheck found blocking
+      commit-message and completion-evidence defects; the six earlier success
+      receipts are superseded evidence. Recheck3 accepts the remediation with
+      notes, but both HEAD `proposed_workbook` bindings remain null. The exact
+      binding must land before fresh success receipts can be created; deletion
+      remains receipt-backed. `fw_20261023_02` (relocation sweep) remains
+      deferred under its own trigger.
 
   - id: fw_20261023_01
     title: Closeout approval packet builder and applier (approval-to-tree binding), Tier 2
@@ -1364,46 +1371,39 @@ entries:
     target_repo: ai_ops
     source_workbook: null
     completion_workbook: null
-    proposed_workbook: null
+    proposed_workbook: 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/wb_closeout_friction_followon_01_2026-10-23.md
     scope: >-
-      Deferred Tier 2 of the closeout and savepoint rework (`fw_20261022_01`). Build a packet
-      builder and applier so one commit approval binds to the exact bytes committed: a
-      machine-local packet (scope lock, normalized blob and tree manifest, cost profile, frozen
-      clock, state) with a state mapping onto the existing approval, PDR and PARK vocabulary;
-      `git commit --only -- <approved paths>` with a cached name-status check before commit and
-      a `HEAD^{tree}` check after; push by verified commit SHA; and numeric stop limits
-      (repositories, roots, files, bytes, matches, elapsed time, retries) that park instead of
-      expanding. Design points to carry forward: the packet root must sit outside the
-      write-guarded `.ai_ops/local/` folder; new files need an explicit staging step before
-      `--only`; the structure-map hook rewrites a tracked file and the export-drift hook couples
-      workflow edits to the export manifest, so both belong in the projection; fixing hooks
-      (markdownlint, ruff) can change approved bytes after approval; the work is a packet
-      schema, a builder, an applier and tests, plus a limits block in the routing config.
-      Running git inside an approved script also changes the effective per-command prompt gate
-      on commit and push; decide that explicitly if this is built.
+      Implement and verify a machine-local closeout packet builder and applier
+      that binds one commit approval to the exact approved bytes, frozen routing
+      and hook state, projected tree, cost profile, base HEAD, branch and index
+      projection. The route must normalize multi-line commit messages, fail
+      closed on recomputed cost limits, and expose a verified push-readiness
+      check without pushing.
     priority: low
     benefit: medium
     effort: l
-    readiness: partial
+    readiness: ready
     risk_if_deferred: low
     activation_trigger: >-
-      Wrong-scope or drifted commits recur after the Tier 1 corrections land, or the existing
-      staged-names check proves insufficient, or the operator makes tree-bound approval a goal.
+      Wrong-scope or drifted commits recur after the Tier 1 corrections land,
+      or the operator makes tree-bound approval a goal.
     next_review: 2026-12-15
-    status: deferred
+    status: active
     owner: ai_ops
     created: 2026-10-23
     compacted_context:
       source: >-
-        Operator decision on 2026-10-23 to approve the closeout rework by tier and defer the
-        heavy machinery until the Tier 1 corrections are measured.
+        Operator decision on 2026-10-23 to proceed with the follow-on friction
+        workbook and its bounded packet implementation slice.
       note: >-
-        Self-contained. The full design is in the local, gitignored closeout-rework proposal
-        bundle and its reviews. None of the seven evidenced pains in `fw_20261022_01` is a drift
-        between approval and commit.
+        The implementation exists in the current working tree and recheck3
+        accepts it with notes; the live HEAD entry still has a null
+        `proposed_workbook`, so a fresh completion receipt remains gated.
     notes: >-
-      Value is unproven: the savepoint flow already re-validates after approval, stages exact
-      paths and verifies that the staged names equal the approved set. Measure Tier 1 first.
+      Prior success receipts are superseded evidence. Do not apply the pending
+      closeout packet or create a success receipt until the exact workbook
+      binding is present at HEAD; then rebuild the packet from the final
+      synchronized tree.
 
   - id: fw_20261023_02
     title: Bounded read-only cross-repository relocation-reference sweep, Tier 3
@@ -1450,36 +1450,33 @@ entries:
     target_repo: ai_ops
     source_workbook: null
     completion_workbook: null
-    proposed_workbook: null
+    proposed_workbook: 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/wb_closeout_friction_followon_01_2026-10-23.md
     scope: >-
-      Deferred Tier 3 of the closeout and savepoint rework (`fw_20261022_01`, pain 7).
-      Registry completion is three manual steps (delete the entry, add a run-log entry,
-      regenerate the scorecard), and the registry policy defines completion as the completion
-      workbook appearing in the run log. Replace this with a completion command that writes an
-      immutable receipt (registry id, run id, status of success, failed, pending or stale, exit
-      code, scope and artifact hashes, run-log marker and hash, scorecard source hash excluding
-      the generated date), a marked run-log block, a parity check, and a Level 4 policy rewrite;
-      only a success receipt may delete an entry. Needs the policy edit, a schema, a script and
-      tests with success, failed, pending, stale and text-only fixtures. Interim: the existing
-      stale-entry validator warning and a checklist.
+      Replace manual future-work deletion, run-log and scorecard synchronization
+      with a receipt-backed completion transaction. Require a completed workbook,
+      retained non-blocking review evidence, exact registry parity, independent
+      scorecard parity and recovery evidence; only success may delete the entry,
+      while failed, pending and stale outcomes preserve it.
     priority: low
     benefit: medium
     effort: m
-    readiness: partial
+    readiness: ready
     risk_if_deferred: low
     activation_trigger: >-
-      Two false completions, or a scorecard that was not regenerated after a completion.
+      Two false completions, or a scorecard that was not regenerated after a
+      completion.
     next_review: 2026-12-15
-    status: deferred
+    status: active
     owner: ai_ops
     created: 2026-10-23
     compacted_context:
       source: >-
-        Operator decision on 2026-10-23 to approve the closeout rework by tier; completion
-        events are infrequent and the validator already warns about stale entries.
+        Operator decision on 2026-10-23 to proceed with the follow-on friction
+        workbook and its bounded completion transaction slice.
       note: >-
-        Self-contained. Changing the completion rule is a policy change, not only a validator
-        change.
+        The implementation exists in the current working tree and recheck3
+        accepts it with notes; the live HEAD entry still has a null
+        `proposed_workbook`, so a fresh completion receipt remains gated.
     notes: >-
-      The receipt location, the run-log marker format and the scorecard parity rule (ignore the
-      generated date) were drafted in the closeout-rework proposal and should be reused.
+      Receipt artifact hashes are point-in-time facts. The durable run-log marker
+      and registry state are verified; prior six receipts remain superseded.

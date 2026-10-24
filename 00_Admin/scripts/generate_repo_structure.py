@@ -45,7 +45,7 @@ def resolve_git_root(script_dir: Path) -> Path:
 
 
 def list_tracked_files(root: Path) -> List[str]:
-    result = subprocess.run(
+    tracked = subprocess.run(
         ["git", "-c", "core.quotepath=false", "-C", str(root), "ls-files"],
         capture_output=True,
         text=True,
@@ -53,9 +53,32 @@ def list_tracked_files(root: Path) -> List[str]:
         errors="replace",
         check=False,
     )
-    if result.returncode != 0:
+    untracked = subprocess.run(
+        [
+            "git",
+            "-c",
+            "core.quotepath=false",
+            "-C",
+            str(root),
+            "ls-files",
+            "--others",
+            "--exclude-standard",
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+    if tracked.returncode != 0 or untracked.returncode != 0:
         return []
-    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    return sorted(
+        {
+            line.strip()
+            for line in tracked.stdout.splitlines() + untracked.stdout.splitlines()
+            if line.strip()
+        }
+    )
 
 
 def _should_exclude(parts: List[str]) -> bool:

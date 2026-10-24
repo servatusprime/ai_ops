@@ -1,0 +1,147 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:ai-ops:schema:closeout-approval-packet:0.1.0
+title: Closeout Approval Packet
+type: object
+additionalProperties: false
+required:
+  - packet_version
+  - run_id
+  - repo_id
+  - repo_root
+  - head
+  - branch
+  - remote
+  - commit_message
+  - include
+  - exclude
+  - include_set_sha256
+  - mutation_plan_sha256
+  - changes
+  - projected_tree_manifest
+  - projected_tree_sha256
+  - pre_existing_index
+  - pre_existing_index_preserved
+  - hook_fingerprint
+  - policy
+  - routing_contract
+  - cost_profile
+  - frozen_clock
+  - approval_contract
+  - state
+  - packet_sha256
+  - prepared_packet_sha256
+properties:
+  packet_version: {const: "0.1.0"}
+  run_id: {type: string, format: uuid}
+  repo_id: {type: string, minLength: 1}
+  repo_root: {type: string, minLength: 1}
+  head: {type: string, pattern: '^[0-9a-f]{40}$'}
+  branch: {type: string, minLength: 1}
+  remote: {type: string, minLength: 1}
+  remote_url: {type: [string, "null"]}
+  commit_message: {type: string, minLength: 1}
+  include:
+    type: array
+    minItems: 1
+    items: {type: string, minLength: 1}
+  exclude: {type: array, items: {type: string, minLength: 1}}
+  include_set_sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+  mutation_plan_sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+  changes:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      additionalProperties: false
+      required: [path, action, mode, blob_sha1, sha256]
+      properties:
+        path: {type: string, minLength: 1}
+        action: {enum: [add, modify, delete]}
+        mode: {type: string, pattern: '^[0-9]{6}$'}
+        blob_sha1: {type: [string, "null"], pattern: '^[0-9a-f]{40}$'}
+        sha256: {type: [string, "null"], pattern: '^[0-9a-f]{64}$'}
+  projected_tree_manifest:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [mode, path, blob_sha1]
+      properties:
+        mode: {type: string, pattern: '^[0-9]{6}$'}
+        path: {type: string, minLength: 1}
+        blob_sha1: {type: string, pattern: '^[0-9a-f]{40}$'}
+  projected_tree_sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+  pre_existing_index:
+    type: object
+    additionalProperties: false
+    required: [fingerprint_sha256, paths]
+    properties:
+      fingerprint_sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+      paths: {type: array, items: {type: string, minLength: 1}}
+  pre_existing_index_preserved:
+    type: object
+    additionalProperties: false
+    required: [fingerprint_sha256, paths]
+    properties:
+      fingerprint_sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+      paths: {type: array, items: {type: string, minLength: 1}}
+  hook_fingerprint:
+    type: object
+    additionalProperties: false
+    required: [sha256, hooks_path, files]
+    properties:
+      sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+      hooks_path: {type: string}
+      files: {type: array, items: {type: object}}
+  policy:
+    type: object
+    additionalProperties: false
+    required: [source, version, sha256]
+    properties:
+      source: {enum: [target_HEAD, missing_target_policy]}
+      version: {type: string, minLength: 1}
+      path: {type: string, minLength: 1}
+      sha256: {type: string, minLength: 1}
+  routing_contract:
+    type: object
+    additionalProperties: false
+    required: [source, path, version, sha256, limits, packet_root]
+    properties:
+      source: {type: string, minLength: 1}
+      path: {type: string}
+      version: {type: string, minLength: 1}
+      sha256: {type: string, minLength: 1}
+      limits: {type: object, minProperties: 1}
+      packet_root: {type: string, minLength: 1}
+  cost_profile:
+    type: object
+    additionalProperties: false
+    required: [limits, observed, exceeded]
+    properties:
+      limits: {type: object}
+      observed: {type: object}
+      exceeded: {type: object}
+  frozen_clock:
+    type: object
+    additionalProperties: false
+    required: [started_at, prepared_at]
+    properties:
+      started_at: {type: string, format: date-time}
+      prepared_at: {type: string, format: date-time}
+  approval_contract:
+    type: object
+    additionalProperties: false
+    required: [approval_state, packet_state, required_decision, push_separate]
+    properties:
+      approval_state: {enum: [PENDING, APPROVED]}
+      packet_state: {enum: [PENDING, APPROVED, APPLIED, INVALIDATED, PARKED, FAILED]}
+      required_decision: {const: exact_scope_and_commit}
+      push_separate: {const: true}
+      approved_by: {type: [string, "null"]}
+      approved_at: {type: [string, "null"]}
+      approval_ref: {type: [string, "null"]}
+  state: {enum: [PENDING, APPROVED, APPLIED, INVALIDATED, PARKED, FAILED]}
+  result: {type: [object, "null"]}
+  updated_at: {type: string, format: date-time}
+  packet_sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+  prepared_packet_sha256: {type: string, pattern: '^[0-9a-f]{64}$'}

@@ -371,8 +371,18 @@ def expand_patterns(repo_root: str, patterns: List[str]) -> List[str]:
     return sorted(set(results))
 
 
+def filter_machine_local_artifacts(paths: List[str], repo_root: str) -> List[str]:
+    """Keep ignored closeout packets out of governed document validation."""
+    packet_prefix = os.path.normpath(os.path.join("90_Sandbox", "ai_workbooks", "_closeout_packets"))
+    return [
+        path
+        for path in paths
+        if not os.path.normpath(os.path.relpath(path, repo_root)).startswith(packet_prefix + os.sep)
+    ]
+
+
 def list_tracked_files(root: str) -> List[str]:
-    result = subprocess.run(
+    tracked = subprocess.run(
         ["git", "-c", "core.quotepath=false", "-C", root, "ls-files"],
         capture_output=True,
         text=True,
@@ -380,9 +390,32 @@ def list_tracked_files(root: str) -> List[str]:
         errors="replace",
         check=False,
     )
-    if result.returncode != 0:
+    untracked = subprocess.run(
+        [
+            "git",
+            "-c",
+            "core.quotepath=false",
+            "-C",
+            root,
+            "ls-files",
+            "--others",
+            "--exclude-standard",
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+    if tracked.returncode != 0 or untracked.returncode != 0:
         return []
-    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    return sorted(
+        {
+            line.strip()
+            for line in tracked.stdout.splitlines() + untracked.stdout.splitlines()
+            if line.strip()
+        }
+    )
 
 
 def _should_exclude_repo_path(parts: List[str]) -> bool:
@@ -1190,9 +1223,24 @@ def check_future_work_registry(path: str, warnings: List[str]) -> None:
             completion_workbook = match.group(1).strip("'\"")
             if completion_workbook.lower() in {"null", "~"}:
                 continue
-            if completion_workbook in log_text:
+            marker = re.compile(
+                r"###\s+Future-work completion receipt:\s+[^\n]+\n\n```yaml\n"
+                r"future_work_completion:\n(?P<body>.*?)\n```",
+                flags=re.MULTILINE | re.DOTALL,
+            )
+            completed_markers = [match.group("body") for match in marker.finditer(log_text)]
+            if any(
+                re.search(
+                    rf"^\s*registry_id:\s*{re.escape(entry.splitlines()[0].split(':', 1)[-1].strip())}\s*$",
+                    body,
+                    re.MULTILINE,
+                )
+                and re.search(r"^\s*status:\s*success\s*$", body, re.MULTILINE)
+                and re.search(rf"^\s*completion_workbook:\s*{re.escape(completion_workbook)}\s*$", body, re.MULTILINE)
+                for body in completed_markers
+            ):
                 warnings.append(
-                    "VS012: completion_workbook completed in run log: "
+                    "VS012: success completion receipt found in run log: "
                     f"{completion_workbook}"
                 )
 
@@ -1894,7 +1942,9 @@ def main() -> int:
             continue
         rule_id = rule.get("id")
         try:
-            paths = expand_patterns(repo_root, rule.get("paths", []))
+            paths = filter_machine_local_artifacts(
+                expand_patterns(repo_root, rule.get("paths", [])), repo_root
+            )
         except ValueError as exc:
             errors.append(f"{rule_id}: {exc}")
             continue

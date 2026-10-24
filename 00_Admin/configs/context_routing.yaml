@@ -11,9 +11,9 @@
 # Quick-read contract:
 # - Tier 1 (always read): usage, fallback, reporting, commands, skills, policy.
 
-version: 0.7.0
+version: 0.8.1
 status: active
-updated: 2026-07-16
+updated: 2026-10-23
 owner: ai_ops
 usage:
   resolution_order:
@@ -338,6 +338,17 @@ governed_repo_validation:
   allow_partial_on_network_failure: true
   require_repo_root_resolution: true
   require_safe_directory_preflight: true
+closeout_packet:
+  # The packet builder consumes this block as the single source of truth for
+  # bounded projection and validation cost. Keep changes versioned here.
+  version: 0.2.0
+  packet_root: 90_Sandbox/ai_workbooks/_closeout_packets
+  limits:
+    repositories: 1
+    roots_per_repository: 8
+    files: 25000
+    bytes_searched: 2147483648
+    elapsed_seconds: 120
 # hook_points moved to spec_context_routing_runtime.md (no current implementation).
 policy:
   max_required_ref_depth: 2

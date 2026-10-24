@@ -1,9 +1,9 @@
-version: "0.4.0"
-ruleset_version: "0.4.0"
+version: "0.5.0"
+ruleset_version: "0.5.0"
 packet:
   estimated_tokens_per_packet: 20000
-  session_token_budget: 120000
-  max_total_review_tokens: 120000
+  session_token_budget: 200000
+  max_total_review_tokens: 200000
   warn_threshold_pct: 80
   park_threshold_pct: 100
 tiers:
