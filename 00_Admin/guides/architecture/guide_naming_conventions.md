@@ -81,14 +81,14 @@ note: 'Do not edit directly; update canonical source and re-copy.'
 Runbook prefix note:
 
 - Canonical prefix is `rb_`.
-- Legacy `runbook_` is allowed only for existing files until renamed.
+- Existing `runbook_` files may remain only until renamed.
 - `rb_` is reserved for runbooks; it MUST NOT be used for runbundles.
 - `wb_` is the canonical prefix for workbundle folders.
 - `work_program_` and `run_program_` are reserved for workprogram/runprogram folders.
 - `rnb_` is reserved for runbundle folders.
 - Workbundle folder pattern: `wb_<topic>_<nn>_<YYYY-MM-DD>`
   (e.g., `wb_repo_health_01_2026-01-30`).
-- Legacy `wp_` workbundle folders may remain in historical artifacts;
+- Existing `wp_` workbundle folders may remain in historical artifacts;
   do not rename in-place without a dedicated refactor workbook.
 
 ### 2.1 Sequential Naming for Work-Family Books in Bundles

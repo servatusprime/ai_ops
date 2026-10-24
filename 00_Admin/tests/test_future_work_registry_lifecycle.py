@@ -57,11 +57,17 @@ class FutureWorkRegistryLifecycleTests(unittest.TestCase):
             "    scope: Test scope\n"
             "    priority: low\n"
             "    created: 2026-06-11\n",
-            "Completed implementation.md\n",
+            "\n\n### Future-work completion receipt: 00000000-0000-4000-8000-000000000002\n\n"
+            "```yaml\n"
+            "future_work_completion:\n"
+            "  registry_id: fw_test_02\n"
+            "  status: success\n"
+            "  completion_workbook: implementation.md\n"
+            "```\n",
         )
         self.assertEqual(
             [
-                "VS012: completion_workbook completed in run log: "
+                "VS012: success completion receipt found in run log: "
                 "implementation.md"
             ],
             warnings,

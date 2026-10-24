@@ -470,7 +470,7 @@ How to confirm setup worked in 2 minutes:
    Run once on first clone and whenever workflows are added or renamed.
 3. **Run the setup script** for your agent from `.ai_ops/setup/`:
    - Claude Code: `bash .ai_ops/setup/setup_claude_skills.sh` (or `.bat` on Windows)
-   - Codex: `bash .ai_ops/setup/setup_codex_skills.sh`
+   - Codex: `bash .ai_ops/setup/setup_codex_skills.sh` (or `.bat` on Windows)
    - GitHub Copilot: use `.github/copilot-instructions.md`; on supported
      surfaces, `setup_claude_skills.*` also installs compatible project skills
      into `.claude/skills/`
@@ -564,10 +564,6 @@ Run once after setup (or when your environment changes):
   for policy authorship, canonical specification, and L4 crosscheck tasks.
 
 Settings are saved to `.ai_ops/local/config.yaml` (gitignored -- machine-local).
-If your environment uses non-standard model IDs, you can also declare a
-`model_level_map` under `customizations.model_capabilities` to bind concrete
-model IDs to ai_ops reasoning levels (1–4). This is optional; populated via
-`/customize`. See `AGENTS.md §AI Model Level Reference`.
 
 ### `/profiles` -- tune agent behavioral posture
 
@@ -768,7 +764,7 @@ A *topology* defines how agents are connected. A *lane* defines what the agent i
 
 ### Supported tool surfaces
 
-- Claude Code (`.claude/skills/` or `.claude/commands/`)
+- Claude Code (`.claude/skills/`)
 - Codex (`.agents/skills/` default; `.codex/skills/` on-demand compatibility mirror)
 - Cursor (wrapper support varies by environment and command format)
 - Gemini CLI and Google Antigravity (integration path depends on current Google tooling surface)

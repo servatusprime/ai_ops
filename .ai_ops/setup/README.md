@@ -143,14 +143,6 @@ These scripts may also ensure `plugins/ai-ops-governance/` skeleton directories
 exist for plugin-managed wrapper assets. This is a no-op when the directories
 already exist.
 
-**Legacy: Commands-based install** (backward-compatible):
-
-- `setup_claude.sh` (Unix/macOS)
-- `setup_claude.bat` (Windows)
-
-These copy workflow files into `.claude/commands/`. This path still works but
-skills are preferred for new installations.
-
 ### Claude App (web + desktop)
 
 Claude app surfaces do not scan project skill or command folders. Use natural
@@ -210,9 +202,7 @@ If you prototype a local-only Codex skill under `.agents/skills/`, treat that
 runtime artifact as evidence only until the retained behavior is modeled in
 tracked repo sources and surfaced through `/ai_ops_setup`.
 
-Legacy `setup_codex.sh` / `setup_codex.bat` scripts were removed because they
-targeted `.codex/commands/`, which is not a valid Codex mechanism. Use
-`setup_codex_skills.*` only.
+Use `setup_codex_skills.*` for Codex skill installation.
 
 ### Cursor
 
@@ -246,8 +236,8 @@ repo-local `.agents/workflows/`) so Antigravity-style discovery lanes that scan
 `.agents/workflows/*.md` can surface the same commands.
 
 TOML in this lane is wrapper transport only. Profile value editing remains
-YAML-based through `/profiles` (`.ai_ops/profiles/active_crew.yaml`) for all
-surfaces, including Claude and Codex.
+YAML-based through `/profiles` in `.ai_ops/local/profiles/active_crew.yaml`
+for all surfaces, including Claude and Codex.
 
 ### GitHub Copilot Chat
 
@@ -279,7 +269,7 @@ Include workflow files in context using their respective mechanisms.
 | --- | --- | --- |
 | /work | work.md | Start/resume work session |
 | /work_status | work_status.md | Show active context and blockers |
-| /work_savepoint | work_savepoint.md | Commit + push savepoint, then end session |
+| /work_savepoint | work_savepoint.md | Preview, then approval-gated commit/push of a scoped WIP savepoint; `--no-commit` is checkpoint-only |
 | /harvest | harvest.md | Consolidate/prune artifacts |
 | /crosscheck | crosscheck.md | Conduct structured peer review |
 | /health | health.md | Repo health check |
@@ -297,7 +287,6 @@ All workflow files are in `.ai_ops/workflows/`.
 | Tool | Mechanism | Folder/File | Status |
 | --- | --- | --- | --- |
 | Claude Code (skills) | Skills | `.claude/skills/` | Recommended (workspace-root) |
-| Claude Code (commands) | Commands | `.claude/commands/` | Legacy (backward-compatible) |
 | Claude App (web/desktop) | Direct workflow reference | none | Supported (instructions-only; no install; artifact-driven) |
 | Codex (skills, repo scope) | Skills | `.agents/skills/` | Recommended |
 | Codex (skills, user scope) | Skills | `$HOME/.agents/skills/` | Recommended |
@@ -320,6 +309,11 @@ All workflow files are in `.ai_ops/workflows/`.
   in `.ai_ops/workflows/profiles.md`, not in setup docs.
 - For deterministic wrapper regeneration from SoT workflows, run:
   `python 00_Admin/scripts/generate_workflow_exports.py`.
+- Workspace-root installs fail closed before writing. First run the complete
+  preview with `--scope workspace --install-root <workspace_root> --dry-run`,
+  review every `CREATE`, `UPDATE`, and `UNCHANGED` output, then rerun the same
+  command with the printed `--approve-preview <token>`. The token becomes
+  invalid if either a source wrapper or destination file changes.
 - Model availability is not reliably auto-detected by setup scripts; declare
   available models/default reasoning via `/customize`, then use `/profiles` for
   model-family behavior tuning when needed.

@@ -2,18 +2,16 @@
 name: ai_ops_setup
 description: Run ai_ops setup scripts for skills, commands, and supported instruction surfaces
 kind: workflow
-version: 0.2.0
+version: 0.3.4
 status: active
 owner: ai_ops
 license: Apache-2.0
 claude:
   argument-hint: null
-  disable-model-invocation: false
+  disable-model-invocation: true
   user-invocable: true
   allowed-tools: null
   model: null
-  context: null
-  agent: null
 codex:
   metadata:
     short-description: Run ai_ops setup scripts for supported skills, commands, and instruction surfaces.
@@ -21,7 +19,7 @@ codex:
     display_name: ai_ops_setup
     short_description: Install or verify ai_ops setup wrappers.
   policy:
-    allow_implicit_invocation: true
+    allow_implicit_invocation: false
 exports:
   claude_plugin:
     enabled: true
@@ -53,13 +51,9 @@ instructions-only lane when that is the correct surface behavior.
 - Retained ai_ops behavior must be governed in tracked repo sources first
   (`.ai_ops/workflows/`, approved setup docs, and approved export lanes).
 - Tool runtime folders such as `.agents/skills/`, `.claude/skills/`, and
-  `.claude/commands/` are downstream install surfaces, not source-of-truth
-  authoring surfaces.
+  are downstream install surfaces, not source-of-truth authoring surfaces.
 - If a user wants a retained skill/command behavior change, transition to
   `/work` and update upstream sources before reinstalling.
-- Compatibility read for legacy local inputs is allowed during migration:
-  - `.ai_ops/config.yaml`
-  - `.ai_ops/profiles/active_crew.yaml`
 
 ## Modality Confirmation (Mandatory)
 
@@ -178,7 +172,7 @@ supported. Workspace root detection must precede every path and `work_repos` cal
 Local files (`.ai_ops/local/**`) are always relative to the ai_ops repo root regardless of topology.
 Only install target paths and `work_repos` shift between configs.
 
-## Inputs
+## Inputs and Preconditions
 
 - Target tool(s): Claude, Codex, GitHub Copilot, Cursor, Gemini
 - OS: Windows or Mac/Linux
@@ -220,10 +214,25 @@ contract.
    - If `installation_target` is `none`, stop and confirm no install performed.
 2. Detect OS or ask if not detectable.
 3. If `AGENTS.md` is missing in the target repo, point the user to the onboarding guide in `HUMANS.md`.
-4. If `.ai_ops/local/config.yaml` exists, update `customizations.validation_policy.governed_mode` with the confirmed
+4. For a new top-level governed repository, bootstrap the minimum governed
+   shape before installing tool surfaces:
+   - choose exactly one domain anchor (`--domain-dir src`, for example), or
+     record a no-domain `--exception-id`;
+   - run one documented command from the workspace root:
+     `python ai_ops/00_Admin/scripts/bootstrap_governed_repo.py --repo-root
+     <repo_root> --ai-ops-root ai_ops --workspace-root . --domain-dir <domain>`
+     (use `--exception-id <id>` instead of `--domain-dir` for a no-domain repo);
+   - the command creates only missing `AGENTS.md`, `README.md`, `00_Admin/`,
+     `90_Sandbox/`, local work-state/receipt evidence, and the ai_ops
+     `workspace.work_repos` registration; it does not overwrite non-empty
+     files or copy domain-specific content;
+   - it runs the structural validator before reporting success. If the target
+     already contains non-empty root instructions, transition to `/work` and
+     reconcile manually rather than overwriting them.
+5. If `.ai_ops/local/config.yaml` exists, update `customizations.validation_policy.governed_mode` with the confirmed
    `governed_validation_policy`. If it does not exist, create it from the template and apply the value after
    confirmation.
-5. **Configure target/external repos** (governed workflow prerequisite):
+6. **Configure target/external repos** (governed workflow prerequisite):
    - Ask: "Do you have external repos you want ai_ops to govern (for `/work_savepoint`, `/closeout`, and `/lint` in
      Governed or External mode)?"
    - If yes: for each target repo, add an entry to `workspace.work_repos` in `.ai_ops/local/config.yaml`:
@@ -253,10 +262,10 @@ contract.
      or re-invoke `/ai_ops_setup` at any time to add new repos to `work_repos`.
    - If `governed_validation_policy` is `repo_native`, `work_repos` entries are still used for repo-root resolution
      at runtime; `minimum_commands` is ignored (validators are auto-detected from the repo's native tooling).
-6. Check existing installation state for the selected surface and scope:
+7. Check existing installation state for the selected surface and scope:
    - If wrappers already exist at the target scope root, report "already installed" and offer `--force` overwrite or
      stop.
-7. Run the matching script(s) from `.ai_ops/setup/` with the resolved scope flag:
+8. Run the matching script(s) from `.ai_ops/setup/` with the resolved scope flag:
    - Claude skills: `setup_claude_skills.bat|.sh [--workspace|--repo]`
    - Claude app: no install script; confirm direct workflow-reference lane
      and Filesystem access when repo files are needed
@@ -264,23 +273,32 @@ contract.
      Packages `.claude/skills/` into a `.plugin` zip for Cowork installation.
      Use `--dry-run` to preview skill count and output path before writing.
    - Codex skills: `setup_codex_skills.bat|.sh [--workspace|--repo|--user]`
+   - Claude native subagents (`.claude/agents/`): `setup_claude_agents.bat|.sh
+     [--workspace|--repo]` -- regenerates via `/profiles`
+     (`regenerate_profiles.py`) and, for `--workspace`, additionally copies
+     the repo-generated set to the workspace root so subagent types are
+     reachable from a session launched there. Run alongside
+     `setup_claude_skills.*`, not instead of it.
    - GitHub Copilot skills: reuse `setup_claude_skills.bat|.sh [--workspace|--repo]`
      on surfaces that support project skills from `.claude/skills/`
    - GitHub Copilot instructions: no install script; verify
      `.github/copilot-instructions.md` exists and confirm instructions-only lane
-   - Commands: `setup_claude.bat|.sh`, `setup_cursor.bat|.sh`, `setup_gemini.bat|.sh`
+   - Commands: `setup_cursor.bat|.sh`, `setup_gemini.bat|.sh`
    - Echo resolved install root and workflow pointer before executing.
-8. For Claude installs, ensure plugin skeleton folders exist:
+9. For Claude installs, ensure plugin skeleton folders exist:
    - `plugins/ai-ops-governance/agents/`
    - `plugins/ai-ops-governance/commands/`
    - `plugins/ai-ops-governance/.claude-plugin/`
-9. For Codex installs, use primary skills path by default:
-   - primary: `.agents/skills/` (or `$HOME/.agents/skills/`)
-   - compatibility mirror (`.codex/skills/` or `$HOME/.codex/skills/`) is on-demand only when explicitly requested.
-10. If retained ai_ops behavior needs to persist, confirm the source edit
+
+10. For Codex installs, use primary skills path by default:
+   primary: `.agents/skills/` (or `$HOME/.agents/skills/`); the compatibility
+   mirror (`.codex/skills/` or `$HOME/.codex/skills/`) is on-demand only when
+   explicitly requested.
+
+11. If retained ai_ops behavior needs to persist, confirm the source edit
     belongs in tracked repo surfaces and not in the installed runtime folder.
-11. Report results and note where files were installed.
-12. Ensure local setup-state surfaces exist:
+12. Report results and note where files were installed.
+13. Ensure local setup-state surfaces exist:
 
 - `.ai_ops/local/config.yaml` (when local overrides are created),
 - `.ai_ops/local/profiles/active_crew.yaml` (when profile state exists),
@@ -306,15 +324,20 @@ contract.
 2. Recommend hooks configuration and two-file permission separation (structural governance enforcement):
 
 - "Copy the hooks template from `01_Resources/templates/config/hooks_template.json`
-  into `.claude/settings.local.json` at your workspace root. Hooks provide
-  structural (non-LLM) enforcement of governance rules: PostToolUse markdown lint,
-  PreToolUse Level 4 path guard, and SessionStart context injection."
+  into `.claude/settings.local.json` at your workspace root. The template keeps
+  only the read-only SessionStart context injection and advisory PreToolUse
+  Level 4 path warning. The dynamic PostToolUse npx Markdown hook is disabled
+  pending a repository-local integrity-controlled replacement."
 - "Keep `.claude/settings.local.json` for hooks and machine-local overrides only.
   Do not duplicate `allow`/`deny` entries that already appear in the committed
   `.claude/settings.json`. The two-file separation is: `settings.json` (committed,
   allow/deny rules, portable across machines) and `settings.local.json` (gitignored,
   hooks + machine-local keys only)."
 - "Verify `.claude/settings.local.json` is listed in `.gitignore` before committing."
+- "Run the settings synchronizer in check mode first. Use `--strict` only for
+  an explicitly approved portable target; it drops target-only permission
+  additions while preserving hook keys. The synchronizer refuses workspace
+  escapes, symlink/reparse targets, and Git mutation additions."
 
 3. New machine onboarding — workspace and global `~/.claude/` configuration:
 
@@ -335,4 +358,43 @@ contract.
 
 - "Apply the global settings template from `01_Resources/templates/config/settings_global_template.json`
   to `~/.claude/settings.json`. This replaces accumulated one-off rules with
-  category-level permissions and a deny list for se
+  category-level permissions and a deny list for sensitive commands."
+
+## Lane
+
+Default lane: Coordinator -> Builder.
+
+## Risks and Limits
+
+- Do not perform canonical remediation edits outside setup scope -- transition
+  to `/work` and update upstream sources first (see Setup Contract).
+- Do not assume an installation target; default is `none` until explicitly
+  confirmed (see Modality Confirmation).
+- Do not treat tool runtime folders (`.agents/skills/`, `.claude/skills/`,
+  command folders) as source-of-truth authoring surfaces -- they are
+  downstream install outputs.
+- Do not assume command folders exist; if missing, read
+  `.ai_ops/workflows/ai_ops_setup.md` directly.
+
+## Outputs
+
+- Modality/scope confirmation summary (`active_surface`, `installation_target`,
+  `install_scope`, `governed_validation_policy`).
+- Updated `.ai_ops/local/config.yaml` (governed-mode policy, `work_repos`
+  entries) when configured.
+- Installed skill/command wrapper files at the confirmed scope, or an
+  explicit "no action taken" confirmation when `installation_target` is
+  `none`.
+- Setup receipt (`.ai_ops/local/setup/state.yaml`): contract version,
+  installed surface summary, timestamp.
+- Readiness report for setup-gated lanes (`/work`, `/customize`, `/profiles`).
+
+## Resources
+
+- `00_Admin/configs/setup_contract.yaml` (required contract version, receipt
+  path)
+- `01_Resources/templates/config/hooks_template.json` (hooks template for
+  structural governance enforcement)
+- `01_Resources/templates/config/settings_global_template.json` (global
+  `~/.claude/settings.json` template)
+- `00_Admin/scripts/sync_claude_settings.py` (workspace/repo settings sync)

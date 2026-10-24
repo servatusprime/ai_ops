@@ -1,10 +1,10 @@
 ---
 title: "Reference: Skills and Commands Classification"
 id: ref_skills_commands_classification_01
-version: 0.1.2
+version: 0.1.10
 status: active
 created: 2026-02-20
-last_updated: 2026-03-19
+last_updated: 2026-09-07
 owner: ai_ops
 license: Apache-2.0
 description: >
@@ -71,10 +71,10 @@ lanes remain upstream in ai_ops canon:
 | `/harvest` | Both | Closer | Coordinator -> Closer | User invokes for artifact promotion. Primary agent may invoke as part of closeout. |
 | `/customize` | Command | Primary agent (builder sidecar for config writes when needed) | Coordinator -> Builder | Always user-initiated. Agent should not auto-invoke config changes. |
 | `/profiles` | Command | Primary agent (builder sidecar for file regeneration when needed) | Coordinator -> Builder | Always user-initiated. New command for rider/crew management. |
-| `/lint` | Both | Linter | Linter | User invokes for standalone validation. Closer and reviewer may invoke as part of their workflows. |
+| `/lint` | Command | Linter | Linter | Report-only mechanical validation is a Command, not a Skill. Claude disables model-initiated invocation; Codex blocks implicit invocation while allowing explicit `$lint`. Reviewer/Closer delegation reads the workflow directly. |
 | `/scratchpad` | Command | Executor | Executor | User-initiated note creation. Agent does not auto-create scratchpads. |
 | `/work_status` | Command | Planner | Coordinator | User-initiated status check. Single-turn report. |
-| `/work_savepoint` | Command | Primary agent | Closer | User-initiated session end. Commits + pushes savepoint, then ends. |
+| `/work_savepoint` | Command | Primary agent | Closer | User-initiated WIP save. Builds an exact publication preview, waits for explicit final approval, then commits/pushes without marking work complete. `--no-commit` selects a read-only checkpoint. |
 | `/ai_ops_setup` | Command | Primary agent | Coordinator -> Builder | User-initiated setup. Should never auto-invoke. |
 
 ### Plugin Export Implications
@@ -89,6 +89,20 @@ context window budget.
 | Skill only | `false` | No | Yes |
 | Both | `false` | Yes (explicit entry point) | Yes (auto-discoverable) |
 
+### Relationship to `context_routing.yaml`'s Guard Profiles (G-06, added 2026-09-06)
+
+`context_routing.yaml`'s `guard_profile.mode`/`family` fields and this
+guide's Command/Skill/Both classification are **two independent schemes
+answering different questions** -- they must not be assumed to correspond
+1:1. `guard_profile` describes execution-guard behavior (write scope,
+artifact-type restrictions, onboarding tier); classification describes
+invocation-surface exposure (who can trigger it, and how). Concrete
+evidence that the two do not align: `guard_profile.mode: action` is shared
+by `/closeout` (Both), `/harvest` (Both), `/customize` (Command), and
+`/profiles`/`/scratchpad` (Command) alike -- the same execution-guard mode
+covers three different classifications. Read both fields when reasoning
+about a command's behavior; neither substitutes for the other.
+
 ---
 
 ## New Workflows Introduced by This Workbundle
@@ -96,7 +110,7 @@ context window budget.
 | Workflow | Classification | File Location | Description |
 | --- | --- | --- | --- |
 | `/profiles` | Command | `.ai_ops/workflows/profiles.md` (new) | Manage rider archetype profiles, slider adjustment, crew preset selection, derivative file regeneration. |
-| `/lint` | Both | `.ai_ops/workflows/lint.md` (new) | Run configured validators against target files. Standalone validation entry point. |
+| `/lint` | Command | `.ai_ops/workflows/lint.md` (new) | Run configured validators against target files. Standalone validation entry point. |
 
 These workflows need SoT files created in `.ai_ops/workflows/` with the
 frontmatter schema from WB-01, and corresponding plugin skill/command
@@ -176,6 +190,31 @@ This separation ensures the plugin source is always in the ai_ops repo
 under version control, while tool-specific discovery surfaces are
 generated into the appropriate locations by setup scripts or export
 tooling.
+
+### Claude Code Inline-Plugin Discovery Hazard
+
+**Never place a `.claude-plugin/plugin.json` at the `ai_ops` repo root.**
+Claude Code CLI auto-discovers a `.claude-plugin/plugin.json` sitting at a
+repo's own root as an in-session local plugin (identity `<name>@inline`,
+visible in `~/.claude.json`'s `pluginUsage`). If that manifest's skill set
+overlaps the same skills already installed at `.claude/skills/`, every skill
+loads twice in one session -- once unscoped, once under the manifest's
+`<name>:` prefix.
+
+This happened in this repo: a root-level `ai_ops/.claude-plugin/plugin.json`
+(name `ai-ops-skills`, authored only as metadata for the `setup_cowork_plugin`
+packaging script, not for Claude Code CLI discovery) caused every governance
+skill to double-load as `ai-ops-skills:<skill>`. Fixed 2026-09-04
+(`wb_skills_surface_consolidation_01`) by deleting the root manifest; the
+canonical manifest now lives only at
+`ai_ops/plugins/ai-ops-governance/.claude-plugin/plugin.json` (the "Always
+present in repo" location above), which is not inline-discovered -- a
+manifest nested one level under `plugins/<name>/` does not trigger the same
+behavior as one at the repo's own root. `setup_cowork_plugin.sh`/`.bat` read
+the manifest from that location for Cowork/Claude Desktop packaging; the
+resulting `.plugin` zip's filename (`ai-ops-skills.plugin`, set in
+`.ai_ops/workflows/ai_ops_setup.md`) is unrelated to the manifest's location
+and was intentionally left unchanged by that fix.
 
 ---
 

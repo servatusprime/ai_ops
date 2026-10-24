@@ -2,7 +2,7 @@
 description: Initialize agent context by reading repo entry point and instructions.
 name: bootstrap
 kind: workflow
-version: 0.1.3
+version: 0.1.4
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -12,8 +12,6 @@ claude:
   user-invocable: true
   allowed-tools: null
   model: null
-  context: null
-  agent: null
 codex:
   metadata:
     short-description: Initialize agent context by reading repo entry point and instructions.

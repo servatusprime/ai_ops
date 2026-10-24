@@ -28,7 +28,7 @@ Define enforceable structure, naming, and metadata rules for runbooks.
 Applies to runbooks and their run-family composition metadata under
 `00_Admin/runbooks/` or module-specific canonical homes. The module canonical
 home is `02_Modules/<module>/docs/runbooks/`. A repository MUST NOT maintain a
-second "legacy" runbook location as another valid discovery or authority path.
+second runbook location as another valid discovery or authority path.
 
 ## 3. Naming and Locations
 
@@ -118,7 +118,7 @@ run-instance locks and receipts remain separate from definitions.
 
 ## Change Log
 
-- 0.2.1 (2026-07-16): Removed indefinite legacy-location retention; one
+- 0.2.1 (2026-07-16): Removed indefinite alternate-location retention; one
   canonical home and one discovery route are required after migration.
 - 0.2.0 (2026-07-16): Replaced containment authority with neutral canonical
   homes and consumer-owned many-to-many run-family composition.

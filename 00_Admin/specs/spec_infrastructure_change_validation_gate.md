@@ -2,7 +2,7 @@
 title: Spec - Infrastructure Change Validation Gate
 id: spec_infrastructure_change_validation_gate
 module: admin
-version: 0.2.0
+version: 0.3.0
 status: active
 license: Apache-2.0
 created: 2026-02-24
@@ -49,7 +49,12 @@ Run this gate when a change touches one or more of:
 4. **Rollback Readiness**
    - define immediate rollback action
    - confirm rollback owner/trigger
-5. **Closeout Evidence**
+5. **Negative-Test Evidence** (when a validator is new or modified)
+   - supply a fixture, deliberately broken copy, or recorded known-bad input
+     that the validator rejects
+   - record the failing command and the specific finding; a passing happy-path
+     run alone is insufficient
+6. **Closeout Evidence**
    - include commands and outcomes in workbook
    - include unresolved risks explicitly
 
@@ -63,6 +68,7 @@ Run this gate when a change touches one or more of:
 
 - no new high-severity validation regressions
 - all required commands executed or explicitly blocked with workaround rationale
+- every new or modified validator has a recorded known-bad rejection
 - rollback action documented
 
 ## Change Log

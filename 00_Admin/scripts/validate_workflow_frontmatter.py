@@ -37,6 +37,12 @@ REQUIRED_CLAUDE_KEYS = {
     "user-invocable",
     "allowed-tools",
     "model",
+}
+
+# context/agent govern isolated forked-subagent skill execution in Claude Code.
+# Optional: no workflow in this repo currently sets context: fork, so most
+# rows omit these keys entirely.
+OPTIONAL_CLAUDE_KEYS = {
     "context",
     "agent",
 }
@@ -104,15 +110,30 @@ def validate_workflow(path: Path, errors: List[str]) -> None:
         fail(f"{path}: 'claude' must be a mapping", errors)
     else:
         ck = set(claude.keys())
-        if ck != REQUIRED_CLAUDE_KEYS:
+        missing_claude = REQUIRED_CLAUDE_KEYS - ck
+        unexpected_claude = ck - REQUIRED_CLAUDE_KEYS - OPTIONAL_CLAUDE_KEYS
+        if missing_claude:
             fail(
-                f"{path}: 'claude' keys must be {sorted(REQUIRED_CLAUDE_KEYS)} (got {sorted(ck)})",
+                f"{path}: 'claude' missing required keys: {sorted(missing_claude)}",
+                errors,
+            )
+        if unexpected_claude:
+            fail(
+                f"{path}: 'claude' has unexpected keys: {sorted(unexpected_claude)} "
+                f"(allowed extras: {sorted(OPTIONAL_CLAUDE_KEYS)})",
                 errors,
             )
         if not isinstance(claude.get("disable-model-invocation"), bool):
             fail(f"{path}: claude.disable-model-invocation must be boolean", errors)
         if not isinstance(claude.get("user-invocable"), bool):
             fail(f"{path}: claude.user-invocable must be boolean", errors)
+        if "context" in claude and claude.get("context") not in (None, "fork"):
+            fail(f"{path}: claude.context must be null or 'fork'", errors)
+        if "context" in claude and claude.get("context") != "fork" and claude.get("agent") not in (None,):
+            fail(
+                f"{path}: claude.agent is only meaningful when claude.context is 'fork'",
+                errors,
+            )
 
     codex = fm.get("codex")
     if not isinstance(codex, dict):

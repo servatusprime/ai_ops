@@ -449,6 +449,10 @@ When requestor input is an early-stage idea:
 - After editing any `.ai_ops/workflows/*.md` file, run
   `python 00_Admin/scripts/generate_workflow_exports.py` before committing.
   The pre-commit export-drift check will block the commit if exports are stale.
+- An external workspace install MUST preview its complete output plan before
+  writing. The generator prints every planned path and a state-bound token;
+  apply requires the same command plus `--approve-preview <token>`. Any source
+  or destination change invalidates the token and keeps the install read-only.
 - Verification failures keep artifact `status: active` until corrected.
 
 Downstream enforcement surfaces (do not duplicate full procedural detail here):

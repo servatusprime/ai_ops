@@ -81,32 +81,6 @@ if [ "$dry_run" != "1" ]; then
   mkdir -p "$INSTALL_TARGET"
 fi
 
-# Create .ai_ops/local/work_state.yaml if it doesn't already exist (idempotent)
-LOCAL_DIR="$REPO_ROOT/.ai_ops/local"
-WORK_STATE_FILE="$LOCAL_DIR/work_state.yaml"
-if [ "$dry_run" = "1" ]; then
-  if [ ! -f "$WORK_STATE_FILE" ]; then
-    echo "[dry-run] Would create: $WORK_STATE_FILE"
-  fi
-else
-  if [ ! -f "$WORK_STATE_FILE" ]; then
-    mkdir -p "$LOCAL_DIR"
-    cat > "$WORK_STATE_FILE" << 'WSEOF'
-# ai_ops work state — machine-local, gitignored.
-# Written by /work and /closeout. Never commit.
-schema_version: "1.0.0"
-work_context:
-  active_artifacts: []
-  updated_at: null
-  checkpoints: []
-telemetry:
-  last_bootstrap_mode: null
-  last_context_refresh: null
-WSEOF
-    echo "Created .ai_ops/local/work_state.yaml (empty initial state)."
-  fi
-fi
-
 if [ -n "$(ls -A "$INSTALL_TARGET" 2>/dev/null)" ] && [ "$assume_yes" != "1" ] && [ "$force" != "1" ]; then
   if [ "$dry_run" = "1" ]; then
     echo "Would prompt: existing skills found in $INSTALL_TARGET/."
@@ -120,74 +94,57 @@ if [ -n "$(ls -A "$INSTALL_TARGET" 2>/dev/null)" ] && [ "$assume_yes" != "1" ] &
   fi
 fi
 
-# Workspace scope bypasses the generator (generator resolves to repo scope only).
-if [ "$scope" != "workspace" ]; then
-  run_export_generator() {
-    if [ ! -f "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" ]; then
-      return 1
-    fi
+# Both scopes route through the real generator; --install-root lets
+# workspace scope use the same full-field renderer as repo scope. The
+# generator-unavailable states fail closed; no alternate writer is permitted.
+run_export_generator() {
+  if [ ! -f "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" ]; then
+    return 127
+  fi
 
-    py_cmd=""
-    if command -v python >/dev/null 2>&1; then
-      py_cmd="python"
-    elif command -v python3 >/dev/null 2>&1; then
-      py_cmd="python3"
+  py_cmd=""
+  if command -v python >/dev/null 2>&1; then
+    py_cmd="python"
+  elif command -v python3 >/dev/null 2>&1; then
+    py_cmd="python3"
+  else
+    return 127
+  fi
+
+  generator_attempted="1"
+
+  if [ "$scope" = "workspace" ]; then
+    if [ "$dry_run" = "1" ]; then
+      "$py_cmd" "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" \
+        --targets claude --scope workspace --install-root "$WORKSPACE_ROOT" --dry-run
     else
-      return 1
+      "$py_cmd" "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" \
+        --targets claude --scope workspace --install-root "$WORKSPACE_ROOT"
     fi
-
+  else
     if [ "$dry_run" = "1" ]; then
       "$py_cmd" "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" --targets plugin claude --dry-run
     else
       "$py_cmd" "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" --targets plugin claude
     fi
-  }
-
-  if run_export_generator; then
-    echo ""
-    echo "Generated wrapper exports from .ai_ops/workflows via generate_workflow_exports.py."
-    echo "Installed skills to $INSTALL_TARGET/."
-    echo "Skills are now available as /work, /health, /closeout, etc."
-    echo ""
-    exit 0
   fi
+}
 
-  echo "Generator unavailable; falling back to legacy wrapper creation path."
+generator_attempted="0"
+if run_export_generator; then
+  echo ""
+  echo "Generated wrapper exports from .ai_ops/workflows via generate_workflow_exports.py."
+  echo "Installed skills to $INSTALL_TARGET/."
+  echo "Skills are now available as /work, /health, /closeout, etc."
+  echo ""
+  exit 0
+else
+  generator_status=$?
+  if [ "$generator_attempted" = "1" ] || [ "$generator_status" -ne 127 ]; then
+    echo "Generator refused the setup request (exit $generator_status); no fallback writes will be attempted."
+    exit "$generator_status"
+  fi
 fi
 
-for file in "$WORKFLOW_DIR"/*.md; do
-  skill_name=$(basename "$file" .md)
-  skill_dir="$INSTALL_TARGET/$skill_name"
-
-  if [ -e "$skill_dir/SKILL.md" ] && [ "$force" != "1" ]; then
-    echo "Skip existing: $skill_dir"
-    continue
-  fi
-
-  # Extract description from frontmatter (first match only)
-  desc=$(grep "^description:" "$file" | head -1 | sed 's/^description:[[:space:]]*//')
-  if [ -z "$desc" ]; then
-    desc="Run ai_ops workflow $skill_name"
-  fi
-
-  if [ "$dry_run" = "1" ]; then
-    echo "Would create: $skill_dir/SKILL.md"
-    continue
-  fi
-
-  mkdir -p "$skill_dir"
-  cat > "$skill_dir/SKILL.md" <<EOF
----
-name: $skill_name
-description: $desc
----
-
-Read \`$WORKFLOW_REL/$skill_name.md\` and follow its instructions.
-EOF
-  echo "Created: $skill_dir"
-done
-
-echo ""
-echo "Installed skills to $INSTALL_TARGET/."
-echo "Skills are now available as /work, /health, /closeout, etc."
-echo ""
+echo "Generator unavailable; refusing fallback writes because the generated export is the authoritative source." >&2
+exit 127

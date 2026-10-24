@@ -102,6 +102,15 @@ Batch-sequenced parallel guidance:
 - [ ] Remediation complete
 - [ ] Closeout complete
 
+## Durable Outputs
+
+Keep a running register of anything this workbundle produces that must survive
+archival. `/closeout` reconciles every row before it can archive the bundle.
+
+| Artifact | Intended destination | State | Evidence / disposition |
+| --- | --- | --- | --- |
+| `<path>` | `<canonical path or retained sandbox path>` | `<unresolved/promoted/retained/follow-on>` | `<path:line or reason>` |
+
 ## Maintenance
 
 - Update this README when new artifacts are added.

@@ -2,7 +2,7 @@
 name: profiles
 description: Manage rider/crew profile source data and regenerate deterministic derivative behavior files.
 kind: workflow
-version: 0.1.3
+version: 0.1.6
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -12,8 +12,6 @@ claude:
   user-invocable: true
   allowed-tools: Read Grep Glob LS Write Edit Bash
   model: null
-  context: null
-  agent: null
 codex:
   metadata:
     short-description: Manage crew profiles and regenerate behavior artifacts.
@@ -121,7 +119,6 @@ contract.
 2. Run Setup-State Guard before profile writes/regeneration.
 3. Load active profile source YAML:
    - prefer `.ai_ops/local/profiles/active_crew.yaml` when present
-   - compatibility read: `.ai_ops/profiles/active_crew.yaml`
    - otherwise use `02_Modules/01_agent_profiles/base/default_crew.yaml`
 4. Display current state:
    - crew preset
@@ -143,6 +140,20 @@ contract.
    - `python 00_Admin/scripts/regenerate_profiles.py`
    - optional model family: `python 00_Admin/scripts/regenerate_profiles.py --model-family <family>`
    - validate tracked derivatives without writing: `python 00_Admin/scripts/regenerate_profiles.py --check --tracked-only`
+   - **workspace sync:** `regenerate_profiles.py` only writes repo-local files
+     (`plugins/ai-ops-governance/agents/`,
+     `.claude/agents/`). If this repo is nested inside a larger multi-repo
+     workspace and a workspace-root copy of `.claude/agents/` is in use, also
+     run `.ai_ops/setup/setup_claude_agents.sh --workspace --force` (or the
+     `.bat` equivalent) to propagate the change there. Report whether this
+     step ran and, if skipped, that the workspace copy may now be stale.
+   - The generator accepts only the declared YAML source and writes only the
+     declared plugin, generated-map, and repo-local `.claude/agents` roots. Hook
+     entries use reviewed `command_id` values (currently
+     `reviewer_write_guard_v1`); free-form shell commands, dynamic/network hook
+     commands, absolute source paths, and symlink/reparse output roots are
+     rejected. The generator expands an approved ID into its exact command
+     payload only at serialization time.
 10. Report:
 
 - files regenerated

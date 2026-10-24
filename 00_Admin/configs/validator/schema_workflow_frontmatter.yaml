@@ -44,8 +44,6 @@ properties:
       - user-invocable
       - allowed-tools
       - model
-      - context
-      - agent
     properties:
       argument-hint:
         type: [string, "null"]
@@ -59,6 +57,7 @@ properties:
         type: [string, "null"]
       context:
         type: [string, "null"]
+        enum: [fork, null]
       agent:
         type: [string, "null"]
   codex:

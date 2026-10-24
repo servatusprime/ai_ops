@@ -3,7 +3,7 @@ name: lint
 description: Run configured validators and linters against a target scope and report
   findings without modifying files.
 kind: workflow
-version: 0.2.2
+version: 0.2.4
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -13,8 +13,6 @@ claude:
   user-invocable: true
   allowed-tools: Read Grep Glob LS Bash
   model: null
-  context: null
-  agent: null
 codex:
   metadata:
     short-description: Run validators and linters for a target scope.
@@ -89,6 +87,9 @@ lint-specific branching.
   If no matching entry exists, record `validation_commands_run: []` and report.
   Do NOT claim the governed repo is lint-ready until at least one validator is confirmed
   discovered and run.
+  Before any configured validator runs, execute `op_validate_config.py` against the
+  local config and require `minimum_commands` to be shell-free argv arrays with
+  allowlisted executables and workspace-contained paths.
 - If `governed_mode: repo_native`, detect and run the repo's configured validators/linters
   (`.markdownlint.json`, `.yamllint`, `ruff.toml`, `.pre-commit-config.yaml`).
   Require explicit confirmation that validator discovery succeeded before reporting pass.
@@ -101,6 +102,25 @@ lint-specific branching.
 - Return findings and suggested remediation path.
 
 ## Steps
+
+### Command Provenance Registry
+
+The lint lane is report-only and uses this fixed command registry:
+
+| Tool | Invocation rule | Network/package rule |
+| --- | --- | --- |
+| Python validators | `python <repo-relative-script> [fixed flags]` | no shell string or user-provided executable |
+| Ruff | `ruff check <resolved scope> --no-fix` | resolve the executable before invocation |
+| Markdownlint | fixed Node executable plus the pinned `markdownlint-cli` entrypoint, package version, and hashes recorded in `00_Admin/configs/validator/validator_config.yaml` | no `npx`, PATH lookup, registry resolution, or install fallback; a missing or altered artifact blocks the check |
+| Yamllint | `yamllint -c <trusted config> <resolved scope>` | config and scope must remain under the governed root |
+
+Resolve the target and every executable/configuration path before execution.
+Reject absolute or reparse-point scope paths, sibling-prefix escapes, shell
+metacharacters, and missing tools. Record the resolved executable and whether
+the check was a dry run. The Markdownlint command is an exact offline tool
+chain: Node, entrypoint, package version, and integrity hashes must match the
+validator manifest. A missing or changed local package is a failed/blocked
+check, not permission to download one.
 
 ### Inside Repo (Maintainer)
 
@@ -165,8 +185,9 @@ lint-specific branching.
    - **Unregistered repos**: require explicit user-provided path if not resolvable. Stop and ask if none given.
    - **Windows**: normalize to forward-slash absolute path.
    - Run `git -C <target_repo> rev-parse --show-toplevel` to confirm repo access and establish `repo_root`.
-     If it fails with `dubious ownership`, run `git config --global --add safe.directory <target_repo>` and
-     re-run. Record `safe_directory_applied: true/false`.
+     If it fails with `dubious ownership`, stop and report the exact target.
+     Do not run `git config --global` from the lint lane. Record
+     `safe_directory_applied: false`.
 2. Confirm target scope.
 3. Read `customizations.validation_policy.governed_mode` from `.ai_ops/local/config.yaml` if governed mode applies.
 4. Detect repo-native validation tools.

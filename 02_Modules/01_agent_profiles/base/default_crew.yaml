@@ -39,10 +39,7 @@ subagents:
         - matcher: "Edit|Write"
           hooks:
             - type: command
-              command: >-
-                if ! echo "$CLAUDE_TOOL_INPUT_FILE_PATH" | grep -qE '(90_Sandbox|99_Trash|\.ai_ops/local)';
-                then echo "[REVIEWER GUARD] Write outside sandbox detected: $CLAUDE_TOOL_INPUT_FILE_PATH — reviewer lane is read/report-only except in sandbox.";
-                fi; exit 0
+              command_id: reviewer_write_guard_v1
   ai-ops-researcher:
     rider: "scout"
     model: "sonnet"

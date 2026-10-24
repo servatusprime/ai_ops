@@ -101,6 +101,43 @@ class GovernanceSeedContractTests(unittest.TestCase):
             )
             self.assertIn("expected path::marker", errors[0])
 
+    def test_validator_config_rejects_unknown_rules_and_non_boolean_enabled(self) -> None:
+        config = {
+            "validator_id": "validator_v1",
+            "version": "0.1.0",
+            "rules": [
+                {"id": "VS999", "enabled": True, "paths": []},
+                {"id": "VS001", "enabled": "maybe", "paths": []},
+            ],
+        }
+        errors = VALIDATOR.validate_config_envelope(config, "fixture.yaml", str(ROOT))
+        self.assertIn("VS-CONFIG: VS999 is not an implemented validator rule", errors)
+        self.assertIn("VS-CONFIG: VS001 enabled must be boolean", errors)
+
+    def test_parser_preserves_invalid_enabled_value_for_fail_closed_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_path = Path(temp_dir) / "validator.yaml"
+            config_path.write_text(
+                "version: 0.1.0\n"
+                "validator_id: validator_v1\n"
+                "rules:\n"
+                "  - id: VS001\n"
+                "    enabled: maybe\n"
+                "    paths: []\n",
+                encoding="utf-8",
+            )
+            parsed = VALIDATOR.parse_config(str(config_path))
+            self.assertEqual("maybe", parsed["rules"][0]["enabled"])
+
+    def test_vs036_rejects_configured_input_path_escape(self) -> None:
+        for configured_path in ("../outside.yaml", r"..\outside.yaml"):
+            with self.subTest(configured_path=configured_path):
+                errors: list[str] = []
+                VALIDATOR.check_run_family_graph_contract(
+                    {"registry": configured_path}, str(ROOT), errors
+                )
+                self.assertTrue(any("configured input path" in error for error in errors))
+
 
 if __name__ == "__main__":
     unittest.main()

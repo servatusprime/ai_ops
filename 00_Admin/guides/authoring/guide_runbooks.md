@@ -43,7 +43,7 @@ Runbooks MUST NOT:
 
 - Prefix: `rb_`
 - Location: one repo-owned `00_Admin/runbooks/` home or one module-owned
-  `02_Modules/<module>/docs/runbooks/` home. Do not retain a second legacy
+  `02_Modules/<module>/docs/runbooks/` home. Do not retain a second
   location or discovery path.
 - Use lower_snake_case names (e.g., `rb_repo_health_review.md`).
 - Terminology note: use `runprogram` in prose, but keep folder paths as `run_program_<program_id>/` until a dedicated

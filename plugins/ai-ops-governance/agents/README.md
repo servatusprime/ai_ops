@@ -85,7 +85,6 @@ narrower than project- or user-level native `.claude/agents/` subagents.
 
 - Source profile data: `02_Modules/01_agent_profiles/base/default_crew.yaml` or
   `.ai_ops/local/profiles/active_crew.yaml`.
-- Legacy local fallback (compatibility): `.ai_ops/profiles/active_crew.yaml`.
 - Regeneration script: `00_Admin/scripts/regenerate_profiles.py`.
 - Canonical lane alignment, delegation-payload expectations, role summaries,
   operating protocol text, report-contract text, and `Best fit:` routing hints

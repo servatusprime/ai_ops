@@ -1,6 +1,6 @@
 ---
 title: "Guide: ai_ops"
-version: 2.3.5
+version: 2.3.6
 status: active
 license: Apache-2.0
 last_updated: 2026-07-22
@@ -193,11 +193,6 @@ at high tier. Use `model_profile` and `activated_lanes` in workbook frontmatter 
 declare the overall tier and active lane set. The `model` parameter on the Agent
 tool controls the actual model used when spawning. (`role_assignments` broad-role
 keys are deprecated -- see `AGENTS.md` AI Model Level Reference.)
-
-**model_level_map:** Operators may bind concrete model IDs to ai_ops reasoning
-levels (1-4) in `.ai_ops/local/config.yaml` under
-`customizations.model_capabilities.model_level_map` (populated via `/customize`).
-This binding resolves workbook `model_profile` level references at runtime.
 
 **Enhanced Crosscheck Mode:** A pattern where the executor spawns a higher-tier
 sub-agent specifically for the crosscheck phase, enabling a more capable model to

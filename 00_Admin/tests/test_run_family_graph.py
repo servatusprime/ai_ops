@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import re
 import subprocess
@@ -18,6 +19,7 @@ ADMIN = Path(__file__).resolve().parents[1]
 SCRIPTS = ADMIN / "scripts"
 FIXTURES = Path(__file__).parent / "fixtures" / "run_family"
 VALID = FIXTURES / "run_family_shared_valid.yaml"
+TEST_TEMP_ROOT = ADMIN.parent.parent / "tmp" / "test_run_family_graph"
 
 
 def load_module(name: str):
@@ -48,6 +50,25 @@ def ensure_sibling_ai_ops_fixture(root: Path) -> None:
     )
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text("# fixture generator target\n", encoding="utf-8")
+
+
+def contained_temporary_directory() -> tempfile.TemporaryDirectory:
+    """Create test scratch under the repository-contained workspace temp root."""
+    TEST_TEMP_ROOT.mkdir(parents=True, exist_ok=True)
+    return tempfile.TemporaryDirectory(dir=TEST_TEMP_ROOT, prefix="run-family-")
+
+
+def assert_contained_paths(container: Path, *paths: Path) -> None:
+    """Fail if fixture outputs resolve outside the test's contained container."""
+    base = container.resolve(strict=True)
+    for path in paths:
+        resolved = path.resolve(strict=False)
+        try:
+            resolved.relative_to(base)
+        except ValueError as exc:
+            raise AssertionError(
+                f"fixture path escaped contained root: {resolved} not under {base}"
+            ) from exc
 
 
 class RunFamilyGraphTests(unittest.TestCase):
@@ -100,7 +121,7 @@ class RunFamilyGraphTests(unittest.TestCase):
         )
 
     def test_manifest_unknown_top_level_field_fails_closed(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with contained_temporary_directory() as tmp:
             path = Path(tmp) / "manifest.yaml"
             path.write_text(
                 """manifest_version: '0.1.0'
@@ -110,8 +131,11 @@ canonical_home: 00_Admin/runbooks/runprogram-alpha/README.md
 artifact_version: 1.0.0
 interface_version: 1.0.0
 lifecycle: active
+promotion_target: 00_Admin/runbooks/runprogram-alpha/README.md
+promotion_gate: requestor approval
 steward: repo_maintainers
 content_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+entry_artifacts: []
 consumes: []
 parameter_profiles: {}
 routes: []
@@ -132,12 +156,15 @@ canonical_home: 00_Admin/runbooks/runprogram-alpha/README.md
 artifact_version: 1.0.0
 interface_version: 1.0.0
 lifecycle: active
+promotion_target: 00_Admin/runbooks/runprogram-alpha/README.md
+promotion_gate: requestor approval
 steward: repo_maintainers
 content_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+entry_artifacts: []
 consumes: []
 parameter_profiles: {}
 """
-        with tempfile.TemporaryDirectory() as tmp:
+        with contained_temporary_directory() as tmp:
             path = Path(tmp) / "manifest.yaml"
 
             path.write_text(base.replace("consumes: []\n", ""), encoding="utf-8")
@@ -159,6 +186,41 @@ parameter_profiles: {}
             with self.assertRaisesRegex(
                 validator.ContractError,
                 "manifest parameter_profiles must be a mapping",
+            ):
+                validator.graph_from_manifests([path])
+
+    def test_legacy_manifest_fields_are_optional_but_validated(self):
+        base = """manifest_version: '0.1.0'
+artifact_id: runbook-legacy
+artifact_kind: runbook
+canonical_home: 02_Modules/example/docs/runbooks/runbook-legacy/README.md
+artifact_version: 1.0.0
+interface_version: 1.0.0
+lifecycle: active
+steward: repo_maintainers
+content_sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+consumes: []
+parameter_profiles: {}
+"""
+        with contained_temporary_directory() as tmp:
+            path = Path(tmp) / "manifest.yaml"
+            path.write_text(base, encoding="utf-8")
+            graph = validator.graph_from_manifests([path])
+            self.assertEqual(graph["artifacts"][0]["artifact_id"], "runbook-legacy")
+
+            path.write_text(
+                base + "entry_artifacts: [7]\n", encoding="utf-8"
+            )
+            with self.assertRaisesRegex(
+                validator.ContractError,
+                "entry_artifacts must be a string array",
+            ):
+                validator.graph_from_manifests([path])
+
+            path.write_text(base + "promotion_gate: ''\n", encoding="utf-8")
+            with self.assertRaisesRegex(
+                validator.ContractError,
+                "manifest promotion_gate must be a non-empty string",
             ):
                 validator.graph_from_manifests([path])
 
@@ -737,15 +799,21 @@ parameter_profiles: {}
     def test_generator_outputs_are_stable_across_hash_seeds(self):
         script = SCRIPTS / "generate_run_family_views.py"
         output_sets = []
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory) / "governed_root"
+        with contained_temporary_directory() as directory:
+            container = Path(directory) / "container"
+            root = container / "governed_root"
+            container.mkdir()
             root.mkdir()
             ensure_sibling_ai_ops_fixture(root)
+            assert_contained_paths(container, root.parent / "ai_ops")
             aggregate = load(VALID)
             for artifact in aggregate["artifacts"]:
                 manifest = {
                     "manifest_version": "0.1.0",
                     **artifact,
+                    "promotion_target": artifact["canonical_home"],
+                    "promotion_gate": "requestor approval",
+                    "entry_artifacts": [],
                     "consumes": [
                         edge
                         for edge in aggregate["consumes"]
@@ -794,10 +862,13 @@ parameter_profiles: {}
             self.assertEqual(len(set(output_sets)), 1)
 
     def test_governed_root_generator_provenance_resolves(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory) / "governed_root"
+        with contained_temporary_directory() as directory:
+            container = Path(directory) / "container"
+            root = container / "governed_root"
+            container.mkdir()
             root.mkdir()
             ensure_sibling_ai_ops_fixture(root)
+            assert_contained_paths(container, root.parent / "ai_ops")
             views = generator.build_views(load(VALID), root)
             for view in views.values():
                 self.assertEqual(
@@ -808,17 +879,24 @@ parameter_profiles: {}
                 self.assertEqual(view["generator_version"], generator.GENERATOR_VERSION)
 
     def test_governed_root_generator_provenance_rejects_missing_target(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory) / "governed_root"
+        with contained_temporary_directory() as directory:
+            container = Path(directory) / "container"
+            root = container / "governed_root"
+            container.mkdir()
             root.mkdir()
             (root.parent / "ai_ops").mkdir()
+            assert_contained_paths(container, root.parent / "ai_ops")
             with self.assertRaisesRegex(ValueError, "resolvable sibling ai_ops"):
                 generator.build_views(load(VALID), root)
 
     def test_governance_routing_projects_workflows_specs_and_vs036(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+        with contained_temporary_directory() as directory:
+            container = Path(directory) / "container"
+            root = container / "governed_root"
+            container.mkdir()
+            root.mkdir()
             ensure_sibling_ai_ops_fixture(root)
+            assert_contained_paths(container, root.parent / "ai_ops")
             routing = root / "00_Admin/configs/context_routing.yaml"
             validator_config = (
                 root / "00_Admin/configs/validator/validator_config.yaml"
@@ -883,9 +961,13 @@ parameter_profiles: {}
 
     def test_generator_write_check_and_drift_modes(self):
         script = SCRIPTS / "generate_run_family_views.py"
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+        with contained_temporary_directory() as directory:
+            container = Path(directory) / "container"
+            root = container / "governed_root"
+            container.mkdir()
+            root.mkdir()
             ensure_sibling_ai_ops_fixture(root)
+            assert_contained_paths(container, root.parent / "ai_ops")
             write = subprocess.run(
                 [
                     sys.executable, str(script), "--repo-root", str(root),
@@ -919,6 +1001,42 @@ parameter_profiles: {}
             )
             self.assertEqual(drift.returncode, 1)
             self.assertIn("drift:", drift.stderr)
+
+    def test_generator_skip_registry_limits_write_and_check_targets(self):
+        script = SCRIPTS / "generate_run_family_views.py"
+        with contained_temporary_directory() as directory:
+            container = Path(directory) / "container"
+            root = container / "governed_root"
+            container.mkdir()
+            root.mkdir()
+            ensure_sibling_ai_ops_fixture(root)
+            assert_contained_paths(container, root.parent / "ai_ops")
+            registry = root / "00_Admin" / "runbooks" / "run_family_registry.yaml"
+            registry.parent.mkdir(parents=True, exist_ok=True)
+            registry.write_text("local registry owner\n", encoding="utf-8")
+            write = subprocess.run(
+                [
+                    sys.executable, str(script), "--repo-root", str(root),
+                    "--input", str(VALID), "--skip-registry", "--write",
+                ],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertEqual(write.returncode, 0, write.stderr)
+            result = json.loads(write.stdout)
+            self.assertEqual(
+                set(result["outputs"]),
+                set(generator.DEFAULT_TARGETS) - {"registry"},
+            )
+            self.assertEqual(registry.read_text(encoding="utf-8"), "local registry owner\n")
+            check = subprocess.run(
+                [
+                    sys.executable, str(script), "--repo-root", str(root),
+                    "--input", str(VALID), "--skip-registry", "--check",
+                ],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertEqual(check.returncode, 0, check.stderr)
+            self.assertEqual(set(json.loads(check.stdout)["outputs"]), set(result["outputs"]))
 
     def test_dedicated_validator_cli_and_schema_yaml(self):
         script = SCRIPTS / "validate_run_family_graph.py"
@@ -974,6 +1092,9 @@ parameter_profiles: {}
         self.assertTrue(required_edge_fields <= set(consumption_edge["required"]))
         self.assertTrue(required_edge_fields <= set(manifest_edge["required"]))
         self.assertIn("content_sha256", manifest["required"])
+        self.assertNotIn("promotion_target", manifest["required"])
+        self.assertNotIn("promotion_gate", manifest["required"])
+        self.assertNotIn("entry_artifacts", manifest["required"])
         self.assertTrue(
             validator.ARTIFACT_REQUIRED <= set(manifest["required"])
         )

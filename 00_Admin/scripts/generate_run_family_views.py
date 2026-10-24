@@ -287,8 +287,12 @@ def build_views(
     }
 
 
-def target_paths(repo_root: Path) -> dict[str, Path]:
-    return {name: repo_root / path for name, path in DEFAULT_TARGETS.items()}
+def target_paths(repo_root: Path, *, skip_registry: bool = False) -> dict[str, Path]:
+    selected = {
+        name: path for name, path in DEFAULT_TARGETS.items()
+        if not (skip_registry and name == "registry")
+    }
+    return {name: repo_root / path for name, path in selected.items()}
 
 
 def write_views(views: dict[str, dict[str, Any]], targets: dict[str, Path]) -> None:
@@ -316,6 +320,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", type=Path, default=Path("."))
     parser.add_argument("--input", type=Path, help="Approved aggregate override")
+    parser.add_argument(
+        "--skip-registry",
+        action="store_true",
+        help="write/check only graph projections; leave the registry to its local owner",
+    )
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--write", action="store_true")
     mode.add_argument("--check", action="store_true")
@@ -326,7 +335,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     repo_root = args.repo_root.resolve()
     views = build_views(load_source(repo_root, args.input), repo_root=repo_root)
-    targets = target_paths(repo_root)
+    targets = target_paths(repo_root, skip_registry=args.skip_registry)
     if args.write:
         write_views(views, targets)
         drift, code = [], 0

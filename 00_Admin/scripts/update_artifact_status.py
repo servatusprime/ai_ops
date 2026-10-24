@@ -37,7 +37,7 @@ except ImportError:
 
 _SCRIPT_DIR = Path(__file__).resolve().parent  # 00_Admin/scripts/
 _REPO_ROOT = _SCRIPT_DIR.parents[1]            # ai_ops/
-_WORKSPACE_ROOT = _REPO_ROOT.parent            # RE_Projects/ (workspace root)
+_WORKSPACE_ROOT = _REPO_ROOT.parent            # parent workspace root
 
 _WORK_STATE_PATH = _REPO_ROOT / ".ai_ops" / "local" / "work_state.yaml"
 
@@ -242,6 +242,11 @@ def _build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     parser = _build_parser()
     args = parser.parse_args()
+
+    for label, value in (("--status", args.status), ("--note", args.note)):
+        if value and any(ch in value for ch in "\r\n|"):
+            print(f"ERROR: {label} must not contain newline, carriage return, or '|'")
+            return 2
 
     if args.dry_run:
         print("[DRY-RUN MODE] No files will be written.\n")

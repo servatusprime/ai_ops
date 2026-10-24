@@ -1,6 +1,6 @@
 ---
 title: Guide: AI Ops Vocabulary
-version: 1.1.1
+version: 1.1.2
 status: active
 license: Apache-2.0
 last_updated: 2026-07-16
@@ -112,12 +112,12 @@ pipeline-level orchestration files. Work Proposal is governance-only and
 precedes execution workbooks. Runbundle serves the same grouping function for runbooks that Workbundles serve for
 workbooks, but they are not interchangeable (different artifact types and locations).
 
-Terminology stability rule: avoid churn between workpacket/workbundle naming. Use **workbundle** as canonical and keep
-legacy aliases only in this glossary.
+Terminology stability rule: avoid churn between workpacket/workbundle naming. Use **workbundle** as canonical; historical
+aliases appear only in this glossary.
 
 ### Term Normalization Rule
 
-When editing files, normalize legacy spaced or underscored variants to the single-token forms:
+When editing files, normalize noncanonical spaced or underscored variants to the single-token forms:
 
 - `work packet`, `work_packet` -> `workbundle`
 - `work program`, `work_program` -> `workprogram`
@@ -261,27 +261,22 @@ Applies to both single-agent mode (virtual lane switching) and multi-agent mode
 (primary agent orchestrating dedicated subagents). See
 `00_Admin/guides/architecture/guide_design_and_philosophy.md` Sec.The Crew Model.
 
-**model_level_map:** Operators may declare a model-ID-to-level binding in
-`.ai_ops/local/config.yaml` under `customizations.model_capabilities.model_level_map`
-(populated via `/customize`). This resolves workbook `model_profile` level references
-to concrete model IDs at runtime.
-
 ### Agent Topology Terms
 
 | Term | Meaning | Notes |
 | --- | --- | --- |
 | **Primary agent** | The agent the human interacts with directly in session. | Canonical term for current docs. |
 | **Subagent** | A delegated agent spawned by the primary agent for a scoped role/task. | Used in multi-agent mode only. |
-| **Lead agent** | Legacy alias for **primary agent**. | Keep for backward compatibility in older docs; prefer `primary agent` in new edits. |
+| **Lead agent** | Historical alias for **primary agent**. | Use `primary agent` in new edits. |
 
 ### Compacted Context
 
 At every handoff, the active agent MUST provide **Compacted Context**: minimal, structured context required for the next
 step.
 
-## Legacy Terminology
+## Historical Terminology
 
-| Legacy Term | Canonical Term | Status |
+| Historical Term | Canonical Term | Status |
 | --- | --- | --- |
 | `ai_work_packets/` | `ai_workbooks/` | Directory renamed |
 | `wp_*` | `wb_*` | Prefix renamed |

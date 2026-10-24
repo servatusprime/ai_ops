@@ -58,12 +58,43 @@ Required in every return:
   capable of observing the claim it supports (`file:line`, command + key
   output). A claim without evidence is not acceptable.
 
+### Delegated Governance Handshake (Conditional)
+
+When a lane is actually delegated in a `multi_agent` or `hybrid` run, the
+delegation payload and return must carry this compact governance handshake:
+
+- `target_repo` -- the governed repository identity for the task.
+- `authority_level` -- the delegated authority ceiling, using ai_ops levels
+  `0` through `4`; the child may not infer a higher level.
+- `allowed_paths` -- the exact path set or path patterns the child may read or
+  write under the task brief.
+- `active_artifact` -- the active workbook, workbundle, runbook, or `null` when
+  the task is not governed by one.
+
+The lead must also pass the relevant context pack, permission/tool envelope,
+skill surface, and return contract. The child may acknowledge those inputs but
+must not broaden them. A `single_agent` run omits this conditional handshake;
+it does not need empty delegation fields.
+
+The handshake is governance context, not a terminal outcome. Keep the return
+`Disposition` vocabulary below unchanged.
+
 Include only when applicable:
 
 - **Blocker / next action** -- what prevents completion and what would resolve
   it. Omit entirely when nothing is blocked.
 - **Proposals** -- out-of-scope follow-up seeds. Omit entirely when there are
   none.
+
+### Lead-Side Lifecycle Reconciliation
+
+The lead may track a delegated child as `pending` or `timed_out` while waiting
+for authoritative terminal status. Those are orchestration states, not return
+`Disposition` values. A `pending` or `timed_out` child must not be reported as
+`failed` until the lead reconciles the authoritative terminal result. Once
+reconciled, use the existing terminal vocabulary: `completed`, `blocked`,
+`partial`, or `failed`. This rule applies only when a lane was actually
+delegated; it adds no lifecycle fields to single-agent work.
 
 Minimal example -- a read-only research return with no blockers:
 

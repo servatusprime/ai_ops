@@ -7,6 +7,8 @@ license: Apache-2.0
 last_updated: 2026-06-10
 owner: ai_ops
 ai_role: executor
+promotion_target: "<repo-relative canonical home or none - project local>"
+promotion_gate: "<named approval required for promotion>"
 model_profile: "<model_a>:<reasoning_level> | <model_b>:<reasoning_level>"
 # model_profile guidance: select tier based on task complexity:
 #   low (haiku-class)   -- research, read-only, bounded repeatable steps
