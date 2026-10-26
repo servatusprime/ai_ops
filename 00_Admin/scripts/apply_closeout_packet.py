@@ -166,15 +166,28 @@ def _unstage(repo: Path, paths: list[str]) -> bool:
 
 
 def _run_hook(repo: Path, hook_name: str, env: dict[str, str] | None = None) -> tuple[int, str, str]:
+    effective_env = env if env is not None else builder._git_env()
     completed = subprocess.run(
         ["git", "-C", str(repo), "hook", "run", hook_name],
+        cwd=repo,
         check=False,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        env=env or builder._git_env(),
+        env=effective_env,
     )
     return completed.returncode, completed.stdout, completed.stderr
+
+
+def _hook_failure_detail(stdout: str, stderr: str) -> str:
+    """Return both hook streams so launcher failures remain diagnosable."""
+
+    details = []
+    if stdout.strip():
+        details.append(f"stdout: {stdout.strip()}")
+    if stderr.strip():
+        details.append(f"stderr: {stderr.strip()}")
+    return "\n".join(details) or "no hook diagnostics captured"
 
 
 def _has_hook(packet: dict[str, Any], hook_name: str) -> bool:
@@ -445,7 +458,9 @@ def apply_packet(packet_path: Path, approval_path: Path, first_landing_receipt: 
                         "unstaged": unstaged,
                     },
                 )
-                raise builder.PacketError(f"pre-commit hook failed: {hook_stderr.strip()}")
+                raise builder.PacketError(
+                    f"pre-commit hook failed: {_hook_failure_detail(hook_stdout, hook_stderr)}"
+                )
             if builder.hook_snapshot(repo) != packet["hook_fingerprint"]:
                 unstaged = _unstage(repo, include)
                 _set_state(
@@ -546,7 +561,9 @@ def apply_packet(packet_path: Path, approval_path: Path, first_landing_receipt: 
                     "unstaged": unstaged,
                 },
             )
-            raise builder.PacketError(f"pre-commit hook failed before commit: {hook_stderr.strip()}")
+            raise builder.PacketError(
+                f"pre-commit hook failed before commit: {_hook_failure_detail(hook_stdout, hook_stderr)}"
+            )
         if builder.hook_snapshot(repo) != packet["hook_fingerprint"]:
             unstaged = _unstage(repo, include)
             _set_state(

@@ -81,6 +81,22 @@ class CloseoutPacketContractTests(unittest.TestCase):
         )
         return approval
 
+    def test_run_hook_uses_repository_working_directory_and_preserves_empty_streams(self) -> None:
+        completed = mock.Mock(returncode=0, stdout="", stderr="")
+        with mock.patch.object(APPLIER.subprocess, "run", return_value=completed) as run:
+            result = APPLIER._run_hook(self.repo, "pre-commit", {"GIT_INDEX_FILE": "isolated"})
+
+        self.assertEqual((0, "", ""), result)
+        self.assertEqual(self.repo, run.call_args.kwargs["cwd"])
+        self.assertEqual({"GIT_INDEX_FILE": "isolated"}, run.call_args.kwargs["env"])
+
+    def test_hook_failure_detail_keeps_stdout_and_stderr(self) -> None:
+        self.assertEqual(
+            "stdout: hook output\nstderr: launcher output",
+            APPLIER._hook_failure_detail("hook output\n", "launcher output\n"),
+        )
+        self.assertEqual("no hook diagnostics captured", APPLIER._hook_failure_detail("", ""))
+
     def test_builder_and_applier_bind_exact_tree_and_preserve_unrelated_stage(self) -> None:
         (self.repo / "unrelated.txt").write_text("unrelated\n", encoding="utf-8")
         self._git("add", "--", "unrelated.txt")
