@@ -142,11 +142,12 @@ contract.
    - validate tracked derivatives without writing: `python 00_Admin/scripts/regenerate_profiles.py --check --tracked-only`
    - **workspace sync:** `regenerate_profiles.py` only writes repo-local files
      (`plugins/ai-ops-governance/agents/`,
-     `.claude/agents/`). If this repo is nested inside a larger multi-repo
-     workspace and a workspace-root copy of `.claude/agents/` is in use, also
-     run `.ai_ops/setup/setup_claude_agents.sh --workspace --force` (or the
-     `.bat` equivalent) to propagate the change there. Report whether this
-     step ran and, if skipped, that the workspace copy may now be stale.
+     `.claude/agents/`). The legacy `setup_claude_agents.* --workspace` path is
+     intentionally disabled because it has no source-bound preview token. Do
+     not invoke that flag. When a session is launched from a larger workspace,
+     use the repo-local generated definitions when the surface can discover
+     them; otherwise apply the profile envelope manually and report that a
+     workspace-scope native-agent install is not currently supported.
    - The generator accepts only the declared YAML source and writes only the
      declared plugin, generated-map, and repo-local `.claude/agents` roots. Hook
      entries use reviewed `command_id` values (currently

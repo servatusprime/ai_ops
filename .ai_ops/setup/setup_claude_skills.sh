@@ -8,7 +8,7 @@ set -e
 print_usage() {
   cat <<EOF
 Usage:
-  ./.ai_ops/setup/setup_claude_skills.sh [--workspace|--repo] [--force] [--dry-run] [--yes]
+  ./.ai_ops/setup/setup_claude_skills.sh [--workspace|--repo] [--force] [--dry-run] [--yes] [--approve-preview TOKEN]
 
 Options:
   -w, --workspace        Install to workspace root .claude/skills/ (cross-repo access)
@@ -16,6 +16,7 @@ Options:
   -f, --force            Overwrite existing skill wrappers
   -n, --dry-run          Preview actions without writing files
   -y, --yes              Non-interactive mode; skip confirmation prompt
+      --approve-preview  Apply an exact external-install preview token
   -h, --help             Show this help
 
 Examples:
@@ -29,6 +30,7 @@ scope="repo"
 dry_run="0"
 assume_yes="0"
 force="0"
+approve_preview=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -37,6 +39,14 @@ while [ $# -gt 0 ]; do
     -n|--dry-run)   dry_run="1" ;;
     -y|--yes)       assume_yes="1" ;;
     -f|--force)     force="1" ;;
+    --approve-preview)
+      shift
+      if [ $# -eq 0 ]; then
+        echo "--approve-preview requires the token printed by a prior dry run."
+        exit 1
+      fi
+      approve_preview="$1"
+      ;;
     -h|--help)      print_usage; exit 0 ;;
     *)
       echo "Unknown option: $1"
@@ -76,6 +86,13 @@ if [ ! -d "$WORKFLOW_DIR" ]; then
   echo "Expected: $WORKFLOW_DIR"
   exit 1
 fi
+
+PY_CMD="$(command -v python || command -v python3 || true)"
+if [ -z "$PY_CMD" ]; then
+  echo "Python is required to validate setup destinations."
+  exit 1
+fi
+"$PY_CMD" "$REPO_ROOT/00_Admin/scripts/validate_setup_destination.py" --path "$INSTALL_TARGET"
 
 if [ "$dry_run" != "1" ]; then
   mkdir -p "$INSTALL_TARGET"
@@ -118,8 +135,14 @@ run_export_generator() {
       "$py_cmd" "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" \
         --targets claude --scope workspace --install-root "$WORKSPACE_ROOT" --dry-run
     else
-      "$py_cmd" "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" \
-        --targets claude --scope workspace --install-root "$WORKSPACE_ROOT"
+      if [ -n "$approve_preview" ]; then
+        "$py_cmd" "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" \
+          --targets claude --scope workspace --install-root "$WORKSPACE_ROOT" \
+          --approve-preview "$approve_preview"
+      else
+        "$py_cmd" "$REPO_ROOT/00_Admin/scripts/generate_workflow_exports.py" \
+          --targets claude --scope workspace --install-root "$WORKSPACE_ROOT"
+      fi
     fi
   else
     if [ "$dry_run" = "1" ]; then

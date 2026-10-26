@@ -307,7 +307,7 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
             self.assertIsNone(PREPASS.structured_data_summary("03_Projects/map.geojson", invalid, config))
 
     def test_structured_deleted_data_packet_omits_source_content(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as directory:
+        with tempfile.TemporaryDirectory() as directory:
             packet = Path(directory) / "packet.md"
             row = {
                 "path": "03_Projects/map.geojson",
@@ -781,7 +781,7 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
         self.assertEqual(":.gitignore", basis)
 
     def test_packet_sections_bind_full_text_content(self) -> None:
-        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as directory:
+        with tempfile.TemporaryDirectory() as directory:
             packet = Path(directory) / "packet.md"
             content = "alpha\n```\nomega\n"
             row = {
@@ -803,7 +803,7 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
 
     def test_head_hook_rejects_trailer_when_receipt_is_missing(self) -> None:
         hook = ROOT / "00_Admin/scripts/hooks/validate_closeout_security_head.py"
-        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as directory:
+        with tempfile.TemporaryDirectory() as directory:
             message = Path(directory) / "commit-message.txt"
             message.write_text("test\n\nCloseout-Security: pass x y\n", encoding="utf-8")
             receipt = ROOT / ".ai_ops/local/closeout_security/does-not-exist.yaml"

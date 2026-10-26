@@ -43,8 +43,15 @@ import json
 import logging
 import os
 import re
+import sys
 import tempfile
 from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from path_safety import assert_no_reparse_components, is_reparse  # noqa: E402
 
 LOG = logging.getLogger(__name__)
 
@@ -67,37 +74,15 @@ STATUS_LOCAL_ADDS = "local_adds"  # all template entries present, has extra allo
 STATUS_DRIFT = "drift"            # missing template entries
 STATUS_SKIPPED = "skipped"        # target file does not exist (--check only)
 STATUS_ERROR = "error"            # unhandled read/write failure
-REPARSE_POINT = 0x400
 PROMPT_REQUIRED_ALLOW_RE = re.compile(
     r"(?:git\s+(?:-C\b|.*\b(?:push|commit|reset|checkout|clean|rm|fetch|pull|"
     r"clone|ls-remote|submodule|remote|send-pack|receive-pack|upload-pack|"
     r"http-fetch|http-push)\b)|git-remote\*|"
-    r"Bash\((?:gh|curl|powershell|pwsh)(?=[\s:)])|^PowerShell(?:\(|$))",
+    r"Bash\(.*?(?<![A-Za-z0-9_-])(?:gh|curl|powershell|pwsh|python(?:3(?:\.\d+)*)?|"
+    r"py|node|npm|npx|pip(?:3(?:\.\d+)*)?|conda|pre-commit)"
+    r"(?:\.exe|\.cmd)?(?=[\s:)\"']|$)|^PowerShell(?:\(|$))",
     re.IGNORECASE,
 )
-
-
-def is_reparse(path: Path) -> bool:
-    try:
-        info = path.lstat()
-    except OSError:
-        return False
-    return path.is_symlink() or bool(getattr(info, "st_file_attributes", 0) & REPARSE_POINT)
-
-
-def assert_no_reparse_components(path: Path, root: Path, label: str) -> None:
-    """Inspect lexical components so resolving a link cannot hide its parent."""
-    trusted = Path(os.path.abspath(os.fspath(root)))
-    lexical = Path(os.path.abspath(os.fspath(path)))
-    try:
-        relative = lexical.relative_to(trusted)
-    except ValueError as exc:
-        raise ValueError(f"{label} escapes workspace root: {path}") from exc
-    current = trusted
-    for part in relative.parts:
-        current = current / part
-        if os.path.lexists(os.fspath(current)) and is_reparse(current):
-            raise ValueError(f"{label} crosses a symlink/reparse point: {path}")
 
 
 def resolve_trusted(path: str | Path, root: Path, *, label: str, must_exist: bool = False) -> Path:
@@ -162,7 +147,7 @@ def load_overlay_allowlist(path: Path) -> set[str]:
         data = yaml.safe_load(stream) or {}
     rules = data.get("overlay_allowlist", {}).get("allow", [])
     if not isinstance(rules, list) or not all(isinstance(rule, str) for rule in rules):
-        raise ValueError(f"overlay_allowlist.allow must be a string list: {path}")
+        raise ValueError("overlay_allowlist.allow must be a string list")
     return set(rules)
 
 
@@ -182,10 +167,7 @@ def check_overlay(
     extra = [rule for rule in allow if rule not in allowlist]
     if not extra:
         return []
-    return [
-        f"  overlay allowlist additions ({len(extra)}):\n"
-        + "\n".join(f"    {rule}" for rule in extra)
-    ]
+    return [f"  overlay allowlist additions ({len(extra)})"]
 
 
 def merge_deny(template_deny: list, target_deny: list) -> list:
@@ -222,37 +204,22 @@ def check_target(
 
     drift_lines: list[str] = []
     if missing_allow:
-        drift_lines.append(
-            f"  allow missing ({len(missing_allow)}):\n"
-            + "\n".join(f"    {e}" for e in missing_allow)
-        )
+        drift_lines.append(f"  allow missing ({len(missing_allow)})")
     if missing_ask:
-        drift_lines.append(
-            f"  ask missing ({len(missing_ask)}):\n"
-            + "\n".join(f"    {e}" for e in missing_ask)
-        )
+        drift_lines.append(f"  ask missing ({len(missing_ask)})")
     if missing_deny:
-        drift_lines.append(
-            f"  deny missing ({len(missing_deny)}):\n"
-            + "\n".join(f"    {e}" for e in missing_deny)
-        )
+        drift_lines.append(f"  deny missing ({len(missing_deny)})")
 
     local_add_lines: list[str] = []
     if extra_allow:
-        local_add_lines.append(
-            f"  allow local additions ({len(extra_allow)}):\n"
-            + "\n".join(f"    {e}" for e in extra_allow)
-        )
+        local_add_lines.append(f"  allow local additions ({len(extra_allow)})")
 
     dangerous = [
         entry for entry in extra_allow
         if PROMPT_REQUIRED_ALLOW_RE.search(str(entry))
     ]
     if dangerous:
-        drift_lines.append(
-            f"  ask-overlap local additions ({len(dangerous)}):\n"
-            + "\n".join(f"    {e}" for e in dangerous)
-        )
+        drift_lines.append(f"  ask-overlap local additions ({len(dangerous)})")
 
     if drift_lines:
         status = STATUS_DRIFT
@@ -340,7 +307,7 @@ def load_work_repos(config_path: Path, workspace_root: Path) -> list[Path]:
         return []
 
     if not config_path.exists():
-        LOG.warning("Config not found: %s — no work_repos loaded.", config_path)
+        LOG.warning("Config not found — no work_repos loaded.")
         return []
 
     with config_path.open(encoding="utf-8") as f:
@@ -370,16 +337,16 @@ def run_check(
     """Run --check against all targets. Return 0 if no drift, 1 if drift or error."""
     any_drift = False
     for label, settings_path, trusted_root in targets:
-        LOG.info("Target : %s", label)
-        LOG.info("Path   : %s", settings_path)
+        LOG.info("Target: %s", label)
+
         if not settings_path.exists():
             LOG.info("Status : %s (file not found)", STATUS_SKIPPED)
             LOG.info("")
             continue
         try:
             target_data = load_json(settings_path)
-        except Exception as exc:  # noqa: BLE001
-            LOG.error("Status : %s — %s", STATUS_ERROR, exc)
+        except Exception:  # noqa: BLE001 - keep filesystem details out of logs
+            LOG.error("Status : %s", STATUS_ERROR)
             any_drift = True
             LOG.info("")
             continue
@@ -387,7 +354,13 @@ def run_check(
         status, drift_lines, local_add_lines = check_target(
             template_allow, template_ask, template_deny, target_data
         )
-        overlay_drift = check_overlay(settings_path, trusted_root, overlay_allowlist)
+        try:
+            overlay_drift = check_overlay(settings_path, trusted_root, overlay_allowlist)
+        except Exception:  # noqa: BLE001 - keep filesystem details out of logs
+            LOG.error("Status : %s", STATUS_ERROR)
+            any_drift = True
+            LOG.info("")
+            continue
         drift_lines.extend(overlay_drift)
         if overlay_drift:
             status = STATUS_DRIFT
@@ -414,16 +387,15 @@ def run_write(
     """Run --write against all targets. Return 0 on success, 1 on error."""
     any_error = False
     for label, settings_path, trusted_root in targets:
-        LOG.info("Target : %s", label)
-        LOG.info("Path   : %s", settings_path)
-        existing = load_json(settings_path)
+        LOG.info("Target: %s", label)
         try:
+            existing = load_json(settings_path)
             merged = build_merged(
                 template_allow, template_ask, template_deny, existing, strict=strict
             )
             write_target(settings_path, merged, trusted_root=trusted_root)
-        except Exception as exc:  # noqa: BLE001
-            LOG.error("Status : %s — %s", STATUS_ERROR, exc)
+        except Exception:  # noqa: BLE001 - keep filesystem details out of logs
+            LOG.error("Status : %s", STATUS_ERROR)
             any_error = True
             LOG.info("")
             continue
@@ -450,7 +422,7 @@ def resolve_targets(
     """Return list of (label, settings_path) for all targets."""
     if args.all:
         config_path = resolve(args.config, root)
-        LOG.debug("Config : %s", config_path)
+        LOG.debug("Workspace config resolved")
         work_repos = load_work_repos(config_path, root)
         targets: list[tuple[str, Path, Path]] = [
             ("workspace", resolve(DEFAULT_TARGET, root), root)
@@ -528,44 +500,48 @@ def main() -> int:
 
     root_lexical = Path(os.path.abspath(os.fspath(Path(args.workspace_root))))
     if is_reparse(root_lexical):
-        LOG.error("ERROR: refusing a symlink/reparse workspace root: %s", root_lexical)
+        LOG.error("ERROR: refusing a symlink/reparse workspace root")
         return 1
     try:
         root = root_lexical.resolve(strict=True)
-    except OSError as exc:
-        LOG.error("ERROR: workspace root could not be resolved: %s", exc)
+    except OSError:
+        LOG.error("ERROR: workspace root could not be resolved")
         return 1
     try:
         template_path = resolve(args.template, root)
-    except (ValueError, FileNotFoundError) as exc:
-        LOG.error("ERROR: %s", exc)
+    except (ValueError, FileNotFoundError):
+        LOG.error("ERROR: template path could not be resolved")
         return 1
 
-    LOG.info("Workspace root : %s", root)
-    LOG.info("Template       : %s", template_path)
+    LOG.info("Workspace root resolved")
+    LOG.info("Template resolved")
     LOG.info("")
 
     if not template_path.exists():
-        LOG.error("ERROR: Template not found: %s", template_path)
+        LOG.error("ERROR: template not found")
         return 1
 
     try:
         template_data = load_json(template_path)
         template_allow, template_ask, template_deny = extract_permissions(template_data)
         targets = resolve_targets(args, root)
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
-        LOG.error("ERROR: %s", exc)
+    except (OSError, ValueError, json.JSONDecodeError):
+        LOG.error("ERROR: configuration could not be loaded")
         return 1
 
     if args.check:
-        containment_path = resolve(DEFAULT_CONTAINMENT_CONFIG, root)
+        try:
+            containment_path = resolve(DEFAULT_CONTAINMENT_CONFIG, root)
+        except (OSError, RuntimeError, ValueError):
+            LOG.error("ERROR: containment config could not be resolved")
+            return 1
         if not containment_path.exists():
-            LOG.error("ERROR: containment config not found: %s", containment_path)
+            LOG.error("ERROR: containment config not found")
             return 1
         try:
             overlay_allowlist = load_overlay_allowlist(containment_path)
-        except Exception as exc:  # noqa: BLE001 - fail closed on config parsing
-            LOG.error("ERROR: invalid containment config: %s", exc)
+        except Exception:  # noqa: BLE001 - fail closed on config parsing
+            LOG.error("ERROR: invalid containment config")
             return 1
         return run_check(
             targets, template_allow, template_ask, template_deny, overlay_allowlist

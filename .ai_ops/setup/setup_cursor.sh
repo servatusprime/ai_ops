@@ -6,6 +6,18 @@ set -e
 
 echo "Setting up ai_ops for Cursor..."
 
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+REPO_ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)"
+cd "$REPO_ROOT"
+PY_CMD="$(command -v python || command -v python3 || true)"
+if [ -z "$PY_CMD" ]; then
+  echo "Python is required to validate setup destinations."
+  exit 1
+fi
+"$PY_CMD" "$REPO_ROOT/00_Admin/scripts/validate_setup_destination.py" \
+  --path "$REPO_ROOT/.cursor/commands" \
+  --path "$REPO_ROOT/.ai_ops/local"
+
 mkdir -p .cursor/commands
 
 if [ -n "$(ls -A .cursor/commands 2>/dev/null)" ]; then

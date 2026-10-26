@@ -12,7 +12,12 @@ GENERATOR = REPO_ROOT / "00_Admin" / "scripts" / "generate_workflow_exports.py"
 
 
 class WorkspaceInstallPreviewTests(unittest.TestCase):
-    def run_generator(self, install_root: Path, *extra: str) -> subprocess.CompletedProcess[str]:
+    def run_generator(
+        self,
+        install_root: Path,
+        *extra: str,
+        scope: str = "workspace",
+    ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             [
                 sys.executable,
@@ -21,7 +26,7 @@ class WorkspaceInstallPreviewTests(unittest.TestCase):
                 "--targets",
                 "codex",
                 "--scope",
-                "workspace",
+                scope,
                 "--install-root",
                 str(install_root),
                 *extra,
@@ -46,7 +51,7 @@ class WorkspaceInstallPreviewTests(unittest.TestCase):
 
             self.assertEqual(result.returncode, 2)
             self.assertIn("[Workspace install preview]", result.stdout)
-            self.assertIn("[BLOCKED] Workspace install requires the matching preview token.", result.stdout)
+            self.assertIn("[BLOCKED] External install requires the matching preview token.", result.stdout)
             normalized_stdout = result.stdout.replace("\\", "/")
             self.assertIn(".agents/skills/bootstrap/SKILL.md", normalized_stdout)
             self.assertIn(".agents/skills/work_savepoint/SKILL.md", normalized_stdout)
@@ -68,6 +73,27 @@ class WorkspaceInstallPreviewTests(unittest.TestCase):
                 (install_root / ".agents" / "skills" / "work_savepoint" / "SKILL.md").is_file()
             )
 
+    def test_repo_scope_external_install_requires_preview(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            install_root = Path(temp_dir)
+            blocked = self.run_generator(install_root, scope="repo")
+            self.assertEqual(blocked.returncode, 2)
+            self.assertIn("External install requires the matching preview token", blocked.stdout)
+            self.assertFalse((install_root / ".agents").exists())
+
+            preview = self.run_generator(install_root, "--dry-run", scope="repo")
+            token = self.preview_token(preview)
+            apply_result = self.run_generator(
+                install_root,
+                "--approve-preview",
+                token,
+                scope="repo",
+            )
+            self.assertEqual(apply_result.returncode, 0, apply_result.stdout + apply_result.stderr)
+            self.assertTrue(
+                (install_root / ".agents" / "skills" / "work_savepoint" / "SKILL.md").is_file()
+            )
+
     def test_destination_change_invalidates_prior_token(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             install_root = Path(temp_dir)
@@ -82,6 +108,55 @@ class WorkspaceInstallPreviewTests(unittest.TestCase):
             self.assertEqual(apply_result.returncode, 2)
             self.assertIn("[BLOCKED]", apply_result.stdout)
             self.assertEqual(changed_path.read_text(encoding="utf-8"), "preexisting owner content\n")
+
+    def test_user_install_requires_and_accepts_a_source_bound_preview(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            install_root = Path(temp_dir)
+            preview = subprocess.run(
+                [
+                    sys.executable,
+                    "-B",
+                    str(GENERATOR),
+                    "--targets",
+                    "codex",
+                    "--scope",
+                    "user",
+                    "--install-root",
+                    str(install_root),
+                    "--dry-run",
+                ],
+                cwd=REPO_ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            token = self.preview_token(preview)
+            self.assertEqual(preview.returncode, 0, preview.stdout + preview.stderr)
+            self.assertFalse((install_root / ".agents").exists())
+
+            apply_result = subprocess.run(
+                [
+                    sys.executable,
+                    "-B",
+                    str(GENERATOR),
+                    "--targets",
+                    "codex",
+                    "--scope",
+                    "user",
+                    "--install-root",
+                    str(install_root),
+                    "--approve-preview",
+                    token,
+                ],
+                cwd=REPO_ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(apply_result.returncode, 0, apply_result.stdout + apply_result.stderr)
+            self.assertTrue(
+                (install_root / ".agents" / "skills" / "work_savepoint" / "SKILL.md").is_file()
+            )
 
 
 if __name__ == "__main__":

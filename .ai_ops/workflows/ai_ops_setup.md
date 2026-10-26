@@ -273,12 +273,14 @@ contract.
      Packages `.claude/skills/` into a `.plugin` zip for Cowork installation.
      Use `--dry-run` to preview skill count and output path before writing.
    - Codex skills: `setup_codex_skills.bat|.sh [--workspace|--repo|--user]`
-   - Claude native subagents (`.claude/agents/`): `setup_claude_agents.bat|.sh
-     [--workspace|--repo]` -- regenerates via `/profiles`
-     (`regenerate_profiles.py`) and, for `--workspace`, additionally copies
-     the repo-generated set to the workspace root so subagent types are
-     reachable from a session launched there. Run alongside
-     `setup_claude_skills.*`, not instead of it.
+   - Claude native subagents (`.claude/agents/`):
+     `setup_claude_agents.bat|.sh --repo` -- regenerates via `/profiles`
+     (`regenerate_profiles.py`) into the repo-local generated surfaces. The
+     legacy `--workspace` path is disabled because it has no source-bound
+     preview token; do not invoke it. For sessions launched from a larger
+     workspace, use repo-local discovery when available or apply the profile
+     envelope manually until a reviewed workspace install lane exists. Run
+     alongside `setup_claude_skills.*`, not instead of it.
    - GitHub Copilot skills: reuse `setup_claude_skills.bat|.sh [--workspace|--repo]`
      on surfaces that support project skills from `.claude/skills/`
    - GitHub Copilot instructions: no install script; verify

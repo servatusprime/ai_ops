@@ -303,12 +303,11 @@ def main():
     is_valid, errors = validate_config(config_path)
 
     if is_valid:
-        print(f"[OK] Config valid: {config_path}")
+        print("[OK] Config valid")
         sys.exit(0)
     else:
-        print(f"[FAIL] Config invalid: {config_path}")
-        for error in errors:
-            print(f"  - {error}")
+        print("[FAIL] Config invalid")
+        print(f"  - {len(errors)} validation error(s)")
         sys.exit(1)
 
 

@@ -9,8 +9,8 @@ tests before it is trusted to judge the rest of the repo.
 from __future__ import annotations
 
 import argparse
-import shlex
-import shutil
+import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -20,6 +20,7 @@ ALLOWED_CHECKS = {
     "governance-tests",
     "validator-fixtures",
     "repo-validator",
+    "ci-requirements",
     "metadata-validator",
     "workflow-frontmatter",
     "workflow-export-generation",
@@ -29,8 +30,31 @@ ALLOWED_CHECKS = {
 }
 
 
-def format_cmd(parts: Sequence[str]) -> str:
-    return " ".join(shlex.quote(p) for p in parts)
+def _sanitize_child_diagnostics(text: str, cwd: Path) -> str:
+    """Show useful child failures while removing machine-specific paths."""
+
+    rendered = text or ""
+    root = str(cwd.resolve())
+    variants = {root, root.replace("\\", "/"), root.replace("/", "\\")}
+    for variant in sorted(variants, key=len, reverse=True):
+        rendered = re.sub(
+            re.escape(variant) + r"[\\/]",
+            "<repo-root>/",
+            rendered,
+            flags=re.IGNORECASE,
+        )
+        rendered = re.sub(re.escape(variant), "<repo-root>", rendered, flags=re.IGNORECASE)
+    rendered = re.sub(
+        r"(?<![\w<>])(?:[A-Za-z]:[\\/]|\\\\)(?:[^\s:()]+[\\/])*[^\s:()]+",
+        "<external-path>",
+        rendered,
+    )
+    rendered = re.sub(
+        r"(?<![\w<>])/(?!/)(?:[^\s:()]+/)+[^\s:()]+",
+        "<external-path>",
+        rendered,
+    )
+    return rendered.replace("\\", "/")[-12000:]
 
 
 def run_check(name: str, cmd: Sequence[str], cwd: Path, dry_run: bool) -> Tuple[str, int]:
@@ -41,11 +65,28 @@ def run_check(name: str, cmd: Sequence[str], cwd: Path, dry_run: bool) -> Tuple[
         print(f"[FAIL] invalid release check command or cwd for {name}")
         return name, 1
     print(f"[CHECK] {name}")
-    print(f"  {format_cmd(cmd)}")
+    print(f"  command: {name} (arguments omitted from logs)")
     if dry_run:
         print("  dry-run: skipped execution")
         return name, 0
-    result = subprocess.run(cmd, cwd=cwd, check=False)
+    result = subprocess.run(
+        cmd,
+        cwd=cwd,
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if result.returncode:
+        diagnostics = "\n".join(
+            part for part in ((result.stdout or "").strip(), (result.stderr or "").strip()) if part
+        )
+        if diagnostics:
+            print("  child diagnostics (sanitized):")
+            print(_sanitize_child_diagnostics(diagnostics, cwd))
+        else:
+            print("  child diagnostics unavailable; rerun locally for details")
     return name, int(result.returncode)
 
 
@@ -64,6 +105,38 @@ def detect_git_root(start: Path) -> Path:
     except Exception:
         pass
     return start
+
+
+def resolve_trusted_powershell() -> str | None:
+    """Return a known PowerShell installation path without PATH resolution."""
+
+    if os.name == "nt":
+        candidates = (
+            Path(r"C:\Program Files")
+            / "PowerShell"
+            / "7"
+            / "pwsh.exe",
+            Path(r"C:\Windows")
+            / "System32"
+            / "WindowsPowerShell"
+            / "v1.0"
+            / "powershell.exe",
+        )
+    else:
+        candidates = (
+            Path("/usr/bin/pwsh"),
+            Path("/usr/local/bin/pwsh"),
+            Path("/opt/microsoft/powershell/7/pwsh"),
+        )
+
+    for candidate in candidates:
+        try:
+            resolved = candidate.resolve(strict=True)
+        except OSError:
+            continue
+        if resolved.is_file() and not candidate.is_symlink():
+            return str(resolved)
+    return None
 
 
 def main() -> int:
@@ -103,9 +176,10 @@ def main() -> int:
     try:
         structure_root.relative_to(repo_root)
     except ValueError:
-        print(f"[FAIL] detected git root escapes ai_ops repo root: {structure_root}")
+        print("[FAIL] detected git root escapes ai_ops repo root")
         return 1
     python_exe = sys.executable
+    os.environ["AI_OPS_PYTHON"] = python_exe
 
     checks: List[Tuple[str, List[str]]] = [
         (
@@ -119,6 +193,9 @@ def main() -> int:
                 "00_Admin.tests.test_governance_seed_contracts",
                 "00_Admin.tests.test_work_savepoint_contract",
                 "00_Admin.tests.test_workflow_export_workspace_preview",
+                "00_Admin.tests.test_claude_settings_policy",
+                "00_Admin.tests.test_release_quality_gate",
+                "00_Admin.tests.test_validation_command_policy",
             ],
         ),
         (
@@ -133,6 +210,10 @@ def main() -> int:
                 "--structure-root",
                 str(structure_root),
             ],
+        ),
+        (
+            "ci-requirements",
+            [python_exe, "00_Admin/scripts/validate_ci_requirements.py"],
         ),
         (
             "metadata-validator",
@@ -165,7 +246,7 @@ def main() -> int:
     ]
 
     if not args.skip_lint:
-        ps = shutil.which("pwsh") or shutil.which("powershell")
+        ps = resolve_trusted_powershell()
         if ps is None:
             print("[FAIL] PowerShell is required for lint check (`00_Admin/scripts/lint.ps1`).")
             print("Use `--skip-lint` only when shell limitations are documented.")
@@ -199,7 +280,6 @@ def main() -> int:
             failures.append((name, rc))
             if not args.dry_run:
                 print(f"[FAIL] {name} exited with code {rc}")
-                break
 
     if failures:
         print("\n[RESULT] release-quality gate: FAIL")

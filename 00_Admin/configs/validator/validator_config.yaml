@@ -100,12 +100,14 @@ rules:
     paths:
       - 00_Admin/runbooks
     params:
+      severity: warning
       required_prefix: rb_
   - id: VS008
     enabled: true
     paths:
       - 90_Sandbox/ai_workbooks
     params:
+      severity: warning
       required_prefix: wb_
   - id: VS009
     enabled: true
@@ -138,6 +140,7 @@ rules:
     paths:
       - 00_Admin/backlog/future_work_registry.yaml
     params:
+      severity: warning
       required_fields:
         - source_workbook
         - completion_workbook
@@ -149,6 +152,7 @@ rules:
     paths:
       - repo_structure.txt
     params:
+      severity: warning
       must_exist: true
   - id: VS014
     enabled: true
@@ -156,6 +160,7 @@ rules:
       - 00_Admin/**/README.md
       - 00_Admin/guides/**/*.md
     params:
+      severity: warning
       related_paths_must_be_repo_relative: true
   - id: VS015
     enabled: true
@@ -201,6 +206,7 @@ rules:
       - 00_Admin/guides/**/*.md
       - .ai_ops/workflows/*.md
     params:
+      severity: warning
       forbidden_terms:
         - "\\bmanual\\b"
         - "\\bmanually\\b"

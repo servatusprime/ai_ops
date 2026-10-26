@@ -12,10 +12,21 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import os
 import re
 import sys
+import tempfile
 from pathlib import Path
 from typing import Dict, List, Tuple
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from path_safety import (  # noqa: E402
+    assert_no_reparse_components,
+    is_reparse,
+)
 
 try:
     import yaml  # type: ignore
@@ -53,6 +64,11 @@ SCOPE_WORKFLOW_RELS: Dict[str, str] = {
     "repo": ".ai_ops/workflows",
     "workspace": "ai_ops/.ai_ops/workflows",
 }
+
+def assert_safe_output(path: Path, install_root: Path, *, label: str) -> None:
+    """Validate both the selected root and a planned child output."""
+    assert_no_reparse_components(install_root, label="install root")
+    assert_no_reparse_components(path, label=label)
 
 
 
@@ -185,17 +201,44 @@ def normalized_text(content: str) -> str:
     return content.strip() + "\n"
 
 
-def write_text(path: Path, content: str) -> None:
+def write_text(path: Path, content: str, install_root: Path) -> None:
+    assert_safe_output(path, install_root, label="workflow export")
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8", newline="\n") as handle:
-        handle.write(normalized_text(content))
+    # Re-check after mkdir so a newly created destination component cannot
+    # redirect the write through a link/reparse point.
+    assert_safe_output(path, install_root, label="workflow export")
+    if path.exists() and is_reparse(path):
+        raise ValueError(f"refusing to replace symlink/reparse workflow export: {path}")
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            newline="\n",
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            dir=path.parent,
+            delete=False,
+        ) as handle:
+            temporary = Path(handle.name)
+            handle.write(normalized_text(content))
+            handle.flush()
+            os.fsync(handle.fileno())
+        assert_safe_output(path, install_root, label="workflow export")
+        temporary.replace(path)
+    except Exception:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+        raise
 
 
 def build_write_preview(
     planned_writes: List[Tuple[Path, str]],
+    install_root: Path,
 ) -> Tuple[List[Dict[str, str]], str]:
     entries: List[Dict[str, str]] = []
     for path, content in sorted(planned_writes, key=lambda item: str(item[0]).casefold()):
+        assert_safe_output(path, install_root, label="workflow export")
         desired = normalized_text(content)
         desired_sha256 = hashlib.sha256(desired.encode("utf-8")).hexdigest()
         if path.exists():
@@ -311,20 +354,19 @@ def main() -> int:
         default=None,
         help=(
             "Approval token printed by a prior workspace-install preview. Required "
-            "for writes when --scope workspace targets an external --install-root. "
+            "for every write when --install-root is outside the repository root. "
             "The token binds the complete output plan and current destination state."
         ),
     )
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parents[2]
-    install_root = Path(args.install_root).resolve() if args.install_root else repo_root
+    install_root = Path(os.path.abspath(args.install_root)) if args.install_root else repo_root
     manifest_scoped_write = install_root == repo_root
-    workspace_external_install = args.scope == "workspace" and not manifest_scoped_write
-    if args.approve_preview and not workspace_external_install:
+    approval_required_install = not manifest_scoped_write
+    if args.approve_preview and not approval_required_install:
         print(
-            "[FAIL] --approve-preview is valid only for an external "
-            "--scope workspace install."
+            "[FAIL] --approve-preview is valid only for an external install."
         )
         return 2
     if args.scope == "user":
@@ -621,18 +663,18 @@ def main() -> int:
     # this particular install happened to pass, corrupting drift checks
     # for the real repo-scope generation.
 
-    if workspace_external_install:
-        preview_entries, preview_token = build_write_preview(planned_writes)
+    if approval_required_install:
+        preview_entries, preview_token = build_write_preview(planned_writes, install_root)
         print_write_preview(preview_entries, preview_token)
         if not args.dry_run and args.approve_preview != preview_token:
-            print("[BLOCKED] Workspace install requires the matching preview token.")
+            print("[BLOCKED] External install requires the matching preview token.")
             print(f"Re-run with --approve-preview {preview_token}")
             print("No files written.")
             return 2
 
     if not args.dry_run:
         for output_path, output_content in planned_writes:
-            write_text(output_path, output_content)
+            write_text(output_path, output_content, install_root)
 
     if args.print_manifest:
         print("---MANIFEST-BEGIN---")

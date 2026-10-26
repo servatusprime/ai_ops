@@ -3,7 +3,9 @@
 param(
     [switch] $NoFix,
     [switch] $DryRun,
-    [string] $Scope = ""
+    [string] $Scope = "",
+    [string[]] $MarkdownPaths = @(),
+    [switch] $MarkdownOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -64,7 +66,26 @@ function Resolve-CacheRoot {
     throw "No writable lint cache path found. Checked: $($candidates -join ', ')"
 }
 
-if (-not $DryRun) {
+function Resolve-TrustedPython {
+    $candidate = $env:AI_OPS_PYTHON
+    if ([string]::IsNullOrWhiteSpace($candidate)) {
+        $commands = @(Get-Command python -CommandType Application -ErrorAction SilentlyContinue)
+        if ($commands.Count -eq 0) {
+            throw "Trusted Python command was not found."
+        }
+        $candidate = [string]$commands[0].Path
+    }
+    if ([string]::IsNullOrWhiteSpace($candidate) -or -not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+        throw "Trusted Python executable is unavailable: $candidate"
+    }
+    $item = Get-Item -LiteralPath $candidate -Force
+    if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+        throw "Trusted Python executable is a reparse point: $candidate"
+    }
+    return $item.FullName
+}
+
+if (-not $DryRun -and -not $MarkdownOnly) {
     # Ensure tool caches are writable and outside synchronized folders.
     $aiCacheRoot = Resolve-CacheRoot -RepoRoot $repoRoot -RepoName $repoName
     $preCommitHome = Join-Path $aiCacheRoot "pre-commit"
@@ -80,8 +101,11 @@ if (-not $DryRun) {
     $env:RUFF_CACHE_DIR = $ruffCacheDir
     Write-Host "Lint cache root: $aiCacheRoot" -ForegroundColor DarkGray
 }
-else {
+elseif ($DryRun) {
     Write-Host "DryRun mode: commands are validated but not executed." -ForegroundColor DarkGray
+}
+else {
+    Write-Host "MarkdownOnly mode: non-Markdown checks are skipped." -ForegroundColor DarkGray
 }
 
 function Resolve-YamllintConfigPath {
@@ -342,7 +366,12 @@ function Invoke-Step {
     if ([string]::IsNullOrWhiteSpace($cmd)) {
         throw "Lint step '$Name' has no command to run."
     }
-    if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) {
+    $available = if ([System.IO.Path]::IsPathRooted($cmd)) {
+        Test-Path -LiteralPath $cmd -PathType Leaf
+    } else {
+        $null -ne (Get-Command $cmd -ErrorAction SilentlyContinue)
+    }
+    if (-not $available) {
         Write-Warning "$Name skipped; '$cmd' not found. Install it or run pre-commit."
         $script:missing += $cmd
         return
@@ -363,31 +392,60 @@ function Invoke-Step {
 }
 
 Push-Location $repoRoot
+if ($MarkdownPaths.Count -gt 0) {
+    try {
+        $resolvedMarkdownPaths = @()
+        foreach ($path in $MarkdownPaths) {
+            $target = Resolve-LintScope -RepoRoot $repoRoot -Scope $path
+            if (-not $target.InRepo) {
+                throw "Batch Markdown lint requires paths within the ai_ops repo; use -Scope per external repository."
+            }
+            $resolvedMarkdownPaths += $target.Path
+        }
+        Write-Host "Lint scope: batch ($($resolvedMarkdownPaths.Count) Markdown paths)" -ForegroundColor DarkGray
+        $markdownlintCommand = Resolve-TrustedMarkdownlint
+        $markdownlintArgs = $markdownlintCommand + @("--config", ".markdownlint.json") + $resolvedMarkdownPaths
+        Invoke-Step -Name "markdownlint" -CommandArgs $markdownlintArgs -DryRun:$DryRun
+    }
+    finally {
+        Pop-Location
+    }
+    if ($missing.Count -gt 0) {
+        Write-Warning "Install missing tools or enable pre-commit to keep CI green: $($missing -join ', ')"
+        exit 1
+    }
+    exit 0
+}
 try {
     $target = Resolve-LintScope -RepoRoot $repoRoot -Scope $Scope
     Write-Host "Lint scope: $($target.Display)" -ForegroundColor DarkGray
 
-    $yamllintConfig = Resolve-YamllintConfigPath -PrimaryRoot $target.Root -FallbackRoot $repoRoot
+    $trustedPython = Resolve-TrustedPython
     $markdownlintCommand = Resolve-TrustedMarkdownlint
-
-    $ruffSkippableExts = @(".py", ".pyi", ".ipynb")
-    $skipRuff = $false
-    if (Test-Path $target.Path -PathType Leaf) {
-        $ext = [System.IO.Path]::GetExtension($target.Path).ToLowerInvariant()
-        if ($ruffSkippableExts -notcontains $ext) {
-            $skipRuff = $true
-        }
+    if (-not $MarkdownOnly) {
+        $yamllintConfig = Resolve-YamllintConfigPath -PrimaryRoot $target.Root -FallbackRoot $repoRoot
     }
 
-    if ($skipRuff) {
-        Write-Host ">> Ruff (skipped for non-Python file scope)" -ForegroundColor Cyan
-    }
-    else {
-        $ruffArgs = @("ruff", "check", $target.Path)
-        if (-not $NoFix) {
-            $ruffArgs += "--fix"
+    if (-not $MarkdownOnly) {
+        $ruffSkippableExts = @(".py", ".pyi", ".ipynb")
+        $skipRuff = $false
+        if (Test-Path $target.Path -PathType Leaf) {
+            $ext = [System.IO.Path]::GetExtension($target.Path).ToLowerInvariant()
+            if ($ruffSkippableExts -notcontains $ext) {
+                $skipRuff = $true
+            }
         }
-        Invoke-Step -Name "Ruff" -CommandArgs $ruffArgs -DryRun:$DryRun
+
+        if ($skipRuff) {
+            Write-Host ">> Ruff (skipped for non-Python file scope)" -ForegroundColor Cyan
+        }
+        else {
+            $ruffArgs = @($trustedPython, "-m", "ruff", "check", $target.Path)
+            if (-not $NoFix) {
+                $ruffArgs += "--fix"
+            }
+            Invoke-Step -Name "Ruff" -CommandArgs $ruffArgs -DryRun:$DryRun
+        }
     }
 
     if ($target.InRepo) {
@@ -403,26 +461,28 @@ try {
         }
     }
 
-    $yamlExts = @(".yaml", ".yml")
-    $skipYamllint = $false
-    if (Test-Path $target.Path -PathType Leaf) {
-        $ext = [System.IO.Path]::GetExtension($target.Path).ToLowerInvariant()
-        if ($yamlExts -notcontains $ext) {
-            $skipYamllint = $true
+    if (-not $MarkdownOnly) {
+        $yamlExts = @(".yaml", ".yml")
+        $skipYamllint = $false
+        if (Test-Path $target.Path -PathType Leaf) {
+            $ext = [System.IO.Path]::GetExtension($target.Path).ToLowerInvariant()
+            if ($yamlExts -notcontains $ext) {
+                $skipYamllint = $true
+            }
         }
-    }
 
-    if ($skipYamllint) {
-        Write-Host ">> yamllint (skipped for non-YAML file scope)" -ForegroundColor Cyan
-    }
-    else {
-        Invoke-Step -Name "yamllint" -CommandArgs @("yamllint", "-c", $yamllintConfig, $target.Path) -DryRun:$DryRun
-    }
-    if ($target.InRepo) {
-        Invoke-Step -Name "workflow-frontmatter" -CommandArgs @("python", "00_Admin/scripts/validate_workflow_frontmatter.py") -DryRun:$DryRun
-    }
-    else {
-        Write-Host ">> workflow-frontmatter (skipped for non-ai_ops scope)" -ForegroundColor Cyan
+        if ($skipYamllint) {
+            Write-Host ">> yamllint (skipped for non-YAML file scope)" -ForegroundColor Cyan
+        }
+        else {
+            Invoke-Step -Name "yamllint" -CommandArgs @($trustedPython, "-m", "yamllint", "-c", $yamllintConfig, $target.Path) -DryRun:$DryRun
+        }
+        if ($target.InRepo) {
+            Invoke-Step -Name "workflow-frontmatter" -CommandArgs @($trustedPython, "00_Admin/scripts/validate_workflow_frontmatter.py") -DryRun:$DryRun
+        }
+        else {
+            Write-Host ">> workflow-frontmatter (skipped for non-ai_ops scope)" -ForegroundColor Cyan
+        }
     }
 }
 finally {

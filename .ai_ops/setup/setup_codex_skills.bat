@@ -39,6 +39,7 @@ set "scope=repo"
 set "force=0"
 set "install_compat=0"
 set "dry_run=0"
+set "approve_preview="
 
 :parse_args
 if "%~1"=="" goto args_done
@@ -77,6 +78,16 @@ if /I "%~1"=="--dry-run" (
   shift
   goto parse_args
 )
+if /I "%~1"=="--approve-preview" (
+  shift
+  if "%~1"=="" (
+    echo --approve-preview requires the token printed by a prior dry run.
+    exit /b 1
+  )
+  set "approve_preview=%~1"
+  shift
+  goto parse_args
+)
 if /I "%~1"=="-f" (
   set "force=1"
   shift
@@ -94,6 +105,16 @@ echo Unknown option: %~1
 goto usage_error
 
 :args_done
+if defined approve_preview (
+  set "invalid_preview="
+  if "!approve_preview:~15,1!"=="" set "invalid_preview=1"
+  if not "!approve_preview:~16,1!"=="" set "invalid_preview=1"
+  for /f "delims=0123456789ABCDEF" %%A in ("!approve_preview!") do set "invalid_preview=1"
+  if defined invalid_preview (
+    echo --approve-preview must be exactly 16 uppercase hexadecimal characters.
+    exit /b 2
+  )
+)
 REM Resolve install target and workflow relative path based on scope
 if /I "!scope!"=="workspace" (
   for %%I in ("%REPO_ROOT%\..") do set "WORKSPACE_ROOT=%%~fI"
@@ -163,17 +184,19 @@ set "gen_compat_arg="
 if "!install_compat!"=="1" set "gen_compat_arg=--codex-compat"
 set "gen_dry_arg="
 if "!dry_run!"=="1" set "gen_dry_arg=--dry-run"
+set "gen_approval_arg="
+if defined approve_preview set "gen_approval_arg=--approve-preview !approve_preview!"
 if exist "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" (
   where python >nul 2>&1
   if not errorlevel 1 (
     if /I "!scope!"=="workspace" (
-      python "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" --targets claude codex --scope workspace --install-root "!WORKSPACE_ROOT!" !gen_compat_arg! !gen_dry_arg!
+      python "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" --targets claude codex --scope workspace --install-root "!WORKSPACE_ROOT!" !gen_compat_arg! !gen_dry_arg! !gen_approval_arg!
     ) else if /I "!scope!"=="user" (
       REM user scope needs an absolute pointer -- %USERPROFILE% has no
       REM fixed relative path back to the repo.
-      python "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" --targets claude codex --scope user --install-root "%USERPROFILE%" !gen_compat_arg! !gen_dry_arg!
+      python "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" --targets claude codex --scope user --install-root "%USERPROFILE%" !gen_compat_arg! !gen_dry_arg! !gen_approval_arg!
     ) else (
-      python "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" --targets plugin claude codex --scope repo !gen_compat_arg! !gen_dry_arg!
+      python "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" --targets plugin claude codex --scope repo !gen_compat_arg! !gen_dry_arg! !gen_approval_arg!
     )
     set "generator_status=!ERRORLEVEL!"
     if "!generator_status!"=="0" (
@@ -221,7 +244,7 @@ exit /b 127
 
 :usage
 echo Usage:
-echo   .ai_ops\setup\setup_codex_skills.bat [--workspace^|--repo^|--user] [--compat] [-f^|--force] [--dry-run]
+echo   .ai_ops\setup\setup_codex_skills.bat [--workspace^|--repo^|--user] [--compat] [-f^|--force] [--dry-run] [--approve-preview TOKEN]
 echo.
 echo Options:
 echo   -w, --workspace        Install to workspace root .agents\skills\ ^(cross-repo access^)
@@ -230,6 +253,7 @@ echo       --user             Install to %%USERPROFILE%%\.agents\skills
 echo       --compat           Also install compatibility mirror to .codex\skills
 echo   -f, --force            Skip the "existing skills found" confirmation prompt
 echo   -n, --dry-run          Preview actions without writing files
+echo       --approve-preview  Apply an exact external-install preview token
 echo   -h, --help             Show this help
 echo.
 echo Examples:

@@ -230,10 +230,11 @@ These create `.toml` command files in `.gemini/commands/` that reference
 the workflow files. Supports project-scoped (`.gemini/commands/`) and
 user-scoped (`~/.gemini/commands/`) locations.
 
-Gemini setup scripts also create lightweight markdown wrappers in
-`.agents/workflows/` (workspace-root if `../.agents/` exists, otherwise
-repo-local `.agents/workflows/`) so Antigravity-style discovery lanes that scan
-`.agents/workflows/*.md` can surface the same commands.
+Gemini setup scripts also create lightweight markdown wrappers in the
+repo-local `.agents/workflows/` directory so Antigravity-style discovery lanes
+that scan `.agents/workflows/*.md` can surface the same commands. They do not
+write to a parent workspace or user-global surface; external installs must use
+the reviewed preview-token workflow.
 
 TOML in this lane is wrapper transport only. Profile value editing remains
 YAML-based through `/profiles` in `.ai_ops/local/profiles/active_crew.yaml`
@@ -309,11 +310,12 @@ All workflow files are in `.ai_ops/workflows/`.
   in `.ai_ops/workflows/profiles.md`, not in setup docs.
 - For deterministic wrapper regeneration from SoT workflows, run:
   `python 00_Admin/scripts/generate_workflow_exports.py`.
-- Workspace-root installs fail closed before writing. First run the complete
+- Workspace-root and user-scope installs fail closed before writing. First run the complete
   preview with `--scope workspace --install-root <workspace_root> --dry-run`,
   review every `CREATE`, `UPDATE`, and `UNCHANGED` output, then rerun the same
   command with the printed `--approve-preview <token>`. The token becomes
-  invalid if either a source wrapper or destination file changes.
+  invalid if either a source wrapper or destination file changes. The setup
+  scripts accept the same `--approve-preview <token>` pass-through.
 - Model availability is not reliably auto-detected by setup scripts; declare
   available models/default reasoning via `/customize`, then use `/profiles` for
   model-family behavior tuning when needed.

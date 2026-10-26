@@ -7,9 +7,11 @@ import importlib.util
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 SETTINGS_PATH = ROOT / "01_Resources" / "templates" / "config" / "settings_global_template.json"
@@ -29,7 +31,6 @@ def _matches(rule: str, tool: str, value: str = "") -> bool:
 class ClaudeSettingsPolicyTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        (ROOT / "tmp").mkdir(parents=True, exist_ok=True)
         cls.settings = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
         cls.permissions = cls.settings["permissions"]
 
@@ -85,6 +86,22 @@ class ClaudeSettingsPolicyTests(unittest.TestCase):
             with self.subTest(command=command):
                 self.assertEqual(self.classify("Bash", command), "ask")
         self.assertEqual(self.classify("PowerShell", "Get-Location"), "ask")
+
+    def test_interpreters_and_hook_runner_require_approval(self) -> None:
+        for command in (
+            "python 00_Admin/scripts/validate_repo_rules.py",
+            "python3 -m pytest",
+            "node tool.js",
+            "npm ci",
+            "pip install -r requirements.txt",
+            "conda run -n ai_ops python tool.py",
+            "pre-commit run --all-files",
+            '"C:/Python311/python.exe" -m pytest',
+            'env "C:/Node/node.exe" tool.js',
+            'pre-commit.exe run --all-files',
+        ):
+            with self.subTest(command=command):
+                self.assertNotEqual(self.classify("Bash", command), "allow")
 
     def test_local_read_workflows_remain_allowed(self) -> None:
         for command in (
@@ -187,6 +204,11 @@ class ClaudeSettingsPolicyTests(unittest.TestCase):
             "Bash(pwsh:*)",
             "PowerShell",
             "PowerShell(Get-ChildItem *)",
+            "Bash(python:*)",
+            "Bash(pre-commit run:*)",
+            'Bash("C:/Python311/python.exe" -m pytest:*)',
+            'Bash(env "C:/Node/node.exe" tool.js:*)',
+            "Bash(pre-commit.exe run:*)",
         )
         for rule in conflicting:
             with self.subTest(rule=rule):
@@ -205,6 +227,141 @@ class ClaudeSettingsPolicyTests(unittest.TestCase):
 
                 merged = module.build_merged(allow, ask, deny, target)
                 self.assertNotIn(rule, merged["permissions"]["allow"])
+
+    def test_missing_containment_config_does_not_log_resolved_path(self) -> None:
+        script = ROOT / "00_Admin" / "scripts" / "sync_claude_settings.py"
+        spec = importlib.util.spec_from_file_location("sync_claude_settings_log", script)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp) / "workspace"
+            template = workspace / "ai_ops" / "01_Resources" / "templates" / "config"
+            target = workspace / ".claude"
+            template.mkdir(parents=True)
+            target.mkdir(parents=True)
+            (template / "settings_global_template.json").write_text(
+                json.dumps({"permissions": {"allow": [], "ask": [], "deny": []}}),
+                encoding="utf-8",
+            )
+            (target / "settings.json").write_text(
+                json.dumps({"permissions": {"allow": [], "ask": [], "deny": []}}),
+                encoding="utf-8",
+            )
+
+            with patch.object(sys, "argv", [
+                "sync_claude_settings.py",
+                "--check",
+                "--workspace-root",
+                str(workspace),
+            ]), patch.object(module.LOG, "error") as log_error:
+                result = module.main()
+
+            self.assertEqual(result, 1)
+            messages = [
+                " ".join(str(arg) for arg in call.args)
+                for call in log_error.call_args_list
+            ]
+            self.assertTrue(any("containment config not found" in message for message in messages))
+            self.assertTrue(all(str(workspace) not in message for message in messages))
+
+    def test_malformed_containment_config_does_not_log_resolved_path(self) -> None:
+        script = ROOT / "00_Admin" / "scripts" / "sync_claude_settings.py"
+        spec = importlib.util.spec_from_file_location("sync_claude_settings_invalid_log", script)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp) / "workspace"
+            template = workspace / "ai_ops" / "01_Resources" / "templates" / "config"
+            containment = workspace / "ai_ops" / "00_Admin" / "configs"
+            target = workspace / ".claude"
+            template.mkdir(parents=True)
+            containment.mkdir(parents=True)
+            target.mkdir(parents=True)
+            (template / "settings_global_template.json").write_text(
+                json.dumps({"permissions": {"allow": [], "ask": [], "deny": []}}),
+                encoding="utf-8",
+            )
+            (target / "settings.json").write_text(
+                json.dumps({"permissions": {"allow": [], "ask": [], "deny": []}}),
+                encoding="utf-8",
+            )
+            (containment / "workspace_containment.yaml").write_text(
+                "overlay_allowlist:\n  allow: invalid\n",
+                encoding="utf-8",
+            )
+
+            with patch.object(sys, "argv", [
+                "sync_claude_settings.py",
+                "--check",
+                "--workspace-root",
+                str(workspace),
+            ]), patch.object(module.LOG, "error") as log_error:
+                result = module.main()
+
+            self.assertEqual(result, 1)
+            messages = [
+                " ".join(str(arg) for arg in call.args)
+                for call in log_error.call_args_list
+            ]
+            self.assertTrue(any("invalid containment config" in message for message in messages))
+            self.assertTrue(all(str(workspace) not in message for message in messages))
+
+    def test_containment_resolution_error_does_not_log_resolved_path(self) -> None:
+        script = ROOT / "00_Admin" / "scripts" / "sync_claude_settings.py"
+        spec = importlib.util.spec_from_file_location("sync_claude_settings_resolution_log", script)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp) / "workspace"
+            template = workspace / "ai_ops" / "01_Resources" / "templates" / "config"
+            target = workspace / ".claude"
+            template.mkdir(parents=True)
+            target.mkdir(parents=True)
+            (template / "settings_global_template.json").write_text(
+                json.dumps({"permissions": {"allow": [], "ask": [], "deny": []}}),
+                encoding="utf-8",
+            )
+            (target / "settings.json").write_text(
+                json.dumps({"permissions": {"allow": [], "ask": [], "deny": []}}),
+                encoding="utf-8",
+            )
+
+            original_resolve = module.resolve
+            resolve_calls = 0
+
+            def fail_containment_resolution(path: str | Path, root: Path) -> Path:
+                nonlocal resolve_calls
+                resolve_calls += 1
+                if resolve_calls == 3:
+                    raise ValueError(f"configured path escapes workspace root: {root / str(path)}")
+                return original_resolve(path, root)
+
+            with patch.object(sys, "argv", [
+                "sync_claude_settings.py",
+                "--check",
+                "--workspace-root",
+                str(workspace),
+            ]), patch.object(module, "resolve", side_effect=fail_containment_resolution), patch.object(
+                module.LOG, "error"
+            ) as log_error:
+                result = module.main()
+
+            self.assertEqual(result, 1)
+            messages = [
+                " ".join(str(arg) for arg in call.args)
+                for call in log_error.call_args_list
+            ]
+            self.assertTrue(any("could not be resolved" in message for message in messages))
+            self.assertTrue(all(str(workspace) not in message for message in messages))
 
     def test_project_overlay_keeps_local_runner_allow_and_template_gates(self) -> None:
         script = ROOT / "00_Admin" / "scripts" / "sync_claude_settings.py"
@@ -251,7 +408,7 @@ class ClaudeSettingsPolicyTests(unittest.TestCase):
             "Bash(bash .ai_ops/setup/*.sh:*)",
             "Bash(bash ai_ops/.ai_ops/setup/*.sh:*)",
         }
-        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as tmp:
+        with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             settings = root / ".claude" / "settings.json"
             overlay = settings.parent / "settings.local.json"
@@ -267,10 +424,7 @@ class ClaudeSettingsPolicyTests(unittest.TestCase):
                 encoding="utf-8",
             )
             drift = module.check_overlay(settings, root, allowlist)
-            self.assertEqual(len(drift), 1)
-            self.assertIn("Bash(python -:*)", drift[0])
-            self.assertIn("Bash(sed -i:*)", drift[0])
-            self.assertIn("Bash(/c/tmp/*:*)", drift[0])
+            self.assertEqual(["  overlay allowlist additions (3)"], drift)
             overlay.write_text(
                 json.dumps({"permissions": {"allow": [
                     "Bash(bash .ai_ops/setup/*.sh:*)",
@@ -279,6 +433,30 @@ class ClaudeSettingsPolicyTests(unittest.TestCase):
                 encoding="utf-8",
             )
             self.assertEqual(module.check_overlay(settings, root, allowlist), [])
+
+    def test_resolve_trusted_accepts_case_or_short_name_aliases(self) -> None:
+        script = ROOT / "00_Admin" / "scripts" / "sync_claude_settings.py"
+        spec = importlib.util.spec_from_file_location("sync_claude_settings_alias_guard", script)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as tmp:
+            raw_root = Path(tmp)
+            root = raw_root.resolve()
+            settings = root / ".claude" / "settings.json"
+            settings.parent.mkdir()
+            settings.write_text("{}", encoding="utf-8")
+            alias_roots = [raw_root]
+            if os.name == "nt":
+                alias_roots.append(Path(str(root).upper()))
+            for alias_root in alias_roots:
+                with self.subTest(alias_root=alias_root):
+                    alias_settings = alias_root / ".claude" / "settings.json"
+                    resolved = module.resolve_trusted(
+                        alias_settings, root, label="settings", must_exist=True
+                    )
+                    self.assertEqual(resolved, settings)
 
     def test_settings_targets_report_missing_security_denies_in_a_temp_workspace(self) -> None:
         script = ROOT / "00_Admin" / "scripts" / "sync_claude_settings.py"
@@ -299,7 +477,7 @@ class ClaudeSettingsPolicyTests(unittest.TestCase):
             "Bash(*git*config*--global*)",
             "Bash(*git*update-ref *)",
         ]
-        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as directory:
+        with tempfile.TemporaryDirectory() as directory:
             workspace_root = Path(directory) / "workspace"
             target_path = workspace_root / "repo" / ".claude" / "settings.json"
             target_path.parent.mkdir(parents=True)
@@ -314,8 +492,9 @@ class ClaudeSettingsPolicyTests(unittest.TestCase):
             self.assertEqual(module.STATUS_DRIFT, status, drift)
             drift_text = "\n".join(drift)
             self.assertIn("deny missing", drift_text)
+            self.assertIn("deny missing (", drift_text)
             for rule in required_denies:
-                self.assertIn(rule, drift_text)
+                self.assertNotIn(rule, drift_text)
 
     def test_bulk_target_rejects_reparse_point_parent(self) -> None:
         script = ROOT / "00_Admin" / "scripts" / "sync_claude_settings.py"
@@ -325,7 +504,7 @@ class ClaudeSettingsPolicyTests(unittest.TestCase):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
-        with tempfile.TemporaryDirectory(dir=ROOT / "tmp") as temp_dir:
+        with tempfile.TemporaryDirectory() as temp_dir:
             if os.name != "nt":
                 self.skipTest("directory junctions are a Windows-specific probe")
             workspace = Path(temp_dir) / "workspace"
