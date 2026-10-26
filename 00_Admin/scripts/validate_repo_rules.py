@@ -33,6 +33,7 @@ ALLOWED_STATUS = {
 IMPLEMENTED_RULE_IDS = {f"VS{number:03d}" for number in range(1, 38)}
 _MARKDOWNLINT_COMMAND = "markdownlint"
 _MARKDOWNLINT_FIXED_ARGS = ("--config", ".markdownlint.json")
+_SAFE_ISSUE_CODES = frozenset({"VS-CONFIG", *(f"VS{number:03d}" for number in range(1, 38))})
 
 
 def _sanitize_issue(message: str, repo_root: str) -> str:
@@ -63,6 +64,24 @@ def _sanitize_issue(message: str, repo_root: str) -> str:
         rendered,
     )
     return rendered.replace("\\", "/")
+
+
+def _safe_issue_code(message: str) -> str:
+    """Return only a fixed validator code for user-visible diagnostics."""
+    for code in _SAFE_ISSUE_CODES:
+        if message.startswith(f"{code}:"):
+            return code
+    return "VALIDATOR"
+
+
+def _safe_issue_reference(message: str) -> str:
+    """Return an opaque reference without exposing diagnostic contents."""
+    return hashlib.sha256(message.encode("utf-8", errors="replace")).hexdigest()[:12]
+
+
+def _safe_issue_summary(message: str, disposition: str) -> str:
+    """Keep rule identity and correlation while excluding arbitrary issue text."""
+    return f"{_safe_issue_code(message)} {disposition} [ref:{_safe_issue_reference(message)}]"
 
 
 def _real_path(path: str) -> str:
@@ -2022,7 +2041,7 @@ def main() -> int:
     if config_errors:
         print(f"Validator configuration errors: {len(config_errors)}")
         for issue in config_errors:
-            print(f"  {_sanitize_issue(issue, repo_root)}")
+            print(f"  {_safe_issue_summary(issue, 'validation failure')}")
         return 1
     rules = config.get("rules", [])
     if not rules:
@@ -2302,11 +2321,11 @@ def main() -> int:
     if errors:
         print(f"Validator errors: {len(errors)}")
         for issue in errors:
-            print(f"  {_sanitize_issue(issue, repo_root)}")
+            print(f"  {_safe_issue_summary(issue, 'validation failure')}")
     if warnings:
         print(f"Validator warnings: {len(warnings)}")
         for issue in warnings:
-            print(f"  {_sanitize_issue(issue, repo_root)}")
+            print(f"  {_safe_issue_summary(issue, 'validation warning')}")
 
     if errors:
         return 1

@@ -267,6 +267,58 @@ class ClaudeSettingsPolicyTests(unittest.TestCase):
             self.assertTrue(any("containment config not found" in message for message in messages))
             self.assertTrue(all(str(workspace) not in message for message in messages))
 
+    def test_target_logging_uses_safe_labels(self) -> None:
+        script = ROOT / "00_Admin" / "scripts" / "sync_claude_settings.py"
+        spec = importlib.util.spec_from_file_location("sync_claude_settings_safe_labels", script)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            missing_target = root / ".claude" / "settings.json"
+            with patch.object(module.LOG, "info") as log_info:
+                result = module.run_check(
+                    [("secret-token-repo", missing_target, root)],
+                    [],
+                    [],
+                    [],
+                    set(),
+                )
+
+            self.assertEqual(0, result)
+            messages = [
+                " ".join(str(arg) for arg in call.args)
+                for call in log_info.call_args_list
+            ]
+            rendered = "\n".join(messages)
+            self.assertIn("work-repo-0", rendered)
+            self.assertNotIn("secret-token-repo", rendered)
+
+            settings_path = root / ".claude" / "settings.json"
+            settings_path.parent.mkdir(parents=True, exist_ok=True)
+            settings_path.write_text(
+                json.dumps({"permissions": {"allow": [], "ask": [], "deny": []}}),
+                encoding="utf-8",
+            )
+            with patch.object(module.LOG, "info") as log_info:
+                result = module.run_write(
+                    [("secret-token-repo", settings_path, root)],
+                    [],
+                    [],
+                    [],
+                )
+
+            self.assertEqual(0, result)
+            messages = [
+                " ".join(str(arg) for arg in call.args)
+                for call in log_info.call_args_list
+            ]
+            rendered = "\n".join(messages)
+            self.assertIn("work-repo-0", rendered)
+            self.assertNotIn("secret-token-repo", rendered)
+
     def test_malformed_containment_config_does_not_log_resolved_path(self) -> None:
         script = ROOT / "00_Admin" / "scripts" / "sync_claude_settings.py"
         spec = importlib.util.spec_from_file_location("sync_claude_settings_invalid_log", script)

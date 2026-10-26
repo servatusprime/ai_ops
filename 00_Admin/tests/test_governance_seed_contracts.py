@@ -55,6 +55,49 @@ class GovernanceSeedContractTests(unittest.TestCase):
         self.assertEqual("VS001: <repo-root>/00_Admin/README.md missing front matter", output)
         self.assertNotIn(str(ROOT), output)
 
+    def test_validator_log_code_does_not_emit_untrusted_issue_detail(self) -> None:
+        issue = "VS001: password=secret-value in /outside/private.txt"
+
+        self.assertEqual("VS001", VALIDATOR._safe_issue_code(issue))
+        rendered = VALIDATOR._safe_issue_summary(issue, "validation failure")
+        self.assertIn("VS001 validation failure [ref:", rendered)
+        self.assertNotIn("secret-value", rendered)
+        self.assertEqual("VALIDATOR", VALIDATOR._safe_issue_code("unclassified secret-value"))
+
+    def test_validator_cli_does_not_emit_untrusted_config_error_detail(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_root = Path(temp_dir) / "repo"
+            repo_root.mkdir()
+            config_path = repo_root / "validator.yaml"
+            config_path.write_text("validator_id: validator_v1\n", encoding="utf-8")
+            output = io.StringIO()
+            with patch.object(
+                VALIDATOR.sys,
+                "argv",
+                [
+                    "validate_repo_rules.py",
+                    "--repo-root",
+                    str(repo_root),
+                    "--config",
+                    str(config_path),
+                ],
+            ), patch.object(
+                VALIDATOR,
+                "parse_config",
+                return_value={"rules": [{"id": "VS001", "enabled": True, "paths": []}]},
+            ), patch.object(
+                VALIDATOR,
+                "validate_config_envelope",
+                return_value=["VS-CONFIG: password=secret-value in /outside/private.txt"],
+            ), contextlib.redirect_stdout(output):
+                result = VALIDATOR.main()
+
+            self.assertEqual(1, result)
+            rendered = output.getvalue()
+            self.assertIn("VS-CONFIG validation failure [ref:", rendered)
+            self.assertNotIn("secret-value", rendered)
+            self.assertNotIn("outside/private.txt", rendered)
+
     def test_real_path_preserves_display_casing(self) -> None:
         rendered = VALIDATOR._real_path(str(ROOT / "00_Admin"))
         self.assertIn("00_Admin", rendered)

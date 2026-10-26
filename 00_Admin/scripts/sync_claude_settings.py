@@ -336,8 +336,15 @@ def run_check(
 ) -> int:
     """Run --check against all targets. Return 0 if no drift, 1 if drift or error."""
     any_drift = False
-    for label, settings_path, trusted_root in targets:
-        LOG.info("Target: %s", label)
+    for target_index, (label, settings_path, trusted_root) in enumerate(targets, start=1):
+        display_label = (
+            "workspace"
+            if label == "workspace"
+            else "target"
+            if label == "target"
+            else f"work-repo-{target_index - 1}"
+        )
+        LOG.info("Target: %s", display_label)
 
         if not settings_path.exists():
             LOG.info("Status : %s (file not found)", STATUS_SKIPPED)
@@ -386,8 +393,15 @@ def run_write(
 ) -> int:
     """Run --write against all targets. Return 0 on success, 1 on error."""
     any_error = False
-    for label, settings_path, trusted_root in targets:
-        LOG.info("Target: %s", label)
+    for target_index, (label, settings_path, trusted_root) in enumerate(targets, start=1):
+        display_label = (
+            "workspace"
+            if label == "workspace"
+            else "target"
+            if label == "target"
+            else f"work-repo-{target_index - 1}"
+        )
+        LOG.info("Target: %s", display_label)
         try:
             existing = load_json(settings_path)
             merged = build_merged(
