@@ -80,7 +80,18 @@ function Resolve-TrustedPython {
     }
     $item = Get-Item -LiteralPath $candidate -Force
     if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
-        throw "Trusted Python executable is a reparse point: $candidate"
+        # setup-python exposes the Linux runtime through a symlink. Resolve it
+        # to the final executable and retain the fail-closed Windows policy.
+        $isWindows = [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
+        if ($isWindows) {
+            throw "Trusted Python executable is a reparse point: $candidate"
+        }
+        $resolved = (Resolve-Path -LiteralPath $candidate -ErrorAction Stop).Path
+        $resolvedItem = Get-Item -LiteralPath $resolved -Force -ErrorAction Stop
+        if ($resolvedItem.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+            throw "Trusted Python executable resolves through a reparse point: $candidate"
+        }
+        return $resolvedItem.FullName
     }
     return $item.FullName
 }

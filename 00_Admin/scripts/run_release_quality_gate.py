@@ -139,6 +139,16 @@ def resolve_trusted_powershell() -> str | None:
     return None
 
 
+def resolve_trusted_python_runtime() -> str | None:
+    """Return the concrete Python executable used by every gate subprocess."""
+
+    try:
+        resolved = Path(sys.executable).resolve(strict=True)
+    except OSError:
+        return None
+    return str(resolved) if resolved.is_file() else None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
@@ -178,7 +188,10 @@ def main() -> int:
     except ValueError:
         print("[FAIL] detected git root escapes ai_ops repo root")
         return 1
-    python_exe = sys.executable
+    python_exe = resolve_trusted_python_runtime()
+    if python_exe is None:
+        print("[FAIL] trusted Python runtime is unavailable")
+        return 1
     os.environ["AI_OPS_PYTHON"] = python_exe
 
     checks: List[Tuple[str, List[str]]] = [

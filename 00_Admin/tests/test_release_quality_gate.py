@@ -20,6 +20,12 @@ SPEC.loader.exec_module(MODULE)
 
 
 class ReleaseQualityGateTests(unittest.TestCase):
+    def test_resolve_trusted_python_runtime_returns_concrete_executable(self) -> None:
+        resolved = MODULE.resolve_trusted_python_runtime()
+
+        self.assertIsNotNone(resolved)
+        self.assertTrue(Path(resolved).is_file())
+
     def test_gate_collects_all_failures_before_reporting_result(self) -> None:
         observed = []
 

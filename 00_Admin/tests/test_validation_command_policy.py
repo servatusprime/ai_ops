@@ -17,6 +17,11 @@ SPEC.loader.exec_module(MODULE)
 
 
 class ValidationCommandPolicyTests(unittest.TestCase):
+    def test_windows_drive_paths_are_classified_as_external_on_all_hosts(self) -> None:
+        self.assertTrue(MODULE._is_cross_platform_absolute(r"C:\outside"))
+        self.assertTrue(MODULE._is_cross_platform_absolute(r"C:outside"))
+        self.assertTrue(MODULE._is_cross_platform_absolute(r"\\server\share\outside"))
+
     def test_invalid_config_output_omits_config_path_and_error_details(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "invalid.yaml"
