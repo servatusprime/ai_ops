@@ -38,6 +38,11 @@ SHELL_META_RE = re.compile(r"[&|;<>()`$]")
 REPARSE_POINT = 0x400
 
 
+def _is_cross_platform_absolute(raw: str) -> bool:
+    """Recognize native and Windows absolute/drive-qualified paths on every host."""
+    return Path(raw).is_absolute() or ntpath.isabs(raw) or bool(ntpath.splitdrive(raw)[0])
+
+
 def _resolved_path(raw: str, root: Path) -> Path:
     candidate = _lexical_path(raw, root)
     return candidate.resolve(strict=False)
@@ -117,8 +122,13 @@ def validate_command_argv(
     if len(command) < 2 or command[1].startswith("-"):
         errors.append(f"{label} must name a Python script as argv[1]")
     else:
-        lexical_script_path = _lexical_path(command[1], repo_root)
-        script_path = _resolved_path(command[1], repo_root)
+        if _is_cross_platform_absolute(command[1]):
+            errors.append(f"{label} script escapes the workspace: {command[1]}")
+            lexical_script_path = Path(command[1])
+            script_path = lexical_script_path
+        else:
+            lexical_script_path = _lexical_path(command[1], repo_root)
+            script_path = _resolved_path(command[1], repo_root)
         trusted_script_roots = [
             repo_root,
             workspace_root / "ai_ops" / "00_Admin" / "scripts",
@@ -150,6 +160,9 @@ def validate_command_argv(
                 if not value:
                     errors.append(f"{label} path flag requires a value: {token}")
                     continue
+            if _is_cross_platform_absolute(value):
+                errors.append(f"{label} path argument escapes the workspace: {value}")
+                continue
             lexical_value_path = _lexical_path(value, repo_root)
             value_path = _resolved_path(value, repo_root)
             if not any(
@@ -303,12 +316,11 @@ def main():
     is_valid, errors = validate_config(config_path)
 
     if is_valid:
-        print(f"[OK] Config valid: {config_path}")
+        print("[OK] Config valid")
         sys.exit(0)
     else:
-        print(f"[FAIL] Config invalid: {config_path}")
-        for error in errors:
-            print(f"  - {error}")
+        print("[FAIL] Config invalid")
+        print(f"  - {len(errors)} validation error(s)")
         sys.exit(1)
 
 

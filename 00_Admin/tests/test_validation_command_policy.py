@@ -1,11 +1,12 @@
 """Regression tests for the shell-free governed validator command contract."""
 
-from __future__ import annotations
-
+import contextlib
 import importlib.util
+import io
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "00_Admin" / "scripts" / "op_validate_config.py"
@@ -16,6 +17,30 @@ SPEC.loader.exec_module(MODULE)
 
 
 class ValidationCommandPolicyTests(unittest.TestCase):
+    def test_windows_drive_paths_are_classified_as_external_on_all_hosts(self) -> None:
+        self.assertTrue(MODULE._is_cross_platform_absolute(r"C:\outside"))
+        self.assertTrue(MODULE._is_cross_platform_absolute(r"C:outside"))
+        self.assertTrue(MODULE._is_cross_platform_absolute(r"\\server\share\outside"))
+
+    def test_invalid_config_output_omits_config_path_and_error_details(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_path = Path(temp_dir) / "invalid.yaml"
+            config_path.write_text(
+                "workspace:\n  work_repos:\n    - path: ../outside\n",
+                encoding="utf-8",
+            )
+            output = io.StringIO()
+            with patch.object(MODULE.sys, "argv", ["op_validate_config.py", str(config_path)]):
+                with contextlib.redirect_stdout(output):
+                    with self.assertRaises(SystemExit) as raised:
+                        MODULE.main()
+
+            self.assertEqual(1, raised.exception.code)
+            rendered = output.getvalue()
+            self.assertIn("[FAIL] Config invalid", rendered)
+            self.assertNotIn(str(config_path), rendered)
+            self.assertNotIn("../outside", rendered)
+
     def test_accepts_contained_python_argv(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace = Path(temp_dir) / "workspace"

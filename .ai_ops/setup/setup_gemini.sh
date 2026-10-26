@@ -7,15 +7,13 @@ set -e
 
 echo "Setting up ai_ops for Gemini CLI and Antigravity..."
 
-mkdir -p .gemini/commands
-
-if [ -n "$(ls -A .gemini/commands 2>/dev/null)" ]; then
-  printf "Found existing files in .gemini/commands/. Continue and copy new files? (y/N): "
-  read -r response
-  case "$response" in
-    y|Y) ;;
-    *) echo "Cancelled."; exit 0 ;;
-  esac
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+REPO_ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)"
+cd "$REPO_ROOT"
+PY_CMD="$(command -v python || command -v python3 || true)"
+if [ -z "$PY_CMD" ]; then
+  echo "Python is required to validate setup destinations."
+  exit 1
 fi
 
 if [ -d ".ai_ops/workflows" ]; then
@@ -27,14 +25,26 @@ else
 fi
 WORKFLOW_REL="${WORKFLOW_DIR#./}"
 
-if [ -d "../.agents" ]; then
-  AGENTS_ROOT="../.agents"
-  WORKFLOW_POINTER_BASE="ai_ops/.ai_ops/workflows"
-else
-  AGENTS_ROOT=".agents"
-  WORKFLOW_POINTER_BASE=".ai_ops/workflows"
-fi
+# Keep this legacy writer repo-local. Parent-workspace writes require a
+# source-bound preview/approval receipt and are intentionally not performed.
+AGENTS_ROOT=".agents"
+WORKFLOW_POINTER_BASE=".ai_ops/workflows"
 AGENTS_WORKFLOW_DIR="$AGENTS_ROOT/workflows"
+"$PY_CMD" "$REPO_ROOT/00_Admin/scripts/validate_setup_destination.py" \
+  --path "$REPO_ROOT/.gemini/commands" \
+  --path "$AGENTS_WORKFLOW_DIR" \
+  --path "$REPO_ROOT/.ai_ops/local"
+mkdir -p .gemini/commands
+
+if [ -n "$(ls -A .gemini/commands 2>/dev/null)" ]; then
+  printf "Found existing files in .gemini/commands/. Continue and copy new files? (y/N): "
+  read -r response
+  case "$response" in
+    y|Y) ;;
+    *) echo "Cancelled."; exit 0 ;;
+  esac
+fi
+
 mkdir -p "$AGENTS_WORKFLOW_DIR"
 
 for file in "$WORKFLOW_DIR"/*.md; do

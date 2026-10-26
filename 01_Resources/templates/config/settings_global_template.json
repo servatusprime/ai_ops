@@ -1,6 +1,6 @@
 {
   "_comment": "ai_ops global settings template. Apply to ~/.claude/settings.json on new machine onboarding. Replace <workspace-root> with your actual workspace path in additionalDirectories.",
-  "_comment_permissions": "Git -C, push/commit/reset/checkout/clean/rm, network and remote Git operations, gh, curl, and PowerShell commands use Claude Code ask rules. These prompts are command-text controls, not an OS boundary; broadly allowed interpreters and alternate executable spellings remain outside their full control. The human commit/push gate remains authoritative.",
+  "_comment_permissions": "Git -C, push/commit/reset/checkout/clean/rm, network and remote Git operations, gh, curl, PowerShell commands, and explicit interpreter/hook-runner command forms use Claude Code ask rules. These prompts are command-text controls, not an OS boundary. The human commit/push gate remains authoritative.",
   "additionalDirectories": [
     "<workspace-root>\\ai_ops\\.claude\\skills",
     "<workspace-root>\\.claude\\skills"
@@ -32,7 +32,9 @@
       "Bash(echo:*)",
       "Bash(sort:*)",
       "Bash(test:*)",
-      "Bash(where:*)",
+      "Bash(where:*)"
+    ],
+    "ask": [
       "Bash(python:*)",
       "Bash(python3:*)",
       "Bash(py:*)",
@@ -41,9 +43,7 @@
       "Bash(npx:*)",
       "Bash(pip:*)",
       "Bash(conda:*)",
-      "Bash(pre-commit run:*)"
-    ],
-    "ask": [
+      "Bash(pre-commit run:*)",
       "Bash(git -C:*)",
       "Bash(git merge:*)",
       "Bash(git stash:*)",

@@ -345,7 +345,7 @@ closeout_packet:
   packet_root: 90_Sandbox/ai_workbooks/_closeout_packets
   limits:
     repositories: 1
-    roots_per_repository: 8
+    roots_per_repository: 9
     files: 25000
     bytes_searched: 2147483648
     elapsed_seconds: 120

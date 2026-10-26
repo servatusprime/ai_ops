@@ -61,3 +61,8 @@ python 00_Admin/scripts/run_release_quality_gate.py --dry-run
 - This runbook does not commit or push.
 - The profiles lane runs `regenerate_profiles.py --check --tracked-only` and
   fails when tracked derivatives drift without writing files.
+- The gate resolves the active Python runtime before invoking PowerShell so the
+  lint lane sees the concrete executable on both Windows and hosted Linux
+  runners. The command-policy tests also explicitly cover Windows drive and
+  UNC paths while running on any host; this prevents host-specific path
+  semantics from hiding a CI failure.

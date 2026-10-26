@@ -718,10 +718,11 @@ Compatibility:
   | Closer | `ai-ops-closer` | sonnet | `closeout`, `harvest` |
 
   Availability of these custom subagent types depends on the launch
-  environment's own discovery of `.claude/agents/` (repo root and,
-  where installed, the workspace root -- see `/ai_ops_setup`'s
-  `setup_claude_agents.*` step); if unavailable, apply the profile's
-  envelope manually rather than assuming it is reachable by name.
+  environment's own discovery of repo-local `.claude/agents/` definitions. The
+  legacy workspace-scope agent writer is disabled because it lacks a
+  source-bound preview token; if the session cannot discover the repo-local
+  definitions, apply the profile's envelope manually rather than assuming it
+  is reachable by name.
 
 ### CSCC Context Contract (Workbook Execution)
 

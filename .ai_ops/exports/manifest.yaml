@@ -24,7 +24,7 @@ manifest_output_count: 65
 workflows:
 - workflow: ai_ops_setup
   source: .ai_ops/workflows/ai_ops_setup.md
-  source_sha256_12: d286c6be6f2c
+  source_sha256_12: 768c4233c572
   description: Run ai_ops setup scripts for skills, commands, and supported instruction
     surfaces
   outputs:
@@ -187,7 +187,7 @@ workflows:
     sha256_12: 0548ff515b77
 - workflow: profiles
   source: .ai_ops/workflows/profiles.md
-  source_sha256_12: 5191c41eb9eb
+  source_sha256_12: e82856c82dfa
   description: Manage rider/crew profile source data and regenerate deterministic
     derivative behavior files.
   outputs:

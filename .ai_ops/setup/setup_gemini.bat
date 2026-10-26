@@ -7,19 +7,13 @@ setlocal
 
 echo Setting up ai_ops for Gemini CLI and Antigravity ...
 
-if not exist .gemini\commands mkdir .gemini\commands
-
-set "has_entries="
-for /f %%A in ('dir /b ".gemini\commands" 2^>nul') do set "has_entries=1"
-if defined has_entries (
-  echo Found existing files in .gemini\commands\.
-  choice /M "Continue and copy new files"
-  if errorlevel 2 (
-    echo Cancelled.
-    endlocal
-    exit /b 0
-  )
+for %%I in ("%~dp0..\..") do set "REPO_ROOT=%%~fI"
+where python >nul 2>&1
+if errorlevel 1 (
+  echo Python is required to validate setup destinations.
+  exit /b 1
 )
+pushd "%REPO_ROOT%"
 
 set "WORKFLOW_DIR="
 set "WORKFLOW_REL="
@@ -33,13 +27,31 @@ if not defined WORKFLOW_DIR (
   exit /b 1
 )
 
+REM Keep this legacy writer repo-local. Parent-workspace writes require a
+REM source-bound preview/approval receipt and are intentionally not performed.
 set "AGENTS_ROOT=.agents"
 set "WORKFLOW_POINTER_BASE=.ai_ops/workflows"
-if exist "..\.agents\" (
-  set "AGENTS_ROOT=..\.agents"
-  set "WORKFLOW_POINTER_BASE=ai_ops/.ai_ops/workflows"
+python "%REPO_ROOT%\00_Admin\scripts\validate_setup_destination.py" --path "%REPO_ROOT%\.gemini\commands" --path "%AGENTS_ROOT%\workflows" --path "%REPO_ROOT%\.ai_ops\local"
+if errorlevel 1 (
+  popd
+  exit /b 2
 )
+
+if not exist .gemini\commands mkdir .gemini\commands
 if not exist "%AGENTS_ROOT%\workflows" mkdir "%AGENTS_ROOT%\workflows"
+
+set "has_entries="
+for /f %%A in ('dir /b ".gemini\commands" 2^>nul') do set "has_entries=1"
+if defined has_entries (
+  echo Found existing files in .gemini\commands\.
+  choice /M "Continue and copy new files"
+  if errorlevel 2 (
+    echo Cancelled.
+    popd
+    endlocal
+    exit /b 0
+  )
+)
 
 for %%f in (%WORKFLOW_DIR%\*.md) do (
   if exist ".gemini\commands\%%~nf.toml" (
@@ -82,4 +94,5 @@ if not exist ".ai_ops\local\work_state.yaml" (
   echo Created .ai_ops\local\work_state.yaml ^(empty initial state^).
 )
 
+popd
 endlocal

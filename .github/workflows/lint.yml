@@ -28,7 +28,7 @@ jobs:
 
       - name: Install lint dependencies
         run: |
-          pip install pyyaml yamllint ruff
+          python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements-ci.txt
           npm ci --ignore-scripts --omit=dev --prefix .github/tools/markdownlint
 
       - name: Verify repo structure map is current

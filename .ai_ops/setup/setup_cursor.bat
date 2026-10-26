@@ -6,6 +6,16 @@ setlocal
 
 echo Setting up ai_ops for Cursor ...
 
+for %%I in ("%~dp0..\..") do set "REPO_ROOT=%%~fI"
+where python >nul 2>&1
+if errorlevel 1 (
+  echo Python is required to validate setup destinations.
+  exit /b 1
+)
+python "%REPO_ROOT%\00_Admin\scripts\validate_setup_destination.py" --path "%REPO_ROOT%\.cursor\commands" --path "%REPO_ROOT%\.ai_ops\local"
+if errorlevel 1 exit /b 2
+pushd "%REPO_ROOT%"
+
 if not exist .cursor\commands mkdir .cursor\commands
 
 set "has_entries="
@@ -56,4 +66,5 @@ if not exist ".ai_ops\local\work_state.yaml" (
   echo Created .ai_ops\local\work_state.yaml ^(empty initial state^).
 )
 
+popd
 endlocal

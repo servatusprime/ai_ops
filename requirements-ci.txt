@@ -1,0 +1,18 @@
+# Exact, hash-verified Python toolchain for the Ubuntu CI lint job.
+#
+# These are the wheels selected for Python 3.11 on ubuntu-24.04. Every direct
+# and transitive package is listed so --require-hashes covers the complete
+# executed dependency set. This file is generated from requirements-ci.in.
+# Refresh with: python -m piptools compile --generate-hashes --only-binary=:all:
+#   --output-file=requirements-ci.txt requirements-ci.in
+# Review the resulting hashes and run the CI dependency installation before
+# publishing the refresh. Do not hand-edit individual hashes.
+
+PyYAML==6.0.3 \
+    --hash=sha256:b8bb0864c5a28024fac8a632c443c87c5aa6f215c0b126c449ae1a150412f31d
+pathspec==1.1.1 \
+    --hash=sha256:a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189
+ruff==0.14.14 \
+    --hash=sha256:bb8481604b7a9e75eff53772496201690ce2687067e038b3cc31aaf16aa0b974
+yamllint==1.38.0 \
+    --hash=sha256:fc394a5b3be980a4062607b8fdddc0843f4fa394152b6da21722f5d59013c220

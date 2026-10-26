@@ -33,8 +33,12 @@ class FutureWorkRegistryLifecycleTests(unittest.TestCase):
                 encoding="utf-8",
                 newline="\n",
             )
+            errors: list[str] = []
             warnings: list[str] = []
-            VALIDATOR.check_future_work_registry(str(registry), warnings)
+            VALIDATOR.check_future_work_registry(
+                str(registry), errors, warnings, "warning", "VS012"
+            )
+            self.assertEqual([], errors)
             return warnings
 
     def test_source_workbook_in_log_is_provenance_only(self) -> None:

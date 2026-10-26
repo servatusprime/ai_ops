@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import yaml
 
@@ -19,6 +22,86 @@ SPEC.loader.exec_module(VALIDATOR)
 
 
 class GovernanceSeedContractTests(unittest.TestCase):
+    def test_validator_missing_config_output_omits_path(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_root = Path(temp_dir) / "repo"
+            repo_root.mkdir()
+            missing_config = repo_root / "missing-validator.yaml"
+            output = io.StringIO()
+            with patch.object(
+                VALIDATOR.sys,
+                "argv",
+                [
+                    "validate_repo_rules.py",
+                    "--repo-root",
+                    str(repo_root),
+                    "--config",
+                    str(missing_config),
+                ],
+            ):
+                with contextlib.redirect_stdout(output):
+                    result = VALIDATOR.main()
+
+            self.assertEqual(1, result)
+            rendered = output.getvalue()
+            self.assertIn("Config trust failure", rendered)
+            self.assertNotIn(str(missing_config), rendered)
+
+    def test_validator_diagnostics_keep_rule_and_relative_path_without_machine_root(self) -> None:
+        output = VALIDATOR._sanitize_issue(
+            f"VS001: {ROOT / '00_Admin' / 'README.md'} missing front matter",
+            str(ROOT),
+        )
+        self.assertEqual("VS001: <repo-root>/00_Admin/README.md missing front matter", output)
+        self.assertNotIn(str(ROOT), output)
+
+    def test_validator_log_code_does_not_emit_untrusted_issue_detail(self) -> None:
+        issue = "VS001: password=secret-value in /outside/private.txt"
+
+        self.assertEqual("VS001", VALIDATOR._safe_issue_code(issue))
+        rendered = VALIDATOR._safe_issue_summary(issue, "validation failure")
+        self.assertIn("VS001 validation failure [ref:", rendered)
+        self.assertNotIn("secret-value", rendered)
+        self.assertEqual("VALIDATOR", VALIDATOR._safe_issue_code("unclassified secret-value"))
+
+    def test_validator_cli_does_not_emit_untrusted_config_error_detail(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_root = Path(temp_dir) / "repo"
+            repo_root.mkdir()
+            config_path = repo_root / "validator.yaml"
+            config_path.write_text("validator_id: validator_v1\n", encoding="utf-8")
+            output = io.StringIO()
+            with patch.object(
+                VALIDATOR.sys,
+                "argv",
+                [
+                    "validate_repo_rules.py",
+                    "--repo-root",
+                    str(repo_root),
+                    "--config",
+                    str(config_path),
+                ],
+            ), patch.object(
+                VALIDATOR,
+                "parse_config",
+                return_value={"rules": [{"id": "VS001", "enabled": True, "paths": []}]},
+            ), patch.object(
+                VALIDATOR,
+                "validate_config_envelope",
+                return_value=["VS-CONFIG: password=secret-value in /outside/private.txt"],
+            ), contextlib.redirect_stdout(output):
+                result = VALIDATOR.main()
+
+            self.assertEqual(1, result)
+            rendered = output.getvalue()
+            self.assertIn("VS-CONFIG validation failure [ref:", rendered)
+            self.assertNotIn("secret-value", rendered)
+            self.assertNotIn("outside/private.txt", rendered)
+
+    def test_real_path_preserves_display_casing(self) -> None:
+        rendered = VALIDATOR._real_path(str(ROOT / "00_Admin"))
+        self.assertIn("00_Admin", rendered)
+
     def test_vs034_contracts_are_present(self) -> None:
         config = yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8"))
         rule = next(item for item in config["rules"] if item["id"] == "VS034")
@@ -100,6 +183,26 @@ class GovernanceSeedContractTests(unittest.TestCase):
                 ["invalid-contract"], errors, warnings, "error", "VS034", temp_dir
             )
             self.assertIn("expected path::marker", errors[0])
+
+    def test_warning_rules_honor_configured_error_severity(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "active.md"
+            path.write_text(
+                "---\nstatus: active\n---\n# Active artifact\n",
+                encoding="utf-8",
+            )
+            errors: list[str] = []
+            warnings: list[str] = []
+            VALIDATOR.check_active_status_has_purpose(
+                [str(path)], errors, warnings, "error", "VS032"
+            )
+            self.assertEqual([], warnings)
+            self.assertEqual(
+                [
+                    f"VS032: {path} has status:active but is missing a '## Purpose' heading"
+                ],
+                errors,
+            )
 
     def test_validator_config_rejects_unknown_rules_and_non_boolean_enabled(self) -> None:
         config = {

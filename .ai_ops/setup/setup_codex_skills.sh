@@ -8,7 +8,7 @@ set -e
 print_usage() {
   cat <<EOF
 Usage:
-  ./.ai_ops/setup/setup_codex_skills.sh [--workspace|--repo|--user] [--compat] [-f|--force] [--dry-run]
+  ./.ai_ops/setup/setup_codex_skills.sh [--workspace|--repo|--user] [--compat] [-f|--force] [--dry-run] [--approve-preview TOKEN]
 
 Options:
   -w, --workspace        Install to workspace root .agents/skills/ (cross-repo access)
@@ -19,6 +19,7 @@ Options:
                          (regenerated wrappers always overwrite; this flag
                          only controls whether you are asked first)
   -n, --dry-run          Preview actions without writing files
+      --approve-preview  Apply an exact external-install preview token
   -h, --help             Show this help
 
 Examples:
@@ -40,6 +41,7 @@ scope="repo"
 force="0"
 install_compat="0"
 dry_run="0"
+approve_preview=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -49,6 +51,14 @@ while [ $# -gt 0 ]; do
     --compat)       install_compat="1" ;;
     -f|--force)     force="1" ;;
     -n|--dry-run)   dry_run="1" ;;
+    --approve-preview)
+      shift
+      if [ $# -eq 0 ]; then
+        echo "--approve-preview requires the token printed by a prior dry run."
+        exit 1
+      fi
+      approve_preview="$1"
+      ;;
     -h|--help)      print_usage; exit 0 ;;
     *)
       echo "Unknown option: $1"
@@ -199,6 +209,9 @@ run_codex_export_generator() {
   fi
   if [ "$install_compat" = "1" ]; then
     set -- "$@" --codex-compat
+  fi
+  if [ -n "$approve_preview" ]; then
+    set -- "$@" --approve-preview "$approve_preview"
   fi
   if [ "$dry_run" = "1" ]; then
     set -- "$@" --dry-run

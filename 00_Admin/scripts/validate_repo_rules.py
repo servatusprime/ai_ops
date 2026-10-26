@@ -15,6 +15,12 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from path_safety import has_reparse_component, is_reparse  # noqa: E402
+
 ALLOWED_STATUS = {
     "planned",
     "stub",
@@ -25,51 +31,87 @@ ALLOWED_STATUS = {
     "pending_owner_gate",
 }
 IMPLEMENTED_RULE_IDS = {f"VS{number:03d}" for number in range(1, 38)}
-_REPARSE_POINT = 0x400
 _MARKDOWNLINT_COMMAND = "markdownlint"
 _MARKDOWNLINT_FIXED_ARGS = ("--config", ".markdownlint.json")
+_SAFE_ISSUE_CODES = frozenset({"VS-CONFIG", *(f"VS{number:03d}" for number in range(1, 38))})
+
+
+def _sanitize_issue(message: str, repo_root: str) -> str:
+    """Keep diagnostics actionable without exposing machine-specific paths."""
+
+    rendered = str(message)
+    root = os.path.abspath(repo_root)
+    root_variants = {root, root.replace("\\", "/"), root.replace("/", "\\")}
+    for variant in sorted(root_variants, key=len, reverse=True):
+        rendered = re.sub(
+            re.escape(variant) + r"[\\/]",
+            "<repo-root>/",
+            rendered,
+            flags=re.IGNORECASE,
+        )
+        rendered = re.sub(re.escape(variant), "<repo-root>", rendered, flags=re.IGNORECASE)
+
+    # Redact absolute paths outside the repo while retaining rule ids,
+    # repo-relative paths, and the diagnostic message itself.
+    rendered = re.sub(
+        r"(?<![\w<>])(?:[A-Za-z]:[\\/]|\\\\)(?:[^\s:()]+[\\/])*[^\s:()]+",
+        "<external-path>",
+        rendered,
+    )
+    rendered = re.sub(
+        r"(?<![\w<>])/(?!/)(?:[^\s:()]+/)+[^\s:()]+",
+        "<external-path>",
+        rendered,
+    )
+    return rendered.replace("\\", "/")
+
+
+def _safe_issue_code(message: str) -> str:
+    """Return only a fixed validator code for user-visible diagnostics."""
+    for code in _SAFE_ISSUE_CODES:
+        if message.startswith(f"{code}:"):
+            return code
+    return "VALIDATOR"
+
+
+def _safe_issue_reference(message: str) -> str:
+    """Return an opaque reference without exposing diagnostic contents."""
+    return hashlib.sha256(message.encode("utf-8", errors="replace")).hexdigest()[:12]
+
+
+def _safe_issue_summary(message: str, disposition: str) -> str:
+    """Keep rule identity and correlation while excluding arbitrary issue text."""
+    return f"{_safe_issue_code(message)} {disposition} [ref:{_safe_issue_reference(message)}]"
 
 
 def _real_path(path: str) -> str:
-    """Return a normalized real path without following an untrusted string twice."""
-    return os.path.normcase(os.path.realpath(os.path.abspath(path)))
+    """Return a real path while preserving display casing."""
+    return os.path.realpath(os.path.abspath(path))
+
+
+def _comparison_path(path: str) -> str:
+    """Return a case-normalized real path for containment comparisons."""
+    return os.path.normcase(_real_path(path))
 
 
 def _is_within(path: str, root: str) -> bool:
     """Return true only when path is root or a descendant of root."""
     try:
-        return os.path.commonpath([_real_path(path), _real_path(root)]) == _real_path(root)
+        candidate = _comparison_path(path)
+        trusted = _comparison_path(root)
+        return os.path.commonpath([candidate, trusted]) == trusted
     except ValueError:
         return False
 
 
 def _is_reparse_point(path: str) -> bool:
     """Reject symlinks/junctions at a security boundary."""
-    try:
-        info = os.lstat(path)
-    except OSError:
-        return False
-    if os.path.islink(path):
-        return True
-    return bool(getattr(info, "st_file_attributes", 0) & _REPARSE_POINT)
+    return is_reparse(Path(path))
 
 
 def _has_reparse_component(path: str, root: str) -> bool:
     """Detect a reparse point in the lexical path before resolution."""
-    candidate = Path(os.path.abspath(path))
-    trusted = Path(os.path.abspath(root))
-    try:
-        relative = candidate.relative_to(trusted)
-    except ValueError:
-        return True
-    current = trusted
-    if _is_reparse_point(str(current)):
-        return True
-    for part in relative.parts:
-        current = current / part
-        if os.path.lexists(str(current)) and _is_reparse_point(str(current)):
-            return True
-    return False
+    return has_reparse_component(Path(path), Path(root))
 
 
 def _normalize_configured_path(path: str, *, label: str) -> str:
@@ -635,13 +677,25 @@ def resolve_repo_structure_paths(repo_root: str, configured_paths: List[str]) ->
     return resolved
 
 
-def check_ambiguous_terms(files: List[str], patterns: List[str], warnings: List[str], rule_id: str) -> None:
+def check_ambiguous_terms(
+    files: List[str],
+    patterns: List[str],
+    errors: List[str],
+    warnings: List[str],
+    severity: str,
+    rule_id: str,
+) -> None:
     compiled = [re.compile(pat, flags=re.IGNORECASE) for pat in patterns]
     for path in files:
         text = read_text(path)
         for pattern in compiled:
             if pattern.search(text):
-                warnings.append(f"{rule_id}: {path} contains ambiguous term '{pattern.pattern}'")
+                record_issue(
+                    errors,
+                    warnings,
+                    severity,
+                    f"{rule_id}: {path} contains ambiguous term '{pattern.pattern}'",
+                )
 
 
 def check_forbidden_patterns(
@@ -884,12 +938,14 @@ def check_required_fields(files: List[str], required: List[str], errors: List[st
 def check_required_fields_warn(
     files: List[str],
     required: List[str],
+    errors: List[str],
     warnings: List[str],
     rule_id: str,
+    severity: str = "warning",
     new_only: bool = False,
     repo_root: str = "",
 ) -> None:
-    """Check required frontmatter fields; emit warnings (not errors). Supports new_only mode."""
+    """Check required frontmatter fields with configurable severity."""
     candidates = list(files)
     if new_only and repo_root:
         new_paths = set(_list_new_git_paths(repo_root))
@@ -899,7 +955,12 @@ def check_required_fields_warn(
         fm, _ = split_front_matter(text)
         for key in required:
             if key not in fm:
-                warnings.append(f"{rule_id}: {path} missing front matter key '{key}'")
+                record_issue(
+                    errors,
+                    warnings,
+                    severity,
+                    f"{rule_id}: {path} missing front matter key '{key}'",
+                )
 
 
 def check_status_field_values(
@@ -1051,7 +1112,9 @@ def check_workflow_routing_contract(
 
 def check_active_status_has_purpose(
     files: List[str],
+    errors: List[str],
     warnings: List[str],
+    severity: str,
     rule_id: str,
 ) -> None:
     """VS032: Flag status:active files that are missing a ## Purpose heading."""
@@ -1063,17 +1126,22 @@ def check_active_status_has_purpose(
         if status != "active":
             continue
         if not purpose_re.search(body):
-            warnings.append(
+            record_issue(
+                errors,
+                warnings,
+                severity,
                 f"{rule_id}: {path} has status:active but is missing a '## Purpose' heading"
             )
 
 
 def check_workbook_related_refs(
     files: List[str],
+    errors: List[str],
     warnings: List[str],
     rule_id: str,
     allow_repo_names: List[str],
     work_repo_names: List[str],
+    severity: str,
 ) -> None:
     """VS033: Flag related_refs entries that use absolute paths or bare sibling-repo names
     without a ../ prefix. Accepted patterns: repo-relative paths and ../anything/..."""
@@ -1113,7 +1181,10 @@ def check_workbook_related_refs(
         for ref in refs:
             # Rule (b): absolute paths are forbidden
             if abs_drive_re.match(ref) or abs_unix_re.match(ref):
-                warnings.append(
+                record_issue(
+                    errors,
+                    warnings,
+                    severity,
                     f"{rule_id}: {path} related_refs entry uses absolute path: '{ref}'"
                 )
                 continue
@@ -1126,15 +1197,25 @@ def check_workbook_related_refs(
                 continue
             # Flag entries whose first component matches a known work-repo name
             if first_component in work_repo_set:
-                warnings.append(
+                record_issue(
+                    errors,
+                    warnings,
+                    severity,
                     f"{rule_id}: {path} related_refs entry references sibling repo"
                     f" '{first_component}' without ../ prefix: '{ref}'"
                 )
 
 
-def check_prefix_in_dir(dir_path: str, prefix: str, warnings: List[str], rule_id: str) -> None:
+def check_prefix_in_dir(
+    dir_path: str,
+    prefix: str,
+    errors: List[str],
+    warnings: List[str],
+    severity: str,
+    rule_id: str,
+) -> None:
     if not os.path.isdir(dir_path):
-        warnings.append(f"{rule_id}: directory missing {dir_path}")
+        record_issue(errors, warnings, severity, f"{rule_id}: directory missing {dir_path}")
         return
     for entry in os.listdir(dir_path):
         if entry.lower() == "README.md".lower():
@@ -1145,10 +1226,21 @@ def check_prefix_in_dir(dir_path: str, prefix: str, warnings: List[str], rule_id
         if os.path.isdir(full):
             continue
         if entry.endswith(".md") and not entry.startswith(prefix):
-            warnings.append(f"{rule_id}: {entry} does not use prefix '{prefix}'")
+            record_issue(
+                errors,
+                warnings,
+                severity,
+                f"{rule_id}: {entry} does not use prefix '{prefix}'",
+            )
 
 
-def check_workbook_prefix(base_dir: str, warnings: List[str]) -> None:
+def check_workbook_prefix(
+    base_dir: str,
+    errors: List[str],
+    warnings: List[str],
+    severity: str,
+    rule_id: str,
+) -> None:
     for root, dirs, files in os.walk(base_dir):
         if "_closeout_packets" in {part.casefold() for part in Path(root).parts}:
             dirs[:] = []
@@ -1168,7 +1260,12 @@ def check_workbook_prefix(base_dir: str, warnings: List[str]) -> None:
             if name.lower() == "README.md".lower():
                 continue
             if not name.startswith("wb_"):
-                warnings.append(f"VS008: {os.path.join(root, name)} missing wb_ prefix")
+                record_issue(
+                    errors,
+                    warnings,
+                    severity,
+                    f"{rule_id}: {os.path.join(root, name)} missing wb_ prefix",
+                )
 
 
 def check_module_yaml_id(paths: List[str], errors: List[str]) -> None:
@@ -1197,9 +1294,15 @@ def check_required_paths(paths: List[str], issues: List[str], rule_id: str) -> N
             issues.append(f"{rule_id}: missing required path {path}")
 
 
-def check_future_work_registry(path: str, warnings: List[str]) -> None:
+def check_future_work_registry(
+    path: str,
+    errors: List[str],
+    warnings: List[str],
+    severity: str,
+    rule_id: str,
+) -> None:
     if not os.path.exists(path):
-        warnings.append("VS012: future_work_registry.yaml missing")
+        record_issue(errors, warnings, severity, f"{rule_id}: future_work_registry.yaml missing")
         return
     text = read_text(path)
     entries = re.split(r"^\s*-\s+id:\s*", text, flags=re.MULTILINE)
@@ -1213,7 +1316,7 @@ def check_future_work_registry(path: str, warnings: List[str]) -> None:
             "created",
         ]:
             if re.search(rf"^\s*{key}\s*:", block, flags=re.MULTILINE) is None:
-                warnings.append(f"VS012: entry missing '{key}'")
+                record_issue(errors, warnings, severity, f"{rule_id}: entry missing '{key}'")
                 break
     log_path = os.path.join(os.path.dirname(path), "..", "logs", "log_workbook_run.md")
     log_path = os.path.normpath(log_path)
@@ -1246,8 +1349,11 @@ def check_future_work_registry(path: str, warnings: List[str]) -> None:
                 and re.search(rf"^\s*completion_workbook:\s*{re.escape(completion_workbook)}\s*$", body, re.MULTILINE)
                 for body in completed_markers
             ):
-                warnings.append(
-                    "VS012: success completion receipt found in run log: "
+                record_issue(
+                    errors,
+                    warnings,
+                    severity,
+                    f"{rule_id}: success completion receipt found in run log: "
                     f"{completion_workbook}"
                 )
 
@@ -1660,7 +1766,13 @@ def check_unreferenced_new_artifacts(
             )
 
 
-def check_related_paths(files: List[str], warnings: List[str]) -> None:
+def check_related_paths(
+    files: List[str],
+    errors: List[str],
+    warnings: List[str],
+    severity: str,
+    rule_id: str,
+) -> None:
     for path in files:
         text = read_text(path)
         if "related:" not in text:
@@ -1688,7 +1800,12 @@ def check_related_paths(files: List[str], warnings: List[str]) -> None:
                 or rel.startswith("01_Resources")
             ):
                 continue
-            warnings.append(f"VS014: {path} related path not repo-relative: {rel}")
+            record_issue(
+                errors,
+                warnings,
+                severity,
+                f"{rule_id}: {path} related path not repo-relative: {rel}",
+            )
 
 
 def check_run_family_graph_contract(
@@ -1908,27 +2025,27 @@ def main() -> int:
     try:
         config_path = _validate_repo_path(config_path, repo_root, label="validator config")
         repo_root = _validate_repo_path(repo_root, repo_root, label="repo root")
-    except ValueError as exc:
-        print(f"Config trust failure: {exc}")
+    except ValueError:
+        print("Config trust failure")
         return 1
     if not os.path.exists(config_path):
-        print(f"Config not found: {config_path}")
+        print("Config not found")
         return 1
 
     try:
         config = parse_config(config_path)
-    except (OSError, ValueError) as exc:
-        print(f"Config parse failure: {exc}")
+    except (OSError, ValueError):
+        print("Config parse failure")
         return 1
     config_errors = validate_config_envelope(config, config_path, repo_root)
     if config_errors:
-        print("Validator configuration errors:")
-        for error in config_errors:
-            print(f"- {error}")
+        print(f"Validator configuration errors: {len(config_errors)}")
+        for issue in config_errors:
+            print(f"  {_safe_issue_summary(issue, 'validation failure')}")
         return 1
     rules = config.get("rules", [])
     if not rules:
-        print(f"Validator config parse failure: no rules parsed from {config_path}")
+        print("Validator config parse failure: no rules parsed")
         return 1
 
     errors: List[str] = []
@@ -1940,8 +2057,8 @@ def main() -> int:
     )
     try:
         structure_root = _validate_repo_path(structure_root, repo_root, label="structure root")
-    except ValueError as exc:
-        print(f"Structure-root trust failure: {exc}")
+    except ValueError:
+        print("Structure-root trust failure")
         return 1
 
     for rule in rules:
@@ -1969,9 +2086,26 @@ def main() -> int:
         elif rule_id == "VS006":
             check_required_fields(paths, rule.get("params", {}).get("required_fields", []), errors, rule_id)
         elif rule_id == "VS007":
-            check_prefix_in_dir(os.path.join(repo_root, "00_Admin/runbooks"), "rb_", warnings, rule_id)
+            params = rule.get("params", {})
+            severity = params.get("severity", "warning")
+            check_prefix_in_dir(
+                os.path.join(repo_root, "00_Admin/runbooks"),
+                "rb_",
+                errors,
+                warnings,
+                severity,
+                rule_id,
+            )
         elif rule_id == "VS008":
-            check_workbook_prefix(os.path.join(repo_root, "90_Sandbox/ai_workbooks"), warnings)
+            params = rule.get("params", {})
+            severity = params.get("severity", "warning")
+            check_workbook_prefix(
+                os.path.join(repo_root, "90_Sandbox/ai_workbooks"),
+                errors,
+                warnings,
+                severity,
+                rule_id,
+            )
         elif rule_id == "VS009":
             check_module_yaml_id(paths, errors)
         elif rule_id == "VS010":
@@ -1979,16 +2113,27 @@ def main() -> int:
         elif rule_id == "VS011":
             check_required_paths(paths, errors, rule_id)
         elif rule_id == "VS012":
-            check_future_work_registry(paths[0] if paths else "", warnings)
+            params = rule.get("params", {})
+            severity = params.get("severity", "warning")
+            check_future_work_registry(
+                paths[0] if paths else "", errors, warnings, severity, rule_id
+            )
         elif rule_id == "VS013":
+            params = rule.get("params", {})
+            severity = params.get("severity", "warning")
             repo_map_paths = resolve_repo_structure_paths(repo_root, rule.get("paths", []))
             existing = [path for path in repo_map_paths if os.path.exists(path)]
             if not existing:
-                warnings.append(
+                record_issue(
+                    errors,
+                    warnings,
+                    severity,
                     f"VS013: missing required path (checked any-of): {', '.join(repo_map_paths)}"
                 )
         elif rule_id == "VS014":
-            check_related_paths(paths, warnings)
+            params = rule.get("params", {})
+            severity = params.get("severity", "warning")
+            check_related_paths(paths, errors, warnings, severity, rule_id)
         elif rule_id == "VS015":
             params = rule.get("params", {})
             check_markdownlint(paths, errors, params, repo_root)
@@ -2002,9 +2147,11 @@ def main() -> int:
             else:
                 check_repo_structure_consistency(structure_root, existing, errors)
         elif rule_id == "VS017":
-            patterns = rule.get("params", {}).get("forbidden_terms", [])
+            params = rule.get("params", {})
+            severity = params.get("severity", "warning")
+            patterns = params.get("forbidden_terms", [])
             if patterns:
-                check_ambiguous_terms(paths, patterns, warnings, rule_id)
+                check_ambiguous_terms(paths, patterns, errors, warnings, severity, rule_id)
         elif rule_id == "VS018":
             severity = rule.get("params", {}).get("severity", "error")
             path_keys = rule.get("params", {}).get("path_keys", [])
@@ -2090,10 +2237,20 @@ def main() -> int:
             check_workbook_command_path_base_consistency(paths, errors, warnings, severity)
         elif rule_id == "VS029":
             params = rule.get("params", {})
+            severity = params.get("severity", "warning")
             new_only = str(params.get("new_only", "true")).lower() == "true"
             required_fields = params.get("required_fields", [])
             if required_fields:
-                check_required_fields_warn(paths, required_fields, warnings, rule_id, new_only, repo_root)
+                check_required_fields_warn(
+                    paths,
+                    required_fields,
+                    errors,
+                    warnings,
+                    rule_id,
+                    severity,
+                    new_only,
+                    repo_root,
+                )
         elif rule_id == "VS030":
             params = rule.get("params", {})
             allowed = set(params.get("allowed_status", list(ALLOWED_STATUS)))
@@ -2141,12 +2298,17 @@ def main() -> int:
             if patterns:
                 check_forbidden_patterns(paths, patterns, errors, warnings, severity, rule_id)
         elif rule_id == "VS032":
-            check_active_status_has_purpose(paths, warnings, rule_id)
+            params = rule.get("params", {})
+            severity = params.get("severity", "warning")
+            check_active_status_has_purpose(paths, errors, warnings, severity, rule_id)
         elif rule_id == "VS033":
             params = rule.get("params", {})
+            severity = params.get("severity", "warning")
             _allow = list(params.get("allow_repo_names", ["ai_ops"]))
             _work_repos = read_local_work_repo_names(repo_root)
-            check_workbook_related_refs(paths, warnings, rule_id, _allow, _work_repos)
+            check_workbook_related_refs(
+                paths, errors, warnings, rule_id, _allow, _work_repos, severity
+            )
         elif rule_id == "VS035":
             check_status_vs_checklist(paths, errors, rule_id)
         elif rule_id == "VS036":
@@ -2157,13 +2319,13 @@ def main() -> int:
             )
 
     if errors:
-        print("Validator errors:")
-        for err in errors:
-            print(f"- {err}")
+        print(f"Validator errors: {len(errors)}")
+        for issue in errors:
+            print(f"  {_safe_issue_summary(issue, 'validation failure')}")
     if warnings:
-        print("Validator warnings:")
-        for warn in warnings:
-            print(f"- {warn}")
+        print(f"Validator warnings: {len(warnings)}")
+        for issue in warnings:
+            print(f"  {_safe_issue_summary(issue, 'validation warning')}")
 
     if errors:
         return 1

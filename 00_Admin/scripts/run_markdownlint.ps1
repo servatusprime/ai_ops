@@ -1,4 +1,5 @@
 param(
+  [Parameter(Position = 0, ValueFromRemainingArguments = $true)]
   [string[]]$Paths
 )
 
@@ -71,51 +72,34 @@ if (-not $Paths -or $Paths.Count -eq 0) {
 
 $Paths = Normalize-MarkdownPaths -InputPaths $Paths -RepoRoot $repoRoot -CallerRoot $callerRoot
 
-if (Get-Command pre-commit -ErrorAction SilentlyContinue) {
-  Push-Location $repoRoot
-  $preCommitOutput = & pre-commit run markdownlint --files $Paths 2>&1
-  Pop-Location
-  $preCommitExit = $LASTEXITCODE
-
-  if ($preCommitExit -eq 0) {
-    exit 0
-  }
-
-  $preCommitText = ($preCommitOutput | Out-String)
-  $isEnvFailure = $preCommitText -match "OperationalError" `
-    -or $preCommitText -match "readonly database" `
-    -or $preCommitText -match "Permission denied"
-
-  if (-not $isEnvFailure) {
-    $preCommitOutput | ForEach-Object { Write-Output $_ }
-    exit $preCommitExit
-  }
-
-  Write-Warning "pre-commit markdownlint failed due environment permissions; falling back to markdownlint CLI."
-}
-
 if (-not (Test-Path $config)) {
   Write-Host "Missing .markdownlint.json at repo root: $repoRoot"
   exit 1
 }
 
-Push-Location $repoRoot
-
-# In full-repo mode, linting "." is more reliable than passing hundreds of path args.
-# This avoids markdownlint CLI usage fallthrough when argument expansion is ambiguous.
-if ($FullRepoLint) {
-  if (Test-Path $ignore) {
-    & markdownlint -c $config --ignore-path $ignore "."
-  } else {
-    & markdownlint -c $config "."
-  }
-} else {
-  if (Test-Path $ignore) {
-    & markdownlint -c $config --ignore-path $ignore $Paths
-  } else {
-    & markdownlint -c $config $Paths
+# Delegate to the canonical trusted tool resolver. Repo-local explicit paths
+# are batched into one trusted invocation; external scopes retain isolation.
+$lintScript = Join-Path $repoRoot "00_Admin/scripts/lint.ps1"
+$scopes = if ($FullRepoLint) { @(".") } else { $Paths }
+$batchable = $scopes.Count -gt 1
+foreach ($scope in $scopes) {
+  if ($scope -like "..*" -or [System.IO.Path]::IsPathRooted($scope)) {
+    $batchable = $false
+    break
   }
 }
-Pop-Location
+if ($batchable) {
+  & $lintScript -NoFix -MarkdownOnly -MarkdownPaths $scopes
+  if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+  }
+} else {
+  foreach ($scope in $scopes) {
+    & $lintScript -NoFix -MarkdownOnly -Scope $scope
+    if ($LASTEXITCODE -ne 0) {
+      exit $LASTEXITCODE
+    }
+  }
+}
 
-exit $LASTEXITCODE
+exit 0

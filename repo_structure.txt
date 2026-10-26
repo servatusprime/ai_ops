@@ -212,6 +212,7 @@
 |   |   |   +-- validate_closeout_security_head.py
 |   |   |-- lint.ps1
 |   |   |-- op_validate_config.py
+|   |   |-- path_safety.py
 |   |   |-- regenerate_profiles.py
 |   |   |-- resolve_run_family.py
 |   |   |-- run_markdownlint.ps1
@@ -219,6 +220,7 @@
 |   |   |-- sync_claude_settings.py
 |   |   |-- sync_validator_baseline.py
 |   |   |-- update_artifact_status.py
+|   |   |-- validate_ci_requirements.py
 |   |   |-- validate_closeout_security_receipt.py
 |   |   |-- validate_governed_repo_shape.py
 |   |   |-- validate_graph_artifact_closure.py
@@ -227,6 +229,7 @@
 |   |   |-- validate_repo_precommit.ps1
 |   |   |-- validate_repo_rules.py
 |   |   |-- validate_run_family_graph.py
+|   |   |-- validate_setup_destination.py
 |   |   |-- validate_workbook_cli_contracts.py
 |   |   +-- validate_workflow_frontmatter.py
 |   |-- specs/
@@ -291,6 +294,7 @@
 |   |   |-- test_governance_seed_contracts.py
 |   |   |-- test_graph_artifact_closure.py
 |   |   |-- test_guard_workspace_writes.py
+|   |   |-- test_release_quality_gate.py
 |   |   |-- test_run_family_graph.py
 |   |   |-- test_validation_command_policy.py
 |   |   |-- test_work_savepoint_contract.py
@@ -487,5 +491,7 @@
 |   |           +-- SKILL.md
 |   +-- marketplace.json
 |-- repo_structure.txt
+|-- requirements-ci.in
+|-- requirements-ci.txt
 |-- requirements.txt
 +-- ruff.toml

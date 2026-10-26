@@ -40,6 +40,7 @@ set "scope=repo"
 set "dry_run=0"
 set "assume_yes=0"
 set "force=0"
+set "approve_preview="
 
 :parse_args
 if "%~1"=="" goto args_done
@@ -88,12 +89,32 @@ if /I "%~1"=="--force" (
   shift
   goto parse_args
 )
+if /I "%~1"=="--approve-preview" (
+  shift
+  if "%~1"=="" (
+    echo --approve-preview requires the token printed by a prior dry run.
+    exit /b 1
+  )
+  set "approve_preview=%~1"
+  shift
+  goto parse_args
+)
 if /I "%~1"=="-h" goto usage
 if /I "%~1"=="--help" goto usage
 echo Unknown option: %~1
 goto usage_error
 
 :args_done
+if defined approve_preview (
+  set "invalid_preview="
+  if "!approve_preview:~15,1!"=="" set "invalid_preview=1"
+  if not "!approve_preview:~16,1!"=="" set "invalid_preview=1"
+  for /f "delims=0123456789ABCDEF" %%A in ("!approve_preview!") do set "invalid_preview=1"
+  if defined invalid_preview (
+    echo --approve-preview must be exactly 16 uppercase hexadecimal characters.
+    exit /b 2
+  )
+)
 REM Resolve install target and workflow relative path based on scope
 if /I "!scope!"=="workspace" (
   for %%I in ("%REPO_ROOT%\..") do set "WORKSPACE_ROOT=%%~fI"
@@ -118,6 +139,14 @@ if not exist "!WORKFLOW_DIR!\" (
   echo Expected: !WORKFLOW_DIR!
   exit /b 1
 )
+
+where python >nul 2>&1
+if errorlevel 1 (
+  echo Python is required to validate setup destinations and generate skills.
+  exit /b 1
+)
+python "%REPO_ROOT%\00_Admin\scripts\validate_setup_destination.py" --path "!INSTALL_TARGET!"
+if errorlevel 1 exit /b 2
 
 if not "!dry_run!"=="1" (
   if not exist "!INSTALL_TARGET!" mkdir "!INSTALL_TARGET!"
@@ -148,10 +177,12 @@ if exist "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" (
   where python >nul 2>&1
   if not errorlevel 1 (
     if /I "!scope!"=="workspace" (
+      set "gen_approval_arg="
+      if defined approve_preview set "gen_approval_arg=--approve-preview !approve_preview!"
       if "!dry_run!"=="1" (
-        python "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" --targets claude --scope workspace --install-root "!WORKSPACE_ROOT!" --dry-run
+        python "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" --targets claude --scope workspace --install-root "!WORKSPACE_ROOT!" --dry-run !gen_approval_arg!
       ) else (
-        python "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" --targets claude --scope workspace --install-root "!WORKSPACE_ROOT!"
+        python "%REPO_ROOT%\00_Admin\scripts\generate_workflow_exports.py" --targets claude --scope workspace --install-root "!WORKSPACE_ROOT!" !gen_approval_arg!
       )
     ) else (
       if "!dry_run!"=="1" (
@@ -191,7 +222,7 @@ exit /b 127
 
 :usage
 echo Usage:
-echo   .ai_ops\setup\setup_claude_skills.bat [--workspace^|--repo] [--force] [--dry-run] [--yes]
+echo   .ai_ops\setup\setup_claude_skills.bat [--workspace^|--repo] [--force] [--dry-run] [--yes] [--approve-preview TOKEN]
 echo.
 echo Options:
 echo   -w, --workspace        Install to workspace root .claude\skills\ ^(cross-repo access^)
@@ -199,6 +230,7 @@ echo       --repo             Install to ai_ops repo .claude\skills\ ^(default^)
 echo   -f, --force            Overwrite existing skill wrappers
 echo   -n, --dry-run          Preview actions without writing files
 echo   -y, --yes              Non-interactive mode; skip confirmation prompt
+echo       --approve-preview  Apply an exact external-install preview token
 echo   -h, --help             Show this help
 echo.
 echo Examples:
