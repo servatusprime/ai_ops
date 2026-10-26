@@ -11,14 +11,14 @@ class WorkSavepointContractTests(unittest.TestCase):
         cls.workflow = WORKFLOW.read_text(encoding="utf-8")
         cls.normalized = " ".join(cls.workflow.split())
 
-    def test_publication_requires_preview_and_final_approval(self) -> None:
+    def test_publication_requires_preview_and_combined_approval(self) -> None:
         required = (
             "## Purpose",
             "default invocation is a read-only checkpoint",
-            "Publication Preview and Final Approval Gate",
+            "Publication Preview and Approval Gates",
             "exact repo-relative `include`",
             "proposed `savepoint: <brief description>` commit message",
-            "Stop and ask for explicit approval",
+            "Stop and ask once for approval",
             "Revalidation After Approval",
             "git -C <repo_root> add --",
             "git diff --cached --name-only",
@@ -38,7 +38,7 @@ class WorkSavepointContractTests(unittest.TestCase):
             self.normalized,
         )
         self.assertIn(
-            "initial invocation cannot substitute for this final approval",
+            "initial invocation cannot substitute for the combined approval",
             self.normalized,
         )
         self.assertNotIn("an explicit spelling of the default save intent", self.workflow)
@@ -49,7 +49,8 @@ class WorkSavepointContractTests(unittest.TestCase):
             "`ignored_unpublished`",
             "Never use `git add -f`",
             "Never silently widen or substitute the approved set",
-            "Do not force, create a PR, change the remote",
+            "Do not force, change the remote",
+            "Create or update the PR through the GitHub provider",
             "artifacts remain `in_progress`",
         )
         for marker in required:

@@ -57,6 +57,13 @@ def _sanitize_child_diagnostics(text: str, cwd: Path) -> str:
     return rendered.replace("\\", "/")[-12000:]
 
 
+def _safe_console_text(text: str, encoding: str | None = None) -> str:
+    """Make diagnostics printable on legacy Windows console encodings."""
+
+    target_encoding = encoding or getattr(sys.stdout, "encoding", None) or "utf-8"
+    return text.encode(target_encoding, errors="backslashreplace").decode(target_encoding)
+
+
 def run_check(name: str, cmd: Sequence[str], cwd: Path, dry_run: bool) -> Tuple[str, int]:
     if name not in ALLOWED_CHECKS:
         print(f"[FAIL] unapproved release check: {name}")
@@ -84,7 +91,7 @@ def run_check(name: str, cmd: Sequence[str], cwd: Path, dry_run: bool) -> Tuple[
         )
         if diagnostics:
             print("  child diagnostics (sanitized):")
-            print(_sanitize_child_diagnostics(diagnostics, cwd))
+            print(_safe_console_text(_sanitize_child_diagnostics(diagnostics, cwd)))
         else:
             print("  child diagnostics unavailable; rerun locally for details")
     return name, int(result.returncode)

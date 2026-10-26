@@ -20,6 +20,11 @@ SPEC.loader.exec_module(MODULE)
 
 
 class ReleaseQualityGateTests(unittest.TestCase):
+    def test_safe_console_text_handles_legacy_windows_encoding(self) -> None:
+        rendered = MODULE._safe_console_text("diagnostic: \u2014 \ufffd", "cp1252")
+
+        self.assertEqual("diagnostic: — \\ufffd", rendered)
+
     def test_resolve_trusted_python_runtime_returns_concrete_executable(self) -> None:
         resolved = MODULE.resolve_trusted_python_runtime()
 

@@ -1,8 +1,8 @@
 ---
-description: Prepare a read-only closeout packet, then publish only through exact approval-gated commit and push steps.
+description: Prepare a read-only closeout packet, then publish through exact approval-gated commit, push, and PR-merge steps.
 name: closeout
 kind: workflow
-version: 0.6.1
+version: 0.8.0
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -14,10 +14,10 @@ claude:
   model: null
 codex:
   metadata:
-    short-description: Prepare a read-only closeout packet, then publish only through exact approval-gated commit and push steps.
+    short-description: Prepare a read-only closeout packet, then publish through one structured approval turn covering clerical work, commit, push, and PR merge.
   interface:
     display_name: closeout
-    short_description: Prepare a read-only closeout packet, then publish only through exact approval-gated commit and push steps.
+    short_description: Prepare a read-only closeout packet, then publish through one structured approval turn covering clerical work, commit, push, and PR merge.
   policy:
     allow_implicit_invocation: false
 exports:
@@ -37,9 +37,10 @@ exports:
 
 ## Purpose
 
-Prepare a closeout without mutation, then publish only after the exact commit
-and push gates pass. Read-only preparation must not stage, commit, push,
-archive, delete, or repair content. Content remediation routes to `/work`.
+Prepare a closeout without mutation, then publish only after the exact commit,
+push, and final PR merge gates pass when a PR flow is required. Read-only
+preparation must not stage, commit, push, create/update a PR, merge, archive,
+delete, or repair content. Content remediation routes to `/work`.
 
 ## Inputs and Preconditions
 
@@ -96,22 +97,28 @@ artifact and repository, capture the complete dirty-tree baseline, classify
 `include`, `related_scope_requires_confirmation`, `exclude`, and
 `ignored_unpublished`, run configured validation and the applicable security
 pre-pass, and project the proposed mutation plan, commit message, remote, and
-branch. Emit `bootstrap_path`, `resume_basis`, `reads_applied`, the scope echo,
-validation results, and security applicability. Do not stage, write a receipt to
-the repository, archive, delete, fix content, commit, or push during this leg.
+branch, proposed PR/merge method when a PR flow is required, and the exact
+clerical operations in scope. Emit
+`bootstrap_path`, `resume_basis`, `reads_applied`, the scope echo, validation
+results, and security applicability. Do not stage, write a receipt to the
+repository, archive, delete, fix content, commit, push, create/update a PR, or
+merge during this leg.
 
 If preparation finds a content defect, return to `/work`. If it finds a cost,
 authority, policy, scope, tree, or stale-context change, emit `PARK` with the
 owner and exact resume point. A security outcome of `deterministic_admission`
 is not a `pass`; it is permitted only for a governed repository whose target
-policy or hook is absent and must be presented for explicit commit approval.
+policy or hook is absent and must be presented in the combined approval turn's
+commit row.
 ai_ops itself remains reviewer-read against the target `HEAD` policy and
 installed hook contract.
 
 `/work_savepoint` is the WIP lane: its default invocation validates and records
 a checkpoint only. It does not claim completion, archive authority, commit, or
-push. Its `--commit` option is an explicit publication request and still uses
-the same separate commit and push approvals.
+push. Its `--commit` option is an explicit publication request and uses the
+same structured approval turn covering clerical work, commit, push, and
+optional PR merge; a savepoint that
+stops before merge must report the PR as unmerged and remain active.
 
 ### Publication Command Registry
 
@@ -121,8 +128,10 @@ execute them only after the explicit approval and scope gates below pass:
 | Action | Fixed form | Required gate |
 | --- | --- | --- |
 | stage | `git -C <repo> add -- <approved include paths>` | scope manifest and current-turn approval |
-| commit | `git -C <repo> commit -m <approved summary>` | explicit commit approval naming the include set |
-| push | `git -C <repo> push <approved remote> <approved branch>` | separate push approval |
+| commit | `git -C <repo> commit -m <approved summary>` | combined approval turn's commit row naming the include set |
+| push | `git -C <repo> push <approved remote> <approved branch>` | combined approval turn's push row |
+| create/update PR | GitHub provider action for the approved repository, head, and base | combined approval turn's PR/merge row |
+| merge PR | GitHub provider action with the approved PR, expected head SHA, and method (`squash` preferred when approved) | combined approval turn's merge row |
 
 ### Tree-Bound Approval Packet Route
 
@@ -140,7 +149,7 @@ available, use the packet route to reduce repeated scope reconstruction:
    for approval. A
    `PARKED` packet stops until its named limit is resolved; it cannot be
    widened silently.
-3. After explicit commit approval, the operator writes an approval file with
+3. After the combined approval turn approves the commit row, the operator writes an approval file with
    `decision: approve`, a non-placeholder `approved_by`, `approved_at`, and
    `approval_ref`, bound to the exact run ID, prepared packet hash, HEAD,
    branch, include-set hash, mutation-plan hash, and projected-tree hash using
@@ -154,8 +163,8 @@ available, use the packet route to reduce repeated scope reconstruction:
 4. A divergence, hook change, policy change, index change, or failed commit
    preserves or fails the packet and makes it not push-ready. Before any push,
    run `python 00_Admin/scripts/apply_closeout_packet.py --verify-push
-   --packet <packet>` and separately approve the returned commit SHA, remote,
-   and branch.
+   --packet <packet>` and include the returned commit SHA, remote, and branch
+   in the combined approval turn's push row.
 
 Resolve the repository, remote, branch, and include paths before invocation.
 Reject shell metacharacters, force/delete options, any `--no-verify`, reparse paths,
@@ -193,12 +202,12 @@ do not widen the scope or use `--no-verify`.
 2. Run the required validators, then stage only the approved paths with
    `git -C <repo> add -- <approved paths>` and verify that
    `git -C <repo> diff --cached --name-only` is exactly that set.
-3. With a separate commit approval, create one exact commit using the approved
+3. With the combined approval turn's approved commit row, create one exact commit using the approved
    normalized message. Do not use broad staging, `--no-verify`, force options,
    or a new free-form command shape.
 4. Verify the new commit's SHA, parent, tree, message, worktree bytes and
-   unrelated index projection. Push is a separate approval naming that SHA,
-   remote and branch.
+   unrelated index projection. The combined approval turn's push row names that
+   SHA, remote, and branch.
 
 ### Inside Repo (Maintainer)
 
@@ -373,8 +382,8 @@ do not widen the scope or use `--no-verify`.
       session/receipt ceiling to 200,000; do not split a scope merely because
       it exceeds the retired 120,000 ceiling. Split only when the active cap,
       packet cap, evidence tier, or an unresolved candidate requires it.
-    - Do not stage until the separate commit approval names the final include
-      set. After approval, stage only that set and run the receipt validator
+    - Do not stage until the combined approval turn names the final include set
+      in its commit row. After approval, stage only that set and run the receipt validator
       against staged blobs. A missing row, hash drift, stale scope lock,
       incomplete coverage, unresolved candidate, unsupported review-basis
       downgrade, or non-pass disposition blocks closeout.
@@ -383,11 +392,17 @@ do not widen the scope or use `--no-verify`.
 20. Evaluate commit gate explicitly:
 
     - If required configured checks exist, all must pass before commit.
-    - Require an explicit operator approval that names the final `include` set,
-      the change summary, and the commit action before every commit, whether or
-      not configured checks exist.
-    - Require a separate explicit operator approval before every push or PR
-      creation; commit approval does not imply publication approval.
+    - Require one explicit operator approval turn before mutation. The approval
+      packet must list separate decision rows for all eligible clerical
+      operations; the final `include` set and change summary/commit; push of
+      the packet-bound commit, remote, and branch; and PR creation/update plus
+      merge with the PR (or proposed head/base pair before PR creation), current
+      head SHA, base branch, and merge method. Each row must be explicitly
+      approved or declined; a single turn reduces interaction count but is not
+      an unbounded blanket authorization.
+    - Revalidate the bound scope, commit SHA, remote, branch, PR head, and
+      required checks before each mutation. If any bound value changes, stop
+      and request a new approval turn.
     - If no checks are configured, record that fact in the approval packet;
       absence of checks never relaxes the approval requirement.
     - If any required check fails, stop closeout and transition to `/work` for
@@ -414,10 +429,20 @@ do not widen the scope or use `--no-verify`.
     these receipt-sync/finalization changes and obtain a new exact commit
     approval before publishing the second commit. A failed receipt or failed
     final validation keeps the workbook active and preserves the registry row.
-25. Push only after a separate push/PR approval names the verified final commit
-    SHA, remote, and branch. A failed push is reported and preserved; do not
-    create a PR or broaden the push command automatically.
-26. Confirm closeout complete with summary of all commits and receipts shipped.
+25. Push only after the combined approval turn's push row is approved and names
+    the packet-bound final commit, remote, and branch; record and verify the
+    resulting SHA immediately before push. A failed push is reported
+    and preserved; do not create a PR, merge, or broaden the push command
+    automatically.
+26. After the final push, execute the merge phase only when the combined
+    approval turn's PR/merge row is approved. Re-read the remote head and PR state; create or update
+    the approved PR if needed, verify the PR head still equals the approved
+    commit, verify required checks/reviews are satisfied, and merge using the
+    approved method (squash when selected). Do not fall back to another merge
+    method or merge a changed head. If merge approval is absent or merge fails,
+    report the pushed PR as pending/unmerged and preserve the closeout evidence.
+27. Confirm closeout complete with summary of all commits, receipts, PR state,
+    and merge result.
 
 ### External Repo (User)
 
@@ -469,13 +494,24 @@ do not widen the scope or use `--no-verify`.
       request and approval; do not create one automatically.
     - If push fails with authentication error: emit `push_escalation: auth_failure` — stop and report.
     - If push fails for any other reason: record exit code and stderr as `push_escalation: unknown` — stop and report.
-12. Summarize changes shipped.
-13. If the target repo implements a future-work registry + scorecard pattern,
+12. **PR and merge phase**: after a successful push, use the combined approval
+    turn's PR/merge row naming the PR (or proposed head/base pair), current head
+    SHA, base branch, and merge method. Create or update the approved PR
+    through the GitHub provider, re-read its head, verify required checks and
+    reviews, and merge only when the head still equals the approved commit.
+    Use the approved method, with squash when selected. If approval is absent
+    or merge fails, report the pushed PR as pending/unmerged and stop; do not
+    fall back to another method.
+13. Summarize changes shipped, including PR and merge status.
+14. If the target repo implements a future-work registry + scorecard pattern,
     run that repo's generator only when the target registry changed in approved scope.
 
 ## Outputs
 
 - Summary of shipped changes and validation results.
+- PR number, base branch, verified head SHA, requested merge method, merge
+  result, and combined approval-turn record when a PR flow is used; an unmerged
+  PR is reported as pending.
 - Updated workbundle status/checkpoints (inside repo).
 - Optional work summary (only if requested or required by the active work artifact).
 
@@ -494,7 +530,8 @@ Default lane: Executor (execution); Linter for lint results.
 
 ## Risks and Limits
 
-- Inside repo, turbo markers never bypass the exact commit and push approvals.
+- Inside repo, turbo markers never bypass the exact clerical, commit, push, and
+  merge approvals.
 - Closeout is fast; mistakes can be costly if scope is wrong.
 - Do not force push without explicit request.
 - Do not skip linters (unless user explicitly requests).

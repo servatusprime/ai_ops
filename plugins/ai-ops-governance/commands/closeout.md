@@ -1,6 +1,6 @@
 ---
-description: Prepare a read-only closeout packet, then publish only through exact
-  approval-gated commit and push steps.
+description: Prepare a read-only closeout packet, then publish through exact approval-gated
+  commit, push, and PR-merge steps.
 ---
 
 # /closeout

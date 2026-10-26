@@ -23,7 +23,7 @@ from typing import Any
 
 import yaml
 
-PACKET_VERSION = "0.1.0"
+PACKET_VERSION = "0.2.0"
 PACKET_SCHEMA_PATH = (
     Path(__file__).resolve().parents[1]
     / "configs"
@@ -458,7 +458,9 @@ def mutation_plan(packet: dict[str, Any]) -> dict[str, Any]:
         "commit_message": packet["commit_message"],
         "remote": packet["remote"],
         "branch": packet["branch"],
-        "push_separate_approval": True,
+        "approval_turn": "combined",
+        "push_separate_approval": False,
+        "merge_approval_in_same_turn": True,
     }
 
 
@@ -529,7 +531,9 @@ def build_packet(
         "commit_message": message,
         "remote": remote,
         "branch": branch,
-        "push_separate_approval": True,
+        "approval_turn": "combined",
+        "push_separate_approval": False,
+        "merge_approval_in_same_turn": True,
     }
     packet: dict[str, Any] = {
         "packet_version": PACKET_VERSION,
@@ -558,8 +562,9 @@ def build_packet(
         "approval_contract": {
             "approval_state": "PENDING",
             "packet_state": "PARKED" if exceeded else "PENDING",
-            "required_decision": "exact_scope_and_commit",
-            "push_separate": True,
+            "required_decision": "combined_scope_clerical_commit_push_merge",
+            "approval_turn": "combined",
+            "push_separate": False,
             "approved_by": None,
             "approved_at": None,
             "approval_ref": None,

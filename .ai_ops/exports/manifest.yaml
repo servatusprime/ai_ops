@@ -65,25 +65,25 @@ workflows:
     sha256_12: 6bec19573c50
 - workflow: closeout
   source: .ai_ops/workflows/closeout.md
-  source_sha256_12: bebf87b705f9
-  description: Prepare a read-only closeout packet, then publish only through exact
-    approval-gated commit and push steps.
+  source_sha256_12: 7271e31aa7ef
+  description: Prepare a read-only closeout packet, then publish through exact approval-gated
+    commit, push, and PR-merge steps.
   outputs:
   - path: plugins/ai-ops-governance/commands/closeout.md
     kind: plugin_command
-    sha256_12: 51aa914df108
+    sha256_12: 6d790305ecde
   - path: plugins/ai-ops-governance/skills/closeout/SKILL.md
     kind: plugin_skill
-    sha256_12: b0e9951418cf
+    sha256_12: 591f445afe90
   - path: .claude/skills/closeout/SKILL.md
     kind: claude_skill
-    sha256_12: b0e9951418cf
+    sha256_12: 591f445afe90
   - path: .agents/skills/closeout/SKILL.md
     kind: codex_skill_primary
-    sha256_12: 8b54ce899ae0
+    sha256_12: a126345d4368
   - path: .agents/skills/closeout/agents/openai.yaml
     kind: codex_skill_primary_openai_yaml
-    sha256_12: 99d5c844788d
+    sha256_12: 3475b4373341
 - workflow: crosscheck
   source: .ai_ops/workflows/crosscheck.md
   source_sha256_12: fc46e089c265
@@ -248,25 +248,26 @@ workflows:
     sha256_12: faca4d486bb7
 - workflow: work_savepoint
   source: .ai_ops/workflows/work_savepoint.md
-  source_sha256_12: 07c2ba173503
-  description: Validate and record a scoped work-in-progress savepoint; publish only
-    after an explicit request and final approval.
+  source_sha256_12: 90e562817757
+  description: Validate and record a scoped work-in-progress savepoint; publish through
+    one structured approval turn covering clerical work, commit, push, and optional
+    PR merge.
   outputs:
   - path: plugins/ai-ops-governance/commands/work_savepoint.md
     kind: plugin_command
-    sha256_12: 5ee63403c6d2
+    sha256_12: 72dcbc322632
   - path: plugins/ai-ops-governance/skills/work-savepoint/SKILL.md
     kind: plugin_skill
-    sha256_12: af2693d23952
+    sha256_12: 2bb8aa27979a
   - path: .claude/skills/work_savepoint/SKILL.md
     kind: claude_skill
-    sha256_12: e6f927813d7a
+    sha256_12: ddcf9e2aa032
   - path: .agents/skills/work_savepoint/SKILL.md
     kind: codex_skill_primary
-    sha256_12: 563a3c254c5c
+    sha256_12: eecc74c3d909
   - path: .agents/skills/work_savepoint/agents/openai.yaml
     kind: codex_skill_primary_openai_yaml
-    sha256_12: 64ae825ef9b1
+    sha256_12: cd538b5a4d98
 - workflow: work_status
   source: .ai_ops/workflows/work_status.md
   source_sha256_12: 6d70ed28cb7f

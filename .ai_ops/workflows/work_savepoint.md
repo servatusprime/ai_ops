@@ -1,8 +1,8 @@
 ---
-description: Validate and record a scoped work-in-progress savepoint; publish only after an explicit request and final approval.
+description: Validate and record a scoped work-in-progress savepoint; publish through one structured approval turn covering clerical work, commit, push, and optional PR merge.
 name: work_savepoint
 kind: workflow
-version: 1.5.0
+version: 1.7.0
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -14,10 +14,10 @@ claude:
   model: null
 codex:
   metadata:
-    short-description: Validate and record a scoped work-in-progress savepoint; publish only after an explicit request and final approval.
+    short-description: Validate and record a scoped work-in-progress savepoint; publish through one structured approval turn covering clerical work, commit, push, and optional PR merge.
   interface:
     display_name: work_savepoint
-    short_description: Validate and record a scoped work-in-progress savepoint; publish only after an explicit request and final approval.
+    short_description: Validate and record a scoped work-in-progress savepoint; publish through one structured approval turn covering clerical work, commit, push, and optional PR merge.
   policy:
     allow_implicit_invocation: false
 exports:
@@ -40,8 +40,11 @@ exports:
 Validate and record selected work-in-progress, then end the ai_ops session
 without claiming completion. The default invocation is a read-only checkpoint;
 it does not stage, commit, or push. Pass `--commit` to request publication.
-Publication still requires the preview and explicit final requestor approval
-below. Pass `--no-commit` to state the read-only intent explicitly.
+Publication still requires one structured approval turn below. That turn must
+list the eligible clerical operations, commit, push, and (when a PR flow is
+used) merge as separate decision rows. The merge row must name the PR, base
+branch, current head SHA, and merge method; pushing never implies merging.
+Pass `--no-commit` to state the read-only intent explicitly.
 
 ## Inputs and Preconditions
 
@@ -85,8 +88,10 @@ Savepoint preflight uses fixed, argument-array Git commands only:
 | configured validation | exact `minimum_commands` after path/owner validation | governed by the target contract |
 | stage approved paths | `git -C <resolved_repo> add -- <approved_paths...>` | after final approval only |
 | inspect staged paths | `git -C <resolved_repo> diff --cached ...` | none |
-| commit | `git -C <resolved_repo> commit -m <approved_message>` | after final approval only |
-| push | `git -C <resolved_repo> push <approved_remote> <approved_branch>` | after final approval only |
+| commit | `git -C <resolved_repo> commit -m <approved_message>` | combined approval turn's commit row |
+| push | `git -C <resolved_repo> push <approved_remote> <approved_branch>` | combined approval turn's push row |
+| create/update PR | GitHub provider action for the approved repository, head, and base | after the combined approval turn's PR/merge row is approved |
+| merge PR | GitHub provider action with the approved PR, expected head SHA, and method (`squash` preferred when approved) | after the combined approval turn's merge row is approved |
 
 Never concatenate a user-supplied branch, path, message, remote, or option into
 a shell command. Pass arguments as arrays and reject a target that resolves
@@ -95,10 +100,17 @@ checkout, clean, stash, force-push, delete, or global Git configuration changes
 from this lane.
 
 The first leg is always read-only. Before any mutation, show the exact include
-set, exclusions, validation results, proposed `savepoint:` message, remote, and
-branch. Then stop and wait for an explicit requestor go-ahead covering both the
-commit and push. Workflow state, a prior approval, `--commit`, or the initial
-invocation cannot substitute for this final approval.
+set, exclusions, validation results, proposed `savepoint:` message, remote,
+branch, whether a PR/merge phase is proposed, and all eligible clerical
+operations. Then issue one combined approval request with separate decision
+rows for: clerical updates; commit naming the include set and message; push
+naming the packet-bound commit plan, remote, and branch; and PR creation/update plus
+merge naming the PR (or proposed head/base pair before PR creation), current
+head SHA, and method. The operator may approve or decline each row in that one
+turn. Workflow state, a prior approval, `--commit`, or the initial invocation
+cannot substitute for the combined approval. If the merge row is declined, the
+savepoint may end after a successful push and must report the PR as unmerged
+rather than inferring completion.
 
 ### Direct Mode
 
@@ -106,8 +118,8 @@ invocation cannot substitute for this final approval.
   to save and stop without Git mutation.
 - no flag or `--no-commit`: prepare the checkpoint summary and resume
   instructions, then stop without asking for publication approval.
-- `--commit`: prepare the scoped publication proposal and final approval gate
-  below.
+- `--commit`: prepare the scoped publication and optional PR/merge proposal,
+  then enter the combined approval turn below.
 
 1. **Repo-Root Resolution**: Resolve the target repository root before any git operations.
    - Resolve `target_repo` from: explicit user scope → active artifact `repo` field → `.ai_ops/local/config.yaml` `workspace.work_repos` list.
@@ -154,21 +166,24 @@ invocation cannot substitute for this final approval.
    All required checks must pass. A skipped network-sensitive check is allowed
    only when the configured contract explicitly permits it and the preview
    labels the result partial.
-5. **Publication Preview and Final Approval Gate** (`--commit` only): Show:
+5. **Publication Preview and Approval Gates** (`--commit` only): Show:
    - selected artifact and repository;
    - exact repo-relative `include`, `related_scope_requires_confirmation`,
      `exclude`, and `ignored_unpublished` lists;
    - validation commands and results;
    - proposed `savepoint: <brief description>` commit message;
    - current branch and exact push remote;
+   - proposed PR base/head and merge method, when a PR flow is applicable;
+   - the exact clerical operations to be performed within the savepoint scope;
    - a statement that active work remains in progress and no closeout/archive
      claim will be made.
 
-   Stop and ask for explicit approval to stage the displayed include set,
-   create the displayed commit, and push it to the displayed remote/branch.
-   Do not mutate Git until that answer is received. If no flag or `--no-commit`
-   was used, emit the scope summary without a publication request and proceed
-   to Step 10.
+   Stop and ask once for approval of the displayed decision rows: clerical
+   updates, commit, push, and PR creation/update plus merge when applicable.
+   The approval binds the exact scope, commit, remote, branch, PR base/head,
+   and merge method. Do not mutate Git or the remote until the combined
+   approval is received. If no flag or `--no-commit` was used, emit the scope
+   summary without a publication request and proceed to Step 10.
 6. **Revalidation After Approval**: Re-run status and the safety preflight.
    Stop if the branch, remote, HEAD, include-set content, or dirty-tree scope
    changed since the preview. Never silently widen or substitute the approved
@@ -186,8 +201,8 @@ invocation cannot substitute for this final approval.
      real ai_ops shims passed on 2026-10-23. It preserves unrelated staged entries and
      fails closed on index, hook, policy, projection, cost, or post-commit tree
      drift. Before any push, verify the packet with
-     `apply_closeout_packet.py --verify-push` and obtain a separate approval
-     naming the returned commit SHA, remote and branch.
+     `apply_closeout_packet.py --verify-push` and include the returned commit
+     SHA, remote, and branch in the combined approval turn's push row.
      Without a
     packet, run `git -C <repo_root> add -- <approved_include_paths...>` and
     verify `git diff --cached --name-only` equals the approved include set
@@ -205,9 +220,17 @@ invocation cannot substitute for this final approval.
      same approval gate and use the manual path rather than widening an
      allowlist or silently retrying with a different command form.
 9. **Push**: Push the new commit to the approved remote and branch. Do not
-   force, create a PR, change the remote, or retry with a wider command. If the
-   push fails, preserve and report the local commit hash and exact failure.
-10. **End session**: Report the checkpoint or published savepoint. Work context
+   force, change the remote, or retry with a wider command. If the push fails,
+   preserve and report the local commit hash and exact failure.
+10. **PR and merge phase** (`--commit` only, when approved): After a successful
+    push, use the approved PR/merge decision row. Create or update the PR through the GitHub
+    provider, re-read its current head, verify required checks/reviews, and
+    merge only when the current head still equals the approved commit. Use the
+    approved method, with squash when selected; do not fall back to another
+    method. If merge approval is absent or merge fails, report the pushed PR as
+    pending/unmerged. A merged savepoint remains an active work context and
+    does not claim workbook or program completion.
+11. **End session**: Report the checkpoint or published savepoint. Work context
     in `.ai_ops/local/work_state.yaml` persists and artifacts remain
     `in_progress`; note how to resume.
 
@@ -235,25 +258,27 @@ invocation cannot substitute for this final approval.
      retry once; if still failing, record `validation_skipped_reason` and skip
      if `allow_partial_on_network_failure: true`. Record `validation_escalated: true`.
    - Record `validation_commands_run` in output.
-4. Proceed with Direct Mode Steps 3–10 (Identify scope through End session);
+4. Proceed with Direct Mode Steps 3–11 (Identify scope through End session);
    only `--commit` enters the publication preview and approval gate.
 
 ### Standalone Mode
 
 1. Confirm the target repository and exact work scope.
 2. Apply the same repo-root, safety preflight, four-bucket scope
-   classification, validation, preview, final approval, revalidation,
+   classification, validation, preview, combined approval, revalidation,
    exact-path staging, commit, push, and state-preservation contract used in
    Direct Mode.
 3. No flag or `--no-commit` selects the read-only checkpoint path. `--commit`
-   requests publication but does not bypass the preview and final approval gate.
+   requests publication but does not bypass the preview and combined approval
+   gate.
 
 ## Outputs
 
 - Publication preview with exact scope, validation results, proposed commit
   message, remote, branch, and a pending final-approval state.
 - Published savepoint confirmation with commit hash, branch, remote, and push
-  status after approval and successful execution.
+  status after the single combined approval turn and successful execution, plus PR and merge status when
+  a PR flow was requested.
 - Read-only checkpoint confirmation when no flag or `--no-commit` is passed.
 - Report exactly which artifact(s) were included in the savepoint message.
 - Output metadata fields: `target_repo`, `repo_root`, `git_root`,
@@ -261,8 +286,9 @@ invocation cannot substitute for this final approval.
   `longest_changed_path_length`, `longpath_risk_path`, `signed_commits_required`,
   `validation_commands_run`, `validation_escalated`, `artifact_scope_drift`,
   `include`, `related_scope_requires_confirmation`, `exclude`,
-  `ignored_unpublished`, `approval_state`, `commit_hash`, `push_status`, and
-  `push_escalation`.
+  `ignored_unpublished`, `approval_state`, `commit_hash`, `push_status`,
+  `push_escalation`, `pr_number`, `pr_status`, `merge_method`, `merge_status`,
+  and `approval_turn_id`.
 
 ## State Behavior
 
@@ -288,7 +314,7 @@ Default lane: Executor (savepoint writer).
 - Pauses ai_ops guidance until `/work` or `/work_status` is invoked again.
 - Do not change scope or start new work.
 - Never treat the initial invocation, `--commit`, earlier approval, or workflow
-  metadata as the final commit/push approval.
+  metadata as the combined clerical, commit, push, PR, or merge approval.
 - Never stage unrelated paths, ignored evidence, machine-local state, secrets,
   or credentials.
 - Do not assume command folders exist; if missing, read `.ai_ops/workflows/work_savepoint.md` manually.
