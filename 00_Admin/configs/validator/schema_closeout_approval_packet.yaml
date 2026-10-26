@@ -1,5 +1,5 @@
 $schema: https://json-schema.org/draft/2020-12/schema
-$id: urn:ai-ops:schema:closeout-approval-packet:0.1.0
+$id: urn:ai-ops:schema:closeout-approval-packet:0.2.0
 title: Closeout Approval Packet
 type: object
 additionalProperties: false
@@ -31,7 +31,7 @@ required:
   - packet_sha256
   - prepared_packet_sha256
 properties:
-  packet_version: {const: "0.1.0"}
+  packet_version: {const: "0.2.0"}
   run_id: {type: string, format: uuid}
   repo_id: {type: string, minLength: 1}
   repo_root: {type: string, minLength: 1}
@@ -131,12 +131,13 @@ properties:
   approval_contract:
     type: object
     additionalProperties: false
-    required: [approval_state, packet_state, required_decision, push_separate]
+    required: [approval_state, packet_state, required_decision, approval_turn, push_separate]
     properties:
       approval_state: {enum: [PENDING, APPROVED]}
       packet_state: {enum: [PENDING, APPROVED, APPLIED, INVALIDATED, PARKED, FAILED]}
-      required_decision: {const: exact_scope_and_commit}
-      push_separate: {const: true}
+      required_decision: {const: combined_scope_clerical_commit_push_merge}
+      approval_turn: {const: combined}
+      push_separate: {const: false}
       approved_by: {type: [string, "null"]}
       approved_at: {type: [string, "null"]}
       approval_ref: {type: [string, "null"]}
