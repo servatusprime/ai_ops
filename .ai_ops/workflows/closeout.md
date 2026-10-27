@@ -110,8 +110,17 @@ owner and exact resume point. A security outcome of `deterministic_admission`
 is not a `pass`; it is permitted only for a governed repository whose target
 policy or hook is absent and must be presented in the combined approval turn's
 commit row.
-ai_ops itself remains reviewer-read against the target `HEAD` policy and
-installed hook contract.
+For an external governed repository, resolve the target repository's policy and
+installed hook before selecting the admission mode. If either is present, use
+reviewer-read admission against the target `HEAD`; deterministic admission is
+not applicable. If both are absent, deterministic admission is eligible only
+when the active ai_ops policy explicitly allows `policy_source=missing_target_policy`.
+If that allowance is absent or disabled, emit `PARK` with
+`security_admission: unavailable` and reference `fw_20261026_01`; do not use a
+manual waiver, skip, or unrecorded bypass. Record the selected
+`admission_mode`, `policy_source`, receipt path, and overall disposition in the
+closeout packet. ai_ops itself remains reviewer-read against the target `HEAD`
+policy and installed hook contract.
 
 `/work_savepoint` is the WIP lane: its default invocation validates and records
 a checkpoint only. It does not claim completion, archive authority, commit, or
@@ -476,14 +485,24 @@ do not widen the scope or use `--no-verify`.
    - If `governed_mode: repo_native`: detect repo-native linters (`.markdownlint.json`, `.yamllint`,
      pre-commit hooks) and run them. If none configured, offer to run common linters.
    - Record `validation_commands_run` in output.
-7. Run the closeout security admission gate on the explicit external-repo
-   include manifest: freeze the scope lock, apply each row's deterministic
-   review basis, run bounded review batches within the configured per-session
-   and total-receipt caps, write the machine-local receipt, stage only the
-   manifest paths, and validate the staged blobs. If the total cap is exceeded,
-   stop and split the explicit manifest rather than silently creating more
-   batches. Missing coverage, hash drift, a stale scope lock, unresolved
-   candidates, or a non-pass disposition blocks closeout.
+7. Resolve and run the closeout security admission gate on the explicit
+   external-repo include manifest:
+   - Inspect the target repository's closeout-security policy and installed
+     hook. If either exists, use reviewer-read admission against target `HEAD`.
+     If both are absent, use deterministic admission only when the active
+     ai_ops policy explicitly allows `policy_source=missing_target_policy`;
+     otherwise emit `PARK` with `security_admission: unavailable`, reference
+     `fw_20261026_01`, and stop before staging or publication.
+   - Freeze the scope lock, apply each row's deterministic review basis, run
+     bounded review batches within the configured per-session and total-receipt
+     caps, write the machine-local receipt, stage only the manifest paths, and
+     validate the staged blobs. If the total cap is exceeded, stop and split the
+     explicit manifest rather than silently creating more batches.
+   - Missing coverage, hash drift, a stale scope lock, unresolved candidates,
+     an unsupported admission mode, or a non-pass disposition blocks closeout.
+     The receipt's `admission_mode`, `policy_source`, and overall disposition
+     must be included in the combined approval turn; a manual waiver is not a
+     substitute for a command-supported disposition.
 8. Stage changes and generate the commit message summary, including the
    validated `Closeout-Security` trailer result.
 9. **Push Preflight** (if push is planned): verify `push_preflight_result` from Step 3 is `clean` or `shallow_clone`. If `detached_head`, stop before commit.

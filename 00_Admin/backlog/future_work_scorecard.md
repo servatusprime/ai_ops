@@ -2,7 +2,7 @@
 title: Future Work Scorecard
 version: 0.1.0
 status: active
-updated: '2026-10-24'
+updated: '2026-10-26'
 source_registry: 00_Admin/backlog/future_work_registry.yaml
 generated_by: 00_Admin/scripts/generate_future_work_scorecard.py
 ---
@@ -19,6 +19,7 @@ generated_by: 00_Admin/scripts/generate_future_work_scorecard.py
 | fw_20260716_02 | Document R-6 and narrow VS035 active-state enforcement | validation | both | high | high | m | ready | high | 2026-09-01 |
 | fw_20261015_01 | Add repository-contained outside-write detection to /health | validation | both | high | high | m | partial | high | 2026-11-15 |
 | fw_20261022_01 | Closeout and savepoint rework, Tier 1 - gate disposition, publication rules, data root, archive checks | workflow | ai_ops | high | high | m | ready | medium | 2026-11-15 |
+| fw_20261026_01 | Enable governed-repo deterministic closeout admission or an explicit waiver path | workflow | ai_ops | high | high | m | ready | medium | 2026-11-15 |
 | fw_20260619_02 | Reduce git permission-prompt friction (atomic invocation convention + git rebase allowlist) | operations | both | medium | medium | s | ready | low | 2026-08-01 |
 | fw_20260721_03 | Remove Director-receipt dependency from run-family adoption handoff | governance | ai_ops | medium | medium | s | ready | medium | 2026-08-15 |
 | fw_20260820_01 | Sweep and reconcile "packet"/work_packets terminology across ai_ops guides | documentation | ai_ops | medium | medium | m | blocked | medium | 2026-09-01 |

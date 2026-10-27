@@ -3,6 +3,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = REPO_ROOT / ".ai_ops" / "workflows" / "work_savepoint.md"
+CLOSEOUT_WORKFLOW = REPO_ROOT / ".ai_ops" / "workflows" / "closeout.md"
 
 
 class WorkSavepointContractTests(unittest.TestCase):
@@ -56,6 +57,24 @@ class WorkSavepointContractTests(unittest.TestCase):
         for marker in required:
             with self.subTest(marker=marker):
                 self.assertIn(marker, self.normalized)
+
+    def test_governed_security_admission_is_shared_and_fail_closed(self) -> None:
+        closeout = " ".join(CLOSEOUT_WORKFLOW.read_text(encoding="utf-8").split())
+        shared = (
+            "policy_source=missing_target_policy",
+            "security_admission: unavailable",
+            "fw_20261026_01",
+            "manual waiver",
+        )
+        for marker in shared:
+            with self.subTest(marker=marker):
+                self.assertIn(marker, self.normalized)
+                self.assertIn(marker, closeout)
+        self.assertIn("Governed-Repository Security Admission", self.workflow)
+        self.assertIn(
+            "same target-repository security admission decision as `/closeout`",
+            self.normalized,
+        )
 
     def test_declared_documentation_and_smoke_contract_match(self) -> None:
         surfaces = {
