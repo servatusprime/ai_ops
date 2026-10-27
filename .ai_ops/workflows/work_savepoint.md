@@ -112,6 +112,27 @@ cannot substitute for the combined approval. If the merge row is declined, the
 savepoint may end after a successful push and must report the PR as unmerged
 rather than inferring completion.
 
+### Governed-Repository Security Admission
+
+Governed-mode savepoints use the same target-repository security admission
+decision as `/closeout`; a savepoint must not become a lower-gate publication
+lane. Resolve the target repository's closeout-security policy and installed
+hook against the confirmed `repo_root` before a `--commit` preview:
+
+- If either the target policy or hook is present, use reviewer-read admission
+  against target `HEAD`. Deterministic admission is not applicable.
+- If both are absent, deterministic admission is eligible only when the active
+  ai_ops policy explicitly allows `policy_source=missing_target_policy`.
+  Otherwise emit `PARK` with `security_admission: unavailable`, reference
+  `fw_20261026_01`, and stop before staging, commit, push, or PR actions.
+- Record `admission_mode`, `policy_source`, receipt path, and overall
+  disposition in the checkpoint or publication preview. A manual waiver, skip,
+  or unrecorded bypass is not a savepoint disposition; the future-work item
+  remains open until a first-class route is implemented.
+- For the default or `--no-commit` checkpoint, report security applicability and
+  any parked disposition without mutating Git. For `--commit`, a valid receipt
+  and eligible disposition are required before the combined approval turn.
+
 ### Direct Mode
 
 - No active artifact or explicit target: report that there is nothing scoped
@@ -258,8 +279,12 @@ rather than inferring completion.
      retry once; if still failing, record `validation_skipped_reason` and skip
      if `allow_partial_on_network_failure: true`. Record `validation_escalated: true`.
    - Record `validation_commands_run` in output.
-4. Proceed with Direct Mode Steps 3–11 (Identify scope through End session);
-   only `--commit` enters the publication preview and approval gate.
+4. Proceed with Direct Mode Step 3 (Identify scope), apply the
+   Governed-Repository Security Admission contract to that frozen candidate
+   include set, and complete Direct Mode Step 4 (Validation). A parked security
+   outcome stops the savepoint before its publication preview.
+5. Proceed with Direct Mode Steps 5–11 (publication preview through End
+   session); only `--commit` enters the publication preview and approval gate.
 
 ### Standalone Mode
 
@@ -288,7 +313,8 @@ rather than inferring completion.
   `include`, `related_scope_requires_confirmation`, `exclude`,
   `ignored_unpublished`, `approval_state`, `commit_hash`, `push_status`,
   `push_escalation`, `pr_number`, `pr_status`, `merge_method`, `merge_status`,
-  and `approval_turn_id`.
+  `approval_turn_id`, `security_admission`, `security_admission_mode`,
+  `security_policy_source`, `security_receipt`, and `security_disposition`.
 
 ## State Behavior
 

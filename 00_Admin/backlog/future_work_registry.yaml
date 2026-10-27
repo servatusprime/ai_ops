@@ -1,10 +1,10 @@
 ---
 title: future_work_registry
-version: 0.6.19
+version: 0.6.20
 status: active
 owner: ai_ops
 created: 2026-01-07
-updated: 2026-10-23
+updated: 2026-10-26
 relocation_note_2026_09_04: >-
   fw_20260904_01 (resolvable dependency manifest for governed execution repos)
   relocated to the named governed repo's own
@@ -1404,3 +1404,50 @@ entries:
     notes: >-
       A discovered match never grants permission to edit another repository; the sweep stays
       read-only.
+
+  - id: fw_20261026_01
+    title: Enable governed-repo deterministic closeout admission or an explicit waiver path
+    domain: workflow
+    target_repo: ai_ops
+    source_workbook: null
+    completion_workbook: null
+    proposed_workbook: null
+    scope: >-
+      Define and implement closeout-security behavior for governed repositories that lack a
+      target closeout-security policy or installed enforcement hook. The current pre-pass rejects
+      the explicitly documented `deterministic_admission` mode when the active policy does not
+      enable it, leaving the operator to bypass the gate manually even though the target
+      repository has no policy or hook to enforce. Either admit deterministic admission under a
+      clearly bounded target-policy-missing mode or provide a first-class operator waiver that
+      records the exact scope, approval reference, disposition, and commit trailer. Distinguish
+      the target repository policy from the ai_ops policy, preserve reviewer-read admission where
+      a target policy or hook exists, and align the workflow, config, pre-pass, receipt validator,
+      and focused tests. Do not solve the problem by silently weakening the gate or mutating a
+      target repository's config as an undocumented workaround.
+    priority: high
+    benefit: high
+    effort: m
+    readiness: ready
+    risk_if_deferred: medium
+    activation_trigger: >-
+      The next closeout of a governed repository without a target policy or hook, or a second
+      manual waiver for the same condition.
+    next_review: 2026-11-15
+    status: planned
+    owner: ai_ops
+    created: 2026-10-26
+    compacted_context:
+      source: >-
+        A governed-repository closeout on 2026-10-26 reached the documented deterministic-admission
+        path, but the active closeout-security policy disabled that mode. The target repositories
+        had no target policy or installed hook, so the operator explicitly waived the gate to
+        continue publication.
+      note: >-
+        Self-contained. Related to `fw_20261022_01`, but narrower: this item isolates the target
+        policy/hook mismatch and the missing first-class waiver or deterministic-admission route
+        observed in an actual closeout.
+    notes: >-
+      Completion evidence must include one governed-repository fixture without a target policy or
+      hook and one fixture with a target policy or hook; pre-pass and receipt-validator tests;
+      an exact approval/waiver record; and commit-message behavior that cannot silently bypass the
+      selected disposition.
