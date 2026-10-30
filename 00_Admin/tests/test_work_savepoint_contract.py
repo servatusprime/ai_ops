@@ -78,20 +78,17 @@ class WorkSavepointContractTests(unittest.TestCase):
                 self.assertIn(marker, self.normalized)
                 self.assertIn(marker, closeout)
 
-    def test_archive_applicability_defaults_are_explicit(self) -> None:
+    def test_savepoint_has_no_archive_step(self) -> None:
         closeout = " ".join(CLOSEOUT_WORKFLOW.read_text(encoding="utf-8").split())
-        required = (
-            "Archive Applicability Boundary",
-            "archive_gate: not_applicable",
-            "tracked deletion under `90_Sandbox/`",
-            "do not load completion/cleanup logic",
-            "--archive-gate-not-applicable",
-            "bind a passed archive receipt",
-        )
-        for marker in required:
+        for marker in (
+            "Savepoint is an active-work checkpoint and has no archive step",
+            "route the work through `/closeout`",
+            "active-work paths that do not require archival",
+        ):
             with self.subTest(marker=marker):
                 self.assertIn(marker, self.normalized)
-                self.assertIn(marker, closeout)
+        self.assertNotIn("archive_gate", self.normalized)
+        self.assertIn("Archive Applicability Boundary", closeout)
 
     def test_governed_security_admission_is_shared_and_fail_closed(self) -> None:
         closeout = " ".join(CLOSEOUT_WORKFLOW.read_text(encoding="utf-8").split())
