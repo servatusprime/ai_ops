@@ -78,6 +78,21 @@ class WorkSavepointContractTests(unittest.TestCase):
                 self.assertIn(marker, self.normalized)
                 self.assertIn(marker, closeout)
 
+    def test_archive_applicability_defaults_are_explicit(self) -> None:
+        closeout = " ".join(CLOSEOUT_WORKFLOW.read_text(encoding="utf-8").split())
+        required = (
+            "Archive Applicability Boundary",
+            "archive_gate: not_applicable",
+            "tracked deletion under `90_Sandbox/`",
+            "do not load completion/cleanup logic",
+            "--archive-gate-not-applicable",
+            "bind a passed archive receipt",
+        )
+        for marker in required:
+            with self.subTest(marker=marker):
+                self.assertIn(marker, self.normalized)
+                self.assertIn(marker, closeout)
+
     def test_governed_security_admission_is_shared_and_fail_closed(self) -> None:
         closeout = " ".join(CLOSEOUT_WORKFLOW.read_text(encoding="utf-8").split())
         shared = (
@@ -102,14 +117,14 @@ class WorkSavepointContractTests(unittest.TestCase):
         security = closeout.index(
             "Run the closeout security admission gate only after `archive_gate: passed`"
         )
-        commit = closeout.index("Commit only after the commit gate passed, `archive_gate: passed`")
+        commit = closeout.index("Commit only after the commit gate passed, the archive result is")
         push = closeout.index(
             "Push only after the combined approval turn's push row is approved, "
-            "the archive gate remains `passed`"
+            "the archive gate remains `passed` when applicable"
         )
         merge = closeout.index(
             "After the final push, execute the merge phase only when the combined "
-            "approval turn's PR/merge row is approved and the archive gate remains `passed`"
+            "approval turn's PR/merge row is approved and the archive gate remains `passed` when applicable"
         )
         self.assertLess(archive, security)
         self.assertLess(security, commit)

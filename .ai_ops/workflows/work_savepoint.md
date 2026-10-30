@@ -152,6 +152,20 @@ promote applicability. Use `linked_only` for dependency context,
 stale states preserve the registry and remain separate from security admission
 and projected-tree validation.
 
+### Archive Applicability Boundary
+
+Savepoint is an active-work checkpoint; it does not move work from
+`90_Sandbox/` to `99_Trash/`. For a packet-backed savepoint, the builder
+defaults to `archive_gate: not_applicable` when the approved include set has no
+tracked deletion under `90_Sandbox/`. Do not prepare an archive receipt or load
+closeout cleanup logic for that ordinary path; do not load completion/cleanup
+logic. If a tracked `90_Sandbox/`
+deletion is intentionally included, route the work through `/closeout` and
+bind a passed archive receipt; `--archive-gate-not-applicable` is not a bypass.
+The packet applier rechecks the receipt and archived-byte hashes before any
+staging, so an archive mutation cannot be hidden behind an otherwise valid
+savepoint.
+
 ### Projected-Tree Validation Boundary
 
 Savepoint validation MUST keep these trees distinct:

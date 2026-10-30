@@ -63,7 +63,14 @@ def _paths(repo: Path, *, ignored: bool) -> set[str]:
             raise ScopeError("rename/copy status requires a new scope")
         if ignored and status != "!!":
             continue
-        result.add(_safe_path(record[3:].decode("utf-8")))
+        raw_path = record[3:].decode("utf-8")
+        # Git marks ignored directories with a trailing slash when using
+        # --ignored=matching. Normalize that status-only marker here; keep
+        # _safe_path strict for caller-supplied include/related/validator
+        # paths, where a trailing slash is still unsafe and rejected.
+        if ignored:
+            raw_path = raw_path.rstrip("/\\")
+        result.add(_safe_path(raw_path))
     return result
 
 

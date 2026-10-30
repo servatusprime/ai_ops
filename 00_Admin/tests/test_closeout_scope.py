@@ -19,7 +19,10 @@ class CloseoutScopeTests(unittest.TestCase):
         self._git("init", "-b", "main")
         self._git("config", "user.email", "scope@example.invalid")
         self._git("config", "user.name", "Scope Tests")
-        (self.repo / ".gitignore").write_text("ignored.txt\n", encoding="utf-8")
+        (self.repo / ".gitignore").write_text(
+            "ignored.txt\n.ai_ops/local/\n",
+            encoding="utf-8",
+        )
         (self.repo / "included.py").write_text("before\n", encoding="utf-8")
         (self.repo / "runbook.md").write_text("before\n", encoding="utf-8")
         self._git("add", ".")
@@ -60,6 +63,18 @@ class CloseoutScopeTests(unittest.TestCase):
         self.assertEqual("projected_include_tree", report["validation_tree"])
         self.assertIsNone(report["excluded_scope_conflict"])
         self.assertEqual(["included.py"], report["projected_include_tree"]["paths"])
+
+    def test_ignored_directory_marker_is_normalized_into_ignored_bucket(self) -> None:
+        (self.repo / ".ai_ops" / "local").mkdir(parents=True)
+        (self.repo / ".ai_ops" / "local" / "receipt.yaml").write_text(
+            "machine-local\n",
+            encoding="utf-8",
+        )
+        (self.repo / "included.py").write_text("included change\n", encoding="utf-8")
+
+        report = scope_report(self.repo, ["included.py"])
+
+        self.assertIn(".ai_ops/local", report["dirty_worktree"]["ignored_unpublished"])
 
 
 if __name__ == "__main__":

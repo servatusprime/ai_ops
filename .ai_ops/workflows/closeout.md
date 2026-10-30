@@ -38,12 +38,13 @@ exports:
 ## Purpose
 
 Prepare a closeout without mutation, then publish only after the exact commit,
-push, and final PR merge gates pass when a PR flow is required. Completed
-workbook/workbundle artifacts must be moved from `90_Sandbox/` to a recoverable
-`99_Trash/` destination first; that archive result is a hard publication
-precondition for every commit, push, PR, and merge leg. Read-only preparation
-must not stage, commit, push, create/update a PR, merge, archive, delete, or
-repair content. Content remediation routes to `/work`.
+push, and final PR merge gates pass when a PR flow is required. When completed
+workbook/workbundle artifacts are selected for relocation, they must be moved
+from `90_Sandbox/` to a recoverable `99_Trash/` destination first; an ordinary
+scoped closeout records `archive_gate: not_applicable` instead of inventing an
+archive operation. Read-only preparation must not stage, commit, push,
+create/update a PR, merge, archive, delete, or repair content. Content
+remediation routes to `/work`.
 
 ## Inputs and Preconditions
 
@@ -208,7 +209,11 @@ available, use the packet route to reduce repeated scope reconstruction:
    <approved-path> --message <approved-summary>` once for the complete include
    set. The builder writes only to the machine-local packet root
    `90_Sandbox/ai_workbooks/_closeout_packets/<repo>/<run_id>/` and never stages,
-   commits, pushes, or edits target content.
+   commits, pushes, or edits target content. If the include set contains a
+   tracked deletion under `90_Sandbox/`, pass `--archive-gate <repo-contained
+   receipt>`. Otherwise the builder records `archive_gate: not_applicable`
+   automatically; do not manufacture an archive receipt for an ordinary
+   scoped closeout.
 2. Present the packet's `run_id`, `prepared_packet_sha256`, HEAD, branch,
    include-set hash, mutation-plan hash, projected tree hash, and cost result
    for approval. A
@@ -403,8 +408,21 @@ do not widen the scope or use `--no-verify`.
       - Check if all child workbundles/workbooks are `completed` or `archived`.
       - If yes, prompt: "All items in this workprogram are complete. Archive the entire workprogram to 99_Trash?"
 
-17. Archive completed work artifacts to `99_Trash/` and establish the archive
-    publication gate:
+### Archive Applicability Boundary
+
+17. Determine archive applicability before staging and establish the archive
+    publication gate only when applicable:
+    - The ordinary scoped closeout default is `archive_gate: not_applicable`.
+      It applies when the frozen include set has no tracked deletion under
+      `90_Sandbox/` and no completed `90_Sandbox/` artifact is selected for
+      relocation. In this state, do not load completion/cleanup logic, prompt
+      for an archive move, regenerate a registry scorecard, or block closeout
+      on an unrelated dirty sandbox path.
+    - If a completed `90_Sandbox/` artifact is selected for relocation, or the
+      approved include set contains a tracked `90_Sandbox/` deletion, archive
+      applicability is required. The packet must bind a passed archive receipt
+      and the exact tracked deletions; `--archive-gate-not-applicable` cannot
+      waive this requirement.
     - Before any move, record each source's tracked state with
       `git ls-files --error-unmatch -- <path>`, ignore evidence with
       `git check-ignore -v -- <path>` (or `not_ignored`), source SHA-256,
@@ -418,6 +436,8 @@ do not widen the scope or use `--no-verify`.
       until after the receipt-sync phase and final workbook status change. A
       workbook in `ready_for_receipt` handoff state remains active and must not
       be archived.
+    - **Archive completed work artifacts to `99_Trash/` when applicable** before
+      publication.
     - Completed solitary workbook → move to Trash
     - Completed workbundle (all workbooks complete, user confirmed) → move workbundle folder to Trash
     - Completed workprogram (all workbundles complete) → move workprogram folder to Trash
@@ -430,7 +450,9 @@ do not widen the scope or use `--no-verify`.
       or manifest is missing, or the manifest is incomplete, stop with
       `archive_gate: unavailable`; do not stage, commit, push, create/update a
       PR, or merge. This gate applies even when the target repository has no
-      tracked representation of the ignored workbook files.
+      tracked representation of the ignored workbook files. When the gate is
+      not applicable, later publication gates consume the explicit
+      `not_applicable` result instead of requiring a meaningless `passed` row.
 18. After relocation/archive actions, run stale-reference checks on touched
     docs/indexes and fix or report broken references before staging.
 19. Update approval/validation log evidence required by policy or the active
@@ -451,7 +473,8 @@ do not widen the scope or use `--no-verify`.
     unchanged trusted HEAD hook must see an ordinary commit and must never
     execute staged admission code. After the policy upgrade lands, regenerate
     the normal v0.2 receipt at `latest.yaml` for subsequent closeouts.
-20. Run the closeout security admission gate only after `archive_gate: passed`:
+20. Run the closeout security admission gate only after `archive_gate: passed`
+    when archive is applicable, or `archive_gate: not_applicable` otherwise:
     - Freeze the final include set after archive and stale-reference updates.
     - Run the configured security pre-pass, freeze its scope lock, and review
       every included row using its deterministic review basis. Full-content
@@ -481,8 +504,9 @@ do not widen the scope or use `--no-verify`.
 
     - If required configured checks exist, all must pass before commit.
     - The commit gate is ineligible unless the recorded archive result is
-      `archive_gate: passed`; approval cannot waive an incomplete or missing
-      move to `99_Trash/`.
+      `archive_gate: passed` when archive is applicable, or
+      `archive_gate: not_applicable` when it is not. Approval cannot waive an
+      incomplete or missing move to `99_Trash/`.
     - Require one explicit operator approval turn before mutation. The approval
       packet must list separate decision rows for all eligible clerical
       operations; the final `include` set and change summary/commit; push of
@@ -505,8 +529,10 @@ do not widen the scope or use `--no-verify`.
     separate staged receipt before the commit gate. Otherwise stage the frozen
     include set and generate the commit message summary using the fixed
     commands above.
-23. Commit only after the commit gate passed, `archive_gate: passed`, and the
-    operator approved the frozen include set and exact commit action. Turbo markers and workflow
+23. Commit only after the commit gate passed, the archive result is
+    `archive_gate: passed` when required or `archive_gate: not_applicable`
+    otherwise, and the operator approved the frozen include set and exact commit
+    action. Turbo markers and workflow
     metadata never substitute for that approval. The packet applier's
     post-commit tree binding is required when the packet route is used.
 24. When a future-work receipt handoff is in scope, verify the first commit's
@@ -521,14 +547,16 @@ do not widen the scope or use `--no-verify`.
     approval before publishing the second commit. A failed receipt or failed
     final validation keeps the workbook active and preserves the registry row.
 26. Push only after the combined approval turn's push row is approved, the
-    archive gate remains `passed`, and the row names the packet-bound final
+    archive gate remains `passed` when applicable or `not_applicable` otherwise,
+    and the row names the packet-bound final
     commit, remote, and branch; record and verify the
     resulting SHA immediately before push. A failed push is reported
     and preserved; do not create a PR, merge, or broaden the push command
     automatically.
 27. After the final push, execute the merge phase only when the combined
     approval turn's PR/merge row is approved and the archive gate remains
-    `passed`. Re-read the remote head and PR state; create or update
+    `passed` when applicable or `not_applicable` otherwise. Re-read the remote
+    head and PR state; create or update
     the approved PR if needed, verify the PR head still equals the approved
     commit, verify required checks/reviews are satisfied, and merge using the
     approved method (squash when selected). Do not fall back to another merge
@@ -600,23 +628,27 @@ do not widen the scope or use `--no-verify`.
      The receipt's `admission_mode`, `policy_source`, and overall disposition
      must be included in the combined approval turn; a manual waiver is not a
      substitute for a command-supported disposition.
-10. Require `archive_gate: passed` before staging. A completed selected source
-    remaining under `90_Sandbox/`, a missing `99_Trash/` destination, or an
-    incomplete cleanup manifest stops the external-repo lane before staging,
-    commit, push, PR creation/update, or merge. Then stage changes and generate
-    the commit message summary, including the
-   validated `Closeout-Security` trailer result.
+10. Require `archive_gate: passed` before staging when archive is applicable;
+    otherwise require the explicit `archive_gate: not_applicable` result. A
+    completed selected source remaining under `90_Sandbox/`, a missing
+    `99_Trash/` destination, or an incomplete cleanup manifest stops the
+    external-repo lane before staging, commit, push, PR creation/update, or
+    merge. Then stage changes and generate the commit message summary,
+    including the validated `Closeout-Security` trailer result.
 11. **Push Preflight** (if push is planned): verify `push_preflight_result` from Step 3 is `clean` or `shallow_clone`. If `detached_head`, stop before commit.
-12. Commit only with `archive_gate: passed` and the approved exact include set.
+12. Commit only with `archive_gate: passed` when archive is applicable, or
+    `archive_gate: not_applicable` otherwise, and the approved exact include
+    set.
 13. **Push and failure handling**: Push to remote only with
-    `archive_gate: passed`.
+    `archive_gate: passed` when archive is applicable, or
+    `archive_gate: not_applicable` otherwise.
     - If push fails with `protected branch` or `remote rejected`: emit
       `push_escalation: pr_required` and stop. A PR requires a separate explicit
       request and approval; do not create one automatically.
     - If push fails with authentication error: emit `push_escalation: auth_failure` — stop and report.
     - If push fails for any other reason: record exit code and stderr as `push_escalation: unknown` — stop and report.
-14. **PR and merge phase**: after a successful push and while
-    `archive_gate: passed`, use the combined approval
+14. **PR and merge phase**: after a successful push and while the archive
+    result is `passed` when applicable or `not_applicable` otherwise, use the combined approval
     turn's PR/merge row naming the PR (or proposed head/base pair), current head
     SHA, base branch, and merge method. Create or update the approved PR
     through the GitHub provider, re-read its head, verify required checks and
