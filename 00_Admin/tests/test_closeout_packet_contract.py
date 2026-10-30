@@ -81,6 +81,123 @@ class CloseoutPacketContractTests(unittest.TestCase):
         )
         return approval
 
+    def _write_archive_gate(self, tracked_deletions: list[str] | None = None) -> Path:
+        tracked_deletions = tracked_deletions or []
+        destination = self.repo / "99_Trash" / "archived.txt"
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text("archived\n", encoding="utf-8")
+        digest = BUILDER.sha256_file(destination)
+        entries = [
+            {
+                "source": "90_Sandbox/completed.txt",
+                "destination": "99_Trash/archived.txt",
+                "source_sha256": digest,
+                "destination_sha256": digest,
+            }
+        ]
+        manifest = {
+            "entries": entries,
+            "tracked_deletions": sorted(tracked_deletions),
+        }
+        receipt = self.repo / "archive-gate.yaml"
+        receipt.write_text(
+            yaml.safe_dump(
+                {
+                    "status": "passed",
+                    "source_absent": True,
+                    "collision_free": True,
+                    "manifest_sha256": BUILDER.sha256_bytes(BUILDER._canonical_bytes(manifest)),
+                    "tracked_deletions": sorted(tracked_deletions),
+                    "entries": entries,
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+        return receipt
+
+    def test_builder_defaults_archive_gate_not_applicable_without_archive_scope(self) -> None:
+        (self.repo / "existing.txt").write_text("changed\n", encoding="utf-8")
+        packet = BUILDER.build_packet(
+            self.repo,
+            ["existing.txt"],
+            "archive gate default",
+            self.repo / "packets",
+            allow_fixture_defaults=True,
+        )
+        packet_data = yaml.safe_load(packet.read_text(encoding="utf-8"))
+        self.assertEqual("not_applicable", packet_data["archive_gate"]["status"])
+
+    def test_builder_requires_archive_receipt_for_sandbox_deletion(self) -> None:
+        source = self.repo / "90_Sandbox" / "completed.txt"
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_text("completed\n", encoding="utf-8")
+        self._git("add", "90_Sandbox/completed.txt")
+        self._git("commit", "-m", "add completed sandbox artifact")
+        source.unlink()
+        with self.assertRaises(BUILDER.PacketError) as context:
+            BUILDER.build_packet(
+                self.repo,
+                ["90_Sandbox/completed.txt"],
+                "archive gate required",
+                self.repo / "packets",
+                allow_fixture_defaults=True,
+            )
+        self.assertIn("archive gate receipt is required", str(context.exception))
+
+    def test_passed_archive_gate_is_bound_and_rechecked(self) -> None:
+        (self.repo / "existing.txt").write_text("changed\n", encoding="utf-8")
+        receipt = self._write_archive_gate()
+        packet = BUILDER.build_packet(
+            self.repo,
+            ["existing.txt"],
+            "archive gate test",
+            self.repo / "packets",
+            allow_fixture_defaults=True,
+            archive_gate_path=receipt,
+        )
+        packet_data = yaml.safe_load(packet.read_text(encoding="utf-8"))
+        self.assertEqual("passed", packet_data["archive_gate"]["status"])
+        commit_sha = APPLIER.apply_packet(packet, self._approval(packet))
+        self.assertEqual(40, len(commit_sha))
+
+    def test_changed_archive_bytes_are_rejected_before_staging(self) -> None:
+        (self.repo / "existing.txt").write_text("changed\n", encoding="utf-8")
+        receipt = self._write_archive_gate()
+        packet = BUILDER.build_packet(
+            self.repo,
+            ["existing.txt"],
+            "archive gate tamper test",
+            self.repo / "packets",
+            allow_fixture_defaults=True,
+            archive_gate_path=receipt,
+        )
+        (self.repo / "99_Trash" / "archived.txt").write_text("tampered\n", encoding="utf-8")
+        with self.assertRaises(BUILDER.PacketError) as context:
+            APPLIER.apply_packet(packet, self._approval(packet))
+        self.assertIn("archive destination hash mismatch", str(context.exception))
+        self.assertEqual("baseline", self._git("log", "-1", "--pretty=%s"))
+        self.assertEqual("", self._git("diff", "--cached", "--name-only"))
+
+    def test_archive_gate_binds_tracked_sandbox_deletion(self) -> None:
+        source = self.repo / "90_Sandbox" / "completed.txt"
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_text("completed\n", encoding="utf-8")
+        self._git("add", "90_Sandbox/completed.txt")
+        self._git("commit", "-m", "add completed sandbox artifact")
+        source.unlink()
+        receipt = self._write_archive_gate(["90_Sandbox/completed.txt"])
+        packet = BUILDER.build_packet(
+            self.repo,
+            ["90_Sandbox/completed.txt"],
+            "archive sandbox deletion",
+            self.repo / "packets",
+            allow_fixture_defaults=True,
+            archive_gate_path=receipt,
+        )
+        packet_data = yaml.safe_load(packet.read_text(encoding="utf-8"))
+        self.assertEqual(["90_Sandbox/completed.txt"], packet_data["archive_gate"]["tracked_deletions"])
+
     def test_run_hook_uses_repository_working_directory_and_preserves_empty_streams(self) -> None:
         completed = mock.Mock(returncode=0, stdout="", stderr="")
         with mock.patch.object(APPLIER.subprocess, "run", return_value=completed) as run:
@@ -294,6 +411,7 @@ class CloseoutPacketContractTests(unittest.TestCase):
             ["00_Admin/configs/context_routing.yaml", "existing.txt", "second.txt"],
             "park test",
             self.repo / "packets",
+            allow_fixture_defaults=True,
         )
         packet_data = yaml.safe_load(packet.read_text(encoding="utf-8"))
         packet_data["state"] = "PENDING"
