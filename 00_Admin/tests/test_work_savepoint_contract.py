@@ -90,6 +90,23 @@ class WorkSavepointContractTests(unittest.TestCase):
         self.assertNotIn("archive_gate", self.normalized)
         self.assertIn("Archive Applicability Boundary", closeout)
 
+    def test_validation_scope_matches_workflow_lifecycle(self) -> None:
+        closeout = " ".join(CLOSEOUT_WORKFLOW.read_text(encoding="utf-8").split())
+        for marker in (
+            "Validation Scope",
+            "focused contract tests",
+            "Do not require the full ai_ops test suite for each savepoint iteration",
+            "full repository regression suite belongs to the final `/closeout` publication gate",
+        ):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, self.normalized)
+        for marker in (
+            "run the full repository regression suite once after the final edits and before publication",
+            "Do not repeat the full suite for every intermediate edit",
+        ):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, closeout)
+
     def test_governed_security_admission_is_shared_and_fail_closed(self) -> None:
         closeout = " ".join(CLOSEOUT_WORKFLOW.read_text(encoding="utf-8").split())
         shared = (

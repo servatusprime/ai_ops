@@ -186,6 +186,15 @@ or ignored path, stop with `excluded_scope_conflict`, identify the path and
 owning scope, and do not stage the excluded file. A dirty worktree is not
 evidence that the approved include set failed.
 
+### Validation Scope
+
+Savepoint validation is intentionally scoped to the active-work checkpoint:
+run the target repository's configured `savepoint_validation.minimum_commands`,
+the focused contract tests for touched ai_ops workflow or packet surfaces, and
+the applicable hooks/linters. Do not require the full ai_ops test suite for each
+savepoint iteration. The full repository regression suite belongs to the final
+`/closeout` publication gate or CI.
+
 ### Direct Mode
 
 - No active artifact or explicit target: report that there is nothing scoped
