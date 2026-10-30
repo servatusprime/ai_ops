@@ -58,6 +58,26 @@ class WorkSavepointContractTests(unittest.TestCase):
             with self.subTest(marker=marker):
                 self.assertIn(marker, self.normalized)
 
+    def test_applicability_and_projected_tree_contracts_are_explicit(self) -> None:
+        closeout = " ".join(CLOSEOUT_WORKFLOW.read_text(encoding="utf-8").split())
+        required = (
+            "Future-Work Applicability Gate",
+            "not_applicable",
+            "linked_only",
+            "completion_handoff",
+            "registry_sync",
+            "closeout_applicability.py",
+            "Projected-Tree Validation Boundary",
+            "closeout_scope.py",
+            "projected_include_tree",
+            "excluded_scope_conflict",
+            "ignored_unpublished",
+        )
+        for marker in required:
+            with self.subTest(marker=marker):
+                self.assertIn(marker, self.normalized)
+                self.assertIn(marker, closeout)
+
     def test_governed_security_admission_is_shared_and_fail_closed(self) -> None:
         closeout = " ".join(CLOSEOUT_WORKFLOW.read_text(encoding="utf-8").split())
         shared = (
@@ -75,6 +95,34 @@ class WorkSavepointContractTests(unittest.TestCase):
             "same target-repository security admission decision as `/closeout`",
             self.normalized,
         )
+
+    def test_closeout_archive_gate_precedes_publication(self) -> None:
+        closeout = " ".join(CLOSEOUT_WORKFLOW.read_text(encoding="utf-8").split())
+        archive = closeout.index("Archive completed work artifacts to `99_Trash/`")
+        security = closeout.index(
+            "Run the closeout security admission gate only after `archive_gate: passed`"
+        )
+        commit = closeout.index("Commit only after the commit gate passed, `archive_gate: passed`")
+        push = closeout.index(
+            "Push only after the combined approval turn's push row is approved, "
+            "the archive gate remains `passed`"
+        )
+        merge = closeout.index(
+            "After the final push, execute the merge phase only when the combined "
+            "approval turn's PR/merge row is approved and the archive gate remains `passed`"
+        )
+        self.assertLess(archive, security)
+        self.assertLess(security, commit)
+        self.assertLess(commit, push)
+        self.assertLess(push, merge)
+        for marker in (
+            "archive_gate: passed",
+            "archive_gate: unavailable",
+            "source remains under `90_Sandbox/`",
+            "do not stage, commit, push, create/update a PR, or merge",
+        ):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, closeout)
 
     def test_declared_documentation_and_smoke_contract_match(self) -> None:
         surfaces = {

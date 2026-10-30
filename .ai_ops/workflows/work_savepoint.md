@@ -133,6 +133,50 @@ hook against the confirmed `repo_root` before a `--commit` preview:
   any parked disposition without mutating Git. For `--commit`, a valid receipt
   and eligible disposition are required before the combined approval turn.
 
+### Future-Work Applicability Gate
+
+Freeze future-work applicability before reading completion schemas, importing
+`complete_future_work.py`, regenerating a scorecard, preparing a receipt, or
+pruning a registry. Use the side-effect-free classifier:
+
+```text
+python 00_Admin/scripts/closeout_applicability.py --intent not_applicable
+```
+
+The default savepoint is `future_work: not_applicable`: it records no registry
+completion claim, does not load completion logic, and does not mutate a target
+registry or scorecard. A referenced registry ID is context only and does not
+promote applicability. Use `linked_only` for dependency context,
+`completion_handoff` for one exact receipt-ready ID and artifact set, and
+`registry_sync` only after a verified success receipt. Failure, pending, and
+stale states preserve the registry and remain separate from security admission
+and projected-tree validation.
+
+### Projected-Tree Validation Boundary
+
+Savepoint validation MUST keep these trees distinct:
+
+1. `current HEAD`: the committed baseline used for policy, hook, and receipt
+   binding;
+2. `projected include tree`: `HEAD` plus only the frozen approved include set;
+3. `dirty worktree`: every unrelated tracked change, excluded untracked path,
+   ignored artifact, and other local state.
+
+Before configured validators, run:
+
+```text
+python 00_Admin/scripts/closeout_scope.py --repo-root <repo> \
+  --include <approved-path> [--validator-input <path> ...]
+```
+
+Record the separate `include`, `related_scope_requires_confirmation`, `exclude`,
+and `ignored_unpublished` buckets, including the `projected_include_tree`
+manifest. Validators must use the projected include tree when their inputs
+permit it. If a validator input intersects an excluded
+or ignored path, stop with `excluded_scope_conflict`, identify the path and
+owning scope, and do not stage the excluded file. A dirty worktree is not
+evidence that the approved include set failed.
+
 ### Direct Mode
 
 - No active artifact or explicit target: report that there is nothing scoped
