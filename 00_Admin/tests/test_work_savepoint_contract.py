@@ -58,6 +58,27 @@ class WorkSavepointContractTests(unittest.TestCase):
             with self.subTest(marker=marker):
                 self.assertIn(marker, self.normalized)
 
+    def test_projected_tree_contract_is_explicit(self) -> None:
+        closeout = " ".join(CLOSEOUT_WORKFLOW.read_text(encoding="utf-8").split())
+        required = (
+            "Projected-Tree Validation Boundary",
+            "closeout_scope.py",
+            "projected_include_tree",
+            "excluded_scope_conflict",
+            "ignored_unpublished",
+        )
+        for marker in required:
+            with self.subTest(marker=marker):
+                self.assertIn(marker, self.normalized)
+                self.assertIn(marker, closeout)
+        for marker in (
+            "archive_gate.status: not_applicable",
+            "--archive-gate-not-applicable",
+            "route the work through `/closeout`",
+        ):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, self.normalized)
+
     def test_governed_security_admission_is_shared_and_fail_closed(self) -> None:
         closeout = " ".join(CLOSEOUT_WORKFLOW.read_text(encoding="utf-8").split())
         shared = (

@@ -1,5 +1,5 @@
 $schema: https://json-schema.org/draft/2020-12/schema
-$id: urn:ai-ops:schema:closeout-approval-packet:0.2.0
+$id: urn:ai-ops:schema:closeout-approval-packet:0.3.0
 title: Closeout Approval Packet
 type: object
 additionalProperties: false
@@ -19,6 +19,7 @@ required:
   - changes
   - projected_tree_manifest
   - projected_tree_sha256
+  - archive_gate
   - pre_existing_index
   - pre_existing_index_preserved
   - hook_fingerprint
@@ -31,7 +32,7 @@ required:
   - packet_sha256
   - prepared_packet_sha256
 properties:
-  packet_version: {const: "0.2.0"}
+  packet_version: {const: "0.3.0"}
   run_id: {type: string, format: uuid}
   repo_id: {type: string, minLength: 1}
   repo_root: {type: string, minLength: 1}
@@ -71,6 +72,39 @@ properties:
         path: {type: string, minLength: 1}
         blob_sha1: {type: string, pattern: '^[0-9a-f]{40}$'}
   projected_tree_sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+  archive_gate:
+    type: object
+    additionalProperties: false
+    required:
+      - required
+      - status
+      - receipt_path
+      - receipt_sha256
+      - manifest_sha256
+      - source_absent
+      - collision_free
+      - tracked_deletions
+      - entries
+    properties:
+      required: {type: boolean}
+      status: {enum: [passed, not_applicable]}
+      receipt_path: {type: [string, "null"], minLength: 1}
+      receipt_sha256: {type: [string, "null"], pattern: '^[0-9a-f]{64}$'}
+      manifest_sha256: {type: [string, "null"], pattern: '^[0-9a-f]{64}$'}
+      source_absent: {type: [boolean, "null"]}
+      collision_free: {type: [boolean, "null"]}
+      tracked_deletions: {type: array, items: {type: string, minLength: 1}}
+      entries:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [source, destination, source_sha256, destination_sha256]
+          properties:
+            source: {type: string, minLength: 1}
+            destination: {type: string, minLength: 1}
+            source_sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+            destination_sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
   pre_existing_index:
     type: object
     additionalProperties: false

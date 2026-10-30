@@ -2,7 +2,7 @@
 description: Validate and record a scoped work-in-progress savepoint; publish through one structured approval turn covering clerical work, commit, push, and optional PR merge.
 name: work_savepoint
 kind: workflow
-version: 1.7.0
+version: 1.7.2
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -133,6 +133,47 @@ hook against the confirmed `repo_root` before a `--commit` preview:
   any parked disposition without mutating Git. For `--commit`, a valid receipt
   and eligible disposition are required before the combined approval turn.
 
+### Projected-Tree Validation Boundary
+
+Savepoint validation MUST keep these trees distinct:
+
+1. `current HEAD`: the committed baseline used for policy, hook, and receipt
+   binding;
+2. `projected include tree`: `HEAD` plus only the frozen approved include set;
+3. `dirty worktree`: every unrelated tracked change, excluded untracked path,
+   ignored artifact, and other local state.
+
+Before configured validators, run:
+
+```text
+python 00_Admin/scripts/closeout_scope.py --repo-root <repo> \
+  --include <approved-path> [--validator-input <path> ...]
+```
+
+Record the separate `include`, `related_scope_requires_confirmation`, `exclude`,
+and `ignored_unpublished` buckets, including the `projected_include_tree`
+manifest. Validators must use the projected include tree when their inputs
+permit it. If a validator input intersects an excluded
+or ignored path, stop with `excluded_scope_conflict`, identify the path and
+owning scope, and do not stage the excluded file. A dirty worktree is not
+evidence that the approved include set failed.
+Git may render an ignored directory with a trailing `/` in its status output
+(for example, `.ai_ops/local/`). The shared classifier normalizes that
+status-only marker into `ignored_unpublished`; it does not relax the strict
+path checks applied to caller-supplied include, related, or validator paths.
+
+### Archive Applicability Boundary
+
+A savepoint records active work in progress; it does not claim closeout and
+does not archive a workbook, workbundle, or workprogram. The tree-bound packet
+route defaults to `archive_gate.status: not_applicable` when no tracked
+`90_Sandbox/**` deletion is in scope; `--archive-gate-not-applicable` remains
+available when the state should be explicit. If any completed `90_Sandbox/**`
+artifact is being moved to `99_Trash/`, stop the savepoint and route the work
+through `/closeout`, where a hash-bound `archive_gate: passed` receipt is
+required before staging, commit, push, PR creation, or merge. A savepoint must
+never silently turn an archive operation into an ordinary commit.
+
 ### Direct Mode
 
 - No active artifact or explicit target: report that there is nothing scoped
@@ -224,6 +265,8 @@ hook against the confirmed `repo_root` before a `--commit` preview:
      drift. Before any push, verify the packet with
      `apply_closeout_packet.py --verify-push` and include the returned commit
      SHA, remote, and branch in the combined approval turn's push row.
+     The packet defaults to `archive_gate: not_applicable` for this active-work
+     route; if archive is in scope, stop and use `/closeout` instead.
      Without a
     packet, run `git -C <repo_root> add -- <approved_include_paths...>` and
     verify `git diff --cached --name-only` equals the approved include set

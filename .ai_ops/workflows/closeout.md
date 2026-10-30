@@ -2,7 +2,7 @@
 description: Prepare a read-only closeout packet, then publish through exact approval-gated commit, push, and PR-merge steps.
 name: closeout
 kind: workflow
-version: 0.8.0
+version: 0.8.2
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -129,6 +129,57 @@ same structured approval turn covering clerical work, commit, push, and
 optional PR merge; a savepoint that
 stops before merge must report the PR as unmerged and remain active.
 
+### Projected-Tree Validation Boundary
+
+Closeout MUST keep these trees distinct:
+
+1. `current HEAD`: the committed baseline used for policy, hook, and receipt
+   binding;
+2. `projected include tree`: `HEAD` plus only the frozen approved include set;
+3. `dirty worktree`: every unrelated tracked change, excluded untracked path,
+   ignored artifact, and other local state.
+
+Before configured validators run, produce the read-only scope report:
+
+```text
+python 00_Admin/scripts/closeout_scope.py --repo-root <repo> \
+  --include <approved-path> [--validator-input <path> ...]
+```
+
+The report MUST identify `include`,
+`related_scope_requires_confirmation`, `exclude`, and `ignored_unpublished`.
+Validators run against the projected include tree when their inputs permit it.
+If a validator input intersects an excluded or ignored path, stop with
+`excluded_scope_conflict`, identify the path and owning scope, and do not stage
+the excluded file. A dirty worktree is not evidence that the approved include
+set failed. The packet builder preserves excluded nonignored paths in its
+scope manifest; it never widens the include set to make validation pass.
+Git may render an ignored directory with a trailing `/` in its status output
+(for example, `.ai_ops/local/`). The shared classifier normalizes that
+status-only marker into `ignored_unpublished`; it does not relax the strict
+path checks applied to caller-supplied include, related, or validator paths.
+
+### Archive Gate Boundary
+
+Closeout publication MUST complete archive clerical work before the final
+include set is frozen. When a completed workbook, workbundle, or workprogram
+is in scope, move it to `99_Trash/` first and create a repository-contained
+archive receipt proving:
+
+- every archived source and destination path;
+- source SHA-256 and destination SHA-256 for every entry;
+- `source_absent: true` and `collision_free: true`;
+- the tracked `90_Sandbox/**` deletions bound by the receipt; and
+- a hash of the canonical archive manifest.
+
+The tree-bound packet MUST carry `archive_gate.status: passed` when archive
+work is in scope, and the packet applier MUST re-read and revalidate that
+receipt before staging. When no completed artifact or tracked
+`90_Sandbox/**` deletion is in scope, `archive_gate.status: not_applicable` is
+valid and is recorded automatically. A missing, stale, or failed receipt is a
+hard stop before commit, push, PR creation, or merge. Use
+`--archive-gate <repo-contained-receipt>` only when archive work is in scope.
+
 ### Publication Command Registry
 
 Closeout may describe publication commands during a dry run, but it may
@@ -150,7 +201,8 @@ available, use the packet route to reduce repeated scope reconstruction:
 1. During read-only preparation, run
    `python 00_Admin/scripts/build_closeout_packet.py --repo-root <repo> --include
    <approved-path> --message <approved-summary>` once for the complete include
-   set. The builder writes only to the machine-local packet root
+   set. Add `--archive-gate <repo-contained-receipt>` when the include set
+   contains archive work. The builder writes only to the machine-local packet root
    `90_Sandbox/ai_workbooks/_closeout_packets/<repo>/<run_id>/` and never stages,
    commits, pushes, or edits target content.
 2. Present the packet's `run_id`, `prepared_packet_sha256`, HEAD, branch,
@@ -273,6 +325,13 @@ do not widen the scope or use `--no-verify`.
    - include the scope breakdown in the closeout summary output
    - write a closeout scope manifest with these buckets before staging:
      `include`, `related_scope_requires_confirmation`, and `exclude`
+   - run `closeout_scope.py` before validators and record the separate
+     `ignored_unpublished` bucket plus the `current_head`,
+     `projected_include_tree`, and dirty-worktree paths
+   - if a validator input intersects an excluded or ignored path, stop with
+     `excluded_scope_conflict`; identify the path and owner and do not stage it
+   - validators must bind to the projected include tree when supported; a
+     validator result from the full dirty worktree is not a projected-tree pass
    - stage only `include`; paths in `related_scope_requires_confirmation` ship
      only after explicit operator confirmation; paths in `exclude` must not be
      staged
@@ -352,6 +411,9 @@ do not widen the scope or use `--no-verify`.
     - Completed workbundle (all workbooks complete, user confirmed) → move workbundle folder to Trash
     - Completed workprogram (all workbundles complete) → move workprogram folder to Trash
     - Partially complete artifacts → leave in place
+    - Record `archive_gate: passed` only after the receipt, collision check,
+      source-absence check, destination hashes, and tracked deletion binding
+      all pass. `archive_gate: passed` is required before staging or commit.
 17. After relocation/archive actions, run stale-reference checks on touched
     docs/indexes and fix or report broken references before staging.
 18. Update approval/validation log evidence required by policy or the active
@@ -373,7 +435,7 @@ do not widen the scope or use `--no-verify`.
     execute staged admission code. After the policy upgrade lands, regenerate
     the normal v0.2 receipt at `latest.yaml` for subsequent closeouts.
 19. Run the closeout security admission gate:
-    - Freeze the final include set after archive and stale-reference updates.
+    - Freeze the final include set after stale-reference updates.
     - Run the configured security pre-pass, freeze its scope lock, and review
       every included row using its deterministic review basis. Full-content
       rows are read in full; deleted binary rows may use only the explicit
@@ -422,9 +484,11 @@ do not widen the scope or use `--no-verify`.
     pass `--first-landing-receipt` so the applier validates the supplied
     separate staged receipt before the commit gate. Otherwise stage the frozen
     include set and generate the commit message summary using the fixed
-    commands above.
-22. Commit only after the commit gate passed and the operator approved the
-    frozen include set and exact commit action. Turbo markers and workflow
+    commands above. The packet must have been built with
+    `--archive-gate <repo-contained-receipt>` and the applier must report a
+    current `archive_gate: passed` result before staging.
+22. Commit only after the commit gate passed and the
+    operator approved the frozen include set and exact commit action. Turbo markers and workflow
     metadata never substitute for that approval. The packet applier's
     post-commit tree binding is required when the packet route is used.
 23. When a future-work receipt handoff is in scope, verify the first commit's
@@ -438,13 +502,15 @@ do not widen the scope or use `--no-verify`.
     these receipt-sync/finalization changes and obtain a new exact commit
     approval before publishing the second commit. A failed receipt or failed
     final validation keeps the workbook active and preserves the registry row.
-25. Push only after the combined approval turn's push row is approved and names
-    the packet-bound final commit, remote, and branch; record and verify the
+25. Push only after the combined approval turn's push row is approved and the
+    row names the packet-bound final
+    commit, remote, and branch; record and verify the
     resulting SHA immediately before push. A failed push is reported
     and preserved; do not create a PR, merge, or broaden the push command
     automatically.
 26. After the final push, execute the merge phase only when the combined
-    approval turn's PR/merge row is approved. Re-read the remote head and PR state; create or update
+    approval turn's PR/merge row is approved. Re-read the remote head and PR
+    state; create or update
     the approved PR if needed, verify the PR head still equals the approved
     commit, verify required checks/reviews are satisfied, and merge using the
     approved method (squash when selected). Do not fall back to another merge
@@ -485,7 +551,14 @@ do not widen the scope or use `--no-verify`.
    - If `governed_mode: repo_native`: detect repo-native linters (`.markdownlint.json`, `.yamllint`,
      pre-commit hooks) and run them. If none configured, offer to run common linters.
    - Record `validation_commands_run` in output.
-7. Resolve and run the closeout security admission gate on the explicit
+7. Run `closeout_scope.py` against the target repository and the frozen include
+   set before configured validators. Preserve the separate
+   `include`, `related_scope_requires_confirmation`, `exclude`, and
+   `ignored_unpublished` buckets. Validators use the projected include tree;
+   if a validator input intersects an excluded or ignored path, stop with
+   `excluded_scope_conflict` rather than staging the path or reporting an
+   include-set failure.
+8. Resolve and run the closeout security admission gate on the explicit
    external-repo include manifest:
    - Inspect the target repository's closeout-security policy and installed
      hook. If either exists, use reviewer-read admission against target `HEAD`.
@@ -503,17 +576,17 @@ do not widen the scope or use `--no-verify`.
      The receipt's `admission_mode`, `policy_source`, and overall disposition
      must be included in the combined approval turn; a manual waiver is not a
      substitute for a command-supported disposition.
-8. Stage changes and generate the commit message summary, including the
+9. Stage changes and generate the commit message summary, including the
    validated `Closeout-Security` trailer result.
-9. **Push Preflight** (if push is planned): verify `push_preflight_result` from Step 3 is `clean` or `shallow_clone`. If `detached_head`, stop before commit.
-10. Commit.
-11. **Push and failure handling**: Push to remote.
+10. **Push Preflight** (if push is planned): verify `push_preflight_result` from Step 3 is `clean` or `shallow_clone`. If `detached_head`, stop before commit.
+11. Commit with the approved exact include set.
+12. **Push and failure handling**: Push to remote.
     - If push fails with `protected branch` or `remote rejected`: emit
       `push_escalation: pr_required` and stop. A PR requires a separate explicit
       request and approval; do not create one automatically.
     - If push fails with authentication error: emit `push_escalation: auth_failure` — stop and report.
     - If push fails for any other reason: record exit code and stderr as `push_escalation: unknown` — stop and report.
-12. **PR and merge phase**: after a successful push, use the combined approval
+13. **PR and merge phase**: after a successful push, use the combined approval
     turn's PR/merge row naming the PR (or proposed head/base pair), current head
     SHA, base branch, and merge method. Create or update the approved PR
     through the GitHub provider, re-read its head, verify required checks and
@@ -521,13 +594,23 @@ do not widen the scope or use `--no-verify`.
     Use the approved method, with squash when selected. If approval is absent
     or merge fails, report the pushed PR as pending/unmerged and stop; do not
     fall back to another method.
-13. Summarize changes shipped, including PR and merge status.
-14. If the target repo implements a future-work registry + scorecard pattern,
+14. Summarize changes shipped, including PR and merge status.
+15. If the target repo implements a future-work registry + scorecard pattern,
     run that repo's generator only when the target registry changed in approved scope.
 
 ## Outputs
 
 - Summary of shipped changes and validation results.
+- User-facing result fields MUST report projected-tree validation
+  (`current_head`, `projected_include_tree`, `excluded_scope_conflict` when
+  present), security
+  admission (`admission_mode`, `policy_source`, receipt, and disposition), and
+  publication approval state. Do not collapse a registry reference, a dirty
+  worktree conflict, an unavailable target admission, or a declined publication
+  row into another field.
+- User-facing result fields MUST report the archive gate separately, including
+  its status, receipt path and hash, source-absence result, collision result,
+  tracked deletion binding, and whether it blocked publication.
 - PR number, base branch, verified head SHA, requested merge method, merge
   result, and combined approval-turn record when a PR flow is used; an unmerged
   PR is reported as pending.

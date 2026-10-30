@@ -15,11 +15,9 @@ targets:
 - codex
 - plugin
 generation_targets:
-- claude
-- codex
 - plugin
 workflow_count: 13
-output_count: 65
+output_count: 26
 manifest_output_count: 65
 workflows:
 - workflow: ai_ops_setup
@@ -65,7 +63,7 @@ workflows:
     sha256_12: 6bec19573c50
 - workflow: closeout
   source: .ai_ops/workflows/closeout.md
-  source_sha256_12: 6d257e78cfa5
+  source_sha256_12: 2f3ba6d3c80a
   description: Prepare a read-only closeout packet, then publish through exact approval-gated
     commit, push, and PR-merge steps.
   outputs:
@@ -248,7 +246,7 @@ workflows:
     sha256_12: faca4d486bb7
 - workflow: work_savepoint
   source: .ai_ops/workflows/work_savepoint.md
-  source_sha256_12: baddbde4cd85
+  source_sha256_12: aea25e4a836f
   description: Validate and record a scoped work-in-progress savepoint; publish through
     one structured approval turn covering clerical work, commit, push, and optional
     PR merge.
