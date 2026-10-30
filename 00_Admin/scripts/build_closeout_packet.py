@@ -492,17 +492,12 @@ def build_packet(
     overlap = sorted(set(include) & set(index["paths"]))
     if overlap:
         raise PacketError(f"included paths are already staged; rebuild after clearing that scope: {overlap}")
-    unexpected_untracked = sorted(_nonignored_untracked_paths(repo) - set(include))
-    if unexpected_untracked:
-        raise PacketError(
-            "nonignored untracked paths exist outside the approved include set; "
-            "clean them or add them explicitly: " + ", ".join(unexpected_untracked)
-        )
     branch = _git(repo, "branch", "--show-current")
     if not branch:
         raise PacketError("detached HEAD cannot produce a publication packet")
     remote_url = _git_optional(repo, "remote", "get-url", remote) or None
     changes, tree_manifest, observed = projection(repo, include)
+    excluded = sorted(_status_paths(repo) - set(include))
     elapsed = (datetime.now(timezone.utc) - started).total_seconds()
     observed["elapsed_seconds"] = elapsed
     routing = routing_snapshot(repo, allow_fixture_defaults=allow_fixture_defaults)
@@ -546,7 +541,7 @@ def build_packet(
         "remote_url": remote_url,
         "commit_message": message,
         "include": include,
-        "exclude": [],
+        "exclude": excluded,
         "include_set_sha256": include_hash,
         "mutation_plan_sha256": sha256_bytes(_canonical_bytes(mutation_plan)),
         "changes": changes,

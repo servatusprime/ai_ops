@@ -134,13 +134,16 @@ class CloseoutPacketContractTests(unittest.TestCase):
         self.assertEqual(commit_sha, self._git("rev-parse", "HEAD"))
         self.assertEqual(expected, BUILDER.normalize_commit_message(APPLIER._read_commit_message(self.repo)))
 
-    def test_builder_rejects_nonignored_untracked_path_outside_include(self) -> None:
+    def test_builder_preserves_nonignored_untracked_path_outside_include(self) -> None:
         (self.repo / "existing.txt").write_text("changed\n", encoding="utf-8")
         (self.repo / "stray.txt").write_text("not approved\n", encoding="utf-8")
-        with self.assertRaisesRegex(BUILDER.PacketError, "outside the approved include set"):
-            BUILDER.build_packet(
-                self.repo, ["existing.txt"], "stray file test", self.repo / "packets", allow_fixture_defaults=True
-            )
+        packet = BUILDER.build_packet(
+            self.repo, ["existing.txt"], "stray file test", self.repo / "packets", allow_fixture_defaults=True
+        )
+        packet_data = yaml.safe_load(packet.read_text(encoding="utf-8"))
+        self.assertEqual(["stray.txt"], packet_data["exclude"])
+        self.assertEqual("baseline", self._git("log", "-1", "--pretty=%s"))
+        self.assertEqual("", self._git("diff", "--cached", "--name-only"))
 
     def test_packet_tamper_is_rejected_before_repository_mutation(self) -> None:
         (self.repo / "existing.txt").write_text("changed\n", encoding="utf-8")
