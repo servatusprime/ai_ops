@@ -390,6 +390,14 @@ do not widen the scope or use `--no-verify`.
    When local work artifacts under ignored `90_Sandbox/**` or `99_Trash/**`
    paths are in scope, run equivalent direct lint via temp copy, stdin, or an
    explicit ignore override and record the strategy in closeout evidence.
+   For ai_ops-owned workflow, packet, or validator changes, run the focused
+   contract tests during iteration, then run the full repository regression
+   suite once after the final edits and before publication. The full suite is
+   a broad regression gate for routing, packet application, validators,
+   generated surfaces, future-work receipts, and release quality; its test
+   count is inventory, not a required number to reproduce in every savepoint.
+   Do not repeat the full suite for every intermediate edit when focused tests
+   and configured checks are unchanged.
 
 14. For Level 3+ completed workbooks, run a divergence audit before commit:
     compare the latest crosscheck, current output state, and later review

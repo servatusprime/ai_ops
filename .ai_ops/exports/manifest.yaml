@@ -65,7 +65,7 @@ workflows:
     sha256_12: 6bec19573c50
 - workflow: closeout
   source: .ai_ops/workflows/closeout.md
-  source_sha256_12: 95288c94a8f1
+  source_sha256_12: 0194eb50a444
   description: Prepare a read-only closeout packet, then publish through exact approval-gated
     commit, push, and PR-merge steps.
   outputs:
@@ -248,7 +248,7 @@ workflows:
     sha256_12: faca4d486bb7
 - workflow: work_savepoint
   source: .ai_ops/workflows/work_savepoint.md
-  source_sha256_12: a57e0415a378
+  source_sha256_12: 828f0e2f0713
   description: Validate and record a scoped work-in-progress savepoint; publish through
     one structured approval turn covering clerical work, commit, push, and optional
     PR merge.
