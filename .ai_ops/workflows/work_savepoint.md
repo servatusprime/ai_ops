@@ -152,19 +152,14 @@ promote applicability. Use `linked_only` for dependency context,
 stale states preserve the registry and remain separate from security admission
 and projected-tree validation.
 
-### Archive Applicability Boundary
+### Closeout Boundary
 
-Savepoint is an active-work checkpoint; it does not move work from
-`90_Sandbox/` to `99_Trash/`. For a packet-backed savepoint, the builder
-defaults to `archive_gate: not_applicable` when the approved include set has no
-tracked deletion under `90_Sandbox/`. Do not prepare an archive receipt or load
-closeout cleanup logic for that ordinary path; do not load completion/cleanup
-logic. If a tracked `90_Sandbox/`
-deletion is intentionally included, route the work through `/closeout` and
-bind a passed archive receipt; `--archive-gate-not-applicable` is not a bypass.
-The packet applier rechecks the receipt and archived-byte hashes before any
-staging, so an archive mutation cannot be hidden behind an otherwise valid
-savepoint.
+Savepoint is an active-work checkpoint and has no archive step. It never moves
+work from `90_Sandbox/` to `99_Trash/`, prepares an archive receipt, or claims
+completion. If the approved savepoint include set contains a tracked deletion
+under `90_Sandbox/` or otherwise requires relocating a completed artifact, stop
+before packet creation and route the work through `/closeout`. The savepoint
+packet route is for active-work paths that do not require archival.
 
 ### Projected-Tree Validation Boundary
 
@@ -268,11 +263,13 @@ evidence that the approved include set failed.
    changed since the preview. Never silently widen or substitute the approved
    set.
 7. **Stage Exact Paths**: Prefer the shared tree-bound packet route when the
-    savepoint has a stable include set: build a packet with
+    savepoint has a stable active-work include set with no `90_Sandbox/`
+    deletion: build a packet with
     `00_Admin/scripts/build_closeout_packet.py`, obtain an approval file that
     validates against `00_Admin/configs/validator/schema_closeout_approval.yaml`
     and binds its packet/tree hashes, and apply it with
-    `00_Admin/scripts/apply_closeout_packet.py`. The applier uses
+    `00_Admin/scripts/apply_closeout_packet.py`. If archival is needed, stop
+    and route to `/closeout` before building the packet. The applier uses
      an isolated approved-scope pre-commit preflight followed by a second
      run against the actual staged index immediately before an ordinary exact
      `git commit --only`. The installed native pre-commit and commit-msg hooks
