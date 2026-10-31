@@ -88,7 +88,12 @@ def target_policy_present(repo: Path) -> bool:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    return completed.returncode == 0
+    if completed.returncode == 0:
+        return True
+    error = completed.stderr.decode("utf-8", errors="replace").strip()
+    if completed.returncode == 1 or "does not exist in 'HEAD'" in error:
+        return False
+    fail("cannot determine target policy presence: " + error)
 
 
 def closeout_hook_present(repo: Path) -> bool:
@@ -99,26 +104,59 @@ def closeout_hook_present(repo: Path) -> bool:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
+    if completed.returncode not in (0, 1):
+        fail(
+            "cannot resolve core.hooksPath: "
+            + completed.stderr.decode("utf-8", errors="replace").strip()
+        )
     configured = completed.stdout.decode("utf-8", errors="replace").strip()
     if configured:
         hook_dir = Path(configured)
         if not hook_dir.is_absolute():
             hook_dir = (repo / hook_dir).resolve()
     else:
-        hook_dir = repo / ".git/hooks"
+        resolved = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "--git-path", "hooks"],
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        if resolved.returncode:
+            fail("cannot resolve Git hooks path: " + resolved.stderr.strip())
+        candidate = resolved.stdout.strip()
+        if not candidate:
+            fail("cannot resolve Git hooks path: Git returned an empty path")
+        hook_dir = Path(candidate)
+        if not hook_dir.is_absolute():
+            hook_dir = (repo / hook_dir).resolve()
     dispatcher_present = False
-    for name in ("pre-commit", "commit-msg", "pre-push", "pre-commit.dispatcher", "commit-msg.dispatcher"):
+    for name in (
+        "pre-commit",
+        "commit-msg",
+        "pre-push",
+        "pre-commit.dispatcher",
+        "commit-msg.dispatcher",
+        "pre-push.dispatcher",
+    ):
         hook = hook_dir / name
         if not hook.is_file():
             continue
         try:
             text = hook.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
+        except OSError as exc:
+            fail(f"cannot read installed hook {hook}: {exc}")
         if HOOK_MARKER in text or ".ai_ops/local/closeout_security/latest.yaml" in text:
             return True
         if (
-            name in {"pre-commit", "commit-msg", "pre-commit.dispatcher", "commit-msg.dispatcher"}
+            name in {
+                "pre-commit",
+                "commit-msg",
+                "pre-push",
+                "pre-commit.dispatcher",
+                "commit-msg.dispatcher",
+                "pre-push.dispatcher",
+            }
             and "hook-impl" in text
         ):
             dispatcher_present = True
@@ -126,8 +164,8 @@ def closeout_hook_present(repo: Path) -> bool:
         config = repo / ".pre-commit-config.yaml"
         try:
             text = config.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            text = ""
+        except OSError as exc:
+            fail(f"cannot read dispatcher configuration {config}: {exc}")
         if HOOK_MARKER in text or "ai-ops-closeout-security" in text:
             return True
     return False
@@ -148,8 +186,8 @@ def validate_deterministic_applicability(
         fail("policy_source=target_HEAD requires a target closeout policy")
     if policy_source == "missing_target_policy" and policy_present:
         fail("policy_source=missing_target_policy is invalid when the target policy exists")
-    if policy_present and closeout_hook_present(repo):
-        fail("deterministic admission is not applicable when the target policy and closeout hook are both present")
+    if policy_present or closeout_hook_present(repo):
+        fail("deterministic admission is not applicable when the target policy or closeout hook is present")
 
 
 def git_head(repo: Path) -> str:

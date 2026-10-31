@@ -64,6 +64,20 @@ class CloseoutScopeTests(unittest.TestCase):
         self.assertIsNone(report["excluded_scope_conflict"])
         self.assertEqual(["included.py"], report["projected_include_tree"]["paths"])
 
+    def test_related_scope_requires_confirmation_blocks_projected_tree_ready(self) -> None:
+        self._dirty_scope()
+        report = scope_report(
+            self.repo,
+            ["included.py"],
+            related_scope_requires_confirmation=["runbook.md"],
+            validator_inputs=["included.py"],
+        )
+        self.assertEqual("scope_pending_confirmation", report["status"])
+        self.assertEqual(
+            ["runbook.md"], report["scope_pending_confirmation"]["paths"]
+        )
+        self.assertIsNone(report["excluded_scope_conflict"])
+
     def test_ignored_directory_marker_is_normalized_into_ignored_bucket(self) -> None:
         (self.repo / ".ai_ops" / "local").mkdir(parents=True)
         (self.repo / ".ai_ops" / "local" / "receipt.yaml").write_text(

@@ -1,8 +1,7 @@
 ---
 name: work-savepoint
 description: Validate and record a scoped work-in-progress savepoint; publish through
-  one structured approval turn covering clerical work, commit, push, and optional
-  PR merge.
+  one structured approval turn covering commit, push, and optional PR merge.
 disable-model-invocation: true
 ---
 

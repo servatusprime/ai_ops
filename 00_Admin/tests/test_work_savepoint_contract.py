@@ -4,13 +4,24 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = REPO_ROOT / ".ai_ops" / "workflows" / "work_savepoint.md"
 CLOSEOUT_WORKFLOW = REPO_ROOT / ".ai_ops" / "workflows" / "closeout.md"
+GOVERNANCE_GRAPH = (
+    REPO_ROOT
+    / "00_Admin"
+    / "reports"
+    / "generated"
+    / "graphs"
+    / "governance_routing_graph.yaml"
+)
 
 
 class WorkSavepointContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.workflow = WORKFLOW.read_text(encoding="utf-8")
-        cls.normalized = " ".join(cls.workflow.split())
+        cls.savepoint = " ".join(cls.workflow.split())
+        cls.closeout = " ".join(
+            CLOSEOUT_WORKFLOW.read_text(encoding="utf-8").split()
+        )
 
     def test_publication_requires_preview_and_combined_approval(self) -> None:
         required = (
@@ -18,31 +29,27 @@ class WorkSavepointContractTests(unittest.TestCase):
             "default invocation is a read-only checkpoint",
             "Publication Preview and Approval Gates",
             "exact repo-relative `include`",
-            "proposed `savepoint: <brief description>` commit message",
+            "proposed `savepoint: <brief description>` message",
             "Stop and ask once for approval",
-            "Revalidation After Approval",
+            "Re-run status and the safety preflight after approval",
             "git -C <repo_root> add --",
             "git diff --cached --name-only",
             "push <approved_remote> <approved_branch>",
         )
         for marker in required:
             with self.subTest(marker=marker):
-                self.assertIn(marker, self.normalized)
+                self.assertIn(marker, self.savepoint)
 
     def test_flags_cannot_bypass_approval(self) -> None:
         self.assertIn(
             "Pass `--no-commit` to state the read-only intent explicitly",
             self.workflow,
         )
+        self.assertIn("`--commit` to request publication", self.savepoint)
         self.assertIn(
-            "`--commit` to request publication",
-            self.normalized,
+            "initial invocation cannot substitute for this combined approval",
+            self.savepoint,
         )
-        self.assertIn(
-            "initial invocation cannot substitute for the combined approval",
-            self.normalized,
-        )
-        self.assertNotIn("an explicit spelling of the default save intent", self.workflow)
 
     def test_scope_and_failure_guards_are_explicit(self) -> None:
         required = (
@@ -50,65 +57,99 @@ class WorkSavepointContractTests(unittest.TestCase):
             "`ignored_unpublished`",
             "Never use `git add -f`",
             "Never silently widen or substitute the approved set",
+            "git diff --cached --name-only",
+            "push_escalation: pr_required",
+            "push_escalation: auth_failure",
             "Do not force, change the remote",
             "Create or update the PR through the GitHub provider",
             "artifacts remain `in_progress`",
         )
         for marker in required:
             with self.subTest(marker=marker):
-                self.assertIn(marker, self.normalized)
+                self.assertIn(marker, self.savepoint)
 
     def test_applicability_and_projected_tree_contracts_are_explicit(self) -> None:
-        closeout = " ".join(CLOSEOUT_WORKFLOW.read_text(encoding="utf-8").split())
-        required = (
+        for marker in (
             "Future-Work Applicability Gate",
             "not_applicable",
             "linked_only",
             "completion_handoff",
             "registry_sync",
             "closeout_applicability.py",
-            "Projected-Tree Validation Boundary",
-            "closeout_scope.py",
             "projected_include_tree",
             "excluded_scope_conflict",
             "ignored_unpublished",
-        )
-        for marker in required:
+        ):
             with self.subTest(marker=marker):
-                self.assertIn(marker, self.normalized)
-                self.assertIn(marker, closeout)
+                self.assertIn(marker, self.savepoint)
+                self.assertIn(marker, self.closeout)
+        self.assertIn("## Workflow graph", self.workflow)
+        self.assertIn("## Workflow graph", self.closeout)
+        self.assertIn("without invoking a classifier", self.closeout)
+
+    def test_fresh_reader_terms_and_rebinding_rules_are_explicit(self) -> None:
+        for marker in (
+            "Selection terms are explicit",
+            "active artifact",
+            "target_repo",
+            "Classify `include`",
+            "A validator qualifies for projected-tree execution",
+            "scope_pending_confirmation",
+            "projected_tree_ready",
+            "The policy file is the target's",
+            "git config --get core.hooksPath",
+            "new approval binding whenever the rerun changes",
+            "A `preparation record` is the records-only closeout output",
+            "`linked_only` carries one or more linked IDs as",
+        ):
+            with self.subTest(closeout_marker=marker):
+                self.assertIn(marker, self.closeout)
+        for marker in (
+            "An `active artifact` is an entry",
+            "Classify `include` as exact approved paths",
+            "scope_pending_confirmation",
+            "projected_tree_ready",
+            "The policy file is the target's",
+            "The fallback requires a new approval",
+            "Read them in that order as applicable",
+            "A `checkpoint record` is the records-only savepoint output",
+            "`linked_only` carries one or more linked IDs as",
+            "Its read-only leg may write only the checkpoint record",
+            "Any Git error or empty returned path is",
+            "dispatcher configuration also yields",
+            "Resources: `00_Admin/configs/context_routing.yaml`, the selected",
+        ):
+            with self.subTest(savepoint_marker=marker):
+                self.assertIn(marker, self.savepoint)
 
     def test_savepoint_has_no_archive_step(self) -> None:
-        closeout = " ".join(CLOSEOUT_WORKFLOW.read_text(encoding="utf-8").split())
         for marker in (
             "Savepoint is an active-work checkpoint and has no archive step",
             "route the work through `/closeout`",
             "active-work paths that do not require archival",
         ):
             with self.subTest(marker=marker):
-                self.assertIn(marker, self.normalized)
-        self.assertNotIn("archive_gate", self.normalized)
-        self.assertIn("Archive Applicability Boundary", closeout)
+                self.assertIn(marker, self.savepoint)
+        self.assertNotIn("archive_gate", self.savepoint)
+        self.assertIn("Archive and Completion Boundary", self.closeout)
 
     def test_validation_scope_matches_workflow_lifecycle(self) -> None:
-        closeout = " ".join(CLOSEOUT_WORKFLOW.read_text(encoding="utf-8").split())
         for marker in (
             "Validation Scope",
             "focused contract tests",
             "Do not require the full ai_ops test suite for each savepoint iteration",
-            "full repository regression suite belongs to the final `/closeout` publication gate",
+            "the full repository regression suite belongs to the final `/closeout` publication gate",
         ):
             with self.subTest(marker=marker):
-                self.assertIn(marker, self.normalized)
+                self.assertIn(marker, self.savepoint)
         for marker in (
-            "run the full repository regression suite once after the final edits and before publication",
+            "the full repository regression suite once after final edits and before publication",
             "Do not repeat the full suite for every intermediate edit",
         ):
             with self.subTest(marker=marker):
-                self.assertIn(marker, closeout)
+                self.assertIn(marker, self.closeout)
 
     def test_governed_security_admission_is_shared_and_fail_closed(self) -> None:
-        closeout = " ".join(CLOSEOUT_WORKFLOW.read_text(encoding="utf-8").split())
         shared = (
             "policy_source=missing_target_policy",
             "security_admission: unavailable",
@@ -117,41 +158,59 @@ class WorkSavepointContractTests(unittest.TestCase):
         )
         for marker in shared:
             with self.subTest(marker=marker):
-                self.assertIn(marker, self.normalized)
-                self.assertIn(marker, closeout)
+                self.assertIn(marker, self.savepoint)
+                self.assertIn(marker, self.closeout)
         self.assertIn("Governed-Repository Security Admission", self.workflow)
         self.assertIn(
             "same target-repository security admission decision as `/closeout`",
-            self.normalized,
+            self.savepoint,
         )
+        self.assertIn("rb_closeout_security_review_01.md", self.savepoint)
+        self.assertIn("rb_closeout_security_review_01.md", self.closeout)
 
-    def test_closeout_archive_gate_precedes_publication(self) -> None:
-        closeout = " ".join(CLOSEOUT_WORKFLOW.read_text(encoding="utf-8").split())
-        archive = closeout.index("Archive completed work artifacts to `99_Trash/`")
-        security = closeout.index(
-            "Run the closeout security admission gate only after `archive_gate: passed`"
+    def test_generated_governance_graph_keeps_closeout_membership(self) -> None:
+        graph = GOVERNANCE_GRAPH.read_text(encoding="utf-8")
+        for marker in (
+            "id: command:closeout",
+            "id: workflow:.ai_ops/workflows/closeout.md",
+            "source: command:closeout",
+        ):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, graph)
+
+    def test_closeout_archive_precedes_publication(self) -> None:
+        archive = self.closeout.index("Archive and Completion Boundary")
+        archive_rows = self.closeout.index("Prepare exact source/destination rows")
+        archive_approval = self.closeout.index(
+            "Present those rows in the existing container-completion decision"
         )
-        commit = closeout.index("Commit only after the commit gate passed, the archive result is")
-        push = closeout.index(
-            "Push only after the combined approval turn's push row is approved, "
-            "the archive gate remains `passed` when applicable"
-        )
-        merge = closeout.index(
-            "After the final push, execute the merge phase only when the combined "
-            "approval turn's PR/merge row is approved and the archive gate remains `passed` when applicable"
-        )
+        archive_move = self.closeout.index("execute the exact move")
+        stale_reference = self.closeout.index("After a move, run stale-reference checks")
+        packet = self.closeout.index("build one packet")
+        security = self.closeout.index("## Security Admission")
+        commit = self.closeout.index("Commit only after required checks pass")
+        push = self.closeout.index("Push only after the push row is approved")
+        merge = self.closeout.index("Create/update and merge only after the merge row is approved")
+        self.assertLess(archive, archive_rows)
+        self.assertLess(archive_rows, archive_approval)
+        self.assertLess(archive_approval, archive_move)
+        self.assertLess(archive_move, stale_reference)
+        self.assertLess(stale_reference, packet)
         self.assertLess(archive, security)
         self.assertLess(security, commit)
+        self.assertLess(security, packet)
+        self.assertLess(packet, commit)
         self.assertLess(commit, push)
         self.assertLess(push, merge)
+        self.assertNotIn("container completion/archive decision", self.closeout)
         for marker in (
             "archive_gate: passed",
             "archive_gate: unavailable",
-            "source remains under `90_Sandbox/`",
+            "selected source remains",
             "do not stage, commit, push, create/update a PR, or merge",
         ):
             with self.subTest(marker=marker):
-                self.assertIn(marker, closeout)
+                self.assertIn(marker, self.closeout)
 
     def test_declared_documentation_and_smoke_contract_match(self) -> None:
         surfaces = {

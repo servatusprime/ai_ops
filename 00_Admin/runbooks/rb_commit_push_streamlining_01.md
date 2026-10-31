@@ -38,8 +38,12 @@ When running in an external repo (user mode):
 
 ## Authorization Marker (Turbo)
 
-If the requestor provides this explicit marker, the agent may proceed through commit/push after validation without
-pausing for further approval in the same scope:
+If the requestor provides this explicit marker, treat it as a request to use one
+combined publication approval turn after the approved archive move, stale-reference
+recheck, projected validation and security admission. It never authorizes mutation
+by itself; the separate commit, push, PR, and merge rows remain required. The
+clerical archive decision occurs before validation at the existing
+container-completion decision and is not repeated in this publication turn:
 
 `TURBO_AUTHORIZED: commit_push_after_validation`
 
@@ -57,16 +61,21 @@ The marker only applies to the current scope. Any scope expansion requires a new
 
 1. Confirm scope and authority level.
 2. Run the combined Self-Review Smoke Pass and fix issues found.
-3. Run validation/lint commands, including alternate direct lint handling when
-   ignored `90_Sandbox/**` or `99_Trash/**` artifacts are part of the scope.
-4. Provide a change summary in the chat.
-5. Treat the turbo marker as descriptive only. Require one exact commit
-   approval naming the final include set and a separate push approval naming the
-   verified commit SHA, remote, and branch.
-6. Record approval evidence in the workbook/work proposal (when applicable) and
+3. If closeout is completing executed workbooks/workbundles, bind the exact
+   archive source/destination rows in the existing container-completion decision
+   and move them to `99_Trash/` before packet construction and staging; repair
+   stale references before validation. Savepoint never archives and routes
+   completed artifacts to `/closeout`.
+4. Run validation/lint commands after archive and stale-reference updates,
+   including alternate direct lint handling when ignored `90_Sandbox/**` or
+   `99_Trash/**` artifacts are part of the scope.
+5. Provide a change summary in the chat.
+6. Treat the turbo marker as descriptive only. Require one publication approval
+   turn with separate commit, push, PR, and merge rows. The commit row names the
+   final include set; the push row names the verified commit SHA, remote, and
+   branch; the merge row names the PR/head/base and method.
+7. Record approval evidence in the workbook/work proposal (when applicable) and
    in `00_Admin/logs/log_workbook_run.md` before commit.
-7. If executed workbooks/workbundles are in scope, archive them and repair
-   stale references before staging.
 8. For a stable exact include set, use the tree-bound packet route documented
    in `.ai_ops/workflows/closeout.md`; write approval files against
   `00_Admin/configs/validator/schema_closeout_approval.yaml`; the approval
@@ -74,9 +83,9 @@ The marker only applies to the current scope. Any scope expansion requires a new
   mutation plan, projected tree, actor, timestamp, and reference. Its applier
   stages and commits only the approved paths and verifies the resulting tree.
   Otherwise stage and commit the exact approved paths. Push remains a separate
-  approval in both cases.
-9. Push only after the separate push approval names the verified commit SHA,
-   remote, and branch.
+  row in the same approval turn.
+9. Push only after the publication turn's push row names the verified commit SHA,
+   remote, and branch; create/update and merge only after the approved merge row.
 10. Report shipped commit/branch details in chat; add a second in-repo log
    update only when repo policy explicitly requires post-push metadata.
 
@@ -99,11 +108,11 @@ Before pushing a packet-applied commit, run:
 python 00_Admin/scripts/apply_closeout_packet.py --verify-push --packet <packet>
 ```
 
-Treat the returned SHA as the only commit eligible for the separate push
-approval. If packet tooling fails, follow the manual fallback in
+Treat the returned SHA as the only commit eligible for the push row in the
+combined approval turn. If packet tooling fails, follow the manual fallback in
 `.ai_ops/workflows/closeout.md`: preserve the packet and evidence, stage only
-the approved paths, verify the staged names and commit binding, then obtain a
-separate push approval.
+the approved paths, verify the staged names and commit binding, then use the
+push row from that same combined approval turn.
 
 ## Postconditions
 
