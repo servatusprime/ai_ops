@@ -2,7 +2,7 @@
 description: Prepare a read-only closeout packet, then publish through exact approval-gated commit, push, and PR-merge steps.
 name: closeout
 kind: workflow
-version: 0.8.1
+version: 0.9.0
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -14,10 +14,10 @@ claude:
   model: null
 codex:
   metadata:
-    short-description: Prepare a read-only closeout packet, then publish through one structured approval turn covering clerical work, commit, push, and PR merge.
+    short-description: Prepare a read-only closeout packet, approve applicable archive at the existing container-completion decision, then publish through one structured approval turn covering commit, push, and PR merge.
   interface:
     display_name: closeout
-    short_description: Prepare a read-only closeout packet, then publish through one structured approval turn covering clerical work, commit, push, and PR merge.
+    short_description: Prepare a read-only closeout packet, approve applicable archive at the existing container-completion decision, then publish through one structured approval turn covering commit, push, and PR merge.
   policy:
     allow_implicit_invocation: false
 exports:
@@ -37,674 +37,393 @@ exports:
 
 ## Purpose
 
-Prepare a closeout without mutation, then publish only after the exact commit,
-push, and final PR merge gates pass when a PR flow is required. When completed
-workbook/workbundle artifacts are selected for relocation, they must be moved
-from `90_Sandbox/` to a recoverable `99_Trash/` destination first; an ordinary
-scoped closeout records `archive_gate: not_applicable` instead of inventing an
-archive operation. Read-only preparation must not stage, commit, push,
-create/update a PR, merge, archive, delete, or repair content. Content
-remediation routes to `/work`.
+Close the selected work context through a read-only preparation leg and one
+structured publication approval. Closeout means completion and publication:
+applicable completed artifacts move from `90_Sandbox/` to a recoverable
+`99_Trash/` destination before packet construction and staging. An ordinary
+scoped closeout records `archive_gate: not_applicable`; it never invents an
+archive operation. Preparation never stages, commits, pushes, creates or
+updates a PR, merges, archives, deletes, or repairs content. Remediation routes
+to `/work`.
+
+## Workflow graph
+
+```text
+bootstrap/context -> resolve scope -> future-work review (optional, read-only)
+  -> archive applicability/rows -> existing container-completion decision
+  -> approved archive move -> stale-reference check -> re-freeze scope
+  -> projected-tree validation -> security admission -> packet/hash binding
+  -> one publication approval turn
+  -> exact commit -> approved push -> approved PR/merge -> final receipt/status
+```
 
 ## Inputs and Preconditions
 
 - Apply bootstrap guard BRG-01 before closeout steps.
-- If inputs are insufficient or the request is illogical, pause and ask for clarification.
+- Confirm one active context and repository; insufficient or illogical input
+  stops for clarification.
+
+Selection terms are explicit: `BRG-01` is the bootstrap-required guard defined
+in `00_Admin/configs/context_routing.yaml`; an `active artifact` is an entry in
+`.ai_ops/local/work_state.yaml` under `work_context.active_artifacts` or the
+single artifact named by the operator; `target_repo` is selected from explicit
+scope first, then the active artifact, then the matching entry in
+`.ai_ops/local/config.yaml` `workspace.work_repos`. A conflict between those
+sources stops for clarification rather than being resolved by guessing.
+Direct mode means `target_repo` is `ai_ops`; governed mode means `ai_ops`
+governs a different selected target. Read the applicable mode contract:
+`00_Admin/specs/spec_work_mode_direct.md` or
+`00_Admin/specs/spec_work_mode_governed.md`.
+
+A `preparation record` is the records-only closeout output written to the
+active workbook's Execution Notes or an existing workbundle state surface. It
+must name the selected `future_work` state. `not_applicable` carries no
+registry or artifact binding; `linked_only` carries one or more linked IDs as
+dependency context and no completion artifact set; `completion_handoff` and
+`registry_sync` carry one exact ID and the frozen artifact set required by
+their receipt contract. It is not selected content, a registry mutation, or
+publication approval.
 
 ## Context Routing Hook
 
-Use `00_Admin/configs/context_routing.yaml` as the canonical onboarding
-contract.
+Use `00_Admin/configs/context_routing.yaml` as the canonical onboarding contract;
+apply BRG-01 and resolve onboarding tiers in order:
+`fresh_bootstrap`, `resume_same_scope`, `recenter` (fallback to
+`fresh_bootstrap`). Load the configured `always_read` set, expand
+`read_on_demand` only when needed, and emit
+`bootstrap_path`, `resume_basis`, and `reads_applied`. Resolve one active
+artifact and repository; with no changes report nothing to close; with multiple
+active artifacts ask which one. A content defect routes to `/work`. A changed
+authority, scope, policy, cost, tree, or stale-context condition emits `PARK`
+with the owner and exact resume point.
 
-1. Apply `commands._defaults.guard_profile` and `commands.closeout.guard_profile`.
-2. Resolve onboarding tier in order: `fresh_bootstrap`,
-   `resume_same_scope`, `recenter` (fallback `fresh_bootstrap` when state is
-   unknown).
-3. Load `always_read`; expand `read_on_demand` only when needed.
-4. Emit route metadata in closeout output: `bootstrap_path`, `resume_basis`,
-   and `reads_applied`.
-5. If requested action is outside closeout scope or requires canonical
-   remediation edits, transition to `/work`.
+For run-family changes, load the identity/composition specs and registry on
+demand. Confirm registry/graph parity, generated-view non-authority, exact
+run-instance lock/receipt linkage, and a validation receipt or approved
+disposition for every affected consumer. Missing fan-out evidence blocks closeout.
 
 ### Run-Family Graph Hook
 
-For run-family changes, load the identity/composition specs and generated
-registry on demand. Closeout MUST confirm registry and graph parity, generated-
-view non-authority, exact run-instance lock/receipt linkage, and a validation
-receipt or operator-approved disposition for every affected declared consumer.
-Missing fan-out evidence blocks completion and returns the lane to `/work`.
-
-## Decision Matrix (Cold-Start)
-
-Use `00_Admin/guides/ai_operations/guide_workflows.md` for canonical
-artifact-selection and execution-context matrices. This block covers only
-closeout-specific branching.
-
-### Decision Matrix - Inside (Maintainer)
-
-- No changes: report there is nothing to close out.
-- Multiple active artifacts: ask which context to close out.
-- Active workbundle/workprogram/workbook/runbundle/runprogram/runbook: close out the selected context.
-
-### Decision Matrix - External (User)
-
-- No changes: report there is nothing to close out.
-- Multiple active artifacts: ask which context to close out.
-- Active work context: close out the selected context.
+When closeout scope creates, changes, resolves, or migrates a runprogram,
+runbundle, or runbook, load the identity/composition specs and generated
+registry on demand. Verify affected consumers and retain a validation receipt or
+operator-approved disposition for each one. Generated registry and graph views
+are evidence only and never grant write authority.
 
 ## Steps
 
-### Read-only Preparation Boundary
+### Closeout evidence preflight
 
-The first closeout leg is deterministic and read-only. Resolve the active
-artifact and repository, capture the complete dirty-tree baseline, classify
-`include`, `related_scope_requires_confirmation`, `exclude`, and
-`ignored_unpublished`, run configured validation and the applicable security
-pre-pass, and project the proposed mutation plan, commit message, remote, and
-branch, proposed PR/merge method when a PR flow is required, and the exact
-clerical operations in scope. Emit
-`bootstrap_path`, `resume_basis`, `reads_applied`, the scope echo, validation
-results, and security applicability. Do not stage, write a receipt to the
-repository, archive, delete, fix content, commit, push, create/update a PR, or
-merge during this leg.
+Before the archive decision, update the active status and checkpoint notes, harvest
+the scratchpad with its placement checklist, and reconcile `durable_outputs` to
+the frozen scope. Record the workbook boundary and closeout scope manifest before
+presenting the approval rows. These are executable closeout checks, not optional
+background notes. Pass status/checkpoint review only when the selected context has
+an updated status note naming the evidence and remaining gate. Pass scratchpad
+harvest only when every keeper is promoted, retained, or assigned an explicitly
+approved follow-on; each stabilized lesson has a placement record containing the
+stable rule, canonical target, enforcement target, documentation target, owner,
+validation, follow-on state, and verified target path/section/version. Pass the
+`durable_outputs` check only when every row is `promoted`, `retained`, or has an
+explicitly approved follow-on disposition; an unresolved row blocks closeout.
 
-If preparation finds a content defect, return to `/work`. If it finds a cost,
-authority, policy, scope, tree, or stale-context change, emit `PARK` with the
-owner and exact resume point. A security outcome of `deterministic_admission`
-is not a `pass`; it is permitted only for a governed repository whose target
-policy or hook is absent and must be presented in the combined approval turn's
-commit row.
-For an external governed repository, resolve the target repository's policy and
-installed hook before selecting the admission mode. If either is present, use
-reviewer-read admission against the target `HEAD`; deterministic admission is
-not applicable. If both are absent, deterministic admission is eligible only
-when the active ai_ops policy explicitly allows `policy_source=missing_target_policy`.
-If that allowance is absent or disabled, emit `PARK` with
-`security_admission: unavailable` and reference `fw_20261026_01`; do not use a
-manual waiver, skip, or unrecorded bypass. Record the selected
-`admission_mode`, `policy_source`, receipt path, and overall disposition in the
-closeout packet. ai_ops itself remains reviewer-read against the target `HEAD`
-policy and installed hook contract.
+These preflight updates are records-only: write them to the active workbook
+Execution Notes or existing workbundle state surface, not to selected content or
+the governed target. They do not authorize staging, archive movement, commit,
+push, PR, or merge. If no permitted state surface exists, stop and route the
+record update to `/work`.
 
-`/work_savepoint` is the WIP lane: its default invocation validates and records
-a checkpoint only. It does not claim completion, archive authority, commit, or
-push. Its `--commit` option is an explicit publication request and uses the
-same structured approval turn covering clerical work, commit, push, and
-optional PR merge; a savepoint that
-stops before merge must report the PR as unmerged and remain active.
+### Repository and Validation Preflight
 
-### Future-Work Applicability Gate
+Resolve `target_repo` from explicit scope, the active artifact, or the configured
+work-repo list; run `git -C <repo> rev-parse --show-toplevel` and record
+`repo_root`, `git_root`, and `safe_directory_applied: false`. All later Git
+commands use that root. A detached `HEAD` stops publication; a shallow clone is
+reported; signed-commit configuration requires a usable signing key. On Windows
+record `core.longpaths` and the longest changed path; when long paths are
+disabled/unset, a changed path at or above 240 characters reports
+`longpath_risk` and stops. Permission or ambiguous Git metadata errors are not
+clean results. If Git reports `dubious ownership`, stop for an operator-directed
+trust repair; never run `git config --global`, and record
+`safe_directory_applied: false`.
 
-Classify future-work applicability before reading completion schemas, importing
-`complete_future_work.py`, regenerating a scorecard, preparing a receipt, or
-pruning a registry. Use the side-effect-free classifier:
+In direct ai_ops mode, validate `.ai_ops/local/config.yaml` with
+`00_Admin/scripts/op_validate_config.py` before running its
+`savepoint_validation.minimum_commands`. In governed mode, resolve the
+`governed_repo_validation` contract and execute only validated argv arrays with
+`shell=False`, the trusted interpreter, and the selected repo as `cwd`; reject
+shell metacharacters, unapproved executables, and paths outside the workspace.
+Retry a configured network-sensitive command once, then record a permitted
+partial result and `validation_escalated: true`; never silently skip a required
+check.
 
-```text
-python 00_Admin/scripts/closeout_applicability.py --intent not_applicable
-```
+## Future-Work Applicability Gate
 
-An ordinary scoped closeout MUST default to `not_applicable`. A registry title,
-review mention, stale packet, or dependency reference MUST NOT promote that
-state. The classifier's result is user-facing closeout evidence and controls
-the allowed downstream actions:
+Ordinary closeout defaults to `future_work: not_applicable` without invoking a
+classifier. Do not load completion logic, regenerate a scorecard, prepare a
+receipt, or prune a registry in that state. During preparation the operator may
+request an explicit read-only residual-work review; record candidates and their
+proposed handling, but do not mutate the registry. A referenced title, review,
+stale packet, or dependency does not promote applicability.
 
-| State | Required binding | Allowed behavior |
+The four states remain the contract for explicit flows:
+
+| State | Binding | Allowed behavior |
 | --- | --- | --- |
-| `not_applicable` | No completion transaction | Do not load completion logic, regenerate the scorecard, or mutate/prune the registry. Emit `future_work: not_applicable`. |
-| `linked_only` | One or more explicitly linked unfinished IDs | Read dependency context only. Do not prepare a receipt, regenerate the scorecard, or mutate the registry. |
-| `completion_handoff` | Exactly one registry ID, `execution_status: completed`, `completion_state: ready_for_receipt`, and a non-empty artifact set | Run the receipt handoff for that ID only. Do not delete the registry row in this phase. |
-| `registry_sync` | Exactly one registry ID, non-empty artifact set, and a verified success receipt | Run only the exact receipt-backed registry/scorecard/run-log synchronization transaction, then verify ID and HEAD parity. |
+| `not_applicable` | No completion transaction | Report only; no completion or registry mutation. |
+| `linked_only` | Explicit unfinished ID(s) | Read dependency context only; no receipt or mutation. |
+| `completion_handoff` | One exact ID, completed state, ready-for-receipt state, artifact set | Run that receipt handoff only; keep the registry row. |
+| `registry_sync` | One exact ID, artifact set, verified success receipt | Run the exact receipt-backed registry/scorecard/run-log sync and verify ID/HEAD parity. |
 
-For `completion_handoff` and `registry_sync`, a missing ID, ambiguous artifact
-set, stale receipt, or failed receipt is a stop condition. Failed, pending, or
-stale outcomes preserve the registry entry. Applicability is independent from
-security admission and projected-tree validation; report each result separately.
+Missing or ambiguous IDs, artifacts, receipts, or bindings stop the explicit
+flow. Failed, pending, or stale outcomes preserve the registry. Applicability,
+projected validation, security admission, and publication approval are separate
+user-facing fields. The `closeout_applicability.py` classifier and `complete_future_work.py` remain for
+explicit registry flows and are not ordinary closeout prerequisites.
 
-### Projected-Tree Validation Boundary
+An explicit applicability flow exists only when the operator selects one of the
+four states in the preparation record; a title, dependency, or referenced ID is
+not a selection. In this contract, a `completion transaction` is the exact
+receipt-backed completion operation; `ready-for-receipt state` means the selected
+ID is complete and its artifact set is frozen; `receipt handoff` means running
+that one completion receipt; and `artifact set` means the exact bound paths and
+HEAD used by the receipt. If receipt synchronization defers archiving, resume by
+rechecking the final workbook state and rerunning the archive decision; do not
+reuse a stale archive row or approval.
 
-Closeout MUST keep these trees distinct:
+## Projected-Tree Validation Boundary
 
-1. `current HEAD`: the committed baseline used for policy, hook, and receipt
-   binding;
+Keep these trees distinct:
+
+1. `current HEAD`: committed baseline for policy, hook, and receipt binding;
 2. `projected include tree`: `HEAD` plus only the frozen approved include set;
 3. `dirty worktree`: every unrelated tracked change, excluded untracked path,
    ignored artifact, and other local state.
 
-Before configured validators run, produce the read-only scope report:
+Before validators, run:
 
 ```text
 python 00_Admin/scripts/closeout_scope.py --repo-root <repo> \
   --include <approved-path> [--validator-input <path> ...]
 ```
 
-The report MUST identify `include`,
-`related_scope_requires_confirmation`, `exclude`, and `ignored_unpublished`.
-Validators run against the projected include tree when their inputs permit it.
-If a validator input intersects an excluded or ignored path, stop with
-`excluded_scope_conflict`, identify the path and owning scope, and do not stage
-the excluded file. A dirty worktree is not evidence that the approved include
-set failed. The packet builder preserves excluded nonignored paths in its
-scope manifest; it never widens the include set to make validation pass.
+Record `include`, `related_scope_requires_confirmation`, `exclude`,
+`ignored_unpublished`, `current_head`, `projected_include_tree`, and dirty
+paths. Write a closeout scope manifest before validation and staging. Validators use the projected tree when their inputs permit it. If an
+input intersects an excluded or ignored path, stop with
+`excluded_scope_conflict`; never stage an excluded file to make a check pass.
 
-### Publication Command Registry
+Classify `include` as the exact operator-approved paths; classify
+`related_scope_requires_confirmation` as required dependency paths not yet
+approved; classify `exclude` as discovered paths intentionally outside scope;
+and classify `ignored_unpublished` as ignored local paths outside publication.
+A validator qualifies for projected-tree execution only when its command accepts
+the selected repo root or scope manifest and does not read outside the frozen
+manifest. Otherwise report `excluded_scope_conflict` and do not claim that the
+dirty-worktree result validates the approved set.
+If `related_scope_requires_confirmation` is non-empty, stop with
+`scope_pending_confirmation`; obtain operator confirmation, reclassify the paths,
+and regenerate the frozen manifest before any validator can report
+`projected_tree_ready` or any publication row can be approved.
 
-Closeout may describe publication commands during a dry run, but it may
-execute them only after the explicit approval and scope gates below pass:
+## Archive and Completion Boundary
 
-| Action | Fixed form | Required gate |
+Archive is closeout-only. Determine applicability after scope is frozen and
+before packet construction. Prepare exact source/destination rows and present
+them as the clerical archive row and first step of one combined approval plan.
+Present those rows in the existing container-completion decision and do not move
+anything before that decision is accepted. This is the closeout clerical gate,
+not a second publication approval turn. Packet and projected-tree hashes are
+bound after the approved move and stale-reference recheck, not invented before
+those bytes exist; a post-move scope or hash change invalidates the plan and
+requires a new approval.
+
+- `archive_gate: not_applicable` when no completed artifact is selected for
+  relocation and the include set has no tracked deletion under `90_Sandbox/`;
+- otherwise, after the clerical archive row is approved, execute the exact move
+  set to `99_Trash/` before packet construction and staging.
+
+For each move record tracked state, ignore evidence, SHA-256, collision and
+active-reference checks, retention class, approval, recovery owner, and cleanup
+dependency. If a tracked source would become local-only under an ignored
+destination, stop before moving it. A future-work receipt handoff defers the
+archive decision until receipt synchronization and final workbook status.
+
+In this workflow, the `existing container-completion decision` is the decision
+that completes the selected workbook or containing workbundle; it is separate
+from publication. A `clerical archive row` is the exact source/destination row
+presented in that decision. A workbook is the execution-control document, a
+workbundle is its containing artifact folder, and a workprogram is the parent
+collection when one is named. `99_Trash/` is the recoverable archive/reference
+destination, not a deletion instruction.
+
+Archive completed work artifacts to `99_Trash/` when applicable, only after the
+approved clerical move row. A completed
+solitary workbook moves to Trash; a completed workbundle or workprogram moves
+only after all child items are complete and the operator confirms. Partial
+artifacts remain in place. Record `archive_gate: passed` only when every
+selected source is absent from `90_Sandbox/`, present at the named recoverable
+destination, and its cleanup manifest is complete with every move executed.
+If a selected source remains, a destination or manifest is missing, or a move
+is incomplete, report `archive_gate: unavailable` and do not stage, commit,
+push, create/update a PR, or merge. This rule applies even when the files are
+ignored. After a move, run stale-reference checks and repair only through
+`/work`; update the required archive and approval evidence before validation.
+
+For maintainer work, reconcile `durable_outputs`, run the workbook boundary
+check, and use `canonical_promotion_manifest_template.md` and
+`artifact_cleanup_manifest_template.md` when promotion or cleanup is in scope.
+Any promoted artifact consumed later in the same batch needs a
+`promote_forward_contract:` block with artifact path, evidence, rollback,
+actor, authority, and manifest-sync state. Verify completion-claim parity,
+promotion-record parity, the Level 3+ divergence audit, operator decision rows,
+and the container-completion prompt before publication.
+
+Completion-claim parity means claiming only the level actually closed; a
+milestone closeout must not claim the whole program complete. Promotion-record
+parity means writing one promotion record per promoted batch or artifact and
+updating its required mirrors, or recording `record_pending` or
+`mirrors_pending` with affected paths, owner, retry and checks. The Level 3+
+divergence audit re-runs every prior crosscheck finding against current state,
+not only the latest summary. These rules are defined by the cross-surface and
+infrastructure validation specifications; touching `.ai_ops/workflows/**`
+requires a pre-change baseline, post-change validation, and rollback evidence.
+
+## Security Admission
+
+For an external governed repository, resolve the target closeout-security policy
+and installed hook against target `HEAD` before selecting admission:
+
+The policy file is the target's `00_Admin/configs/closeout_security_tiers.yaml`
+at `HEAD`. Discover the installed hook with `git config --get core.hooksPath`;
+when it is unset, require a successful `git rev-parse --git-path hooks` and
+inspect the returned directory. Any Git error or empty returned path is
+`security_admission: unavailable`; never fall back to a guessed `.git/hooks`
+path. A Git error reading the target policy, an installed hook, or its
+dispatcher configuration also yields
+`security_admission: unavailable`. Inspect the target `.pre-commit-config.yaml` for the
+`validate_closeout_security_head.py` or `ai-ops-closeout-security` marker. For direct ai_ops mode, “ai_ops itself” means
+the selected ai_ops repository and the same HEAD-bound policy and hook checks.
+
+- if either exists, use reviewer-read admission;
+- if both are absent, deterministic admission is eligible only when active
+  ai_ops policy explicitly allows `policy_source=missing_target_policy`;
+- otherwise report `PARK` with `security_admission: unavailable`, reference
+  `fw_20261026_01`, and stop before staging or publication.
+
+ai_ops itself remains reviewer-read against its target `HEAD` policy and hook.
+Follow `00_Admin/runbooks/rb_closeout_security_review_01.md` for the security
+prepass, review caps, receipt, `Closeout-Security` trailer, and first-landing
+procedure. Record `admission_mode`, `policy_source`, receipt path, and disposition. A
+manual waiver, skip, or unrecorded bypass is not an admission result.
+
+## Publication Command Registry
+
+Preparation may describe commands; mutation requires the approval rows below.
+
+| Action | Fixed form | Gate |
 | --- | --- | --- |
-| stage | `git -C <repo> add -- <approved include paths>` | scope manifest and current-turn approval |
-| commit | `git -C <repo> commit -m <approved summary>` | combined approval turn's commit row naming the include set |
-| push | `git -C <repo> push <approved remote> <approved branch>` | combined approval turn's push row |
-| create/update PR | GitHub provider action for the approved repository, head, and base | combined approval turn's PR/merge row |
-| merge PR | GitHub provider action with the approved PR, expected head SHA, and method (`squash` preferred when approved) | combined approval turn's merge row |
+| stage | `git -C <repo> add -- <approved include paths>` | scope manifest and approval |
+| commit | `git -C <repo> commit -m <approved summary>` | commit row naming exact include set |
+| push | `git -C <repo> push <approved remote> <approved branch>` | push row naming packet-bound commit |
+| create/update PR | GitHub provider action | PR/merge row |
+| merge PR | provider action with approved PR, head, base, and method | merge row |
 
-### Tree-Bound Approval Packet Route
+Use argument arrays; reject shell metacharacters, reparse paths, detached heads,
+force/delete options, `--no-verify`, and commands outside the selected repo.
 
-When the target is `ai_ops` or another repository with the packet scripts
-available, use the packet route to reduce repeated scope reconstruction:
+## Packet and Approval Flow
 
-1. During read-only preparation, run
-   `python 00_Admin/scripts/build_closeout_packet.py --repo-root <repo> --include
-   <approved-path> --message <approved-summary>` once for the complete include
-   set. The builder writes only to the machine-local packet root
-   `90_Sandbox/ai_workbooks/_closeout_packets/<repo>/<run_id>/` and never stages,
-   commits, pushes, or edits target content. If the include set contains a
-   tracked deletion under `90_Sandbox/`, pass `--archive-gate <repo-contained
-   receipt>`. Otherwise the builder records `archive_gate: not_applicable`
-   automatically; do not manufacture an archive receipt for an ordinary
-   scoped closeout.
-2. Present the packet's `run_id`, `prepared_packet_sha256`, HEAD, branch,
-   include-set hash, mutation-plan hash, projected tree hash, and cost result
-   for approval. A
-   `PARKED` packet stops until its named limit is resolved; it cannot be
-   widened silently.
-3. After the combined approval turn approves the commit row, the operator writes an approval file with
-   `decision: approve`, a non-placeholder `approved_by`, `approved_at`, and
-   `approval_ref`, bound to the exact run ID, prepared packet hash, HEAD,
-   branch, include-set hash, mutation-plan hash, and projected-tree hash using
-   `00_Admin/configs/validator/schema_closeout_approval.yaml`, then run
-   `python 00_Admin/scripts/apply_closeout_packet.py --packet <packet> --approval-file <approval-file>`.
-   The applier stages only the packet paths, commits with `git commit --only`,
-   rechecks the packet digest, independently recomputed cost stop, routing
-   contract, full index fingerprint, staged blob/mode entries, runs the frozen
-   pre-commit hook as a preflight, and verifies the resulting
-   `HEAD^{tree}`, commit parent/message, and included worktree bytes.
-4. A divergence, hook change, policy change, index change, or failed commit
-   preserves or fails the packet and makes it not push-ready. Before any push,
-   run `python 00_Admin/scripts/apply_closeout_packet.py --verify-push
-   --packet <packet>` and include the returned commit SHA, remote, and branch
-   in the combined approval turn's push row.
+When packet tooling exists, build one packet after the approved archive move,
+stale-reference updates, projected-tree validation, and security admission with
+`build_closeout_packet.py`. It writes only to the configured machine-local packet
+root and records the archive result. Then issue one publication approval turn
+with separate commit, push, PR, and merge rows. Bind its run ID, packet digest,
+HEAD, branch, include-set hash, mutation-plan hash, projected-tree hash, cost
+result, security disposition, and archive receipt to that turn. The clerical
+archive row was decided before packet construction in the existing
+container-completion decision and is not repeated. Any changed bound value
+requires a new approval.
+Each publication row names its exact scope or remote state; none implies
+another. The approval file must bind the packet/tree hashes, HEAD, branch,
+include set, mutation plan, projected tree, and archive receipt using the
+approval schema. Apply only through `apply_closeout_packet.py`; it must recheck the
+receipt, cost, policy, index, staged blobs, hooks, and post-commit tree.
 
-Resolve the repository, remote, branch, and include paths before invocation.
-Reject shell metacharacters, force/delete options, any `--no-verify`, reparse paths,
-detached heads, and any command assembled from free-form workflow text. The fixed
-packet applier runs the frozen pre-commit hook against an isolated approved-scope
-index and then against the actual staged index immediately before commit. It
-uses the installed native hook path for the ordinary commit after the isolated
-and real-index preflights; pre-commit and commit-msg remain enforced at the
-commit boundary. A disposable-clone dry run against the real ai_ops shims
-passed on 2026-10-23 after supplying the ignored generated wrapper outputs
-that the export-drift hook requires. The applier also verifies the resulting
-tree/worktree, so a late hook or post-commit drift fails closed and is not
-push-ready.
-A closeout state, hook, or generated wrapper cannot substitute for the operator approval.
-The packet route is one approved script invocation, but host permission prompts are
-platform-dependent: the workflow makes no allowlist or prompt-reduction claim. If the
-host still prompts, continue with the same explicit approval boundary or stop and use
-the documented manual closeout path; do not broaden settings or change command forms
-implicitly. The packet route requires the target repository's
-`00_Admin/configs/context_routing.yaml` to contain the `closeout_packet`
-contract, and the packet and approval files must remain inside that target
-repository's configured packet root.
-The packet's HEAD-bound policy snapshot is a cheap change tripwire; the exact
-HEAD binding remains the authoritative base-repository check.
+If packet preparation/application fails, preserve the packet and use the manual
+fallback only with the same exact include set and approval. Before manual staging,
+rerun `closeout_scope.py` for the frozen projection and run
+`closeout_security_prepass.py` to create the HEAD-bound receipt. Stage only the
+exact approved include set; then run
+`validate_closeout_security_receipt.py --gate --staged` against the staged blobs
+and let the installed `validate_closeout_security_head.py` and commit-message
+hook validate the same staged state before commit. If any step cannot produce a bound result, report
+`security_admission: unavailable` and stop. A missing target policy or hook is
+never repaired by this fallback; a first landing of either is a separate
+governed change with a new admission. Never broaden scope, use broad staging, or
+bypass hooks.
 
-### Manual Closeout Fallback
-
-Use this path only when packet preparation or application fails and the exact
-approved scope is still known. Preserve the failed packet and its evidence;
-do not widen the scope or use `--no-verify`.
-
-1. Re-read the failed packet's `include` set and verify the current branch,
-   HEAD, remote and dirty-tree boundary. Unstage only paths from the approved
-   set if cleanup is required.
-2. Run the required validators, then stage only the approved paths with
-   `git -C <repo> add -- <approved paths>` and verify that
-   `git -C <repo> diff --cached --name-only` is exactly that set.
-3. With the combined approval turn's approved commit row, create one exact commit using the approved
-   normalized message. Do not use broad staging, `--no-verify`, force options,
-   or a new free-form command shape.
-4. Verify the new commit's SHA, parent, tree, message, worktree bytes and
-   unrelated index projection. The combined approval turn's push row names that
-   SHA, remote, and branch.
-
-### Inside Repo (Maintainer)
-
-1. Apply bootstrap guard BRG-01: if bootstrap requirements are missing or
-   unverifiable, apply `fresh_bootstrap` tier (read `AGENTS.md`) before lane
-   steps.
-2. If there are no changes, report there is nothing to close out and stop.
-3. Update status/checkpoint notes for the selected context (if applicable).
-4. Harvest keepers from scratchpad documents:
-   - Promote valuable content to appropriate locations
-   - Archive or delete remaining scratchpad content
-   - **Default**: If unsure about an item's value, mark it as "Needs Review" and leave it in the scratchpad.
-   - For stabilized workbook lessons, complete the harvest placement checklist:
-     stable rule, canonical target, enforcement target, documentation target,
-     owner, validation, follow-on state, and verified target path/section/version.
-   - "Intended target" without verified placement evidence is incomplete.
-5. If a workbundle exists and a summary is requested, add `work_summary.md`.
-6. If a workbundle README contains a `durable_outputs` register, reconcile
-   every row against current files before continuing. No row may remain
-   unresolved (`promoted`, `retained`, or an explicitly approved follow-on
-   disposition is required) before archival or closeout.
-7. When promotion or pruning is in scope, require the applicable templates:
-   - `01_Resources/templates/workflows/canonical_promotion_manifest_template.md`
-     for copy/replace/promotion actions;
-   - `01_Resources/templates/workflows/artifact_cleanup_manifest_template.md`
-     for transient cleanup and retention decisions.
-   Do not delete an artifact whose manifest row lacks approval, retention class,
-   rollback treatment, and cleanup dependency.
-
-   When any promoted canonical artifact is depended-upon by the current batch
-   (i.e., written in this session and consumed by later phases before a
-   standalone commit), agents MUST record a `promote_forward_contract:` block in
-   the canonical promotion manifest for each such artifact:
-
-   - `artifact_path`: repo-relative path of the promoted artifact
-   - `evidence_ref`: path:line or command confirming the artifact is present and
-     valid at the point it is consumed downstream
-   - `rollback_plan`: how to revert if the promotion must be undone
-   - `actor`: the agent or operator who authorized the promote-forward
-   - `approval_authority`: the authority level and gate (e.g., "L4, servatusprime 2026-06-19")
-   - `manifest_sync_batch`: `true` when the manifest sync is included in the
-     same commit batch as the promotion; `false` with a rollback note if deferred
-
-   This requirement applies prospectively. It does not retroactively invalidate
-   promotion records that pre-date this clause.
-8. Run workbook boundary check before validation/commit:
-   - primary scope: touched files inside the selected workbook/workbundle path
-     (use the scoped `git status`/`git diff --stat` discovery pattern in
-     `policy_git_workflow_conventions.md` "Scoped Discovery for Narrow-Lane
-     Work" to isolate this from full-repo worktree noise)
-   - promoted scope: explicitly promoted destinations documented by the active workbook
-   - out-of-scope: any unrelated touched paths (via unscoped `git status -sb`);
-     require explicit confirmation before commit
-   - include the scope breakdown in the closeout summary output
-   - write a closeout scope manifest with these buckets before staging:
-     `include`, `related_scope_requires_confirmation`, and `exclude`
-   - run `closeout_scope.py` before validators and record the separate
-     `ignored_unpublished` bucket plus the `current_head`,
-     `projected_include_tree`, and dirty-worktree paths
-   - if a validator input intersects an excluded or ignored path, stop with
-     `excluded_scope_conflict`; identify the path and owner and do not stage it
-   - validators must bind to the projected include tree when supported; a
-     validator result from the full dirty worktree is not a projected-tree pass
-   - stage only `include`; paths in `related_scope_requires_confirmation` ship
-     only after explicit operator confirmation; paths in `exclude` must not be
-     staged
-   - unrelated dirty paths block unscoped closeout, but may be named in
-     `exclude` for a scoped savepoint
-   - if touched paths include infrastructure surfaces (`.ai_ops/workflows/**`,
-     `00_Admin/scripts/**`, `00_Admin/configs/**`, validator
-     schemas), apply the checklist in
-     `00_Admin/specs/spec_infrastructure_change_validation_gate.md` and record
-     evidence before commit
-
-9. Verify completion-claim parity before status changes:
-   - claim only the level actually closed (task, workbook, milestone,
-     workbundle, workprogram, or program)
-   - do not write a program-complete claim from a milestone closeout unless a
-     program-closeout lane ran
-   - synchronize required mirror surfaces in the same pass or mark the mirror
-     debt as pending with owner and next surface
-
-10. Verify promotion-record parity when canonical promotion occurred:
-   write a promotion record for each promoted batch/artifact, update the
-   required mirror set in the same leg, and if incomplete record
-   `record_pending` or `mirrors_pending` with affected paths, owner, and retry
-   surface.
-
-11. Freeze `future_work` applicability before any registry-specific action.
-    For `not_applicable`, do not load completion logic, build a future-work
-    receipt, regenerate the scorecard, or prune the registry. For `linked_only`,
-    read dependency context only. Continue to the receipt handoff below only
-    for `completion_handoff` or `registry_sync` returned by
-    `closeout_applicability.py` with the required exact binding.
-12. If a future-work item is being completed, prepare the execution workbook
-    for the receipt handoff before the first publication commit. The workbook
-    may remain `status: active` only when it has
-    `execution_status: completed` and
-    `completion_state: ready_for_receipt`, with a matching
-    `checklist_allowance.kind: forward_handoff` for the receipt/finalization
-    items. Do not run the success completion command in this pre-commit leg:
-    its HEAD-binding check must see the registry binding in an already-created
-    commit. Failed, pending, and stale receipts preserve the registry entry.
-    For registry edits outside the completion command, regenerate the scorecard
-    with `python ai_ops/00_Admin/scripts/generate_future_work_scorecard.py`.
-
-13. Run configured validation checks in this order:
-   repo-defined validators/checks from the active closeout contract, then
-   configured linters (markdownlint, yamllint, ruff, pre-commit) if present.
-   When local work artifacts under ignored `90_Sandbox/**` or `99_Trash/**`
-   paths are in scope, run equivalent direct lint via temp copy, stdin, or an
-   explicit ignore override and record the strategy in closeout evidence.
-   For ai_ops-owned workflow, packet, or validator changes, run the focused
-   contract tests during iteration, then run the full repository regression
-   suite once after the final edits and before publication. The full suite is
-   a broad regression gate for routing, packet application, validators,
-   generated surfaces, future-work receipts, and release quality; its test
-   count is inventory, not a required number to reproduce in every savepoint.
-   Do not repeat the full suite for every intermediate edit when focused tests
-   and configured checks are unchanged.
-
-14. For Level 3+ completed workbooks, run a divergence audit before commit:
-    compare the latest crosscheck, current output state, and later review
-    artifacts. Re-run every prior crosscheck finding against current state, not
-    only the latest summary. If acceptance was overturned, return to `/work`,
-    resolve the defect, and rerun completion crosscheck.
-15. Verify every operator decision row has decision, rationale, date, and actor;
-    pending rows block closeout and convergence claims.
-16. **Container completion check (Workbundle/Workprogram):**
-
-    - **If inside a Workbundle:**
-      - Check if all workbooks in the workbundle are `completed`.
-      - If yes, prompt: "All workbooks in this workbundle are complete. Archive the entire workbundle to 99_Trash?"
-      - If no, report which workbooks remain incomplete.
-    - **If inside a Workprogram:**
-      - Check if all child workbundles/workbooks are `completed` or `archived`.
-      - If yes, prompt: "All items in this workprogram are complete. Archive the entire workprogram to 99_Trash?"
-
-### Archive Applicability Boundary
-
-17. Determine archive applicability before staging and establish the archive
-    publication gate only when applicable:
-    - The ordinary scoped closeout default is `archive_gate: not_applicable`.
-      It applies when the frozen include set has no tracked deletion under
-      `90_Sandbox/` and no completed `90_Sandbox/` artifact is selected for
-      relocation. In this state, do not load completion/cleanup logic, prompt
-      for an archive move, regenerate a registry scorecard, or block closeout
-      on an unrelated dirty sandbox path.
-    - If a completed `90_Sandbox/` artifact is selected for relocation, or the
-      approved include set contains a tracked `90_Sandbox/` deletion, archive
-      applicability is required. The packet must bind a passed archive receipt
-      and the exact tracked deletions; `--archive-gate-not-applicable` cannot
-      waive this requirement.
-    - Before any move, record each source's tracked state with
-      `git ls-files --error-unmatch -- <path>`, ignore evidence with
-      `git check-ignore -v -- <path>` (or `not_ignored`), source SHA-256,
-      collision result, active-reference result, retention class, approval,
-      recovery owner, and cleanup dependency in the cleanup manifest.
-    - If a tracked source would become local-only under an ignored destination,
-      PARK before moving it. The approved mutation plan must explicitly include
-      the tracked deletion or a tracked archive destination; an ignored trash
-      folder is not evidence of publication.
-    - If a future-work receipt handoff is active, defer this archive decision
-      until after the receipt-sync phase and final workbook status change. A
-      workbook in `ready_for_receipt` handoff state remains active and must not
-      be archived.
-    - **Archive completed work artifacts to `99_Trash/` when applicable** before
-      publication.
-    - Completed solitary workbook → move to Trash
-    - Completed workbundle (all workbooks complete, user confirmed) → move workbundle folder to Trash
-    - Completed workprogram (all workbundles complete) → move workprogram folder to Trash
-    - Partially complete artifacts → leave in place
-    - Record `archive_gate: passed` only when every completed source selected for
-      publication is absent from `90_Sandbox/`, present at the named recoverable
-      `99_Trash/` destination, and its cleanup manifest is `status: completed`
-      with every move row marked `executed`.
-    - If a selected completed source remains under `90_Sandbox/`, the destination
-      or manifest is missing, or the manifest is incomplete, stop with
-      `archive_gate: unavailable`; do not stage, commit, push, create/update a
-      PR, or merge. This gate applies even when the target repository has no
-      tracked representation of the ignored workbook files. When the gate is
-      not applicable, later publication gates consume the explicit
-      `not_applicable` result instead of requiring a meaningless `passed` row.
-18. After relocation/archive actions, run stale-reference checks on touched
-    docs/indexes and fix or report broken references before staging.
-19. Update approval/validation log evidence required by policy or the active
-    workbook so the shipped commit contains the final archive paths and review
-    gate traceability.
-    Re-run the configured validation checks after all archive, stale-reference,
-    and log mutations; the final security receipt is built only from that
-    post-mutation state.
-    When the closeout-security policy or validator itself is being upgraded,
-    stage the canonical policy and validator together and run the explicit
-    `--first-landing --config` gate against a separate first-landing receipt.
-    The packet route validates the supplied reviewed receipt after staging and before
-    the commit gate when invoked with `--first-landing-receipt
-    <repo-contained path>`; the receipt must already exist and is never
-    overwritten by the applier.
-    Do not install that receipt at the hook's `latest.yaml` path and do not
-    add a `Closeout-Security` trailer to this policy-upgrade commit: the
-    unchanged trusted HEAD hook must see an ordinary commit and must never
-    execute staged admission code. After the policy upgrade lands, regenerate
-    the normal v0.2 receipt at `latest.yaml` for subsequent closeouts.
-20. Run the closeout security admission gate only after `archive_gate: passed`
-    when archive is applicable, or `archive_gate: not_applicable` otherwise:
-    - Freeze the final include set after archive and stale-reference updates.
-    - Run the configured security pre-pass, freeze its scope lock, and review
-      every included row using its deterministic review basis. Full-content
-      rows are read in full; deleted binary rows may use only the explicit
-      hash-only deletion basis with hash-bound reference and recovery evidence
-      artifacts; large deleted structured CSV/GeoJSON rows may use the
-      policy-bound structural basis only with actual recovery, dependency,
-      and affirmative frozen-scope approval evidence; live
-      binary/generated rows require digest plus generator, parser, or render
-      evidence. Use bounded review batches within both the configured
-      per-session and total-receipt token caps; stop before reviewer admission
-      when the total cap would be exceeded, then split the explicit include set
-      or apply an eligible bounded structural basis. Record the reviewer
-      packets and machine-local receipt. The default policy keeps reviewer
-      packets at 20,000 estimated tokens and raises the aggregate
-      session/receipt ceiling to 200,000; do not split a scope merely because
-      it exceeds the retired 120,000 ceiling. Split only when the active cap,
-      packet cap, evidence tier, or an unresolved candidate requires it.
-    - Do not stage until the combined approval turn names the final include set
-      in its commit row. After approval, stage only that set and run the receipt validator
-      against staged blobs. A missing row, hash drift, stale scope lock,
-      incomplete coverage, unresolved candidate, unsupported review-basis
-      downgrade, or non-pass disposition blocks closeout.
-    - Include the validated `Closeout-Security` result in the commit message;
-      the installed pre-commit and commit-msg hooks recheck the staged bytes.
-21. Evaluate commit gate explicitly:
-
-    - If required configured checks exist, all must pass before commit.
-    - The commit gate is ineligible unless the recorded archive result is
-      `archive_gate: passed` when archive is applicable, or
-      `archive_gate: not_applicable` when it is not. Approval cannot waive an
-      incomplete or missing move to `99_Trash/`.
-    - Require one explicit operator approval turn before mutation. The approval
-      packet must list separate decision rows for all eligible clerical
-      operations; the final `include` set and change summary/commit; push of
-      the packet-bound commit, remote, and branch; and PR creation/update plus
-      merge with the PR (or proposed head/base pair before PR creation), current
-      head SHA, base branch, and merge method. Each row must be explicitly
-      approved or declined; a single turn reduces interaction count but is not
-      an unbounded blanket authorization.
-    - Revalidate the bound scope, commit SHA, remote, branch, PR head, and
-      required checks before each mutation. If any bound value changes, stop
-      and request a new approval turn.
-    - If no checks are configured, record that fact in the approval packet;
-      absence of checks never relaxes the approval requirement.
-    - If any required check fails, stop closeout and transition to `/work` for
-      remediation.
-
-22. If a tree-bound approval packet was prepared, use its applier after the
-    commit gate. When the packet includes a closeout-security policy upgrade,
-    pass `--first-landing-receipt` so the applier validates the supplied
-    separate staged receipt before the commit gate. Otherwise stage the frozen
-    include set and generate the commit message summary using the fixed
-    commands above.
-23. Commit only after the commit gate passed, the archive result is
-    `archive_gate: passed` when required or `archive_gate: not_applicable`
-    otherwise, and the operator approved the frozen include set and exact commit
-    action. Turbo markers and workflow
-    metadata never substitute for that approval. The packet applier's
-    post-commit tree binding is required when the packet route is used.
-24. When a future-work receipt handoff is in scope, verify the first commit's
-    exact HEAD binding, then run `complete_future_work.py` once per registry ID
-    with the receipt-ready workbook, exact artifact set, actor, and retained
-    review references. Run `--verify` for every resulting receipt. Do not
-    manually delete registry rows or infer completion from a log mention.
-25. Finalize the workbook to `status: completed`, close the receipt-handoff
-    checklist items, synchronize the registry/scorecard/run-log/workbook
-    surfaces, and run the final validators. Build a second closeout packet for
-    these receipt-sync/finalization changes and obtain a new exact commit
-    approval before publishing the second commit. A failed receipt or failed
-    final validation keeps the workbook active and preserves the registry row.
-26. Push only after the combined approval turn's push row is approved, the
-    archive gate remains `passed` when applicable or `not_applicable` otherwise,
-    and the row names the packet-bound final
-    commit, remote, and branch; record and verify the
-    resulting SHA immediately before push. A failed push is reported
-    and preserved; do not create a PR, merge, or broaden the push command
-    automatically.
-27. After the final push, execute the merge phase only when the combined
-    approval turn's PR/merge row is approved and the archive gate remains
-    `passed` when applicable or `not_applicable` otherwise. Re-read the remote
-    head and PR state; create or update
-    the approved PR if needed, verify the PR head still equals the approved
-    commit, verify required checks/reviews are satisfied, and merge using the
-    approved method (squash when selected). Do not fall back to another merge
-    method or merge a changed head. If merge approval is absent or merge fails,
-    report the pushed PR as pending/unmerged and preserve the closeout evidence.
-28. Confirm closeout complete with summary of all commits, receipts, PR state,
-    and merge result.
-
-### External Repo (User)
-
-1. Apply bootstrap guard BRG-01 before lane steps.
-2. **Repo-Root Resolution**: Resolve the target repository root before any git operations.
-   - Resolve `target_repo` from: explicit user scope → active artifact `repo` field → `.ai_ops/local/config.yaml` `workspace.work_repos` list.
-   - **Explicit user scope**: an absolute path or workspace-relative path. Normalize to absolute path before passing to `git -C`.
-   - **Unregistered repos**: if `target_repo` cannot be resolved, require explicit user-provided path. Stop and ask if none given.
-   - **Windows**: normalize to forward-slash absolute path for all `git -C` calls.
-   - Run `git -C <target_repo> rev-parse --show-toplevel` to confirm repo access and establish `repo_root`.
-     - If it fails with `dubious ownership`, stop and request an explicit
-       operator-directed trust repair. Do not run `git config --global` from
-       the closeout lane. Record `safe_directory_applied: false`.
-     - On success: capture output as `repo_root`. Record `safe_directory_applied: false`.
-   - All subsequent git commands MUST use `-C <repo_root>` or run from `<repo_root>`.
-3. **Git Preflight**: Verify repo state using confirmed `repo_root` from Step 2.
-   - Run `git -C <repo_root> rev-parse --abbrev-ref HEAD`. If output is `HEAD`: emit `push_preflight: detached_head` — stop; a branch must be checked out before committing.
-   - Run `git -C <repo_root> rev-parse --is-shallow-repository`. If `true`: emit `push_preflight: shallow_clone`. Record warning and proceed.
-   - Run `git -C <repo_root> config --get commit.gpgsign`. If `true`: emit `signed_commits_required: true` and verify a signing key is available.
-4. If there are no changes, report there is nothing to close out and stop.
-5. Update any work tracking artifacts (notes, checkpoints) if requested.
-6. **Validator Contract**: Read `customizations.validation_policy.governed_mode` from `.ai_ops/local/config.yaml`.
-   Read `governed_repo_validation` from `context_routing.yaml`.
-   - Read per-repo override: find the entry in `workspace.work_repos` whose `path`, when resolved relative
-     to the workspace root, matches `<target_repo>`, and read its `savepoint_validation.minimum_commands`.
-     If no matching entry exists, use `governed_repo_validation.minimum_commands` only.
-   - If `governed_mode: ai_ops`: first run `python <ai_ops_root>/00_Admin/scripts/op_validate_config.py <ai_ops_root>/.ai_ops/local/config.yaml` and stop if it fails. Treat each `minimum_commands` entry as a validated argv array, never a shell string; execute it sequentially with `shell=False`, `cwd=<repo_root>`, and no command interpolation. Use the same trusted Python runtime that passed validation; never re-resolve a bare executable through a changed `PATH`. Reject an entry containing shell metacharacters, an unapproved executable, or a path outside `<repo_root>` / the workspace.
-     For commands in `network_sensitive_commands`: retry once on network/sandbox error; if still failing,
-     record `validation_skipped_reason` and skip if `allow_partial_on_network_failure: true`.
-     Record `validation_escalated: true` if any command was skipped.
-   - If `governed_mode: repo_native`: detect repo-native linters (`.markdownlint.json`, `.yamllint`,
-     pre-commit hooks) and run them. If none configured, offer to run common linters.
-   - Record `validation_commands_run` in output.
-7. Freeze future-work applicability before reading the target registry or
-   completion surfaces. Ordinary scoped closeout emits
-   `future_work: not_applicable` and does not load `complete_future_work.py`,
-   regenerate the target scorecard, or prune a registry. Use `linked_only` for
-   dependency context, `completion_handoff` for one exact receipt-ready ID and
-   artifact set, and `registry_sync` only after a verified success receipt.
-8. Run `closeout_scope.py` against the target repository and the frozen include
-   set before configured validators. Preserve the separate
-   `include`, `related_scope_requires_confirmation`, `exclude`, and
-   `ignored_unpublished` buckets. Validators use the projected include tree;
-   if a validator input intersects an excluded or ignored path, stop with
-   `excluded_scope_conflict` rather than staging the path or reporting an
-   include-set failure.
-9. Resolve and run the closeout security admission gate on the explicit
-   external-repo include manifest:
-   - Inspect the target repository's closeout-security policy and installed
-     hook. If either exists, use reviewer-read admission against target `HEAD`.
-     If both are absent, use deterministic admission only when the active
-     ai_ops policy explicitly allows `policy_source=missing_target_policy`;
-     otherwise emit `PARK` with `security_admission: unavailable`, reference
-     `fw_20261026_01`, and stop before staging or publication.
-   - Freeze the scope lock, apply each row's deterministic review basis, run
-     bounded review batches within the configured per-session and total-receipt
-     caps, write the machine-local receipt, stage only the manifest paths, and
-     validate the staged blobs. If the total cap is exceeded, stop and split the
-     explicit manifest rather than silently creating more batches.
-   - Missing coverage, hash drift, a stale scope lock, unresolved candidates,
-     an unsupported admission mode, or a non-pass disposition blocks closeout.
-     The receipt's `admission_mode`, `policy_source`, and overall disposition
-     must be included in the combined approval turn; a manual waiver is not a
-     substitute for a command-supported disposition.
-10. Require `archive_gate: passed` before staging when archive is applicable;
-    otherwise require the explicit `archive_gate: not_applicable` result. A
-    completed selected source remaining under `90_Sandbox/`, a missing
-    `99_Trash/` destination, or an incomplete cleanup manifest stops the
-    external-repo lane before staging, commit, push, PR creation/update, or
-    merge. Then stage changes and generate the commit message summary,
-    including the validated `Closeout-Security` trailer result.
-11. **Push Preflight** (if push is planned): verify `push_preflight_result` from Step 3 is `clean` or `shallow_clone`. If `detached_head`, stop before commit.
-12. Commit only with `archive_gate: passed` when archive is applicable, or
-    `archive_gate: not_applicable` otherwise, and the approved exact include
-    set.
-13. **Push and failure handling**: Push to remote only with
-    `archive_gate: passed` when archive is applicable, or
-    `archive_gate: not_applicable` otherwise.
-    - If push fails with `protected branch` or `remote rejected`: emit
-      `push_escalation: pr_required` and stop. A PR requires a separate explicit
-      request and approval; do not create one automatically.
-    - If push fails with authentication error: emit `push_escalation: auth_failure` — stop and report.
-    - If push fails for any other reason: record exit code and stderr as `push_escalation: unknown` — stop and report.
-14. **PR and merge phase**: after a successful push and while the archive
-    result is `passed` when applicable or `not_applicable` otherwise, use the combined approval
-    turn's PR/merge row naming the PR (or proposed head/base pair), current head
-    SHA, base branch, and merge method. Create or update the approved PR
-    through the GitHub provider, re-read its head, verify required checks and
-    reviews, and merge only when the head still equals the approved commit.
-    Use the approved method, with squash when selected. If approval is absent
-    or merge fails, report the pushed PR as pending/unmerged and stop; do not
-    fall back to another method.
-15. Summarize changes shipped, including PR and merge status.
-16. If the target repo implements a future-work registry + scorecard pattern,
-    run that repo's generator only when the target registry changed in approved scope.
+The fallback is a new approval binding whenever the rerun changes the receipt,
+projected-tree, packet, scope, or security hashes. Stop before staging, present
+the changed values, and obtain a new approval turn; only unchanged exact bindings
+may reuse the prior approval.
 
 ## Outputs
 
-- Summary of shipped changes and validation results.
-- User-facing result fields MUST report these decisions separately: `future_work`
-  applicability, projected-tree validation (`current_head`,
-  `projected_include_tree`, `excluded_scope_conflict` when present), security
-  admission (`admission_mode`, `policy_source`, receipt, and disposition), and
-  publication approval state. Do not collapse a registry reference, a dirty
-  worktree conflict, an unavailable target admission, or a declined publication
-  row into another field.
-- PR number, base branch, verified head SHA, requested merge method, merge
-  result, and combined approval-turn record when a PR flow is used; an unmerged
-  PR is reported as pending.
-- Updated workbundle status/checkpoints (inside repo).
-- Optional work summary (only if requested or required by the active work artifact).
+Commit only after required checks pass, the archive result is `passed` when
+applicable or `not_applicable` otherwise, and the commit row is approved. Push
+only after the push row is approved and the packet-bound commit, remote, and
+branch are reverified. Create/update and merge only after the merge row is
+approved; re-read the remote head and required checks, and report an unmerged PR
+as pending rather than inferring completion. Do not force-push or change merge
+method. After approval, rerun status and the safety preflight; stop if the
+branch, remote, HEAD, include-set content, or dirty-tree scope changed. If a
+push fails, preserve the local commit and report its exact hash, remote and
+branch; emit `push_escalation: pr_required` for a protected-branch or remote
+rejection, `push_escalation: auth_failure` for authentication, and never create
+a PR, merge, retry with a wider command, or change the remote automatically.
+The manual fallback must verify the resulting commit SHA, parent, tree, and
+message before any push.
+
+For `completion_handoff`, verify the first commit's HEAD binding, run
+`complete_future_work.py` once for the exact ID and artifact set, verify its
+receipt, then finalize workbook/registry/scorecard/run-log surfaces in a second
+exact packet and approval. No registry row is deleted manually or from a log
+mention.
+
+Report `target_repo`, `repo_root`, branch, HEAD, scope buckets,
+`future_work`, `projected_include_tree`, `excluded_scope_conflict` when present,
+security admission fields, archive result, validation commands, approval state,
+commit/push/PR/merge status, and all receipt paths. Keep work summaries and
+active-state claims synchronized. Generated views remain non-authoritative.
+
+## Validation and Limits
+
+Run configured checks, linters, focused contract tests, and the full repository
+regression suite once after final edits and before publication.
+Do not repeat the full suite for every intermediate edit when focused checks are unchanged. A
+failed required check, unresolved candidate, stale scope lock, hash drift,
+unsupported admission mode, unresolved decision row, or cross-surface mismatch
+stops closeout and routes remediation to `/work`.
 
 ## Resources
 
-- `00_Admin/runbooks/rb_commit_push_streamlining_01.md`
-- `00_Admin/policies/policy_git_workflow_conventions.md`
-- `00_Admin/guides/ai_operations/guide_scratchpad_usage.md`
-- `00_Admin/specs/spec_infrastructure_change_validation_gate.md`
-- `00_Admin/specs/spec_workbundle_dependency_tracking.md`
-- `00_Admin/specs/spec_cross_surface_coordination.md`
+Read in this order: `00_Admin/configs/context_routing.yaml`; the applicable
+direct/governed mode spec; `rb_commit_push_streamlining_01.md` for publication
+sequencing; `rb_closeout_security_review_01.md` for security admission;
+`policy_git_workflow_conventions.md` for Git rules;
+`spec_cross_surface_coordination.md` and
+`spec_infrastructure_change_validation_gate.md` for cross-surface and
+validation gates; then the packet schemas. Each reference is authoritative only
+for the contract named by its title; generated views are evidence, not authority.
 
 ## Lane
 
-Default lane: Executor (execution); Linter for lint results.
+Default lane: Executor, with Linter for validation and Reviewer at the
+crosscheck boundary.
 
 ## Risks and Limits
 
-- Inside repo, turbo markers never bypass the exact clerical, commit, push, and
-  merge approvals.
-- Closeout is fast; mistakes can be costly if scope is wrong.
-- Do not force push without explicit request.
-- Do not skip linters (unless user explicitly requests).
-- Do not commit sensitive files (.env, credentials, secrets).
-- Do not delete scratchpad content without confirmation.
-- Do not push without confirming in external repos.
-- Do not assume command folders exist; if missing, read `.ai_ops/workflows/closeout.md` manually.
+Closeout is fast but scope errors are costly. Never change scope, delete scratch
+content, force-push, skip linters, or treat a prior approval, workflow metadata,
+or turbo marker as a current mutation approval.

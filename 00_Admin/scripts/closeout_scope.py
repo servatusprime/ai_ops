@@ -115,7 +115,13 @@ def scope_report(
     del changes
     excluded = sorted(dirty - include_set - related)
     conflicts = sorted(validator_paths & (set(excluded) | ignored))
-    status = "excluded_scope_conflict" if conflicts else "projected_tree_ready"
+    status = (
+        "scope_pending_confirmation"
+        if related
+        else "excluded_scope_conflict"
+        if conflicts
+        else "projected_tree_ready"
+    )
     return {
         "status": status,
         "current_head": _head(repo),
@@ -131,6 +137,12 @@ def scope_report(
             "ignored_unpublished": sorted(ignored),
         },
         "validator_inputs": sorted(validator_paths),
+        "scope_pending_confirmation": {
+            "paths": sorted(related),
+            "reason": "required dependency paths are not yet operator-approved",
+        }
+        if related
+        else None,
         "excluded_scope_conflict": {
             "paths": conflicts,
             "reason": "validator input changed outside the approved include tree",

@@ -257,6 +257,165 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 VALIDATOR.validate_deterministic_applicability(repo, policy, "target_HEAD")
 
+    def test_deterministic_admission_rejects_hook_only_target(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            subprocess.run(["git", "init", "--quiet"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.email", "test@example.invalid"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.name", "Closeout Test"], cwd=repo, check=True)
+            (repo / "tracked.txt").write_text("fixture\n", encoding="utf-8")
+            subprocess.run(["git", "add", "tracked.txt"], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "--quiet", "-m", "fixture"], cwd=repo, check=True)
+            (repo / ".pre-commit-config.yaml").write_text(
+                "repos:\n"
+                "  - repo: local\n"
+                "    hooks:\n"
+                "      - id: ai-ops-closeout-security\n"
+                "        entry: python 00_Admin/scripts/hooks/validate_closeout_security_head.py\n",
+                encoding="utf-8",
+            )
+            (repo / ".git/hooks/pre-commit").write_text(
+                "validate_closeout_security_head.py\n", encoding="utf-8"
+            )
+            policy = {
+                "admission": {
+                    "deterministic_admission": {
+                        "enabled": True,
+                        "allowed_policy_sources": ["missing_target_policy"],
+                    }
+                }
+            }
+            for module in (PREPASS, VALIDATOR):
+                with self.subTest(module=module.__name__):
+                    with self.assertRaisesRegex(SystemExit, "policy or closeout hook"):
+                        module.validate_deterministic_applicability(
+                            repo, policy, "missing_target_policy"
+                        )
+
+    def test_hook_detection_uses_common_git_dir_for_linked_worktree(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir) / "main"
+            linked = Path(temp_dir) / "linked"
+            repo.mkdir()
+            subprocess.run(["git", "init", "--quiet"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.email", "test@example.invalid"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.name", "Closeout Test"], cwd=repo, check=True)
+            (repo / "tracked.txt").write_text("fixture\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "--quiet", "-m", "fixture"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "worktree", "add", "--detach", str(linked)],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            (repo / ".git/hooks/pre-commit").write_text(
+                "validate_closeout_security_head.py\n", encoding="utf-8"
+            )
+            self.assertTrue(PREPASS.closeout_hook_present(linked))
+            self.assertTrue(VALIDATOR.closeout_hook_present(linked))
+
+    def test_deterministic_admission_rejects_pre_push_dispatcher(self) -> None:
+        for module in (PREPASS, VALIDATOR):
+            with self.subTest(module=module.__name__):
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    repo = Path(temp_dir)
+                    subprocess.run(["git", "init", "--quiet"], cwd=repo, check=True)
+                    subprocess.run(
+                        ["git", "config", "user.email", "test@example.invalid"],
+                        cwd=repo,
+                        check=True,
+                    )
+                    subprocess.run(
+                        ["git", "config", "user.name", "Closeout Test"],
+                        cwd=repo,
+                        check=True,
+                    )
+                    (repo / "tracked.txt").write_text("fixture\n", encoding="utf-8")
+                    subprocess.run(["git", "add", "tracked.txt"], cwd=repo, check=True)
+                    subprocess.run(["git", "commit", "--quiet", "-m", "fixture"], cwd=repo, check=True)
+                    (repo / ".git/hooks/pre-push").write_text(
+                        "#!/usr/bin/env bash\nexec pre-push.dispatcher\n",
+                        encoding="utf-8",
+                    )
+                    (repo / ".git/hooks/pre-push.dispatcher").write_text(
+                        "#!/usr/bin/env bash\n"
+                        "ARGS=(hook-impl --config=.pre-commit-config.yaml --hook-type=pre-push)\n"
+                        "exec pre-commit \"${ARGS[@]}\"\n",
+                        encoding="utf-8",
+                    )
+                    (repo / ".pre-commit-config.yaml").write_text(
+                        "repos:\n  - repo: local\n    hooks:\n      - id: ai-ops-closeout-security\n",
+                        encoding="utf-8",
+                    )
+                    policy = {
+                        "admission": {
+                            "deterministic_admission": {
+                                "enabled": True,
+                                "allowed_policy_sources": ["missing_target_policy"],
+                            }
+                        }
+                    }
+                    with self.assertRaisesRegex(SystemExit, "policy or closeout hook"):
+                        module.validate_deterministic_applicability(
+                            repo, policy, "missing_target_policy"
+                        )
+
+    def test_hook_detection_fails_closed_when_git_path_cannot_be_resolved(self) -> None:
+        repo = Path("unresolvable-repository")
+        for module in (PREPASS, VALIDATOR):
+            with self.subTest(module=module.__name__):
+                failed_config = subprocess.CompletedProcess(
+                    [], 2, stdout=b"", stderr=b"git metadata unavailable"
+                )
+                with mock.patch.object(module.subprocess, "run", return_value=failed_config):
+                    with self.assertRaisesRegex(SystemExit, "cannot resolve core.hooksPath"):
+                        module.closeout_hook_present(repo)
+
+    def test_policy_lookup_and_hook_read_errors_fail_closed(self) -> None:
+        repo = Path("unresolvable-repository")
+        for module in (PREPASS, VALIDATOR):
+            with self.subTest(module=module.__name__, check="policy"):
+                failed_policy = subprocess.CompletedProcess(
+                    [], 128, stdout=b"", stderr=b"git metadata unavailable"
+                )
+                with mock.patch.object(module.subprocess, "run", return_value=failed_policy):
+                    with self.assertRaisesRegex(SystemExit, "cannot determine target policy presence"):
+                        module.target_policy_present(repo)
+
+            with self.subTest(module=module.__name__, check="hook-read"):
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    hook_repo = Path(temp_dir)
+                    subprocess.run(["git", "init", "--quiet"], cwd=hook_repo, check=True)
+                    hook = hook_repo / ".git/hooks/pre-commit"
+                    hook.write_text("validate_closeout_security_head.py\n", encoding="utf-8")
+                    with mock.patch.object(Path, "read_text", side_effect=OSError("permission denied")):
+                        with self.assertRaisesRegex(SystemExit, "cannot read installed hook"):
+                            module.closeout_hook_present(hook_repo)
+
+    def test_dispatcher_config_read_error_fails_closed(self) -> None:
+        for module in (PREPASS, VALIDATOR):
+            with self.subTest(module=module.__name__):
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    repo = Path(temp_dir)
+                    subprocess.run(["git", "init", "--quiet"], cwd=repo, check=True)
+                    subprocess.run(["git", "config", "user.email", "test@example.invalid"], cwd=repo, check=True)
+                    subprocess.run(["git", "config", "user.name", "Closeout Test"], cwd=repo, check=True)
+                    (repo / "tracked.txt").write_text("fixture\n", encoding="utf-8")
+                    subprocess.run(["git", "add", "tracked.txt"], cwd=repo, check=True)
+                    subprocess.run(["git", "commit", "--quiet", "-m", "fixture"], cwd=repo, check=True)
+                    (repo / ".git/hooks/pre-commit").write_text("hook-impl\n", encoding="utf-8")
+                    (repo / ".pre-commit-config.yaml").write_text("repos: []\n", encoding="utf-8")
+
+                    with mock.patch.object(
+                        Path,
+                        "read_text",
+                        side_effect=["hook-impl\n", OSError("permission denied")],
+                    ):
+                        with self.assertRaisesRegex(SystemExit, "cannot read dispatcher configuration"):
+                            module.closeout_hook_present(repo)
+
     def test_large_deleted_structured_data_requires_parsed_safe_structure(self) -> None:
         config = {
             **self.config,
