@@ -1,8 +1,8 @@
 ---
-description: Validate and record a scoped work-in-progress savepoint; publish through one structured approval turn covering clerical work, commit, push, and optional PR merge.
+description: Validate and record a scoped work-in-progress savepoint; publish through one structured approval turn covering commit, push, and optional PR merge.
 name: work_savepoint
 kind: workflow
-version: 1.7.0
+version: 1.8.0
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -14,10 +14,10 @@ claude:
   model: null
 codex:
   metadata:
-    short-description: Validate and record a scoped work-in-progress savepoint; publish through one structured approval turn covering clerical work, commit, push, and optional PR merge.
+    short-description: Validate and record a scoped work-in-progress savepoint; publish through one structured approval turn covering commit, push, and optional PR merge.
   interface:
     display_name: work_savepoint
-    short_description: Validate and record a scoped work-in-progress savepoint; publish through one structured approval turn covering clerical work, commit, push, and optional PR merge.
+    short_description: Validate and record a scoped work-in-progress savepoint; publish through one structured approval turn covering commit, push, and optional PR merge.
   policy:
     allow_implicit_invocation: false
 exports:
@@ -37,310 +37,287 @@ exports:
 
 ## Purpose
 
-Validate and record selected work-in-progress, then end the ai_ops session
-without claiming completion. The default invocation is a read-only checkpoint;
-it does not stage, commit, or push. Pass `--commit` to request publication.
-Publication still requires one structured approval turn below. That turn must
-list the eligible clerical operations, commit, push, and (when a PR flow is
-used) merge as separate decision rows. The merge row must name the PR, base
-branch, current head SHA, and merge method; pushing never implies merging.
-Pass `--no-commit` to state the read-only intent explicitly.
+Validate and record selected work-in-progress without claiming completion.
+The default invocation is a read-only checkpoint; it does not stage, commit,
+or push. Pass `--commit` to request publication. Pass `--no-commit` to state the read-only intent explicitly.
+Publication uses one approval turn with
+separate clerical, commit, push, PR, and merge decision rows; pushing never
+implies merging. Published work remains active.
+
+## Workflow graph
+
+```text
+bootstrap/context -> resolve scope -> projected-tree validation
+  -> focused validation -> read-only checkpoint
+  -> [--commit?] Publication Preview and Approval Gates
+  -> exact commit -> approved push -> optional approved PR/merge
+  -> active work remains in_progress
+  -> [archive/completion needed?] route to /closeout and stop
+```
 
 ## Inputs and Preconditions
 
-- Active work context and one target repository/artifact should exist or be
-  confirmed.
-- If inputs are insufficient or the request is illogical, pause and ask for clarification.
+Confirm one active artifact and repository. With no active target, report
+nothing scoped to save; with multiple targets, require one repository and exact
+artifact set.
+
+An `active artifact` is an entry in `.ai_ops/local/work_state.yaml` under
+`work_context.active_artifacts` or the single artifact named by the operator.
+Select `target_repo` from explicit scope first, then the active artifact, then
+the matching `.ai_ops/local/config.yaml` `workspace.work_repos` entry; a conflict
+stops for clarification. `BRG-01` is the bootstrap-required guard in
+`00_Admin/configs/context_routing.yaml`. Direct mode means the target is `ai_ops`;
+governed mode means ai_ops governs a different target. Read the applicable
+contract: `00_Admin/specs/spec_work_mode_direct.md` or
+`00_Admin/specs/spec_work_mode_governed.md`.
+
+A `checkpoint record` is the records-only savepoint output written to the
+active workbook's Execution Notes or an existing workbundle state surface. It
+must name the selected `future_work` state. `not_applicable` carries no
+registry or artifact binding; `linked_only` carries one or more linked IDs as
+dependency context and no completion artifact set; `completion_handoff` and
+`registry_sync` carry one exact ID and the frozen artifact set required by
+their receipt contract. It is not canonical content, a registry mutation, or
+publication approval.
 
 ## Context Routing Hook
 
-Use `00_Admin/configs/context_routing.yaml` as the canonical onboarding
-contract.
+Use `00_Admin/configs/context_routing.yaml` as the canonical onboarding contract;
+apply BRG-01 and resolve onboarding tiers in order:
+`fresh_bootstrap`, `resume_same_scope`, `recenter` (fallback to
+`fresh_bootstrap`). Load its configured `always_read` set, expand
+`read_on_demand` only when needed, and emit
+`bootstrap_path`, `resume_basis`, and `reads_applied`. Resolve one active
+artifact and repository before entering the steps. This lane does not make
+content or remediation edits; route requested changes to `/work`.
 
-1. Apply `commands._defaults.guard_profile` and
-   `commands.work_savepoint.guard_profile`.
-2. Resolve onboarding tier in order: `fresh_bootstrap`,
-   `resume_same_scope`, `recenter` (fallback `fresh_bootstrap` when state is
-   unknown).
-3. Enforce BRG-01:
-   if bootstrap requirements are missing or unverifiable, apply
-   `fresh_bootstrap` tier (read `AGENTS.md`) before lane steps.
-4. Load `always_read`; expand `read_on_demand` only when needed.
-5. Emit route metadata: `bootstrap_path`, `resume_basis`, and `reads_applied`.
-6. Do not make content or remediation edits from `/work_savepoint`; transition
-   to `/work` for requested changes. Git publication may run only through the
-   approval-gated steps below. When the packet route is used, the approval
-   binds the prepared packet hash, base HEAD, branch, include set, mutation
-   plan, and projected tree; a parked or cost-exceeded packet cannot be
-   released by editing and rehashing its state.
+## Steps and command boundary
 
-## Steps
+### Repository and Validation Preflight
 
-### Command Registry and Approval Boundary
+Resolve `target_repo` from explicit scope, the active artifact, or the configured
+work-repo list; run `git -C <repo> rev-parse --show-toplevel` and record
+`repo_root`, `git_root`, and `safe_directory_applied: false`. A detached `HEAD`
+stops publication; a shallow clone is reported; signed-commit configuration
+requires a usable signing key. On Windows record `core.longpaths` and the
+longest changed path; when long paths are disabled/unset, a changed path at or
+above 240 characters reports `longpath_risk` and stops. Permission or ambiguous
+Git metadata errors are not clean results. If Git reports `dubious ownership`,
+stop for an operator-directed trust repair; never run `git config --global`,
+and record `safe_directory_applied: false`.
 
-Savepoint preflight uses fixed, argument-array Git commands only:
+In direct ai_ops mode, validate `.ai_ops/local/config.yaml` with
+`00_Admin/scripts/op_validate_config.py` before running its
+`savepoint_validation.minimum_commands`. In governed mode, resolve the
+`governed_repo_validation` contract and execute only validated argv arrays with
+`shell=False`, the trusted interpreter, and the
+selected repo as `cwd`; reject shell metacharacters, unapproved executables, and
+paths outside the workspace. Retry a configured network-sensitive command once,
+then record a permitted partial result and `validation_escalated: true`; never
+silently skip a required check.
 
-| Purpose | Allowed form | Mutation |
+Use fixed argument-array commands only. Resolve and validate `repo_root` before
+Git operations; reject reparse paths, detached heads, shell metacharacters,
+force/delete options, `--no-verify`, and commands outside the selected repo.
+Never run reset, checkout, clean, stash, force-push, delete, or global Git
+configuration changes from this lane.
+
+| Action | Fixed form | Gate |
 | --- | --- | --- |
-| branch/head | `git -C <resolved_repo> rev-parse ...` | none |
-| repository state | `git -C <resolved_repo> status --short` | none |
-| history/diff | `git -C <resolved_repo> log ...`, `git -C <resolved_repo> diff ...` | none |
-| configured validation | exact `minimum_commands` after path/owner validation | governed by the target contract |
-| stage approved paths | `git -C <resolved_repo> add -- <approved_paths...>` | after final approval only |
-| inspect staged paths | `git -C <resolved_repo> diff --cached ...` | none |
-| commit | `git -C <resolved_repo> commit -m <approved_message>` | combined approval turn's commit row |
-| push | `git -C <resolved_repo> push <approved_remote> <approved_branch>` | combined approval turn's push row |
-| create/update PR | GitHub provider action for the approved repository, head, and base | after the combined approval turn's PR/merge row is approved |
-| merge PR | GitHub provider action with the approved PR, expected head SHA, and method (`squash` preferred when approved) | after the combined approval turn's merge row is approved |
+| inspect | `git -C <repo> status --short`, `log`, `diff` | read-only |
+| stage | `git -C <repo_root> add -- <approved include paths>` | final approval |
+| inspect staged | `git diff --cached --name-only` | read-only |
+| commit | `git -C <repo> commit -m <approved savepoint message>` | commit row |
+| push | `git -C <repo> push <approved_remote> <approved_branch>` | push row |
+| create/update PR | GitHub provider action | PR row |
+| merge PR | provider action with approved PR, head, base, and method | merge row |
 
-Never concatenate a user-supplied branch, path, message, remote, or option into
-a shell command. Pass arguments as arrays and reject a target that resolves
-outside the selected repository or through a reparse point. Never run reset,
-checkout, clean, stash, force-push, delete, or global Git configuration changes
-from this lane.
+The first leg is always read-only. Before any mutation, show the selected
+artifact, exact repo-relative `include`, `related_scope_requires_confirmation`,
+`exclude`, and `ignored_unpublished` buckets; validation results; proposed
+`savepoint: <brief description>` message; branch, remote, PR/base/method if
+applicable; and eligible clerical operations. Stop and ask once for approval of
+the separate decision rows. `--commit`, prior approval, workflow state, or the
+initial invocation cannot substitute for this combined approval. If merge is
+declined, report the PR as unmerged and leave the work active.
 
-The first leg is always read-only. Before any mutation, show the exact include
-set, exclusions, validation results, proposed `savepoint:` message, remote,
-branch, whether a PR/merge phase is proposed, and all eligible clerical
-operations. Then issue one combined approval request with separate decision
-rows for: clerical updates; commit naming the include set and message; push
-naming the packet-bound commit plan, remote, and branch; and PR creation/update plus
-merge naming the PR (or proposed head/base pair before PR creation), current
-head SHA, and method. The operator may approve or decline each row in that one
-turn. Workflow state, a prior approval, `--commit`, or the initial invocation
-cannot substitute for the combined approval. If the merge row is declined, the
-savepoint may end after a successful push and must report the PR as unmerged
-rather than inferring completion.
-
-### Governed-Repository Security Admission
+## Governed-Repository Security Admission
 
 Governed-mode savepoints use the same target-repository security admission
-decision as `/closeout`; a savepoint must not become a lower-gate publication
-lane. Resolve the target repository's closeout-security policy and installed
-hook against the confirmed `repo_root` before a `--commit` preview:
+decision as `/closeout`; a savepoint is never a lower-gate publication lane.
+Resolve target policy and hook against target `HEAD` before a `--commit` preview:
 
-- If either the target policy or hook is present, use reviewer-read admission
-  against target `HEAD`. Deterministic admission is not applicable.
-- If both are absent, deterministic admission is eligible only when the active
-  ai_ops policy explicitly allows `policy_source=missing_target_policy`.
-  Otherwise emit `PARK` with `security_admission: unavailable`, reference
+The policy file is the target's `00_Admin/configs/closeout_security_tiers.yaml`
+at `HEAD`. Discover the installed hook with `git config --get core.hooksPath`;
+when it is unset, require a successful `git rev-parse --git-path hooks` and
+inspect the returned directory. Any Git error or empty returned path is
+`security_admission: unavailable`; never fall back to a guessed `.git/hooks`
+path. A Git error reading the target policy, an installed hook, or its
+dispatcher configuration also yields
+`security_admission: unavailable`. Inspect the target `.pre-commit-config.yaml` for the
+`validate_closeout_security_head.py` or `ai-ops-closeout-security` marker. For direct ai_ops mode, “ai_ops itself” means
+the selected ai_ops repository and the same HEAD-bound policy and hook checks.
+
+- if either target policy or hook is present, use reviewer-read admission;
+- if both are absent, deterministic admission is eligible only when active
+  ai_ops policy explicitly allows `policy_source=missing_target_policy`;
+- otherwise emit `PARK` with `security_admission: unavailable`, reference
   `fw_20261026_01`, and stop before staging, commit, push, or PR actions.
-- Record `admission_mode`, `policy_source`, receipt path, and overall
-  disposition in the checkpoint or publication preview. A manual waiver, skip,
-  or unrecorded bypass is not a savepoint disposition; the future-work item
-  remains open until a first-class route is implemented.
-- For the default or `--no-commit` checkpoint, report security applicability and
-  any parked disposition without mutating Git. For `--commit`, a valid receipt
-  and eligible disposition are required before the combined approval turn.
 
-### Direct Mode
+Record `admission_mode`, `policy_source`, receipt path, and disposition. A
+manual waiver, skip, or unrecorded bypass is not a savepoint disposition. For a
+read-only checkpoint, report applicability without Git mutation; for `--commit`,
+an eligible admission and valid receipt are required before approval. Follow
+`00_Admin/runbooks/rb_closeout_security_review_01.md` for the security prepass,
+review caps, receipt, `Closeout-Security` trailer, and first-landing procedure.
 
-- No active artifact or explicit target: report that there is nothing scoped
-  to save and stop without Git mutation.
-- no flag or `--no-commit`: prepare the checkpoint summary and resume
-  instructions, then stop without asking for publication approval.
-- `--commit`: prepare the scoped publication and optional PR/merge proposal,
-  then enter the combined approval turn below.
+## Future-Work Applicability Gate
 
-1. **Repo-Root Resolution**: Resolve the target repository root before any git operations.
-   - Resolve `target_repo` from: explicit user scope → active artifact `repo` field → `.ai_ops/local/config.yaml` `workspace.work_repos` list.
-   - **Explicit user scope**: an absolute path or workspace-relative path provided in the command invocation or active work context. Normalize to absolute path before passing to `git -C`.
-   - **Unregistered repos**: if `target_repo` cannot be resolved from active artifacts or `work_repos`, require explicit user-provided path. Stop and ask if none given.
-   - **Windows**: `git rev-parse --show-toplevel` returns POSIX-style paths (`/c/path/to/repo`). Normalize to forward-slash absolute path for all `git -C` calls.
-   - Run `git -C <target_repo> rev-parse --show-toplevel` to confirm repo access and establish `repo_root`.
-     - If it fails with `dubious ownership`, stop and request explicit approval
-       for any machine-global trust change. Do not run `git config --global`
-       from a savepoint flow.
-     - On success: capture output as `repo_root`. Record `safe_directory_applied: false`.
-   - All subsequent git commands MUST use `-C <repo_root>` or run from `<repo_root>`.
-   - Emit `target_repo`, `repo_root`, `git_root`, `ops_stack_root`, `safe_directory_applied` in output.
-2. **Git Preflight**: Verify repo state using confirmed `repo_root` from Step 1.
-   - Run `git -C <repo_root> rev-parse --abbrev-ref HEAD`. If output is `HEAD`: emit `push_preflight: detached_head` — stop; a branch must be checked out before committing.
-   - Run `git -C <repo_root> rev-parse --is-shallow-repository`. If `true`: emit `push_preflight: shallow_clone`. Warn: push may require `git fetch --unshallow` first. Record warning and proceed.
-   - Run `git -C <repo_root> config --get commit.gpgsign`. If `true`: emit `signed_commits_required: true` and verify a signing key is available before the commit step.
-   - Record `push_preflight_result: clean | detached_head | shallow_clone |
-     longpath_risk | permission_blocked` in output.
-   - On Windows, run `git -C <repo_root> config --get core.longpaths` and
-     record `core_longpaths: true | false | unset`. Measure the longest changed
-     repo-relative path. If long paths are disabled/unset and a changed path is
-     240 characters or longer, stop before staging and report
-     `push_preflight: longpath_risk` with the path; do not silently change Git
-     configuration.
-   - Treat Git metadata permission errors as a bounded escalation: report the
-     failing path and operation, retry only after an approved permission repair,
-     and never interpret ambiguous or permission-denied status output as clean.
-3. **Identify scope**: Run `git -C <repo_root> status --porcelain=v1
-   --untracked-files=all` to capture the complete candidate set.
-   - `warning: unable to access '.../.config/git/ignore': Permission denied` is a non-blocking environment warning. Report it explicitly; do not treat ambiguous output as a clean tree.
-   - Classify every path as `include`, `related_scope_requires_confirmation`,
-     `exclude`, or `ignored_unpublished`.
-   - Include only paths attributable to the selected active artifact and current
-     savepoint. Do not include drift, unrelated changes, local state, secrets,
-     credentials, or generated/transient files without an authored inclusion
-     basis.
-   - Use `git check-ignore -v -- <path>` when ignore status is uncertain.
-     Never use `git add -f` in this workflow. Report ignored evidence as not
-     publishable by ordinary savepoint and route any policy change to `/work`.
-   - If changed files are not covered by the selected artifact, emit
-     `artifact_scope_drift: true` and list `drift_paths`; keep them excluded.
-4. **Validation**: Run the configured savepoint validation for the target repo.
-   All required checks must pass. A skipped network-sensitive check is allowed
-   only when the configured contract explicitly permits it and the preview
-   labels the result partial.
-5. **Publication Preview and Approval Gates** (`--commit` only): Show:
-   - selected artifact and repository;
-   - exact repo-relative `include`, `related_scope_requires_confirmation`,
-     `exclude`, and `ignored_unpublished` lists;
-   - validation commands and results;
-   - proposed `savepoint: <brief description>` commit message;
-   - current branch and exact push remote;
-   - proposed PR base/head and merge method, when a PR flow is applicable;
-   - the exact clerical operations to be performed within the savepoint scope;
-   - a statement that active work remains in progress and no closeout/archive
-     claim will be made.
+The default savepoint reports `future_work: not_applicable` and does not load
+completion logic, regenerate a scorecard, or mutate a registry. A referenced
+registry ID is context only. An operator may explicitly request `linked_only`
+context; then use the side-effect-free `closeout_applicability.py` contract and
+`policy_future_work_registry.md`. An explicit `completion_handoff` or
+`registry_sync` request is reported and routed to `/closeout`; savepoint does
+not run completion receipts, scorecard generation, or registry synchronization.
+The four states are `not_applicable`, `linked_only`, `completion_handoff`, and
+`registry_sync`; missing IDs, ambiguous artifact sets, stale receipts, and
+failed bindings stop explicit flows. Savepoint never claims registry or task
+completion.
 
-   Stop and ask once for approval of the displayed decision rows: clerical
-   updates, commit, push, and PR creation/update plus merge when applicable.
-   The approval binds the exact scope, commit, remote, branch, PR base/head,
-   and merge method. Do not mutate Git or the remote until the combined
-   approval is received. If no flag or `--no-commit` was used, emit the scope
-   summary without a publication request and proceed to Step 10.
-6. **Revalidation After Approval**: Re-run status and the safety preflight.
-   Stop if the branch, remote, HEAD, include-set content, or dirty-tree scope
-   changed since the preview. Never silently widen or substitute the approved
-   set.
-7. **Stage Exact Paths**: Prefer the shared tree-bound packet route when the
-    savepoint has a stable include set: build a packet with
-    `00_Admin/scripts/build_closeout_packet.py`, obtain an approval file that
-    validates against `00_Admin/configs/validator/schema_closeout_approval.yaml`
-    and binds its packet/tree hashes, and apply it with
-    `00_Admin/scripts/apply_closeout_packet.py`. The applier uses
-     an isolated approved-scope pre-commit preflight followed by a second
-     run against the actual staged index immediately before an ordinary exact
-     `git commit --only`. The installed native pre-commit and commit-msg hooks
-     remain enabled for the commit; a disposable-clone dry run against the
-     real ai_ops shims passed on 2026-10-23. It preserves unrelated staged entries and
-     fails closed on index, hook, policy, projection, cost, or post-commit tree
-     drift. Before any push, verify the packet with
-     `apply_closeout_packet.py --verify-push` and include the returned commit
-     SHA, remote, and branch in the combined approval turn's push row.
-     Without a
-    packet, run `git -C <repo_root> add -- <approved_include_paths...>` and
-    verify `git diff --cached --name-only` equals the approved include set
-    exactly. Stop before commit on any mismatch. If packet tooling fails, use
-    the canonical manual fallback in `.ai_ops/workflows/closeout.md`; preserve
-    the packet and do not widen the scope or bypass hooks.
-8. **Commit**: Commit with the approved `savepoint:` message. If staging,
-     hook preflight, or commit fails, the packet route attempts to unstage only
-     its included paths, records whether cleanup succeeded, and parks the
-     packet for inspection; unrelated staged entries remain preserved. The
-     packet route never pushes.
-     The fixed packet invocation is intended to reduce command-boundary
-     ceremony, not to change host permission policy. Prompt behavior remains
-     platform-dependent; if a prompt or tooling failure persists, stop at the
-     same approval gate and use the manual path rather than widening an
-     allowlist or silently retrying with a different command form.
-9. **Push**: Push the new commit to the approved remote and branch. Do not
-   force, change the remote, or retry with a wider command. If the push fails,
-   preserve and report the local commit hash and exact failure.
-10. **PR and merge phase** (`--commit` only, when approved): After a successful
-    push, use the approved PR/merge decision row. Create or update the PR through the GitHub
-    provider, re-read its current head, verify required checks/reviews, and
-    merge only when the current head still equals the approved commit. Use the
-    approved method, with squash when selected; do not fall back to another
-    method. If merge approval is absent or merge fails, report the pushed PR as
-    pending/unmerged. A merged savepoint remains an active work context and
-    does not claim workbook or program completion.
-11. **End session**: Report the checkpoint or published savepoint. Work context
-    in `.ai_ops/local/work_state.yaml` persists and artifacts remain
-    `in_progress`; note how to resume.
+An explicit applicability flow exists only when the operator selects the state
+in the checkpoint record; a referenced ID alone is context. A `completion
+transaction` is the exact receipt-backed completion operation; a `ready-for-receipt
+state` is a completed selected ID with a frozen artifact set; a `receipt handoff`
+is that one completion receipt; and an `artifact set` is the exact bound paths and
+HEAD. Savepoint reports these states and routes completion work to `/closeout`;
+it does not resume a deferred receipt or reuse a stale binding.
 
-- Multiple active artifacts: require selection of one repository and an exact
-  artifact set before building the preview. Never default to "all active."
+## Closeout Boundary
 
-### Governed Mode
+Savepoint is an active-work checkpoint and has no archive step. Its read-only
+leg may write only the checkpoint record to the permitted workbook/workbundle
+state surface; that records-only output is not a content mutation or approval
+for Git operations. Clerical updates in the `--commit` decision rows are
+approval-dependent and do not change this boundary. It never moves work from
+`90_Sandbox/` to `99_Trash/`, prepares an archive receipt, or claims
+completion. If the approved set contains a tracked deletion under `90_Sandbox/`
+or otherwise requires relocating a completed artifact, stop before packet
+creation, route the work through `/closeout`, and do not substitute a savepoint
+publication. The packet route is for active-work paths that do not require
+archival; artifacts remain `in_progress`.
 
-- No active artifact or explicit target: report that there is nothing scoped
-  to save and stop.
-- no flag or `--no-commit`: run the read-only checkpoint path.
-- `--commit`: proceed with the approval-gated savepoint path.
+## Projected-Tree Validation Boundary
 
-1. **Repo-Root Resolution**: Same as Direct Mode Step 1.
-2. **Git Preflight**: Same as Direct Mode Step 2.
-3. **Validator Contract**: Read `governed_repo_validation` block from `context_routing.yaml`.
-   - Read per-repo override from `.ai_ops/local/config.yaml`: find the entry in
-     `workspace.work_repos` whose `path`, when resolved relative to the workspace root
-     (parent directory of the ai_ops repo), matches the normalized `<target_repo>`.
-     Absolute `path` values are compared directly; relative values (e.g. `my_project/`)
-     are joined with the workspace root before comparing. Read its `savepoint_validation` key.
-     If no matching entry exists, record `validation_commands_run: []` and proceed.
-   - First run `python <ai_ops_root>/00_Admin/scripts/op_validate_config.py <ai_ops_root>/.ai_ops/local/config.yaml` and stop if it fails. Treat each `minimum_commands` entry as a validated argv array, never a shell string; execute it sequentially with `shell=False`, `cwd=<repo_root>`, and no command interpolation. Use the same trusted Python runtime that passed validation; never re-resolve a bare executable through a changed `PATH`. Reject an entry containing shell metacharacters, an unapproved executable, or a path outside `<repo_root>` / the workspace.
-   - For commands in `network_sensitive_commands`: if a network/sandbox error occurs,
-     retry once; if still failing, record `validation_skipped_reason` and skip
-     if `allow_partial_on_network_failure: true`. Record `validation_escalated: true`.
-   - Record `validation_commands_run` in output.
-4. Proceed with Direct Mode Step 3 (Identify scope), apply the
-   Governed-Repository Security Admission contract to that frozen candidate
-   include set, and complete Direct Mode Step 4 (Validation). A parked security
-   outcome stops the savepoint before its publication preview.
-5. Proceed with Direct Mode Steps 5–11 (publication preview through End
-   session); only `--commit` enters the publication preview and approval gate.
+Keep these trees distinct:
 
-### Standalone Mode
+1. `current HEAD`: committed baseline used for policy, hook, and receipt binding;
+2. `projected include tree`: `HEAD` plus only the frozen approved include set;
+3. `dirty worktree`: unrelated tracked changes, excluded untracked paths,
+   ignored artifacts, and other local state.
 
-1. Confirm the target repository and exact work scope.
-2. Apply the same repo-root, safety preflight, four-bucket scope
-   classification, validation, preview, combined approval, revalidation,
-   exact-path staging, commit, push, and state-preservation contract used in
-   Direct Mode.
-3. No flag or `--no-commit` selects the read-only checkpoint path. `--commit`
-   requests publication but does not bypass the preview and combined approval
-   gate.
+Before configured validators, run:
+
+```text
+python 00_Admin/scripts/closeout_scope.py --repo-root <repo> \
+  --include <approved-path> [--validator-input <path> ...]
+```
+
+Record the four scope buckets and the projected-tree manifest. Validators use
+the projected tree when inputs permit it. If a validator input intersects an
+excluded or ignored path, stop with `excluded_scope_conflict`; never stage the
+excluded file to make validation pass. Never use `git add -f`. Never silently
+widen or substitute the approved set. A dirty worktree is not evidence that the
+approved include set failed.
+
+Classify `include` as exact approved paths;
+`related_scope_requires_confirmation` as required but unapproved dependencies;
+`exclude` as discovered paths outside scope; and `ignored_unpublished` as
+ignored local paths outside publication. A validator may use the projected tree
+only when its command accepts the selected repo root or scope manifest and does
+not read outside that manifest. Otherwise report `excluded_scope_conflict` and
+do not claim validation of the approved set. If
+`related_scope_requires_confirmation` is non-empty, stop with
+`scope_pending_confirmation`; obtain operator confirmation, reclassify the paths,
+and regenerate the frozen manifest before reporting `projected_tree_ready` or
+requesting publication approval.
+
+## Validation Scope
+
+Run the target repository's configured savepoint minimum commands, focused
+contract tests for touched workflow or packet surfaces, and applicable hooks or
+linters. Do not require the full ai_ops test suite for each savepoint iteration;
+the full repository regression suite belongs to the final `/closeout` publication
+gate. On Windows record `core.longpaths`, the longest changed path, and
+`longpath_risk` when the configured path limit could block publication. Record
+all validation commands and any permitted network skip as partial evidence.
+
+## Publication Preview and Approval Gates
+
+For `--commit`, re-read branch, HEAD, remote, dirty-tree scope, security
+admission, and projected-tree results. Show the exact include set and proposed
+clerical operations, then issue one combined approval request with separate rows
+for clerical updates, commit, push, PR creation/update, and merge. The approval
+binds the packet/tree hashes, HEAD, branch, include set, mutation plan, remote,
+PR base/head, and merge method. Re-run status and the safety preflight after
+approval; stop if the branch, remote, HEAD, include-set content, or dirty-tree
+scope changed. Never silently widen or substitute the approved set; a changed
+bound value requires a new approval.
+
+Prefer `build_closeout_packet.py` and `apply_closeout_packet.py` for a stable
+active-work set with no archival need. The packet applier stages only approved
+paths, preserves unrelated index entries, runs isolated and real-index hooks,
+and verifies the resulting tree. Before push, run its `--verify-push` mode. If
+packet tooling fails, preserve the evidence and use the exact manual fallback;
+do not broaden scope or bypass hooks.
+
+Without packet tooling, after staging run `git diff --cached --name-only` and
+stop before commit unless it equals the approved include set exactly. Commit only
+after the approved commit row and all required checks pass. Push only after the
+approved push row names the packet-bound commit, remote, and branch. If push
+fails, preserve the local commit and report its exact hash, remote and branch;
+emit `push_escalation: pr_required` for a protected-branch or remote rejection,
+`push_escalation: auth_failure` for authentication, and never create a PR, merge,
+retry with a wider command, or change the remote automatically.
+The manual fallback must verify the resulting commit SHA, parent, tree, and
+message before any push.
+
+The fallback requires a new approval whenever rerun scope, security, projected
+tree, packet, or receipt hashes change. Stop before staging, present the changed
+values, and do not reuse the prior approval; unchanged exact bindings may reuse
+it.
+Create or update the PR through the GitHub provider only after its row is approved;
+re-read the head and required checks before merging. Do not force, change the
+remote, or change the merge method. A pushed but unmerged savepoint remains active.
 
 ## Outputs
 
-- Publication preview with exact scope, validation results, proposed commit
-  message, remote, branch, and a pending final-approval state.
-- Published savepoint confirmation with commit hash, branch, remote, and push
-  status after the single combined approval turn and successful execution, plus PR and merge status when
-  a PR flow was requested.
-- Read-only checkpoint confirmation when no flag or `--no-commit` is passed.
-- Report exactly which artifact(s) were included in the savepoint message.
-- Output metadata fields: `target_repo`, `repo_root`, `git_root`,
-  `safe_directory_applied`, `push_preflight_result`, `core_longpaths`,
-  `longest_changed_path_length`, `longpath_risk_path`, `signed_commits_required`,
-  `validation_commands_run`, `validation_escalated`, `artifact_scope_drift`,
-  `include`, `related_scope_requires_confirmation`, `exclude`,
-  `ignored_unpublished`, `approval_state`, `commit_hash`, `push_status`,
-  `push_escalation`, `pr_number`, `pr_status`, `merge_method`, `merge_status`,
-  `approval_turn_id`, `security_admission`, `security_admission_mode`,
-  `security_policy_source`, `security_receipt`, and `security_disposition`.
-
-## State Behavior
-
-- `work_context.active_artifacts` in `.ai_ops/local/work_state.yaml` persists after
-  savepoint (like leaving work on your desk).
-- The session ends, but artifacts remain available for the next `/work` invocation.
-- No automatic cleanup or state clearing occurs.
-- Savepoint publication does not mark a task, workbook, workbundle, or program
-  complete and does not replace `/closeout`.
+Report `target_repo`, `repo_root`, `git_root`, `safe_directory_applied`, branch,
+HEAD, `push_preflight_result`, `core_longpaths`, `longest_changed_path_length`,
+`longpath_risk_path`, validation commands, security admission fields, the four
+scope buckets, `projected_include_tree`, `artifact_scope_drift`, approval state, commit/push/PR/merge
+status, and receipt paths. Preserve `work_context.active_artifacts`; do not
+clear active work, mark a workbook completed, or replace `/closeout`.
 
 ## Resources
 
-- `00_Admin/guides/ai_operations/guide_ai_operations_stack.md`
-- Active workbundle/workbook checkpoint section
-- Compacted context for the selected artifact (if any)
+Resources: `00_Admin/configs/context_routing.yaml`, the selected
+workbook/workbundle, packet schemas, `spec_work_mode_direct.md`,
+`spec_work_mode_governed.md`, `spec_cross_surface_coordination.md`,
+`policy_git_workflow_conventions.md`, and `rb_closeout_security_review_01.md`.
+Read them in that order as applicable: context routing, selected artifact and
+packet schemas, mode spec, cross-surface and Git policies, then the security
+runbook. Each reference governs only the contract named by its title; generated
+views are evidence, not authority.
 
 ## Lane
 
-Default lane: Executor (savepoint writer).
+Default lane: Executor; Linter validates the checkpoint. Do not change scope,
+start unrelated work, delete scratch content, or treat a prior approval or
+workflow flag as the combined clerical/commit/push/PR/merge approval.
 
 ## Risks and Limits
 
-- Pauses ai_ops guidance until `/work` or `/work_status` is invoked again.
-- Do not change scope or start new work.
-- Never treat the initial invocation, `--commit`, earlier approval, or workflow
-  metadata as the combined clerical, commit, push, PR, or merge approval.
-- Never stage unrelated paths, ignored evidence, machine-local state, secrets,
-  or credentials.
-- Do not assume command folders exist; if missing, read `.ai_ops/workflows/work_savepoint.md` manually.
+Savepoint is a cheap checkpoint, not a completion lane. Never archive, clear
+active work, widen scope, bypass hooks, force-push, or infer publication from a
+flag or prior approval.

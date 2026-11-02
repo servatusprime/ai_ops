@@ -65,7 +65,7 @@ workflows:
     sha256_12: 6bec19573c50
 - workflow: closeout
   source: .ai_ops/workflows/closeout.md
-  source_sha256_12: 6d257e78cfa5
+  source_sha256_12: a86537645b3e
   description: Prepare a read-only closeout packet, then publish through exact approval-gated
     commit, push, and PR-merge steps.
   outputs:
@@ -80,10 +80,10 @@ workflows:
     sha256_12: 591f445afe90
   - path: .agents/skills/closeout/SKILL.md
     kind: codex_skill_primary
-    sha256_12: a126345d4368
+    sha256_12: e3688c912160
   - path: .agents/skills/closeout/agents/openai.yaml
     kind: codex_skill_primary_openai_yaml
-    sha256_12: 3475b4373341
+    sha256_12: 1e342fd677bd
 - workflow: crosscheck
   source: .ai_ops/workflows/crosscheck.md
   source_sha256_12: fc46e089c265
@@ -248,26 +248,25 @@ workflows:
     sha256_12: faca4d486bb7
 - workflow: work_savepoint
   source: .ai_ops/workflows/work_savepoint.md
-  source_sha256_12: baddbde4cd85
+  source_sha256_12: 41d3c08d0d70
   description: Validate and record a scoped work-in-progress savepoint; publish through
-    one structured approval turn covering clerical work, commit, push, and optional
-    PR merge.
+    one structured approval turn covering commit, push, and optional PR merge.
   outputs:
   - path: plugins/ai-ops-governance/commands/work_savepoint.md
     kind: plugin_command
-    sha256_12: 72dcbc322632
+    sha256_12: 5b5a9c8d1070
   - path: plugins/ai-ops-governance/skills/work-savepoint/SKILL.md
     kind: plugin_skill
-    sha256_12: 2bb8aa27979a
+    sha256_12: d514bd192ec7
   - path: .claude/skills/work_savepoint/SKILL.md
     kind: claude_skill
-    sha256_12: ddcf9e2aa032
+    sha256_12: ce6f8f5b4436
   - path: .agents/skills/work_savepoint/SKILL.md
     kind: codex_skill_primary
-    sha256_12: eecc74c3d909
+    sha256_12: 7f68ecb33b42
   - path: .agents/skills/work_savepoint/agents/openai.yaml
     kind: codex_skill_primary_openai_yaml
-    sha256_12: cd538b5a4d98
+    sha256_12: 0a13655c1656
 - workflow: work_status
   source: .ai_ops/workflows/work_status.md
   source_sha256_12: 6d70ed28cb7f

@@ -23,7 +23,7 @@ from typing import Any
 
 import yaml
 
-PACKET_VERSION = "0.2.0"
+PACKET_VERSION = "0.3.0"
 PACKET_SCHEMA_PATH = (
     Path(__file__).resolve().parents[1]
     / "configs"
@@ -152,6 +152,117 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _archive_gate_not_applicable() -> dict[str, Any]:
+    return {
+        "required": False,
+        "status": "not_applicable",
+        "receipt_path": None,
+        "receipt_sha256": None,
+        "manifest_sha256": None,
+        "source_absent": None,
+        "collision_free": None,
+        "tracked_deletions": [],
+        "entries": [],
+    }
+
+
+def _repo_relative(repo: Path, path: Path) -> str:
+    try:
+        return path.resolve().relative_to(repo.resolve()).as_posix()
+    except ValueError as exc:
+        raise PacketError(f"archive gate receipt must be inside the repository: {path}") from exc
+
+
+def _archive_manifest(entries: list[dict[str, str]], tracked_deletions: list[str]) -> dict[str, Any]:
+    return {
+        "entries": sorted(entries, key=lambda entry: (entry["source"], entry["destination"])),
+        "tracked_deletions": sorted(tracked_deletions),
+    }
+
+
+def archive_gate_snapshot(repo: Path, receipt_path: Path) -> dict[str, Any]:
+    """Read and verify a hash-bound, completed archive receipt."""
+    relative_receipt = _repo_relative(repo, receipt_path)
+    receipt = _repo_file(repo, relative_receipt)
+    try:
+        value = yaml.safe_load(receipt.read_text(encoding="utf-8")) or {}
+    except (OSError, UnicodeError, yaml.YAMLError) as exc:
+        raise PacketError(f"cannot read archive gate receipt: {relative_receipt}") from exc
+    if not isinstance(value, dict):
+        raise PacketError("archive gate receipt must contain a mapping")
+    if value.get("status") != "passed":
+        raise PacketError("archive gate receipt must have status: passed")
+    if value.get("source_absent") is not True:
+        raise PacketError("archive gate receipt must prove source_absent: true")
+    if value.get("collision_free") is not True:
+        raise PacketError("archive gate receipt must prove collision_free: true")
+    entries = value.get("entries")
+    tracked_deletions = value.get("tracked_deletions")
+    manifest_sha256 = value.get("manifest_sha256")
+    if not isinstance(entries, list) or not entries:
+        raise PacketError("archive gate receipt must contain at least one archive entry")
+    if not isinstance(tracked_deletions, list) or not all(isinstance(item, str) for item in tracked_deletions):
+        raise PacketError("archive gate tracked_deletions must be a string list")
+    normalized_entries: list[dict[str, str]] = []
+    seen_sources: set[str] = set()
+    seen_destinations: set[str] = set()
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            raise PacketError(f"archive gate entry {index} must be a mapping")
+        try:
+            source = _safe_path(str(entry["source"]))
+            destination = _safe_path(str(entry["destination"]))
+            source_sha256 = str(entry["source_sha256"])
+            destination_sha256 = str(entry["destination_sha256"])
+        except (KeyError, TypeError, PacketError) as exc:
+            raise PacketError(f"archive gate entry {index} is incomplete") from exc
+        if not re.fullmatch(r"^[0-9a-f]{64}$", source_sha256) or not re.fullmatch(
+            r"^[0-9a-f]{64}$", destination_sha256
+        ):
+            raise PacketError(f"archive gate entry {index} has an invalid SHA-256")
+        if not source.startswith("90_Sandbox/"):
+            raise PacketError(f"archive source must be under 90_Sandbox/: {source}")
+        if not destination.startswith("99_Trash/"):
+            raise PacketError(f"archive destination must be under 99_Trash/: {destination}")
+        if source in seen_sources or destination in seen_destinations:
+            raise PacketError("archive gate contains duplicate source or destination")
+        seen_sources.add(source)
+        seen_destinations.add(destination)
+        source_path = repo / source
+        if source_path.exists() or source_path.is_symlink():
+            raise PacketError(f"archived source still exists: {source}")
+        destination_path = _repo_file(repo, destination)
+        observed_sha256 = sha256_file(destination_path)
+        if observed_sha256 != destination_sha256 or source_sha256 != destination_sha256:
+            raise PacketError(f"archive destination hash mismatch: {destination}")
+        normalized_entries.append(
+            {
+                "source": source,
+                "destination": destination,
+                "source_sha256": source_sha256,
+                "destination_sha256": destination_sha256,
+            }
+        )
+    normalized_tracked = sorted({_safe_path(item) for item in tracked_deletions})
+    entry_sources = {entry["source"] for entry in normalized_entries}
+    if not set(normalized_tracked).issubset(entry_sources):
+        raise PacketError("archive gate tracked_deletions must be present in archive entries")
+    manifest = _archive_manifest(normalized_entries, normalized_tracked)
+    if manifest_sha256 != sha256_bytes(_canonical_bytes(manifest)):
+        raise PacketError("archive gate manifest hash does not match its entries")
+    return {
+        "required": True,
+        "status": "passed",
+        "receipt_path": relative_receipt,
+        "receipt_sha256": sha256_file(receipt),
+        "manifest_sha256": manifest_sha256,
+        "source_absent": True,
+        "collision_free": True,
+        "tracked_deletions": normalized_tracked,
+        "entries": sorted(normalized_entries, key=lambda entry: (entry["source"], entry["destination"])),
+    }
 
 
 def normalize_commit_message(message: str) -> str:
@@ -458,6 +569,7 @@ def mutation_plan(packet: dict[str, Any]) -> dict[str, Any]:
         "commit_message": packet["commit_message"],
         "remote": packet["remote"],
         "branch": packet["branch"],
+        "archive_gate": packet["archive_gate"],
         "approval_turn": "combined",
         "push_separate_approval": False,
         "merge_approval_in_same_turn": True,
@@ -480,6 +592,8 @@ def build_packet(
     remote: str = "origin",
     *,
     allow_fixture_defaults: bool = False,
+    archive_gate_path: Path | None = None,
+    archive_gate_not_applicable: bool = False,
 ) -> Path:
     started = datetime.now(timezone.utc)
     repo = repo.resolve()
@@ -487,22 +601,37 @@ def build_packet(
     include = sorted({_safe_path(path) for path in include})
     if not include:
         raise PacketError("at least one include path is required")
+    if archive_gate_path is not None and archive_gate_not_applicable:
+        raise PacketError("archive gate receipt and not_applicable cannot both be selected")
     _validate_generated_coupling(include)
     index = index_snapshot(repo)
     overlap = sorted(set(include) & set(index["paths"]))
     if overlap:
         raise PacketError(f"included paths are already staged; rebuild after clearing that scope: {overlap}")
-    unexpected_untracked = sorted(_nonignored_untracked_paths(repo) - set(include))
-    if unexpected_untracked:
-        raise PacketError(
-            "nonignored untracked paths exist outside the approved include set; "
-            "clean them or add them explicitly: " + ", ".join(unexpected_untracked)
-        )
     branch = _git(repo, "branch", "--show-current")
     if not branch:
         raise PacketError("detached HEAD cannot produce a publication packet")
     remote_url = _git_optional(repo, "remote", "get-url", remote) or None
     changes, tree_manifest, observed = projection(repo, include)
+    sandbox_deletions = {
+        change["path"]
+        for change in changes
+        if change["action"] == "delete" and change["path"].startswith("90_Sandbox/")
+    }
+    if archive_gate_path is not None:
+        archive_gate = archive_gate_snapshot(repo, archive_gate_path)
+    elif archive_gate_not_applicable or not sandbox_deletions:
+        archive_gate = _archive_gate_not_applicable()
+    else:
+        raise PacketError(
+            "archive gate receipt is required for tracked 90_Sandbox deletions; "
+            "complete the archive first or remove the deletion from this scope"
+        )
+    if sandbox_deletions != set(archive_gate["tracked_deletions"]):
+        raise PacketError(
+            "archive gate tracked_deletions must exactly bind tracked 90_Sandbox deletions"
+        )
+    excluded = sorted(_status_paths(repo) - set(include))
     elapsed = (datetime.now(timezone.utc) - started).total_seconds()
     observed["elapsed_seconds"] = elapsed
     routing = routing_snapshot(repo, allow_fixture_defaults=allow_fixture_defaults)
@@ -531,6 +660,7 @@ def build_packet(
         "commit_message": message,
         "remote": remote,
         "branch": branch,
+        "archive_gate": archive_gate,
         "approval_turn": "combined",
         "push_separate_approval": False,
         "merge_approval_in_same_turn": True,
@@ -546,12 +676,13 @@ def build_packet(
         "remote_url": remote_url,
         "commit_message": message,
         "include": include,
-        "exclude": [],
+        "exclude": excluded,
         "include_set_sha256": include_hash,
         "mutation_plan_sha256": sha256_bytes(_canonical_bytes(mutation_plan)),
         "changes": changes,
         "projected_tree_manifest": tree_manifest,
         "projected_tree_sha256": sha256_bytes(_canonical_bytes(tree_manifest)),
+        "archive_gate": archive_gate,
         "pre_existing_index": index,
         "pre_existing_index_preserved": index_snapshot(repo, exclude_paths=set(include)),
         "hook_fingerprint": hook_snapshot(repo),
@@ -589,6 +720,9 @@ def main() -> int:
     parser.add_argument("--message", required=True)
     parser.add_argument("--remote", default="origin")
     parser.add_argument("--packet-root", default=None)
+    archive_group = parser.add_mutually_exclusive_group()
+    archive_group.add_argument("--archive-gate", default=None)
+    archive_group.add_argument("--archive-gate-not-applicable", action="store_true")
     args = parser.parse_args()
     try:
         path = build_packet(
@@ -597,6 +731,8 @@ def main() -> int:
             args.message,
             Path(args.packet_root) if args.packet_root else None,
             args.remote,
+            archive_gate_path=Path(args.archive_gate) if args.archive_gate else None,
+            archive_gate_not_applicable=args.archive_gate_not_applicable,
         )
     except (OSError, PacketError, ValueError) as exc:
         print(f"closeout-packet-builder: {exc}", file=sys.stderr)

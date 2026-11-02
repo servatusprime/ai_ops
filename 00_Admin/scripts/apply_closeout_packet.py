@@ -315,6 +315,23 @@ def apply_packet(packet_path: Path, approval_path: Path, first_landing_receipt: 
     _contained_repo_path(approval_path, repo, "approval")
     execution_started_at = datetime.now(timezone.utc)
     try:
+        archive_gate = packet["archive_gate"]
+        deleted_paths = {
+            change["path"]
+            for change in packet["changes"]
+            if change["action"] == "delete" and change["path"].startswith("90_Sandbox/")
+        }
+        gate_deletions = set(archive_gate["tracked_deletions"])
+        if deleted_paths != gate_deletions:
+            raise builder.PacketError(
+                "archive gate tracked_deletions must exactly bind the packet's tracked deletions"
+            )
+        if archive_gate["required"]:
+            receipt_path = repo / str(archive_gate["receipt_path"])
+            if builder.archive_gate_snapshot(repo, receipt_path) != archive_gate:
+                raise builder.PacketError("archive gate receipt or archived bytes changed since packet preparation")
+        elif archive_gate["status"] != "not_applicable":
+            raise builder.PacketError("non-required archive gate must be explicitly not_applicable")
         if str(builder._git(repo, "rev-parse", "HEAD")) != packet["head"]:
             raise builder.PacketError("HEAD changed since packet preparation")
         if str(builder._git(repo, "branch", "--show-current")) != packet["branch"]:
