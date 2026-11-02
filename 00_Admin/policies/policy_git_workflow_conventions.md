@@ -1,8 +1,8 @@
 ---
 title: Git Workflow (monorepo)
-version: 0.1.2
+version: 0.1.3
 status: active
-updated: 2026-06-10
+updated: 2026-11-02
 owner: ai_ops
 license: Apache-2.0
 ---
@@ -127,7 +127,21 @@ If you log a fix in `00_Admin/backlog/future_work_registry.yaml`:
 - If a match exists, append context to the existing item.
 - Otherwise, add a new entry with `compacted_context` when a handoff is expected.
 
+## Identity and Path Hygiene (Required)
+
+Tracked files, commit messages and logs must not contain a person's real name,
+an operating-system account name, or an absolute user-profile path such as
+`C:\Users\<name>\...`. Identify people by their GitHub handle. Write paths
+repo-relative, or use the placeholders `<user-profile>` and `<repo>`. Patterns
+for names that must never be committed belong in an ignored machine-local file,
+never in a tracked one. The closeout security tripwires flag Windows, Git Bash
+and WSL user-profile paths in file content; they do not scan commit messages,
+so reviewers also check each commit message. Resolve a flagged row by removing
+the path. Accepting it requires a quoted requestor exception recorded in the
+row's `coverage_notes`.
+
 ## PR Checklist
 
 - Passes scripts (when added).
 - Updates docs/specs if behavior changes.
+- No account names or user-profile paths in added lines.
