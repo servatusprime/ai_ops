@@ -53,6 +53,8 @@ additional_tripwires:
   - "(?i)\\b(?:Invoke-Expression|iex)\\b"
   - "(?i)\\b(?:subprocess\\.(?:run|Popen|call)|os\\.system)\\b.*\\bshell\\s*=\\s*True\\b"
   - "(?i)\\b(?:write_text|write_bytes|unlink|remove|move)\\s*\\("
+  - '(?i)\b[A-Z]:[\\/]{1,2}Users[\\/]{1,2}(?!<|\$|%|\{|Public\b|Default\b|All Users\b)[^\\/\s<>"''`|]+'
+  - "(?i)(?<![\\w.~-])/(?:mnt/)?[A-Z]/Users/(?!<|\\$|%|\\{|Public\\b|Default\\b|All Users\\b)[^/\\s<>\"'`|]+"
 large_deleted_data:
   enabled: true
   min_source_bytes: 8388608
