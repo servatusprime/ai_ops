@@ -86,6 +86,34 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
         self.assertEqual(200000, VALIDATOR.DEFAULT_MAX_TOTAL_REVIEW_TOKENS)
         self.assertEqual(128846, PREPASS.enforce_total_review_budget([128846], {}))
 
+    def test_canonical_policy_enables_deterministic_admission_for_missing_policy_only(self) -> None:
+        policy = yaml.safe_load(
+            (ROOT / "00_Admin/configs/closeout_security_tiers.yaml").read_text(encoding="utf-8")
+        )
+        deterministic = policy["admission"]["deterministic_admission"]
+        self.assertIs(True, deterministic["enabled"])
+        self.assertEqual(["missing_target_policy"], deterministic["allowed_policy_sources"])
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            for command in (
+                ["git", "init", "--quiet"],
+                ["git", "config", "user.email", "test@example.invalid"],
+                ["git", "config", "user.name", "Closeout Test"],
+            ):
+                subprocess.run(command, cwd=repo, check=True)
+            (repo / "tracked.txt").write_text("fixture\n", encoding="utf-8")
+            subprocess.run(["git", "add", "tracked.txt"], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "--quiet", "-m", "fixture"], cwd=repo, check=True)
+            for module in (PREPASS, VALIDATOR):
+                with self.subTest(module=module.__name__, case="repository without policy or hook"):
+                    module.validate_deterministic_applicability(repo, policy, "missing_target_policy")
+                with self.subTest(module=module.__name__, case="target_HEAD source"):
+                    with self.assertRaisesRegex(SystemExit, "not allowed"):
+                        module.validate_deterministic_applicability(repo, policy, "target_HEAD")
+                with self.subTest(module=module.__name__, case="ai_ops itself stays reviewer-read"):
+                    with self.assertRaisesRegex(SystemExit, "target policy exists"):
+                        module.validate_deterministic_applicability(ROOT, policy, "missing_target_policy")
+
     def test_deterministic_admission_is_machine_validated_without_review_packets(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repo = Path(temp_dir)

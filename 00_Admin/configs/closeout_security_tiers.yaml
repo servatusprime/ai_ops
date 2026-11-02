@@ -86,3 +86,8 @@ large_deleted_data:
     - "workflow"
     - "workflows"
   max_structure_nodes: 250000
+admission:
+  deterministic_admission:
+    enabled: true
+    allowed_policy_sources:
+      - missing_target_policy
