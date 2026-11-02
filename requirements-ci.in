@@ -3,5 +3,5 @@
 # The hash-pinned requirements-ci.txt is generated from this source. Keep
 # direct versions aligned with the generated file and refresh both together.
 PyYAML==6.0.3
-ruff==0.14.14
+ruff==0.17.3
 yamllint==1.38.0
