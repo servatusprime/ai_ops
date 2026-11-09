@@ -1,10 +1,10 @@
 ---
 title: future_work_registry
-version: 0.6.20
+version: 0.6.30
 status: active
 owner: ai_ops
 created: 2026-01-07
-updated: 2026-10-26
+updated: 2026-11-09
 relocation_note_2026_09_04: >-
   fw_20260904_01 (resolvable dependency manifest for governed execution repos)
   relocated to the named governed repo's own
@@ -20,6 +20,13 @@ relocation_note_2026_09_04: >-
 migration_note: >-
   Most items were moved to wb_governance_hardening_02; selected deferred items
   remain here.
+migration_note_2026_11_09: >-
+  The five rows whose target was another governed repository were migrated to
+  the owning `<governed_repo>/00_Admin/backlog/future_work_registry.yaml` on
+  2026-11-09 and removed here after the receiving registry parsed successfully:
+  fw_20260803_02 and fw_20260817_01 through fw_20260817_04. The owning
+  governed-repo registry is authoritative for those items; the migration
+  preserves their IDs and execution context.
 prune_note_2026_02_24: >-
   Pruned non-actionable entries after plugin architecture closeout:
   fw_20260125_10 (superseded rider/crew stub), fw_20260125_05 and
@@ -107,6 +114,50 @@ prune_note_2026_09_25: >-
   remediation workbundle restores the approved work_savepoint publication
   contract, regenerates the declared install surfaces, and adds drift/contract
   validation. The completion receipt remains in that workbundle.
+prune_note_2026_11_04: >-
+  Reconciled the registry with the work-workflow simplification proposal.
+  Added fw_20261104_01 for the deferred AGENTS.md handoff
+  and fw_20261104_02 for the ai_role validator alignment. No
+  unrelated session-state, VS035/R-6, terminology, or closeout/security item
+  was merged; those remain separate scopes. Same-day follow-up: corrected
+  fw_20261104_01 (scope no longer assumes optional lane fields; O-1) and
+  fw_20261104_02 (trigger no longer depends on a decision; it is an
+  invariant).
+intake_note_2026_11_06: >-
+  Added two self-contained follow-ons from the expanded-scope remediation
+  report: fw_20261106_02 for receipt-bound removal preflight and fw_20261106_03
+  for semantic material-delegation topology validation. The aggregate review
+  ceiling follow-on was adjudicated during the 2026-11-09 continuation and
+  removed after the ceiling was replaced by per-packet and loop controls.
+  R-08 remains contained by fw_20260315_01. Accepted boundaries R-04, R-06,
+  R-10 and R-11 do not become future-work rows. None of these entries
+  authorizes execution or publication.
+prune_note_2026_11_09: >-
+  Pruned a stale aggregate review-cost candidate after the requestor authorized
+  remediation: closeout security now uses per-packet sizing and workbook loop
+  controls without a repository-wide aggregate token admission gate. No
+  separate measurement workbook remains justified for that narrower problem.
+maintenance_note_2026_11_06: >-
+  Refreshed fw_20260315_01 during the remediation follow-up: its review date
+  now reflects the current registry maintenance cycle and its acceptance boundary
+  explicitly requires durable state binding, stale-context rejection and a safe
+  fresh-bootstrap fallback. No resume implementation was performed.
+pointer_sweep_note_2026_11_06: >-
+  Phase 1/2 registry sweep searched ai_ops 90_Sandbox, 99_Trash, 00_Admin and
+  the outer governed repository. Repaired exact surviving pointers for
+  fw_20260315_01, fw_20260721_02, fw_20260721_03 and fw_20260902_02.
+  Exact external evidence was found for fw_20260817_01 through fw_20260817_04
+  and fw_20260820_01; their canonical fields use the required generic
+  <governed_repo> placeholder while the exact observed paths are recorded in
+  the sweep receipt. fw_20260216_01 now
+  points to a surviving health/remediation workbook that explicitly carries
+  the request as out of scope; fw_20260726_01 already points at its archived
+  health-pilot workbook, which explicitly records that the pilot did not
+  complete the registry item. Missing historical source artifacts for
+  fw_20260227_03 and fw_20260619_02 were not replaced with
+  guessed paths. The two rows removed in the later D1/D3 disposition are not
+  part of the live registry. This pointer-sweep note remains historical and
+  does not authorize or describe completion-command deletion.
 scorecard_sync:
   required: true
   scorecard_file: 00_Admin/backlog/future_work_scorecard.md
@@ -177,7 +228,7 @@ entries:
     domain: integration
     target_repo: ai_ops
     source_workbook: >-
-      90_Sandbox/ai_workbooks/wb_context_routing_agents_order_01_2026-03-14/wb_context_routing_agents_order_01.md
+      99_Trash/workbundles_2026-03-15/wb_context_routing_agents_order_01_2026-03-14/wb_context_routing_agents_order_01.md
     completion_workbook: null
     proposed_workbook: null
     scope: >-
@@ -203,7 +254,12 @@ entries:
       (retire to 99_Trash once fully migrated).
       Persistent machine-queryable portfolio graph state also belongs in this
       infrastructure lane; the run-family architecture uplift must not create
-      a committed portfolio-state graph as a substitute.
+      a committed portfolio-state graph as a substitute. Before activation,
+      evidence must bind the session state to the exact target repository, mode,
+      active artifact, HEAD or relevant file hashes, reads_applied set and
+      no-reread trigger state; stale or changed bindings must reject
+      resume_same_scope and route to fresh_bootstrap. A positive resume fixture,
+      stale-context rejection fixture and safe-fallback fixture are required.
     priority: low
     benefit: medium
     effort: xl
@@ -213,7 +269,7 @@ entries:
       A stateful session context mechanism becomes available (e.g., Claude Code
       adds native session memory, an MCP server for ai_ops state tracking is
       built, or equivalent tooling enables cross-turn state evaluation).
-    next_review: 2026-10-01
+    next_review: 2027-01-15
     status: planned
     owner: ai_ops
     created: 2026-03-15
@@ -251,7 +307,7 @@ entries:
     activation_trigger: >-
       Requestor approves expansion from workflow guardrails to policy/config +
       validator-backed enforcement.
-    next_review: 2026-10-01
+    next_review: 2027-01-15
     status: planned
     owner: ai_ops
     created: 2026-02-16
@@ -262,37 +318,10 @@ entries:
         enforcement remains pending by design.
     notes: >-
       Split-scope follow-on from the health seed. No active proposal is present;
-      activate only after a concrete protected-path authority failure and a
-      separately approved validator scope.
-
-  - id: fw_20260125_01
-    title: Audit event schemas for Emergency Autonomy
-    domain: governance
-    target_repo: ai_ops
-    source_workbook: >-
-      90_Sandbox/ai_workbooks/wp_ai_ops_stack_cli_01_2026-01-21/wb_ai_ops_stack_cli_01_03_governance_and_validation.md
-    completion_workbook: null
-    proposed_workbook: null
-    scope: >-
-      Define audit_event_emergency_autonomy.yaml and audit_event_setup.yaml
-      schemas for logging emergency actions.
-    priority: low
-    benefit: low
-    effort: s
-    readiness: deferred
-    risk_if_deferred: low
-    activation_trigger: >-
-      Emergency Autonomy Protocol is adopted and logging contract is finalized.
-    next_review: 2026-10-01
-    status: planned
-    owner: ai_ops
-    created: 2026-01-25
-    compacted_context:
-      source: wb_ai_ops_stack_cli_01_03_governance_and_validation.md
-      note: Deferred from WB-03 deliverable manifest.
-    notes: >-
-      Retain as a low-priority deferred seed; no Emergency Autonomy protocol or
-      logging contract is currently adopted.
+      the original command-routing source artifact was not found in the local
+      ai_ops or outer-workspace search. The surviving health workbook carries
+      this row as explicitly out of scope pending a concrete protected-path
+      authority failure and a separately approved validator scope.
 
   - id: fw_20260227_03
     title: Add examples/ directory with sample artifacts
@@ -314,7 +343,7 @@ entries:
     activation_trigger: >-
       Post-release; first external contributor or usage question signals
       what examples are most needed.
-    next_review: 2026-10-01
+    next_review: 2027-01-15
     status: planned
     owner: ai_ops
     created: 2026-02-27
@@ -322,68 +351,6 @@ entries:
       source: wb_oss_pre_commit_completions_01.md seed S8
       note: Deferred from WB4 pre-commit completions pass. Post-release scope.
     notes: Post-release. Defer until community feedback indicates which examples are most useful.
-
-  - id: fw_20260227_04
-    title: Bash equivalents for critical PowerShell setup scripts
-    domain: operations
-    target_repo: ai_ops
-    source_workbook: >-
-      90_Sandbox/ai_workbooks/wp_oss_readiness_01_2026-02-26/wb_oss_pre_commit_completions_01.md
-    completion_workbook: null
-    proposed_workbook: null
-    scope: >-
-      Write bash equivalents for the setup scripts currently implemented only
-      in PowerShell (.ps1), enabling non-Windows contributors to run setup
-      without modification. Priority order: setup_claude.ps1, setup_codex.ps1,
-      then others.
-    priority: medium
-    benefit: medium
-    effort: l
-    readiness: deferred
-    risk_if_deferred: medium
-    activation_trigger: >-
-      First non-Windows contributor files a setup issue or pull request.
-    next_review: 2026-10-01
-    status: planned
-    owner: ai_ops
-    created: 2026-02-27
-    compacted_context:
-      source: wb_oss_pre_commit_completions_01.md seed S11
-      note: Deferred from WB4 pre-commit completions pass. Post-release scope.
-    notes: >-
-      Partial readiness - .sh scripts already exist for most setup paths.
-      Identify which .ps1 scripts have no .sh equivalent before scoping.
-
-  - id: fw_20260227_07
-    title: Review /work numeric scoring contract
-    domain: governance
-    target_repo: ai_ops
-    source_workbook: >-
-      90_Sandbox/ai_workbooks/wp_oss_readiness_01_2026-02-26/_scratchpad_claude_2026-02-26.md
-    completion_workbook: null
-    proposed_workbook: null
-    scope: >-
-      Review whether the numeric scoring contract in the Workbundle Relevance
-      Gate (spec_workbundle_placement_suggestion.md) adds value or is
-      aspirational overhead. The spec defines a formula but no tooling computes
-      it - agents score intuitively. Decide: keep spec as-is, simplify to
-      intent-level gate only, or build tooling.
-    priority: low
-    benefit: low
-    effort: s
-    readiness: deferred
-    risk_if_deferred: low
-    activation_trigger: >-
-      Next governance review cycle or when /work intent-level scoring is
-      observed to produce inconsistent placement decisions.
-    next_review: 2026-10-01
-    status: planned
-    owner: ai_ops
-    created: 2026-02-27
-    compacted_context:
-      source: wb_oss_pre_commit_completions_01.md seed S15
-      note: Policy discussion, not a build task. Deferred from WB4 scope.
-    notes: Not a build task. Requires requestor decision on scoring contract value.
 
   - id: fw_20260504_01
     title: Bounded subagent budget guidance for discretionary delegation
@@ -407,7 +374,7 @@ entries:
     activation_trigger: >-
       A measured delegation run shows recurring budget pressure that a compact
       task-scoped hint can reduce without adding ceremony.
-    next_review: 2026-10-01
+    next_review: 2027-01-15
     status: planned
     owner: ai_ops
     created: 2026-05-04
@@ -456,7 +423,7 @@ entries:
     activation_trigger: >-
       Recurring permission prompts during multi-step git operations (commit/push/
       rebase) despite the verbs being allowlisted.
-    next_review: 2026-08-01
+    next_review: 2026-12-15
     status: planned
     owner: ai_ops
     created: 2026-06-19
@@ -501,7 +468,7 @@ entries:
       A real runprogram or runbundle cannot resolve dependencies using exact
       versions and declared interface compatibility, or two supported versions
       must coexist.
-    next_review: 2026-10-15
+    next_review: 2027-01-15
     status: deferred
     owner: ai_ops
     created: 2026-07-16
@@ -550,7 +517,7 @@ entries:
       The operator approves a dedicated Level-4 workbook for R-6 documentation
       and VS035 active-state redesign, or another correctly active workbook is
       blocked by unexplained-open-item enforcement at a declared gate.
-    next_review: 2026-09-01
+    next_review: 2026-12-15
     status: active
     owner: ai_ops
     created: 2026-07-16
@@ -579,7 +546,7 @@ entries:
     source_workbook: >-
       99_Trash/wb_lead_managed_execution_uplift_01_2026-07-20/wb_lead_managed_execution_uplift_01.md
     completion_workbook: null
-    proposed_workbook: wb_delegation_capability_parity_01
+    proposed_workbook: 99_Trash/wb_codex_subagent_governance_handshake_01_2026-09-09/wb_delegation_capability_parity_01.md
     scope: >-
       Candidate C-18, routed out of the lead-managed execution uplift. Represent
       delegation-relevant runtime support as a small truthful capability state
@@ -590,23 +557,26 @@ entries:
     priority: medium
     benefit: medium
     effort: m
-    readiness: partial
+    readiness: ready
     risk_if_deferred: medium
     activation_trigger: >-
       Requestor authorizes the named independent workbook, or a delegation
       decision is made on an unverified runtime capability assumption.
-    next_review: 2026-10-01
-    status: deferred
+    next_review: 2026-12-15
+    status: active
     owner: ai_ops
     created: 2026-07-21
     notes: >-
       Read-only parity workbook execution and independent crosscheck completed
-      2026-09-09. Wrapper parity is pass and runtime delegation support remains
-      unknown. Requestor accepted workbook-only evidence for this run, so no
-      persistent capability state was written and completion_workbook remains
-      null. Next gate: create a separately approved small host-local capability
-      record only if a lead needs consultable state before a delegation
-      decision; otherwise retain this item for that evidence-triggered review.
+      2026-09-09. On 2026-11-09 the authorized small host-local capability
+      state was written to .ai_ops/local/config.yaml: wrapper parity is pass,
+      runtime delegation support remains unknown, and no provider aliases or
+      per-run dossier were added. The substantive implementation is complete;
+      completion_workbook remains null because the receipt-backed completion
+      command requires the proposed-workbook binding to exist at HEAD. After a
+      normal publication commit binds the current repository-relative workbook
+      path, run complete_future_work.py once and prune this row; do not infer
+      runtime delegation support from wrapper or profile presence.
   - id: fw_20260721_03
     title: Remove Director-receipt dependency from run-family adoption handoff
     domain: governance
@@ -614,7 +584,7 @@ entries:
     source_workbook: >-
       99_Trash/wb_lead_managed_execution_uplift_01_2026-07-20/wb_lead_managed_execution_uplift_01.md
     completion_workbook: null
-    proposed_workbook: wb_run_family_adoption_handoff_de_director_01
+    proposed_workbook: 99_Trash/wb_run_family_graph_architecture_uplift_01_2026-07-16/governed_repo_adoption_handoff_run_family_graph_01.md
     scope: >-
       Candidate C-21, routed out of the lead-managed execution uplift. The
       governed-repo run-family adoption handoff currently names a Director
@@ -630,7 +600,7 @@ entries:
     activation_trigger: >-
       Requestor authorizes the bounded change after its exact source artifact
       and authority disposition are confirmed.
-    next_review: 2026-08-15
+    next_review: 2026-12-15
     status: planned
     owner: ai_ops
     created: 2026-07-21
@@ -644,13 +614,10 @@ entries:
     domain: validation
     target_repo: both
     source_workbook: >-
-      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/
-      work_packets/wp_gis_runprogram_thrift_and_resource_audit_01_2026-07-20/
-      wb_gis_runprogram_thrift_and_resource_audit_01.md
+      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/work_packets/wp_gis_runprogram_thrift_and_resource_audit_01_2026-07-20/wb_gis_runprogram_thrift_and_resource_audit_01.md
     completion_workbook: null
     proposed_workbook: >-
-      99_Trash/wb_ai_ops_command_surface_uplift_01_2026-09-02/
-      wb_01_health_command_pilot_2026-09-02.md
+      99_Trash/wb_ai_ops_command_surface_uplift_01_2026-09-02/wb_01_health_command_pilot_2026-09-02.md
     scope: >-
       Extend the governed health orchestration so a selected runprogram scope
       invokes that runprogram's registered static wiring validator before
@@ -702,7 +669,7 @@ entries:
       Any health review covering a runprogram/runbundle family, or a future
       finding where declared validators and files exist but the build path does
       not apply or hand off the required control.
-    next_review: 2026-08-15
+    next_review: 2026-12-15
     status: planned
     owner: ai_ops
     created: 2026-07-26
@@ -739,292 +706,13 @@ entries:
   # shared that same flaw. With the mechanism gone, B-3 (mandatory migration
   # of that block) and D-4 (veracity re-run for that block) have nothing left
   # to act on. See 00_Admin/logs/log_workbook_run.md for the full record.
-  - id: fw_20260803_02
-    title: Governed-repo workbook front-matter YAML hygiene
-    domain: documentation
-    target_repo: governed_repo
-    source_workbook: >-
-      99_Trash/wb_vs035_status_integrity_enforcement_01_2026-07-22/work_proposal_vs035_status_integrity_enforcement_01.md
-    completion_workbook: null
-    proposed_workbook: null
-    scope: >-
-      Roughly 52 percent (59 of 114) of governed-repo workbooks under
-      90_Sandbox/ai_workbooks/**/wb_*.md fail strict yaml.safe_load on their
-      front matter, almost all from unquoted colon-bearing titles (mapping
-      values are not allowed here). The flat validator parser tolerates this
-      today, but it blocks any future move to strict YAML parsing (FC-2 in the
-      VS035 proposal) and is a latent correctness risk. Scope: quote or fix the
-      offending titles in a bounded governed-repo hygiene pass; do not change the
-      validator parser as part of this item.
-    priority: low
-    benefit: medium
-    effort: m
-    readiness: ready
-    risk_if_deferred: medium
-    activation_trigger: >-
-      A validator change requires strict YAML front-matter parsing, or a
-      governed-repo cleanup session is scheduled.
-    next_review: 2026-10-01
-    status: planned
-    owner: ai_ops
-    created: 2026-08-03
-    notes: >-
-      Provenance: VS035 proposal FC-2 constraint (measured 2026-07-23). This is
-      a governed-repo hygiene item; execute in its owning governed-repo
-      session, not from ai_ops.
 
-  - id: fw_20260817_01
-    title: Resolve custom-draw-order two-owner conflict (retheme_project_qgz.py vs apply_canonical_draw_order.py)
-    domain: tooling
-    target_repo: governed_repo
-    source_workbook: >-
-      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/
-      work_packets/wp_gis_runprogram_writer_consolidation_01_2026-08-15/
-      writer_inventory_risk_audit_2026-08-17.md
-    completion_workbook: >-
-      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/
-      work_packets/wp_gis_runprogram_writer_consolidation_01_2026-08-15/
-      round12_regression_2026-08-17/fix_a_implementation_receipt_2026-08-17.md
-    proposed_workbook: null
-    scope: >-
-      `02_Modules/gis_workflow/scripts/pyqgis/retheme_project_qgz.py` calls
-      `set_custom_layer_order()` from the theme contract's own
-      `render_order_priority` key, making it a second, undeclared writer of a
-      state family (`custom_draw_order`) the governed-repo
-      `state_ownership_preservation_matrix.yaml` assigns solely to
-      `apply_canonical_draw_order.py`. Today this is harmless because the
-      later, canonical `apply_canonical_draw_order.py` step deterministically
-      overwrites it every run -- confirmed by manifest step order, not
-      assumed -- so shipped output is correct, but the config surface it
-      reads from is silently ignored. Resolve the two-owner conflict: either
-      drop `set_custom_layer_order()` from `retheme_project_qgz.py` and make
-      `canonical_draw_order.yaml` the single source, or have
-      `apply_canonical_draw_order.py` consume the theme contract's
-      `render_order_priority` instead. Record the resolved owner in
-      `state_ownership_preservation_matrix.yaml`.
-      Sol-confirmed 2026-08-17 by full manifest trace (not assumed): inert
-      given the current manifest, where `retheme_project_qgz.py` appears
-      exactly once (step `enforce_theme_contract_and_render_order`) and is
-      unconditionally followed by two further `apply_canonical_draw_order.py`
-      invocations that fully overwrite the custom order. The write is live,
-      and the two-owner conflict becomes real, if this writer is ever
-      invoked standalone (an ad-hoc repair, or a future lane that runs
-      `retheme_project_qgz.py` without a following
-      `apply_canonical_draw_order.py`) -- carry this caveat into any future
-      activation-trigger evaluation.
-    priority: low
-    benefit: medium
-    effort: s
-    readiness: deferred
-    risk_if_deferred: low
-    activation_trigger: >-
-      Any future change to apply_canonical_draw_order.py's invocation order
-      or to retheme_project_qgz.py's theme-contract handling, or a case where
-      render_order_priority is observed to actually take effect from
-      retheme_project_qgz.py (meaning the deterministic-overwrite assumption
-      broke).
-    next_review: 2026-11-01
-    status: planned
-    owner: governed_repo
-    created: 2026-08-17
-    compacted_context:
-      source: writer_hardening_batch_proposal_2026-08-17.md, "Not proposed" section
-      note: >-
-        Deliberately excluded from the same-session writer-hardening batch
-        fix (Fixes 1-4) because it is a design/ownership decision, not a
-        mechanical correction like the other four writers in that batch.
-    notes: >-
-      Not currently causing wrong output -- this is a dead/misleading config
-      surface, not a live defect. Do not treat as urgent; the requestor
-      explicitly asked that non-live-defect findings not become busywork.
-
-  - id: fw_20260817_02
-    title: Stable atlas-controller layer id in build_project_layouts.py
-    domain: tooling
-    target_repo: governed_repo
-    source_workbook: >-
-      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/
-      work_packets/wp_gis_runprogram_writer_consolidation_01_2026-08-15/
-      writer_inventory_risk_audit_2026-08-17.md
-    completion_workbook: >-
-      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/
-      work_packets/wp_gis_runprogram_writer_consolidation_01_2026-08-15/
-      round12_regression_2026-08-17/registry_closeout_fixB_fixC_fixD_receipt_2026-08-17.md
-    proposed_workbook: null
-    scope: >-
-      `02_Modules/gis_workflow/scripts/pyqgis/build_project_layouts.py`'s
-      `detach_controller`/`write_controller`/`insert_controller` sequence
-      replaces the atlas controller layer with a new layer id every run,
-      orphaning any visibility-preset reference that named the old
-      controller id. Separate from, and not fixed by, the
-      `patch_startup_state` correction in `writer_hardening_batch_proposal_2026-08-17.md`
-      Fix 3. Needs a stable atlas-controller-layer-id scheme (e.g. a
-      deterministic id derived from project identity rather than a fresh
-      QGIS-assigned id per run), which is a design decision, not a
-      mechanical substitution.
-    priority: low
-    benefit: medium
-    effort: m
-    readiness: deferred
-    risk_if_deferred: medium
-    activation_trigger: >-
-      A visibility-preset is observed referencing the atlas controller layer
-      by id and losing that reference after a rerun, or any future rework of
-      build_project_layouts.py's controller lifecycle for an unrelated
-      reason.
-    next_review: 2026-11-01
-    status: planned
-    owner: governed_repo
-    created: 2026-08-17
-    compacted_context:
-      source: writer_inventory_risk_audit_2026-08-17.md, writer #12
-      note: >-
-        Currently covered for theme-preset purposes by the RB-5 finalizer
-        barrier (apply_canonical_draw_order.py's normalize_presets call),
-        the same downstream-accident protection Change 2 added this session
-        -- but that barrier cannot restore a broken id reference, only clean
-        up stale/hidden preset entries, so this is a narrower and less
-        certain protection than for the other "downstream accident" writers
-        fixed in the same-session batch.
-    notes: >-
-      Deferred, not urgent. Requires a concrete design proposal before
-      implementation, unlike the mechanical fixes in the same-session batch.
-
-  - id: fw_20260817_03
-    title: Validator coverage for duplicate project layers (same name, new id)
-    domain: validation
-    target_repo: governed_repo
-    source_workbook: >-
-      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/
-      work_packets/wp_gis_runprogram_writer_consolidation_01_2026-08-15/
-      writer_inventory_risk_audit_2026-08-17.md
-    completion_workbook: >-
-      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/
-      work_packets/wp_gis_runprogram_writer_consolidation_01_2026-08-15/
-      round12_regression_2026-08-17/registry_closeout_fixB_fixC_fixD_receipt_2026-08-17.md
-    proposed_workbook: null
-    scope: >-
-      Across the full 14-writer audit, no validator anywhere in the governed
-      GIS pipeline (`validate_qgz_theme_serialization.py`,
-      `validate_qgz_datasources.py`, or any other) detects a duplicate
-      project layer -- a second `<maplayer>` with a new id but the same
-      `layername` as an existing one. Duplicate detection today exists only
-      *within* a single preset's layer records and for atlas-controller rows.
-      This is the largest validator gap the audit found: a duplicated layer
-      from `apply_exhibit_project_tuning.py`'s `add_remote_layer` (before the
-      same-session guard fix) or `apply_roadway_labeling.py`'s unguarded
-      `addMapLayer` (tracked separately, owned by
-      wp_gis_smart_annotation_01_2026-07-13) would pass every existing
-      validator silently. Add a general `no_duplicate_project_layers` rule,
-      likely to `validate_qgz_theme_serialization.py` or a new small
-      validator run at the same pipeline points, checking `layername`
-      uniqueness across `projectlayers/maplayer`.
-    priority: medium
-    benefit: high
-    effort: s
-    readiness: ready
-    risk_if_deferred: medium
-    activation_trigger: >-
-      A duplicate-layer artifact is actually observed in any project's
-      output, or the next writer-inventory-style audit/defect investigation
-      touches any layer-membership writer (add_remote_layer,
-      add_local_vector_layer, add_ltar_layer, apply_roadway_labeling, or any
-      future addition).
-    next_review: 2026-10-01
-    status: planned
-    owner: governed_repo
-    created: 2026-08-17
-    compacted_context:
-      source: writer_inventory_risk_audit_2026-08-17.md, "Validator coverage findings"
-      note: >-
-        Generalizable across multiple writers, not specific to any one file
-        -- this is why it was routed here instead of folded into the
-        same-session writer-hardening batch fix for writer #4 alone; fixing
-        #4's instance does not close this gap for #13 or any future writer.
-    notes: >-
-      Higher benefit than the other two 2026-08-17 entries (closes a real,
-      currently-silent blind spot affecting more than one writer) but still
-      not urgent absent an observed duplicate-layer artifact.
-
-  - id: fw_20260817_04
-    title: Dead group-comparison branch in build_project_layouts.py's patch_startup_state
-    domain: tooling
-    target_repo: governed_repo
-    source_workbook: >-
-      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/
-      work_packets/wp_gis_runprogram_writer_consolidation_01_2026-08-15/
-      writer_hardening_fix1_fix3_revision_2026-08-17.md
-    completion_workbook: >-
-      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_work_program_01/
-      work_packets/wp_gis_runprogram_writer_consolidation_01_2026-08-15/
-      round12_regression_2026-08-17/registry_closeout_fixB_fixC_fixD_receipt_2026-08-17.md
-    proposed_workbook: null
-    scope: >-
-      `02_Modules/gis_workflow/scripts/pyqgis/build_project_layouts.py`'s
-      `patch_startup_state` / `sync_tree` compares a `layer-tree-group`
-      element's `id` attribute against the preset's checked-group-node path
-      set, but layer-tree groups carry `name`, not `id` -- the comparison
-      operand is always empty and the branch can never match. Sol-verified
-      2026-08-17 (empirical scan of all 76 preset-bearing `.qgz` artifacts in
-      the repo: zero `layer-tree-group` elements carry an `id` attribute at
-      all) that this is currently harmless, not merely masked: the group's
-      checked state is decided entirely by the `descendant_checked`
-      fallback on the same comparison line, and "ancestor of an ON layer"
-      (what canon's `checked-group-nodes` set encodes) and "has a checked
-      descendant layer" are the same predicate on normalized input -- the two
-      implementations diverge only on non-normalized input (a checked group
-      with no ON layers, or an ON layer under a deliberately unchecked
-      group), which this pipeline does not currently produce. Fix: rewrite
-      `sync_tree`'s group branch to build the same ancestor-path string
-      `qgz_theme_ops.collect_layer_group_paths`/`ancestor_group_paths` use
-      (walking `name`, accumulating `Parent/Child` paths) and compare that
-      instead of the dead `id` lookup, or route the whole tree/checked-state
-      sync through `qgz_theme_ops.apply_startup_state` once its interaction
-      with this writer's two live call sites in
-      `add_materialized_basemaps_to_project.py` (manifest 1131, 1191) is
-      separately analyzed and accepted -- do not repeat the same-session
-      Round 10 mistake of assuming that substitution is side-effect-free.
-    priority: low
-    benefit: low
-    effort: s
-    readiness: deferred
-    risk_if_deferred: low
-    activation_trigger: >-
-      Any future rework of `build_project_layouts.py`'s tree/checked-state
-      sync (including any resolution of the separate `fw_20260817_02`
-      atlas-controller-id item, since both live in the same file and a
-      future pass may reasonably want to look at both), or a case where a
-      checked group with no ON layer / an ON layer under a deliberately
-      unchecked group is observed in a real project (the one input class
-      where the dead branch and the fallback would actually disagree).
-    next_review: 2026-11-01
-    status: planned
-    owner: governed_repo
-    created: 2026-08-17
-    compacted_context:
-      source: >-
-        writer_hardening_fix1_fix3_revision_2026-08-17.md and its Sol
-        recheck, review_writer_hardening_fix1_fix3_revision_sol_2026-08-17.md
-      note: >-
-        Deliberately routed to its own entry rather than folded into
-        `fw_20260817_02`: that entry's scope text explicitly states it is
-        "Separate from, and not fixed by, the patch_startup_state
-        correction," so folding this patch_startup_state finding into it
-        would contradict the entry's own words (Sol catch, 2026-08-17). Left
-        untouched by the same-session Fix 3 patch on purpose -- Sol verified
-        removing this fallback (the original, since-revised Fix 3 proposal)
-        was the actually risky move, not leaving it alone.
-    notes: >-
-      Lowest priority of the four 2026-08-17 entries. Confirmed dead-but-
-      harmless by empirical scan, not by assumption; do not treat as urgent.
   - id: fw_20260820_01
     title: Sweep and reconcile "packet"/work_packets terminology across ai_ops guides
     domain: documentation
     target_repo: ai_ops
     source_workbook: >-
-      <governed_repo>/90_Sandbox/ai_workbooks/work_program_gis_runprogram_hardening_01/
-      wb_gis_workprogram_migration_prep_01_2026-08-20/
-      wb_gis_workprogram_migration_prep_01_2026-08-20.md
+      <governed_repo>/99_Trash/wb_gis_workprogram_migration_prep_01_2026-08-20/wb_gis_workprogram_migration_prep_01_2026-08-20.md
     completion_workbook: null
     proposed_workbook: null
     scope: >-
@@ -1057,7 +745,7 @@ entries:
       Operator confirms whether this is a permanent repo-wide terminology change
       (update all affected guides) or a one-off program-local exception (document
       the exception only, no guide change needed).
-    next_review: 2026-09-01
+    next_review: 2026-12-15
     status: planned
     owner: operator
     created: 2026-08-20
@@ -1081,7 +769,10 @@ entries:
       Scope as its own Level 3 workbook (`00_Admin/guides/**` requires workbook
       scope and approval per `AGENTS.md`'s authority guard) rather than an inline
       fix -- touches multiple canonical guides and needs consistent example
-      updates throughout, not a single find-and-replace.
+      updates throughout, not a single find-and-replace. The repaired source
+      workbook completed a governed-repository terminology migration, but the ai_ops
+      guides still contain active `work_packets/` references; this row remains
+      open pending the permanent-vs-program-local decision.
   - id: fw_20260831_01
     title: Define recoverable and disposable 99_Trash retention lanes
     domain: operations
@@ -1110,7 +801,7 @@ entries:
       A repository cleanup, harvest, closeout, or savepoint session encounters
       mixed temporary artifacts where recovery value and disposable churn are
       not clearly separated, or a cleanup tool is proposed to purge `99_Trash`.
-    next_review: 2026-10-01
+    next_review: 2027-01-15
     status: planned
     owner: ai_ops
     created: 2026-08-31
@@ -1132,7 +823,7 @@ entries:
     title: Adjudicate validator warning-to-blocker policy for SEC-AIOPS-020
     domain: validation
     target_repo: ai_ops
-    source_workbook: 99_Trash/wb_ai_ops_security_audit_01_2026-08-14/wb_01_ai_ops_security_audit_plan_2026-08-14.md (archived 2026-09-04; was 90_Sandbox/ai_workbooks/ at filing time)
+    source_workbook: 99_Trash/wb_ai_ops_security_audit_01_2026-08-14/wb_01_ai_ops_security_audit_plan_2026-08-14.md
     completion_workbook: null
     proposed_workbook: null
     scope: >-
@@ -1156,7 +847,7 @@ entries:
       needs a documented decision about which warning classes may block
       execution, or new evidence shows a warning-only rule permits a material
       security or governance failure to proceed.
-    next_review: 2026-10-01
+    next_review: 2026-12-15
     status: planned
     owner: ai_ops
     created: 2026-09-02
@@ -1239,6 +930,9 @@ entries:
       per-commit ceremony (author map, receipt, trailer, native stub, CI). If
       the existing gate finds nothing real or costs too much, trim tiers instead
       of landing the rework.
+      The measurement set also records closeouts needing a waiver or restart and
+      stale references after a closeout. These are observed outcome measures,
+      not agent-estimated budgets or a token-ledger control.
     priority: low
     benefit: medium
     effort: l
@@ -1268,7 +962,7 @@ entries:
       stopping rule written before the first review.
       First measurement (2026-10-22): one governed repository's include set was estimated at about
       539,000 review tokens against the 120,000 cap, so the gate could not be met;
-      see `fw_20261022_01`.
+      see the completed Tier 1 closeout rework.
       Hook options recorded 2026-10-23 (the operator chose to leave the hook as designed for
       now): the hook only checks commits that claim a receipt, so a commit without one passes.
       Options kept here: require a valid receipt for commits that touch protected paths (needs
@@ -1277,95 +971,6 @@ entries:
       is committed). Blocking every commit that lacks a receipt would recreate the unmeetable
       gate and is not an option. A protected-path change landing without review counts as an
       incident for the trigger above.
-
-  - id: fw_20261022_01
-    title: Closeout and savepoint rework, Tier 1 - gate disposition, publication rules, data root, archive checks
-    domain: workflow
-    target_repo: ai_ops
-    source_workbook: 99_Trash/wb_closeout_rework_01_2026-10-23/work_proposal_closeout_rework_01.md
-    completion_workbook: null
-    proposed_workbook: 99_Trash/wb_closeout_rework_01_2026-10-23/wb_closeout_rework_execute_01.md
-    scope: >-
-      The operator said on 2026-10-22, after closing out a governed-repo workbook, that the recent
-      closeout commands are highly problematic and must change, and that some recent changes are
-      regretted. Evidence from that closeout, stated generically: (1) The security admission gate
-      (full-content review of every included file, capped at 120,000 review tokens per receipt)
-      cannot be met by a realistic governed-repo scope. The pre-pass estimated about 539,000 tokens
-      for one repository's include set and about 570,000 for another repository's data ledgers and
-      staging alone, roughly fourteen independently locked commits with reviewer packets, in
-      repositories where the commit hook that would enforce the gate is not installed. The workflow
-      defines no disposition except splitting lanes; the operator had to waive the gate by hand.
-      (2) The external-repo closeout flow and `/work_savepoint` overlap and disagree: the savepoint
-      flow has no security gate, closeout requires it, and a workbook that named "the savepoint
-      workflow" was closed with `/closeout`. (3) The ceremony: container-completion prompts, scope
-      confirmations, a commit approval and a push approval, on top of tool-permission prompts, left
-      the operator reporting a whole mess of stop-approvals. (4) The validator contract cannot carry
-      required arguments or data roots: a governed repository's configured minimum command fails as
-      configured because the validator needs a data-root argument the contract has no field for.
-      (5) The archive step moves artifacts to `99_Trash/` and assumes that folder is ignored and the
-      evidence disposable; in a repository whose sandbox is tracked and whose trash is ignored,
-      archived tracked files silently become local-only, and nothing in the workflow checks it.
-      (6) Stale-reference checking covers touched documents only; a bundle rename left references in
-      a second repository that only a search found. (7) The registry completion rule (delete the
-      entry, add a run-log entry, regenerate the scorecard) is three manual steps with no check.
-      Wanted: one closeout flow per governed repository whose read-only preparation runs without
-      stopping and ends in one packet (include set, validation results, message, remote, branch)
-      and one commit approval, with push a second explicit approval only; a security review bounded
-      per commit slug with a defined operator-approved waiver path, or a gate sized to risk (code
-      and configuration read in full, data ledgers and generated evidence hashed with structural
-      checks); no duplicated lane between closeout and savepoint; validation commands that can carry
-      arguments and environment; a cross-repository stale-reference sweep; archive rules that check
-      ignore status and say what becomes local-only. Consider trimming back recent additions rather
-      than extending them.
-    priority: high
-    benefit: high
-    effort: m
-    readiness: ready
-    risk_if_deferred: medium
-    activation_trigger: >-
-      The next `/closeout` or `/work_savepoint` run on any repository, or the operator's request to
-      start the rework.
-    next_review: 2026-11-15
-    status: active
-    owner: ai_ops
-    created: 2026-10-22
-    compacted_context:
-      source: >-
-        Operator statement on 2026-10-22 at the end of a governed-repository workbook closeout, after
-        the security gate estimate showed the review could not fit the receipt cap.
-      note: >-
-        Self-contained. The first measured data point for the parked gate-rework and cost-measurement
-        item (`fw_20261018_01`) is the estimate recorded here.
-    notes: >-
-      Every surface it touches (workflows, policies, specs, configs, the receipt validator) is
-      Level 4: it needs a Level-3+ workbook, an independent crosscheck and the operator's approval
-      item by item. Decide first whether the gate stays at all for governed repositories that do
-      not install its hook.
-      Operator decisions, 2026-10-23: approve by tier, Tier 1 first. Tier 1 is the data-root
-      allowlist flag; the publication text corrections (turbo marker, broad staging, global
-      `safe.directory` writes in closeout and lint, automatic pull request after a failed push,
-      and the savepoint and closeout alignment, with savepoint validating and recording WIP by
-      default and publishing only on an explicit `--commit` with separate commit and push
-      approvals); the archive template columns and an ignore check; and the smallest form of
-      the gate decision (a deterministic, no-reviewer mode of the existing pre-pass, labeled
-      `deterministic_admission`, for governed repositories without the hook or policy, with
-      reviewer-read kept where both exist). Also approved: a manual closeout path for tooling
-      failures; four success metrics (time to a verified commit, closeouts needing a waiver or
-      restart, review tokens per closeout, stale references after a closeout) baselined on the
-      next five closeouts and checked at the review date; and leaving the closeout security
-      hook as designed (opt-in, so a commit without a receipt claim passes; hardening stays in
-      `fw_20261018_01`). Prompt reduction is not a focus of this patch (see `fw_20260619_02`).
-      The follow-on workbook advanced `fw_20261023_01` (packet builder and applier)
-      and `fw_20261023_03` (completion command and receipt) into implementation.
-      Their rows were restored after the 2026-10-23 strict recheck found blocking
-      commit-message and completion-evidence defects; the six earlier success
-      receipts are superseded evidence. Recheck3 accepts the remediation with
-      notes, but both HEAD `proposed_workbook` bindings remain null. The exact
-      binding must land before fresh success receipts can be created; deletion
-      remains receipt-backed. `fw_20261023_02` (relocation sweep) remains
-      deferred under its own trigger.
-
-
   - id: fw_20261023_02
     title: Bounded read-only cross-repository relocation-reference sweep, Tier 3
     domain: tooling
@@ -1374,7 +979,8 @@ entries:
     completion_workbook: null
     proposed_workbook: null
     scope: >-
-      Deferred Tier 3 of the closeout and savepoint rework (`fw_20261022_01`, pain 6). After a
+      Deferred Tier 3 of the closeout and savepoint rework (pain 6 from the completed Tier 1
+      closeout rework). After a
       relocation or rename, search only the named repositories and roots from the machine-local
       workspace set for the old path or identifier; report historical provenance matches
       separately from active broken-reference candidates; write nothing; park at numeric limits
@@ -1399,8 +1005,8 @@ entries:
         Operator decision on 2026-10-23 to approve the closeout rework by tier; the sweep was
         judged low frequency and costly relative to its evidence.
       note: >-
-        Self-contained. Pairs with `fw_20261023_01`, which would enforce the same limits for the
-        packet builder.
+        Self-contained Tier 3 relocation sweep; the packet-builder follow-on was completed and
+        pruned, so this row remains independent under its own trigger.
     notes: >-
       A discovered match never grants permission to edit another repository; the sweep stays
       read-only.
@@ -1443,7 +1049,7 @@ entries:
         had no target policy or installed hook, so the operator explicitly waived the gate to
         continue publication.
       note: >-
-        Self-contained. Related to `fw_20261022_01`, but narrower: this item isolates the target
+        Self-contained. Related to the completed Tier 1 closeout rework, but narrower: this item isolates the target
         policy/hook mismatch and the missing first-class waiver or deterministic-admission route
         observed in an actual closeout.
     notes: >-
@@ -1451,3 +1057,252 @@ entries:
       hook and one fixture with a target policy or hook; pre-pass and receipt-validator tests;
       an exact approval/waiver record; and commit-message behavior that cannot silently bypass the
       selected disposition.
+
+  - id: fw_20261104_01
+    title: Apply the work-workflow simplification AGENTS.md handoff
+    domain: governance
+    target_repo: ai_ops
+    source_workbook: 90_Sandbox/ai_workbooks/wb_work_workflow_simplification_01_2026-11-03/work_proposal_work_workflow_simplification_01.md
+    completion_workbook: null
+    proposed_workbook: 90_Sandbox/ai_workbooks/wb_work_workflow_simplification_01_2026-11-03/wb_04_handoff_ai_role_parity_01_2026-11-09.md
+    scope: >-
+      After the active workbook produces and the requestor approves the handoff, apply only
+      the accepted AGENTS.md corrections: the dead guide citations (:746, :691,
+      :738, :778), the Selfcheck Loop wording, and the Reviewer model-level rows
+      made stale by the accepted reviewer-row decision, plus the explicitly named
+      HUMANS.md and guide_design_and_philosophy.md mirror rows where alignment is
+      required. Lane fields are not touched.
+      Rebind line references and preserve the authority, path-guard, Level-4,
+      approval, commit, and push rules. Do not perform a broad AGENTS.md rewrite,
+      general slimming pass, or lane/profile definition change. Evidence must
+      include the accepted handoff, two-way citation checks, validator results,
+      and an independent crosscheck.
+    priority: medium
+    benefit: medium
+    effort: m
+    readiness: ready
+    risk_if_deferred: medium
+    activation_trigger: >-
+      An accepted handoff exists and the requestor separately authorizes its
+      Level-4 application; the application completes before any affected
+      review-tier contract is activated or published. The active workbook closeout may supply
+      the accepted handoff but is not itself sufficient.
+    next_review: 2026-12-15
+    status: active
+    owner: ai_ops
+    created: 2026-11-04
+    compacted_context:
+      source: >-
+        The work-workflow simplification proposal keeps
+        AGENTS.md outside the active workbook's write scope and routes the corrections through a
+        follow-on handoff.
+      note: >-
+        This is a follow-on implementation item, not authorization to edit
+        AGENTS.md. It stays separate from the proposal's sandbox review and
+        from any future lane/profile design workbook.
+    notes: >-
+      Before authorization, this row implied no canonical AGENTS.md or
+      mirror-surface edit and required a separate accepted handoff. It was
+      activated on 2026-11-09 under requestor-authorized scope expansion; the
+      exact handoff is now applied in the working tree, evidence is recorded in
+      the bound workbook and receipt completion remains publication-gated.
+
+  - id: fw_20261104_02
+    title: Align the ai_role validator contract across ai_ops and governed repos
+    domain: validation
+    target_repo: both
+    source_workbook: 90_Sandbox/ai_workbooks/wb_work_workflow_simplification_01_2026-11-03/work_proposal_work_workflow_simplification_01.md
+    completion_workbook: null
+    proposed_workbook: 90_Sandbox/ai_workbooks/wb_work_workflow_simplification_01_2026-11-03/wb_04_handoff_ai_role_parity_01_2026-11-09.md
+    scope: >-
+      ai_role stays in both current validators until this item runs. Define and implement one compatible ai_role contract across
+      the ai_ops VS006 validator and the governed-repo VS006 validator, updating
+      the affected templates, guidance, fixtures, and validator tests together.
+      Preserve ai_role in the current proposal and do not drop or weaken either
+      validator as an interim shortcut. The follow-on must include a separate
+      Level-4 handoff/workbook, cross-repository compatibility evidence, and an
+      independent crosscheck before publication.
+    priority: medium
+    benefit: medium
+    effort: m
+    readiness: ready
+    risk_if_deferred: medium
+    activation_trigger: >-
+      The requestor authorizes the cross-repository validator handoff; until
+      then ai_role stays in both validators.
+    next_review: 2026-12-15
+    status: active
+    owner: ai_ops
+    created: 2026-11-04
+    compacted_context:
+      source: >-
+        The work-workflow simplification proposal: ai_role remains in both current
+        validator contracts, while a later handoff may change both
+        validators together.
+      note: >-
+        This item is intentionally separate from fw_20260716_02, whose scope is
+        the R-6 checklist allowance and VS035 active-state enforcement.
+    notes: >-
+      No validator, template, or governed-repo file is changed by this registry
+      entry. Bind an execution workbook only after the cross-repository
+      compatibility scope is approved. This row stands even if the proposal is
+      not executed. Activated on 2026-11-09 under requestor-authorized scope
+      expansion. The compatible contract is evidenced by both validator
+      configurations, mirrored negative tests and independent review; receipt
+      completion remains publication-gated.
+
+  - id: fw_20261106_01
+    title: Enforce factory/local profile output isolation before /profiles customization
+    domain: tooling
+    target_repo: ai_ops
+    source_workbook: 90_Sandbox/ai_workbooks/wb_work_workflow_simplification_01_2026-11-03/wb_02_lane_profile_fitness.md
+    completion_workbook: null
+    proposed_workbook: null
+    scope: >-
+      Before the first use of `/profiles` customization that can differ from the
+      factory profile, define and enforce a safe factory/local output boundary.
+      The factory source is
+      `02_Modules/01_agent_profiles/base/default_crew.yaml`; the machine-local
+      source is `.ai_ops/local/profiles/active_crew.yaml`. The generator is
+      `00_Admin/scripts/regenerate_profiles.py`. With no explicit profile,
+      `--check` and `--check --tracked-only` validate the factory source. With an
+      explicit local profile, a normal generation run can write the tracked
+      derivative classes `plugins/ai-ops-governance/agents/**`,
+      `02_Modules/01_agent_profiles/generated/**` and `.claude/agents/**` from
+      local content. The observed local source differed from factory content
+      (including `communication_depth: 25` and comments), so a normal run
+      would rewrite 17 tracked derivatives even though the factory tracked-only
+      check remained clean. Choose and implement one bounded control before
+      customized `/profiles` use: either refuse normal writes to tracked roots
+      when an explicit local source differs from factory, or write local
+      derivatives only to an exact ignored output root with a named runtime
+      consumer. Preserve the factory derivative invariant, document the source
+      and consumer boundary, add focused positive and negative checks, and
+      verify that a valid local customization leaves factory-tracked hashes
+      unchanged. Do not use this item to redesign lanes, retire fields, adopt
+      EGM, or edit unrelated canonical workflows.
+    priority: high
+    benefit: high
+    effort: m
+    readiness: partial
+    risk_if_deferred: high
+    activation_trigger: >-
+      This item must be completed or explicitly re-approved with a safe output
+      boundary before the first `/profiles` customization is used. Until then,
+      do not run normal generation with an explicit local profile; use a local
+      no-write dry-run and factory-source `--check` or `--check --tracked-only`.
+    next_review: 2026-12-15
+    status: planned
+    owner: ai_ops
+    created: 2026-11-06
+    compacted_context:
+      source: >-
+        D3 of the WB-2 lane/profile fitness review and the requestor-approved
+        2026-11-06 records decision: resolve D3 as a caution plus a future-work
+        registry follow-on, with no speculative generator change.
+      note: >-
+        Self-contained. The immediate safety action moved the machine-local
+        active profile to `.ai_ops/local/profiles/active_crew.yaml.backup_2026-11-06`
+        without regeneration. The factory source and tracked derivative roots
+        remain authoritative until an exact local output root and runtime
+        consumer, or an equivalent code-enforced refusal, is approved and
+        validated. The caution is recorded in the WB-2 decision record, bundle
+        README and active-state note; this row remains pending work.
+    notes: >-
+      D3 is resolved as a disposition, not as implementation completion. No
+      generated derivative, factory profile, generator, workflow or permission
+      surface was changed by intake. Completion requires a bounded execution
+      workbook, an independent crosscheck, and evidence that factory tracked
+      outputs remain unchanged under a valid local customization. Resetting any
+      local tuning value, including `communication_depth: 25`, is outside this
+      row unless separately approved.
+
+  - id: fw_20261106_02
+    title: Verify cited closeout receipt before active-artifact removal
+    domain: validation
+    target_repo: ai_ops
+    source_workbook: 90_Sandbox/ai_workbooks/wb_work_workflow_simplification_01_2026-11-03/remediation_report_wb1_expanded_scope_2026-11-06.md
+    completion_workbook: null
+    proposed_workbook: null
+    scope: >-
+      Add a narrow closeout preflight that verifies the cited final receipt path
+      and receipt-bound manifest or tree hash before an active artifact is marked
+      `completed` or `deprecated` for removal. The preflight must use the stable
+      closeout receipt schema and the exact final include-set/HEAD binding; a
+      missing receipt, missing path, stale binding, or hash mismatch must block
+      the status/removal sequence without changing unrelated state. Keep
+      `update_artifact_status.py` as a status-safety helper rather than turning it
+      into a general publication validator. Add focused positive and negative
+      tests and document the preflight handoff in `/closeout`. This item does not
+      change the existing requirement that the final receipt precedes status
+      completion and removal.
+    priority: medium
+    benefit: high
+    effort: m
+    readiness: deferred
+    risk_if_deferred: medium
+    activation_trigger: >-
+      The requestor authorizes stronger receipt safety, or a closeout incident
+      shows that a completed/deprecated artifact was removed without a valid
+      final receipt binding.
+    next_review: 2027-01-15
+    status: planned
+    owner: ai_ops
+    created: 2026-11-06
+    compacted_context:
+      source: >-
+        R-05 of remediation_report_wb1_expanded_scope_2026-11-06.md from the
+        expanded-scope alignment remediation.
+      note: >-
+        Self-contained. The current `--remove` status guard is intentionally
+        retained; this row adds receipt proof only if stronger safety is later
+        justified. No receipt parsing or publication mutation is authorized by
+        registry placement.
+    notes: >-
+      Do not broaden this into a general publication validator. Preserve the
+      closeout receipt as the authority and leave the current status guard in
+      place until a separately approved preflight is implemented and tested.
+
+  - id: fw_20261106_03
+    title: Validate material-delegation topology contract semantics
+    domain: validation
+    target_repo: ai_ops
+    source_workbook: 90_Sandbox/ai_workbooks/wb_work_workflow_simplification_01_2026-11-03/remediation_report_wb1_expanded_scope_2026-11-06.md
+    completion_workbook: null
+    proposed_workbook: null
+    scope: >-
+      Add a separate contract test for the workbook body
+      `## Execution Topology Contract` and its material-delegation applicability
+      trigger. The test must prove that a material delegation run has a complete
+      and coherent lead lane, task brief, spawn criteria, handoff/evidence rules,
+      and stop conditions, while a non-material run may rely on the validated
+      frontmatter fields. Keep VS024 limited to frontmatter routing vocabulary
+      and shape; do not silently turn it into a semantic delegation engine or a
+      full model-profile selector. Add positive, missing-section, malformed-body,
+      and non-material applicability fixtures, with an explicit reviewer-versus-
+      validator boundary in the structure spec and workbook guide.
+    priority: medium
+    benefit: medium
+    effort: m
+    readiness: deferred
+    risk_if_deferred: medium
+    activation_trigger: >-
+      Repeated material-delegation reviews find malformed or missing topology
+      contracts, or the requestor authorizes semantic topology enforcement as a
+      separate validation scope.
+    next_review: 2027-01-15
+    status: planned
+    owner: ai_ops
+    created: 2026-11-06
+    compacted_context:
+      source: >-
+        R-07 of remediation_report_wb1_expanded_scope_2026-11-06.md from the
+        expanded-scope alignment remediation.
+      note: >-
+        Self-contained. The current validator boundary is intentional:
+        frontmatter is machine-checked and the material body is reviewer-checked.
+        This row is the only route for a later semantic contract test.
+    notes: >-
+      Do not expand VS024 during closeout. Any implementation must retain the
+      material-delegation trigger and avoid imposing the expanded body on
+      single-agent or otherwise non-material workbooks.

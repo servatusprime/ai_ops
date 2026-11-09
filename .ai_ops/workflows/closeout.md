@@ -2,7 +2,7 @@
 description: Prepare a read-only closeout packet, then publish through exact approval-gated commit, push, and PR-merge steps.
 name: closeout
 kind: workflow
-version: 0.9.0
+version: 0.9.1
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -72,8 +72,7 @@ scope first, then the active artifact, then the matching entry in
 sources stops for clarification rather than being resolved by guessing.
 Direct mode means `target_repo` is `ai_ops`; governed mode means `ai_ops`
 governs a different selected target. Read the applicable mode contract:
-`00_Admin/specs/spec_work_mode_direct.md` or
-`00_Admin/specs/spec_work_mode_governed.md`.
+`00_Admin/specs/spec_work_mode.md`.
 
 A `preparation record` is the records-only closeout output written to the
 active workbook's Execution Notes or an existing workbundle state surface. It
@@ -389,13 +388,31 @@ For `completion_handoff`, verify the first commit's HEAD binding, run
 `complete_future_work.py` once for the exact ID and artifact set, verify its
 receipt, then finalize workbook/registry/scorecard/run-log surfaces in a second
 exact packet and approval. No registry row is deleted manually or from a log
-mention.
+mention. Run `complete_future_work.py --verify` before any archive or harvest
+move of files cited in the receipt.
+
+After publication completes and the final receipt exists, set the exact active
+artifact to `completed` with `update_artifact_status.py --id <id> --status
+completed --note "<receipt reference>"`, then run
+`python 00_Admin/scripts/update_artifact_status.py --check --id <id>`; stop on a non-zero
+exit and report it. Only then run `update_artifact_status.py --id <id> --remove`.
+The removal command refuses `planned`, `stub`, or `active` entries and accepts
+only `completed` or `deprecated`; exit 1 means the entry is already absent:
+report it and continue; exit 2 means an ambiguous ID, ineligible status, or
+another error: stop and report. A merge that lands after the session is handled
+by the resumed closeout.
 
 Report `target_repo`, `repo_root`, branch, HEAD, scope buckets,
 `future_work`, `projected_include_tree`, `excluded_scope_conflict` when present,
 security admission fields, archive result, validation commands, approval state,
 commit/push/PR/merge status, and all receipt paths. Keep work summaries and
 active-state claims synchronized. Generated views remain non-authoritative.
+
+## Review Capacity Boundary
+
+Apply the `/crosscheck` Loop Control contract for review tiers, caps, budgets, and
+`PARK`; closeout does not reset counters or authorize a new commit. Closeout uses
+one final commit after the frozen set; no commit is created merely to bypass review capacity.
 
 ## Validation and Limits
 

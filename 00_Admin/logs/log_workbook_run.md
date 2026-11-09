@@ -1287,3 +1287,79 @@ future_work_completion:
   review_refs:
   - 90_Sandbox/ai_workbooks/wb_closeout_rework_01_2026-10-23/crosscheck_closeout_friction_followon_recheck3_2026-10-23.md
 ```
+
+### Future-work completion receipt: 5ec74437-d41b-40a7-8bd2-915eaf49ce8a
+
+```yaml
+future_work_completion:
+  registry_id: fw_20261022_01
+  run_id: 5ec74437-d41b-40a7-8bd2-915eaf49ce8a
+  status: success
+  exit_code: 0
+  scope_sha256: d300cd44bca8be8e3b79e71c54a1f0cf4d9feba603ab8ac4425590be5537e2a9
+  completion_artifact_sha256: 2ce00f49f3318af2e3293e40b2741a85a96342301a91c3f930fc4a6726378b80
+  completion_workbook: 99_Trash/wb_closeout_rework_01_2026-10-23/wb_closeout_rework_execute_01.md
+  completion_state: completed
+  actor: Codex
+  scorecard_source_sha256: 658106f2914fb54ff91ac0668308a80013ca6486ee5d9d19f2418d8f53811317
+  evidence_refs:
+  - 90_Sandbox/ai_workbooks/wb_work_workflow_simplification_01_2026-11-03/review_completion_fw_20261022_01_2026-11-08.md
+  review_refs:
+  - 90_Sandbox/ai_workbooks/wb_work_workflow_simplification_01_2026-11-03/review_completion_fw_20261022_01_2026-11-08.md
+```
+
+### 2026-11-09 | reverse-review follow-up remediation authorization
+
+- The requestor authorized the remaining in-scope Claude follow-up remediation
+  for the active workbundle, including the capacity-control and route-metadata
+  changes named in the follow-up report.
+- Protected paths authorized in this remediation leg:
+  `00_Admin/configs/closeout_security_tiers.yaml`,
+  `00_Admin/scripts/closeout_security_prepass.py`,
+  `00_Admin/scripts/validate_closeout_security_receipt.py`,
+  `00_Admin/runbooks/rb_closeout_security_review_01.md`,
+  `.ai_ops/workflows/crosscheck.md`, `.ai_ops/workflows/closeout.md`,
+  `.ai_ops/workflows/work.md`, and `00_Admin/configs/context_routing.yaml`.
+- That authorization did not include staging, commit, push, merge, archive,
+  publication, or closure of `fw_20260227_07` without its exact receipt gate;
+  the later explicit deletion decision is recorded below.
+
+### 2026-11-09 | requestor-directed deletion of fw_20260227_07
+
+- Requestor approval: “ya get rid of it.” (2026-11-09, immediately following
+  the review of `fw_20260227_07`); this was treated as approval of that exact
+  registry ID in context.
+- The requestor explicitly approved deletion of exact registry ID
+  `fw_20260227_07` after review established that its numeric scoring contract
+  was retired, the intent-level placement gate superseded it, the source
+  artifact was unavailable, and the candidate had low benefit and low risk.
+- The row was removed through the D1 requestor-decided deletion route; no
+  completion receipt was fabricated. The registry and generated scorecard were
+  synchronized. Commit, push, merge, publication and archive remain separate
+  gates.
+
+### 2026-11-09 | closeout preparation after Claude Round 3
+
+- Requestor authorization: “Good enough, proceed.” This advances read-only
+  closeout preparation only; no staging, commit, push, archive, publication or
+  merge was authorized by this record.
+- Target and mode: direct `ai_ops`; active workbundle
+  `wb_work_workflow_simplification_01_2026-11-03`. The other governed repository
+  working tree remains a separate repository lane and is excluded from this packet.
+- Route metadata: `bootstrap_path=recenter`; `context_reset_applied=true`;
+  `resume_basis=active workbundle at HEAD e626ad1`; applied reads included
+  `AGENTS.md`, `/work`, `/closeout`, context routing and the direct-mode spec.
+- Closeout scope: `closeout_scope.py` returned `projected_tree_ready` for 75
+  dirty ai_ops paths at HEAD
+  `e626ad12891600e4968027c124fb4744619ef816`; projected-tree hash is
+  `9d96ede19ec79611b834915624acf593ec338004dfb76e05d43a4eea338b8ff8`.
+- Read-only packet was prepared with `archive_gate: not_applicable`. The
+  worktree reviewer-read prepass covers the
+  same 75 paths, passed non-gated receipt validation, found 11 candidates and
+  reported 288563 estimated review tokens; the warning is informational because
+  the aggregate ceiling is disabled. The machine-local packet and receipt paths
+  are the authoritative closeout-preparation outputs for this run.
+- Future-work applicability: `linked_only` for `fw_20260721_02`,
+  `fw_20261104_01` and `fw_20261104_02`. No completion command, registry
+  mutation or archive move was performed; the bundle remains active pending
+  HEAD-bound receipt, cross-repository handoff acceptance and publication gates.

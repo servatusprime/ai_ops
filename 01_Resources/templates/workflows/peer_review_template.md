@@ -110,29 +110,40 @@ surface.
 
 ## Findings (Ordered by Severity)
 
-### Critical (Blocking)
+Severity is `Blocker`, `Major`, `Minor` or `Low` (rules: `crosscheck.md` "Loop Control").
+Every finding cites evidence (`E-xx`); a Blocker or Major also states a failure scenario.
+If a severity has no findings, write "None." under it.
 
-<Items that must be resolved before proceeding. If none, write "None.">
+### Blocker and Major
 
-### Medium (Should Fix)
+#### <finding title>
 
-#### <Medium finding title>
-
+- Severity: `<Blocker | Major>`
 - <Description of the issue>
 - Evidence: `E-xx`
+- Failure scenario: <concrete input or state, then the wrong or unsafe result>
 - Enforcement type: `<code_enforced | doc_only | process_gap>`
 - Disposition: `<patch_now | proposal_seed | follow_on_workbook>`
 - Fix: <Recommended resolution>
 
-### Low (Non-Blocking)
+### Minor and Low (Non-Blocking)
 
-#### <Low finding title>
+#### <finding title>
 
+- Severity: `<Minor | Low>`
 - <Description>
 - Evidence: `E-xx`
 - Enforcement type: `<code_enforced | doc_only | process_gap>`
 - Disposition: `<patch_now | proposal_seed | follow_on_workbook>`
 - Fix: <Recommended resolution>
+
+## Verified, Tried and Carried
+
+- Tier and level: `<tier 1, loop n of cap | tier 2>`; reviewer model level `<level>`
+- Delta mode: `<full | delta since round n>`; files or lanes re-reviewed: <list>
+- Verified: <claims checked against live evidence, with `E-xx`>
+- Tried and not settled: <checks attempted that did not conclude, and why>
+- Accepted residuals carried in: <finding IDs from earlier rounds; not re-reviewed>
 
 ## Proposal vs Verified Guard
 

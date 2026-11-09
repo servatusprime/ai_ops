@@ -4,6 +4,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = REPO_ROOT / ".ai_ops" / "workflows" / "work_savepoint.md"
 CLOSEOUT_WORKFLOW = REPO_ROOT / ".ai_ops" / "workflows" / "closeout.md"
+CROSSCHECK_WORKFLOW = REPO_ROOT / ".ai_ops" / "workflows" / "crosscheck.md"
 GOVERNANCE_GRAPH = (
     REPO_ROOT
     / "00_Admin"
@@ -21,6 +22,9 @@ class WorkSavepointContractTests(unittest.TestCase):
         cls.savepoint = " ".join(cls.workflow.split())
         cls.closeout = " ".join(
             CLOSEOUT_WORKFLOW.read_text(encoding="utf-8").split()
+        )
+        cls.crosscheck = " ".join(
+            CROSSCHECK_WORKFLOW.read_text(encoding="utf-8").split()
         )
 
     def test_publication_requires_preview_and_combined_approval(self) -> None:
@@ -148,6 +152,26 @@ class WorkSavepointContractTests(unittest.TestCase):
         ):
             with self.subTest(marker=marker):
                 self.assertIn(marker, self.closeout)
+
+    def test_packet_capacity_does_not_create_commit_churn(self) -> None:
+        self.assertIn("Review Capacity Boundary", self.savepoint)
+        self.assertIn("Review Capacity Boundary", self.closeout)
+        for marker in (
+            "Tier 1 is a self-crosscheck",
+            "tier 2 runs once",
+            "at most 2 separate-session delta passes",
+            "consumes the same counter",
+            "no aggregate review-token ceiling",
+            "emit `PARK`",
+        ):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, self.crosscheck)
+        for marker in ("200,000", "token ledger", "parked ceiling"):
+            with self.subTest(no_duplicate_marker=marker):
+                self.assertNotIn(marker, self.savepoint)
+                self.assertNotIn(marker, self.closeout)
+        self.assertIn("A savepoint remains a records-only checkpoint", self.savepoint)
+        self.assertIn("Closeout uses one final commit", self.closeout)
 
     def test_governed_security_admission_is_shared_and_fail_closed(self) -> None:
         shared = (

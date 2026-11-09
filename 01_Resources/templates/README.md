@@ -1,10 +1,10 @@
 ---
 title: Template Catalog
-version: 0.2.0
+version: 0.3.0
 status: active
 license: Apache-2.0
 created: 2026-03-14
-last_updated: 2026-06-11
+last_updated: 2026-11-09
 owner: ai_ops
 description: >
   Canonical entrypoint for all authoring templates. Guides and specs link here
@@ -33,21 +33,15 @@ Run-family and work-family scaffolds plus operational wrappers.
 | `execution_spine_template.md` | `workflows/execution_spine_template.md` | Workbook authors, agents | Gate-and-phase execution spine for single-run workbooks | Agent-facing |
 | `governed_repo_bootstrap.md` | `workflows/governed_repo_bootstrap.md` | Repo initializers, operators | Bootstrap scaffold for standing up a governed repo | Human/Mixed |
 | `peer_review_template.md` | `workflows/peer_review_template.md` | Crosscheck reviewers, validators | Peer/crosscheck review checklist scaffold | Mixed |
-| `quality_loop_convergence_template.md` | `workflows/quality_loop_convergence_template.md` | Iterative quality-loop workbooks | Bounded validator and operator exit contract | Mixed |
+| `quality_loop_convergence_template.md` | `workflows/quality_loop_convergence_template.md` | Workbooks that run review or quality loops | Loop-control contract: caps, tiers, budget, residuals, sign-off | Mixed |
 | `rb_template_generic.md` | `workflows/rb_template_generic.md` | Runbook authors | Generic runbook starting point | Mixed |
-| `runbundle_pipeline_template.md` | `workflows/runbundle_pipeline_template.md` | Runbundle coordinators | Pipeline descriptor for a runbundle | Agent-facing |
 | `runbundle_readme_template.md` | `workflows/runbundle_readme_template.md` | Runbundle authors | README scaffold for runbundles | Mixed |
-| `runprogram_pipeline_template.md` | `workflows/runprogram_pipeline_template.md` | Runprogram coordinators | Pipeline descriptor for a runprogram | Agent-facing |
 | `runprogram_readme_template.md` | `workflows/runprogram_readme_template.md` | Runprogram authors | README scaffold for runprograms | Mixed |
 | `scratchpad_template.md` | `workflows/scratchpad_template.md` | Agents, operators | Proposal seed scratchpad starting point | Agent-facing |
-| `wb_template_first_run.md` | `workflows/wb_template_first_run.md` | Workbook authors (first-run ops) | Workbook scaffold for first-run / setup operations | Mixed |
-| `wb_template_generic.md` | `workflows/wb_template_generic.md` | Workbook authors | Standard workbook scaffold | Mixed |
-| `wb_template_lite.md` | `workflows/wb_template_lite.md` | Workbook authors (lightweight ops) | Reduced-overhead workbook for small tasks | Mixed |
+| `wb_template_generic.md` | `workflows/wb_template_generic.md` | Workbook authors | The one workbook scaffold: fill cues and a trigger table | Mixed |
 | `work_proposal_template.md` | `workflows/work_proposal_template.md` | Level 4 work proposal authors | Proposal scaffold for Level 3/4 governance | Mixed |
 | `work_summary_template.md` | `workflows/work_summary_template.md` | Workbook closeout, agents | Completion summary scaffold | Agent-facing |
-| `workbundle_pipeline_template.md` | `workflows/workbundle_pipeline_template.md` | Workbundle coordinators | Pipeline descriptor for a workbundle | Agent-facing |
 | `workbundle_readme_template.md` | `workflows/workbundle_readme_template.md` | Workbundle authors | README scaffold for workbundles | Mixed |
-| `workprogram_pipeline_template.md` | `workflows/workprogram_pipeline_template.md` | Workprogram coordinators | Pipeline descriptor for a workprogram | Agent-facing |
 | `workprogram_readme_template.md` | `workflows/workprogram_readme_template.md` | Workprogram authors | README scaffold for workprograms | Mixed |
 <!-- markdownlint-enable MD013 -->
 

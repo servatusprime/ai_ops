@@ -54,7 +54,7 @@ Use a scratchpad when:
 | **Deferred / Future Work** | **Scratchpad** (then Harvest to Registry)                   |
 | **Governance Decision**    | **Scratchpad** (draft) -> `00_Admin/decisions/` (final)     |
 
-## 3) Naming and Location
+## 3.1) Naming and Location
 
 - **Naming**: `_scratchpad_<agent_name>_<date>.md` (leading underscore sorts it before workbooks)
 - **Location**: Inside the active workbundle folder
@@ -80,14 +80,8 @@ If the requestor asks to capture potential future tasks/work items in the scratc
 - Place a compact matrix at the top of that section before freeform notes.
 - Use this matrix as triage input; promote keepers to future registry or a workbook later.
 
-Recommended matrix columns:
-
-- `candidate`
-- `domain/category`
-- `benefit` (`H/M/L`)
-- `effort` (`XS-XL`)
-- `readiness` (`ready/partial/blocked/deferred`)
-- `activation_trigger`
+Use the matrix columns of `Potential Future Work (Optional)` in
+`01_Resources/templates/workflows/scratchpad_template.md`.
 
 ## 5) Lifecycle
 

@@ -42,8 +42,8 @@ Platforms may choose to enforce it externally, but ai_ops imposes no enforcement
 
 ## Scope
 
-The `cost_governance:` field is applicable to all 8 execution artifact types: workbook, runbook,
-execution spine, pipeline, workbundle, runbundle, workprogram, and runprogram. It is always
+The `cost_governance:` field is applicable to all 7 execution artifact types: workbook, runbook,
+execution spine, workbundle, runbundle, workprogram, and runprogram. It is always
 optional. Absence means all values are effectively `null` - agents apply thrift judgment
 without a hard budget constraint.
 
@@ -87,6 +87,10 @@ Governance *preference* (not runtime enforcement) for which model tier to use pe
 
 `null` = use the agent's default model for that lane. This does not override platform-level
 model assignment; it is a preference the agent may honor when it has model-selection capability.
+
+For review loops, a workbook declares its review budget here (a suggested start is review spend
+no higher than execution spend) and its loop caps in its Crosscheck Stop Marker (tier 1: 1 loop for
+`iterative_convergence_minimal`, up to 3 for `iterative_convergence_standard`; tier 2 once); see `crosscheck.md` "Loop Control".
 
 ### 2.4 `alert_threshold_pct`
 

@@ -1,9 +1,9 @@
 ---
 title: Future Work Registry Policy
-version: 0.5.0
+version: 0.5.2
 status: active
 license: Apache-2.0
-updated: 2026-10-24
+updated: 2026-11-08
 ---
 <!-- markdownlint-disable-next-line MD025 -->
 # Future Work Registry Policy
@@ -113,6 +113,18 @@ If the registry, run log, scorecard, or completion evidence is not in the same
 approved mutation plan, the item remains pending; a text occurrence of a
 workbook name is not completion evidence. A failed or partial cleanup parks the
 row with its exact resume point rather than silently skipping it.
+
+### Requestor-Decided Deletion
+
+A row may be deleted under this route only when the requestor explicitly
+approves the exact registry ID(s) and the applicable reason: either the
+requestor decides the work is not needed, or evidence shows that no benefit
+can be derived from the row, its source or a live consumer. Evidence alone
+does not authorize deletion. The approved exact IDs are deleted in the same
+change, not retired, parked or relabeled, and the scorecard is regenerated.
+No record of a deleted row is kept: the registry lists future work only. An
+old review date is not a reason. Agent-run completion of finished work still
+goes through `complete_future_work.py`.
 
 ## Entry Quality
 

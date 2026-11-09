@@ -34,7 +34,6 @@ Companion files:
 
 | File | Purpose |
 | --- | --- |
-| `rnb_<bundle_name>_<nn>.md` | Local queue artifact (optional) |
 | `_scratchpad_<agent>_<YYYY-MM-DD>.md` | Notes (optional) |
 
 The consumer manifest owns outgoing `consumes` edges. This table is a human
@@ -102,16 +101,6 @@ Format-capability matrix starter:
 
 **Actor:** `executor`, `requestor`, `approver`, `external_operator`
 
-## Execution Lane Contract
-
-Canonical lanes during execution:
-
-- `Coordinator`: sequence and gate ownership.
-- `Executor`: runbook execution.
-- `Builder`: tooling/config implementation when required by runbook scope.
-- `Reviewer`: judgment-heavy review and crosscheck findings.
-- `Linter`: mechanical validation findings and report-only checks.
-
 ## Sequence Naming Contract
 
 Use numbered runbook names when execution order is fixed and coordinated
@@ -122,7 +111,7 @@ inside this runbundle:
 
 Rule:
 
-- If this README or `rnb_<bundle_name>_<nn>.md` defines strict order, apply
+- If this README or `execution_graph.yaml` defines strict order, apply
   `rb_NN_` naming.
 - If order is informal, do not force numbering.
 
@@ -130,8 +119,8 @@ Batch-sequenced parallel guidance:
 
 - If runbooks execute in parallel batches with strict stage ordering, keep
   `rb_NN_` numbering aligned to batch sequence.
-- Use batch sections in local queue artifacts to show which runbooks can run
-  concurrently in each stage.
+- Use batch sections in this README (or stages in `execution_graph.yaml`) to show
+  which runbooks can run concurrently in each stage.
 - Rule: all required runbooks in batch `NN` must complete before starting
   batch `NN+1`.
 
@@ -142,7 +131,6 @@ Batch-sequenced parallel guidance:
 - Optional control authority: the consuming runprogram's `execution_graph.yaml`
   (or this runbundle's own `execution_graph.yaml` when it branches). Runbundles
   do not use a work-family execution spine.
-- Local queue artifact: `rnb_<bundle_name>_<nn>.md`
 - Conflict rule: the control graph governs control flow; directory ancestry
   never grants authority.
 
@@ -175,4 +163,3 @@ Batch-sequenced parallel guidance:
 ## References
 
 - `<path/to/runbook_or_guide>`
-- `rnb_<bundle_name>_<nn>.md` (optional pipeline artifact)

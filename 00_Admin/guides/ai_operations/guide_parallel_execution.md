@@ -26,6 +26,7 @@ Define safe parallel execution guardrails for multi-artifact work.
 Use workbook/runbook frontmatter:
 
 - `execution_mode`
+- `parallel_coordination_id`
 - `depends_on`
 - `shared_files`
 - `lock_scope`

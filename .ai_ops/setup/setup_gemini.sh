@@ -91,9 +91,6 @@ work_context:
   active_artifacts: []
   updated_at: null
   checkpoints: []
-telemetry:
-  last_bootstrap_mode: null
-  last_context_refresh: null
 WSEOF
   echo "Created .ai_ops/local/work_state.yaml (empty initial state)."
 fi

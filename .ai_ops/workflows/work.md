@@ -2,7 +2,7 @@
 description: Signal that repo rules apply and establish work/run context.
 name: work
 kind: workflow
-version: 0.3.1
+version: 0.4.0
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -37,291 +37,140 @@ exports:
 
 ## Purpose
 
-Signal that repo rules apply and establish work/run context for execution.
-`/work` is the canonical lane for approved edits to canonical ai_ops surfaces.
+Signal that repo rules apply and establish work/run context for execution. `/work` is the canonical lane for
+approved edits to canonical ai_ops surfaces. Mode rules live in `00_Admin/specs/spec_work_mode.md`; required
+workbook sections live in `00_Admin/specs/spec_workbook_structure.md` section 4.
 
 ## Inputs and Preconditions
 
-- No inputs required, but task scope must be confirmed before edits.
+- No inputs are required, but task scope must be confirmed before edits.
 - If intent is unclear or illogical, pause and ask clarifying questions.
-- If request is a question, answer first; do not convert to edits implicitly.
+- If the request is a question, answer it; do not convert it to edits.
+- A seed, proposal or datapoint without an explicit execution action is captured in the scratchpad first and
+  confirmed before edits.
 
 ## Setup-State Guard (Mandatory)
 
-Before `/work` execution beyond intake:
-
-1. Read `required_version` from `00_Admin/configs/setup_contract.yaml`.
-2. Read setup receipt from receipt path in `00_Admin/configs/setup_contract.yaml`
-   (default: `.ai_ops/local/setup/state.yaml`) when present.
-3. If required setup is missing and defaults are insufficient, stop and route
-   to `/ai_ops_setup` with path-specific remediation.
-4. If defaults are sufficient, proceed and note optional setup hardening.
-
-## Pre-Flight Gates (Mandatory)
-
-Before any broad file exploration:
-
-1. Read `AGENTS.md` first.
-2. Do not run recursive scans until context is established.
-3. Limit initial exploration to manifest-declared paths and active artifacts.
-4. If multiple repos are available, confirm target repo before cross-repo reads.
-5. Treat questions as questions until explicit execution is requested.
-6. If request text is seed/proposal/datapoint intake without explicit execution
-   action, capture in scratchpad first and confirm before edits.
-
-## Lane/Profile Topology Gate (Mandatory)
-
-After bootstrap read order and before execution:
-
-1. Read these `AGENTS.md` sections:
-   - `Role Reference`
-   - `AI Model Level Reference`
-   - `Agent Profiles`
-   - `Context Management`
-2. Confirm these distinctions explicitly:
-   - Canonical lanes (`Coordinator`, `Planner`, `Researcher`, `Executor`,
-     `Builder`, `Reviewer`, `Linter`, `Closer`) are the upstream execution
-     schema.
-   - Deprecated broad-role keys (`Coordinator`, `Executor`, `Builder`,
-     `Validator`) remain compatibility keys for `role_assignments`.
-   - Profiles/riders are behavior presets and do not replace canonical lane
-     semantics.
-   - `primary agent` is the user-facing session agent; `subagents` are
-     delegated workers in multi-agent runs.
-   - `/profiles` tunes behavior profiles; workbook `activated_lanes` declare
-     canonical participation, while `role_assignments` remain compatibility
-     overrides for model-tier hints.
-3. For CSCC workbook/workbundle/workprogram lanes, confirm compacted context
-   location (workbook body vs bundle/program README).
-4. If any distinction is unclear, pause and ask.
+Before work beyond intake, read `required_version` from `00_Admin/configs/setup_contract.yaml` and, when present, the
+setup receipt at the receipt path that file names (default `.ai_ops/local/setup/state.yaml`). If required setup is
+missing and the defaults are insufficient, stop and route to `/ai_ops_setup` with path-specific remediation; if the
+defaults suffice, proceed and note optional hardening.
 
 ## Context Routing Hook
 
-Use `00_Admin/configs/context_routing.yaml` as the canonical onboarding
-contract.
+Use `00_Admin/configs/context_routing.yaml` as the canonical onboarding contract. Read only `commands._defaults`,
+`commands.work` and `policy.global_execution_gates`, by key search, not the whole file.
 
 1. Apply `commands._defaults.guard_profile` and `commands.work.guard_profile`.
-2. Resolve onboarding tier in order: `fresh_bootstrap`,
-   `resume_same_scope`, `recenter` (fallback `fresh_bootstrap` when state is
-   unknown).
+2. Resolve onboarding tier in order: `fresh_bootstrap`, `resume_same_scope`, `recenter` (fallback `fresh_bootstrap`
+   when state is unknown). `context_routing.yaml` marks `resume_same_scope` unreachable until `fw_20260315_01` lands
+   session state, so apply `fresh_bootstrap` or `recenter`.
 3. Load `always_read`; expand `read_on_demand` only when needed.
-4. Emit route metadata in execution output:
-   `bootstrap_path`, `resume_basis`, and `reads_applied`.
-5. Apply canonical bootstrap guard BRG-01:
-   if bootstrap requirements are missing or unverifiable, apply
+4. Emit route metadata in execution output: `bootstrap_path`, `resume_basis`, and `reads_applied`.
+   The optional side-effect-free helper `python 00_Admin/scripts/emit_work_route_metadata.py`
+   validates and emits the complete `/work` block, including `context_reset_applied`
+   and `scope_echo`; the caller preserves its JSON output in the run record.
+5. Apply canonical bootstrap guard BRG-01: if bootstrap requirements are missing or unverifiable, apply
    `fresh_bootstrap` tier (read `AGENTS.md`) before lane steps.
 
 ### Run-Family Graph Hook
 
-When scope creates, changes, resolves, or migrates a runprogram, runbundle, or
-runbook, load `spec_artifact_graph_identity.md`,
-`spec_run_family_composition.md`, and `run_family_registry.yaml` on demand.
-Resolve affected declared consumers before a shared-artifact write; name one
-merge owner and require a validation receipt or operator-approved disposition
-for each consumer. Generated registry/graph views never grant write authority.
+When scope creates, changes, resolves, or migrates a runprogram, runbundle, or runbook, load
+`spec_artifact_graph_identity.md`, `spec_run_family_composition.md`, and `run_family_registry.yaml` on demand.
+Resolve affected declared consumers before a shared-artifact write; name one merge owner and require a validation
+receipt or operator-approved disposition for each consumer. Generated registry/graph views never grant write
+authority.
+
+## Scope Block: Intake Classification and Boundary Statement (Mandatory)
+
+Before execution, record one scope block:
+
+1. **Target and mode:** resolve the mode with `AGENTS.md` "Mode Detection", then the target: explicit user target,
+   open-file context when unambiguous, then the `AGENTS.md` workspace topology (`work_repos`) and local overrides.
+   If still ambiguous, ask: "Which repo do you want to work on?" External repos adopting ai_ops use Governed mode
+   unless the requestor, as a maintainer, asks for another. Until context is established, run no recursive scans and
+   limit reads to manifest-declared paths and active artifacts.
+2. **Intake class:** `design_reference`, `execution`, `execution_resume`, `validation`, `state_sync` or
+   `approval_gate`.
+3. **Boundary statement:** the lanes and actions that may run inline under the current approval, those that stay
+   hard-gated, and whether canonical writes, runtime or network checks, commit or push, or unresolved holds need
+   separate approval. For `execution_resume`, name the previously gated phases now authorized and the stop
+   conditions that stay hard-gated regardless of blanket approval. Approval to create a workbook does not authorize
+   its execution; commit and push stay separate human gates.
+
+Guards that apply throughout (each has one home):
+
+- **Pre-write authority guard:** `AGENTS.md` "Path-Based Authority Guard (Pre-Write)", read before any file write;
+  an ambiguous classification is treated as higher authority and asked.
+- **Cross-repo references:** `spec_work_mode.md` section 5 (VS028).
 
 ## Resume Contract (Mandatory)
 
-Use the `resume_same_scope` fast path only when all are true:
+For any resumed or multi-surface run, write a resume-delta block before changing state surfaces or advancing
+completion claims. Write it to the existing state surface -- the workbook Execution Notes, or the workbundle README
+when the bundle coordinates the run -- as one block per resume, not one per phase. Do not create a new file or
+ledger for it: prior claimed state, live evidence checked, deltas found and corrected, validators or checks rerun or
+owed, and gates still open. If prior claims and live evidence disagree, repair stale wording before moving the run
+forward. See `00_Admin/specs/spec_cross_surface_coordination.md`.
 
-- target repo unchanged
-- mode unchanged
-- no recenter trigger fired
+## Active Work and Placement
 
-If any condition is unknown or false, use `fresh_bootstrap` or `recenter`.
-Do not force heavy topology/routing rereads when `resume_same_scope` is valid.
-
-For any resumed or multi-surface run, write a resume-delta block before
-changing state surfaces or advancing completion claims. Write it to the
-existing state surface -- the workbook Execution Notes, or the workbundle
-README when the bundle coordinates the run -- as one block per resume, not one
-per phase. Do not create a new file or ledger for it:
-
-- prior claimed state,
-- live evidence checked,
-- deltas found and corrected,
-- validators or checks rerun or owed,
-- gates still open.
-
-If prior claims and live evidence disagree, repair stale wording before moving
-the run forward. See `00_Admin/specs/spec_cross_surface_coordination.md`.
-
-## Intake Classification and Boundary Statement (Mandatory)
-
-Before execution, classify the request as one of:
-
-- `design_reference`
-- `execution`
-- `execution_resume`
-- `validation`
-- `state_sync`
-- `approval_gate`
-
-Then state the gated boundary for the run:
-
-- lanes/actions that may run inline under the current approval,
-- lanes/actions that remain hard-gated,
-- whether canonical writes, runtime/network checks, commit/push, or unresolved
-  holds require separate approval.
-
-For `execution_resume`, name which previously gated phases are now authorized
-and which stop conditions remain hard-gated regardless of blanket approval.
-
-## Pre-Write Authority Guard (Mandatory)
-
-Canonical table: `AGENTS.md` -> "Path-Based Authority Guard (Pre-Write)". Read it
-before any file write; it is the only copy.
-
-If classification is ambiguous, treat as higher authority and ask.
-
-## Mode and Target Selection
-
-Canonical table: `AGENTS.md` -> "Mode Detection". Resolve mode there first.
-
-Default expectation: external repos adopting ai_ops governance should use
-Governed mode unless the requestor explicitly identifies as a maintainer
-requesting a different mode.
-
-Target repo resolution order:
-
-1. explicit user target
-2. open-file context when unambiguous
-3. `AGENTS.md` workspace topology (`work_repos`) and local overrides
-
-If still ambiguous, ask: "Which repo do you want to work on?"
-
-## Cross-Repo Reference Contract (Mandatory)
-
-Enforce `spec_work_mode_governed.md` §3.7 cross-repo reference policy during
-all `/work` edits. Key rules:
-
-- In `ai_ops` artifacts: use generic placeholders, not concrete governed-repo
-  names or paths.
-- In governed repos: use repo-relative ai_ops paths (`../ai_ops/...`), not
-  machine-local absolute paths.
-
-See `00_Admin/specs/spec_work_mode_governed.md` for the full normative rule.
-
-## Active Work Resolution
-
-`.ai_ops/local/work_state.yaml` `work_context.active_artifacts` is authoritative.
-
-1. If populated, these are active artifacts.
-2. If missing/empty, there is no active work context.
-3. Do not scan filesystem to infer active artifacts.
-4. If file is absent, create from empty template before tracking.
-
-## Workbundle Relevance Gate (Before Workbook Creation) (Mandatory)
-
-Normative spec:
-`00_Admin/specs/spec_workbundle_placement_suggestion.md`.
-
-Before creating workbook/workbundle artifacts:
-
-1. Echo request scope and candidate placement.
-2. Evaluate relevance: `match`, `mismatch`, or `uncertain`.
-3. If `mismatch` or `uncertain`, ask requestor to choose:
-   use current, switch existing, or create new.
-4. Record placement decision echo before writing artifacts.
+`.ai_ops/local/work_state.yaml` `work_context.active_artifacts` is authoritative; never scan the filesystem to infer
+active artifacts. If the file is absent, create it from the empty template before tracking. Before creating a
+workbook or workbundle, echo the request scope and candidate placement and evaluate relevance (`match`, `mismatch`
+or `uncertain`; `spec_work_mode.md` section 4). On `mismatch` or `uncertain`, ask the requestor to use the current
+artifact, switch to an existing one or create a new one, and record the placement decision echo (in the workbook's Scope and Authority or the bundle README) before writing.
+Register a new artifact in `work_state.yaml` before work starts.
 
 ## Execution Topology and Delegation Gate (Before Artifact Creation) (Mandatory)
 
-Before creating or substantially rewriting a workbook, runbook, spine, or
-pipeline artifact:
-
-1. Classify `execution_topology`:
-   `single_agent`, `multi_agent`, or `hybrid`.
-2. Declare `activated_lanes` for the run. Default baseline:
-   `Coordinator -> Executor -> Reviewer`.
-3. Declare `delegation_policy` and any spawn criteria or do-not-delegate
-   constraints already known.
-4. Decide whether the artifact owns the full
-   `execution_topology_contract` (books/runbooks) or only a coordination
-   summary (spines/pipelines).
-5. If sibling active artifacts may run concurrently, create or reuse
-   `parallel_coordination_id`.
-6. Record this contract before execution begins; do not leave topology to
-   runtime guesswork.
+Before creating or substantially rewriting a workbook, runbook or spine, classify `execution_topology`
+(`single_agent`, `multi_agent` or `hybrid`), declare `activated_lanes` (baseline `Coordinator -> Executor ->
+Reviewer`) and `delegation_policy` with any known spawn criteria, and reuse or create `parallel_coordination_id`
+when sibling active artifacts may run concurrently. Books and runbooks own the contract (the expanded block only for material delegation,
+`spec_workbook_structure.md` section 4); spines carry only a coordination summary. Record this before execution; do not leave topology to runtime guesswork.
 
 ## Workbook Preflight Gate (Before Execution)
 
-Required workbook sections:
-
-- `## Execution Topology Contract`
-- `## Cold-Start Execution Contract`
-- `## Pre-Execution Readiness Gate`
-- `## Ordered Execution Queue`
-- `## Verification Checklist`
-- `## Selfcheck Results`
-
-Read these routing fields before execution:
-
-- `model_profile` (overall tier)
-- `execution_topology`
-- `activated_lanes`
-- `delegation_policy`
-- `convergence_profile`
-- `role_assignments` (compatibility overrides, when present)
-
-If missing, patch workbook structure before execution and record evidence.
+Run one section check on any workbook selected or created, in Direct and Governed mode alike, before its first
+phase: the headings and gate behaviors in `00_Admin/specs/spec_workbook_structure.md` section 4. Read
+`model_profile`, `execution_topology`, `activated_lanes`, `delegation_policy`, `convergence_profile` and
+`role_assignments` (when present) before execution; a malformed or unknown value stops the workbook. If a required
+heading is missing, patch the workbook before execution and record the evidence.
 
 ## Steps
 
-### Direct Mode (ai_ops)
+One flow for every mode; the table lists what changes by mode (`spec_work_mode.md` section 3 holds the Direct and Governed rules; the Standalone column is its whole rule).
 
-1. Confirm mode/target and apply context routing hook.
-2. Run Setup-State Guard and record readiness disposition.
-3. Resolve active artifacts from `.ai_ops/local/work_state.yaml`.
-4. If active artifacts exist, ask continue vs switch.
-5. If no active artifacts, ask whether to use existing artifact or create new.
-6. Before creating workbook/workbundle, run Workbundle Relevance Gate.
-7. Add selected/created artifact to local active state.
-8. If artifact is a workbook, run Workbook Preflight Gate.
-9. If a new workbook/runbook/spine/pipeline is being created, run Execution
-   Topology and Delegation Gate before writing the artifact body.
-10. Record intake classification and gated boundary statement.
-11. Execute scoped tasks under authority guard and thrift gate.
-12. Use `spec_work_mode_direct.md` for direct-mode specifics.
+1. Run the Setup-State Guard, record the readiness disposition, and apply the Context Routing Hook.
+2. Record the scope block.
+3. Resolve active artifacts for the target: if some exist, ask continue or switch; if none, ask whether to use an
+   existing artifact (one the requestor names) or create one.
+4. Run the placement check and register the selected or created artifact, with its `repo` field.
+5. For a new workbook, runbook or spine, run the Execution Topology and Delegation Gate before writing its body. For
+   any workbook selected or created, run the Workbook Preflight Gate.
+6. Execute the scoped tasks under the authority guard.
+7. Complete per the Pre-Completion Validation Order.
 
-### Governed Mode (External Repo via ai_ops)
-
-1. Confirm target repo and apply context routing hook.
-2. If new repo, add to local `work_repos` and create sandbox if missing.
-3. Resolve active artifacts for target repo from local state.
-4. If active artifacts exist, ask continue vs switch.
-5. If no active artifacts, ask whether to use existing artifact or create new.
-6. Before creating workbook/workbundle, run Workbundle Relevance Gate.
-7. Add selected/created artifact to local active state with `repo` field.
-8. If artifact is a workbook, run Workbook Preflight Gate.
-9. If a new workbook/runbook/spine/pipeline is being created, run Execution
-   Topology and Delegation Gate before writing the artifact body.
-10. Record intake classification and gated boundary statement.
-11. Read `customizations.validation_policy.governed_mode` from `.ai_ops/local/config.yaml`.
-12. Apply ai_ops governance to target repo execution and validations using the selected policy.
-13. Use `spec_work_mode_governed.md` for governed-mode specifics.
-
-### Standalone Mode
-
-1. Confirm target repo root and available context docs.
-2. Ask permission before reading beyond provided context artifacts.
-3. Handle small-scope requests directly; propose workbook/runbook for larger
-   scope.
-4. Adapt to target repo conventions without forcing ai_ops structure.
+| Step | Direct (`ai_ops`) | Governed (external repo) | Standalone |
+| --- | --- | --- | --- |
+| Target | `ai_ops` | `work_repos`; add a new repo there and create its sandbox if missing | the repo root and provided context docs; ask before reading beyond them |
+| Artifacts | ai_ops state entries | state entries for the target repo | small scope directly; propose a workbook or runbook for larger scope, in the repo's own conventions |
+| Validation | ai_ops validators | `customizations.validation_policy.governed_mode` in `.ai_ops/local/config.yaml` | the repo's own checks |
 
 ## Pre-Completion Validation Order
 
 Before reporting completion in workbook lanes:
 
-1. Finish scoped deliverables.
-2. Complete workbook verification checklist.
-3. Run required validators/lint/tests for touched scope. For narrow-lane
-   workbooks, use the scoped `git status`/`git diff --stat` discovery pattern
-   in `policy_git_workflow_conventions.md` "Scoped Discovery for Narrow-Lane
-   Work" to confirm touched-file scope before validation.
-4. Record command evidence with environment context.
-5. Run selfcheck loop (max 3 iterations) from `AGENTS.md`.
+1. Finish scoped deliverables and complete the workbook verification checklist.
+2. Run required validators, lint and tests for touched scope. For narrow-lane workbooks, use the scoped `git
+   status`/`git diff --stat` discovery pattern in `policy_git_workflow_conventions.md` "Scoped Discovery for
+   Narrow-Lane Work" to confirm touched-file scope before validation.
+3. Record command evidence with environment context.
+4. Run the selfcheck loop (max 3 iterations) from `AGENTS.md`; review loops (tiers, caps, budget, who closes) follow
+   `crosscheck.md` "Loop Control".
 
-If checks fail, keep workbook active, fix, and rerun.
+If checks fail, keep the workbook active, fix, and rerun.
 
 ## Outputs
 
@@ -331,20 +180,16 @@ If checks fail, keep workbook active, fix, and rerun.
 
 ## Resources
 
-- `00_Admin/specs/spec_work_mode_direct.md`
-- `00_Admin/specs/spec_work_mode_governed.md`
-- `00_Admin/specs/spec_work_focus_recenter.md`
+- `00_Admin/specs/spec_work_mode.md`
+- `00_Admin/specs/spec_workbook_structure.md`
 - `00_Admin/specs/spec_cross_surface_coordination.md`
-- `00_Admin/specs/spec_workbundle_placement_suggestion.md`
 - `00_Admin/guides/ai_operations/guide_work_programs.md`
-- `00_Admin/guides/ai_operations/guide_workflows.md`
 - `00_Admin/guides/authoring/guide_workbooks.md`
 - `00_Admin/guides/authoring/guide_runbooks.md`
 
 ## Lane
 
-Default lane path: Coordinator -> Executor -> Reviewer (activate other lanes
-only when task shape requires them).
+Default lane path: Coordinator -> Executor -> Reviewer (activate other lanes only when task shape requires them).
 
 ## Risks and Limits
 
@@ -352,5 +197,4 @@ only when task shape requires them).
 - Do not execute code or modify files without explicit user intent.
 - Do not perform canonical edits outside authority guard requirements.
 - Do not assume ai_ops structure in standalone repos.
-- Do not assume command folders exist; if missing, read
-  `.ai_ops/workflows/work.md` directly.
+- Do not assume command folders exist; if missing, read `.ai_ops/workflows/work.md` directly.

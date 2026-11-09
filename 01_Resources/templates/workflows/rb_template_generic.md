@@ -135,9 +135,8 @@ See `00_Admin/guides/authoring/guide_workbooks.md` section
 
 - 0.1 Verify model profile meets authority level declared in frontmatter **[Agent]**
 - 0.2 Read this runbook fully **[Agent]**
-- 0.3 Read runbundle README (or execution spine if present) **[Agent]**
-- 0.4 Confirm all preconditions pass **[Agent]**
-- 0.5 **Ambiguity Stop Gate** -- if any instruction is unclear, stop and ask requestor;
+- 0.3 Read runbundle README (or execution spine if present) and confirm all preconditions pass **[Agent]**
+- 0.4 **Ambiguity Stop Gate** -- if any instruction is unclear, stop and ask requestor;
   do not proceed **[Agent/Requestor]**
 
 **-> Ph 0 complete when:** All readiness checks passed; no ambiguity flagged.

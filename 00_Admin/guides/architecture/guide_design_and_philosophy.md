@@ -1,10 +1,10 @@
 ---
 title: "ai_ops: Design and Philosophy"
-version: 0.4.3
+version: 0.5.0
 status: active
 license: Apache-2.0
 created: 2026-02-21
-last_updated: 2026-07-22
+last_updated: 2026-11-09
 owner: ai_ops
 description: >
   Consolidated design philosophy and principles for ai_ops. Human-audience
@@ -356,7 +356,7 @@ flowchart LR
 | Executor | Per work step | Execute current step, maintain logs, flag blockers | 2 | Level 1: fully deterministic tasks (optimize down) |
 | Builder | When tooling/config work is needed | Write tools, implement automation, update configs | 2 | Level 1: routine tasks (optimize down); Level 3: policy-boundary tooling |
 | Linter | When mechanical validation is needed | Run validators and report defects with evidence | 1 | No variation — Level 1 always |
-| Reviewer | After meaningful execution phases | Judge correctness, governance fit, and adequacy of decisions | 2 | Level 3: Elevated Crosscheck; Level 4: L4 crosscheck |
+| Reviewer | After meaningful execution phases | Judge correctness, governance fit, and adequacy of decisions | 2 | Level 2: tier 1 self-crosscheck; Level 3: tier 2 for Level 4 scope or the first independent review of a new design; Level 4: policy authorship or a contested Blocker after a Level 3 review |
 | Closer | Finalization and release-ready closeout | Sweep completion state, sync approvals, finalize handoff | 2 | No variation — Level 2 always |
 
 - **Single agent:** one agent sequences through all activated lanes in its own context.
@@ -425,8 +425,8 @@ Model level refers to LLM reasoning depth -- not authority level (0-4).
 | --- | --- | --- | --- |
 | 1 | Low | Bounded extraction, formatting, simple edits | Researcher (bounded discovery), Executor (bounded execution), Linter |
 | 2 | Medium | Scoped implementation, multi-step work | Coordinator (standard), Planner, Executor, Builder, Reviewer, Closer |
-| 3 | High | Architecture, governance, precedent-setting | Coordinator (L4 decisions), Planner (architecture-heavy), Reviewer (Elevated Crosscheck) |
-| 4 | Maximum | Policy authorship, canonical specification, L4 crosscheck | Coordinator (policy decisions), Reviewer (L4 crosscheck), Planner (system-level design) |
+| 3 | High | Architecture, governance, precedent-setting | Coordinator (L4 decisions), Planner (architecture-heavy), Reviewer (tier 2 for Level 4 scope or a first independent design review; tier 1 stays at Level 2) |
+| 4 | Maximum | Policy authorship, canonical specification, L4 crosscheck | Coordinator (policy decisions), Reviewer (a contested Blocker after a Level 3 review, or policy authorship), Planner (system-level design) |
 
 Default to Level 2 when unsure. Model level is set per workbook via `model_profile`
 (level-name: `low`/`medium`/`high`/`maximum`). `activated_lanes` declares canonical

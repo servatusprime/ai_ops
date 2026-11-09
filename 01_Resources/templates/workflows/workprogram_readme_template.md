@@ -45,18 +45,6 @@ Briefly describe why this workprogram exists and what it coordinates.
 
 **Actor:** `executor`, `requestor`, `approver`, `external_operator`
 
-## Execution Lane Contract
-
-Canonical lanes during execution:
-
-- `Coordinator`: program sequence authority and gate ownership.
-- `Executor`: workbook execution inside active workbundles.
-- `Builder`: tooling/config implementation lanes when present.
-- `Reviewer`: review and crosscheck verdict ownership.
-- `Linter`: mechanical validation/report-only gate ownership.
-
-Profile/subagent labels are presets; role semantics remain canonical.
-
 ## Sequence Naming Contract
 
 Use numbered workbook names for fixed-order execution across workbundles in
@@ -67,14 +55,14 @@ this program:
 
 Rule:
 
-- If `execution_spine.md` or `workprogram_pipeline_<nn>.md` encodes strict
+- If `execution_spine.md` encodes strict
   order, apply `wb_NN_` naming for affected books.
 - If order is informal or parallel-safe, numbering is optional.
 
 Batch-sequenced parallel guidance:
 
 - For staged execution with parallel batches, define explicit batch gates in
-  `execution_spine.md` or `workprogram_pipeline_<nn>.md`.
+  `execution_spine.md`.
 - Books within a batch may run in parallel when their write targets are
   disjoint. If two books must write the same path, name a single merge owner
   and sequence the writes.
@@ -84,8 +72,6 @@ Batch-sequenced parallel guidance:
 ## Authority Source
 
 - Sequence/gate authority: `execution_spine.md`
-- Queue mirrors (optional): `workprogram_pipeline_<nn>.md`
-- Conflict rule: spine wins; pipeline is synced after spine updates.
 
 ## CSCC Preflight
 
@@ -116,4 +102,3 @@ Batch-sequenced parallel guidance:
 
 - `<path/to/runbook_or_guide>`
 - `execution_spine.md` (recommended)
-- `workprogram_pipeline_<nn>.md` (optional)

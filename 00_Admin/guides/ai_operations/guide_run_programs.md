@@ -36,9 +36,9 @@ A runprogram:
 1. Coordinates a sequence of runbundles (which in turn coordinate runbooks).
 1. Defines run-order dependencies, batch gates, and checkpoints.
 1. Owns its outgoing `consumes` edges in a colocated `manifest.yaml`.
-1. Uses an authored execution control graph (`execution_graph.yaml`) and,
-   optionally, a pipeline artifact to sequence execution and hold gate
-   visibility. A runprogram does not use a work-family execution spine.
+1. Uses an authored execution control graph (`execution_graph.yaml`) to sequence
+   execution and hold gate visibility. A runprogram does not use a work-family
+   execution spine.
 
 Runprograms are not runbooks and are not executed directly. They are the
 orchestration surface; the reusable implementations live in their own neutral
@@ -127,8 +127,6 @@ Each runprogram folder MUST include:
 
 Optional:
 
-1. **Program pipeline** (`runprogram_pipeline_<nn>.md`) -- execution-queue
-   mirror synced after the control graph; the control graph wins on conflict.
 1. **Program Spec** (`spec_<program_id>.md`) when the program needs a formal
    specification beyond the control graph.
 1. Environment/readiness notes and validation gates; reference packs for
@@ -156,7 +154,6 @@ Naming rules:
   README.md
   manifest.yaml            # authoritative consumes edges (-> runbundles)
   execution_graph.yaml     # authored control surface (routing/loops/escalation)
-  runprogram_pipeline_01.md  # optional queue mirror
 
 # consumed runbundles live in their own neutral homes and are
 # referenced by stable ID + resolved path, not copied under the program:
@@ -173,7 +170,7 @@ Naming rules:
 | --- | --- | --- |
 | Role | Groups and sequences runbooks | Coordinates runbundles across a program |
 | Authority | Colocated `manifest.yaml` (required) | Colocated `manifest.yaml` (required) |
-| Coordination | README + optional local pipeline | README + `execution_graph.yaml` (+ optional pipeline) |
+| Coordination | README | README + `execution_graph.yaml` |
 | Use when | Runbooks are frequently executed together | Multiple runbundles run in a required, gated order |
 | Home | One neutral `rnb_<bundle_name>/` home | One neutral `run_program_<program_id>/` home |
 
