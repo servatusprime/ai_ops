@@ -27,6 +27,11 @@ related:
 
 ## Purpose
 
+> **Status: target-state design, not implemented.** Nothing here is current behavior. The
+> live contract is `context_routing.yaml`, which marks `resume_same_scope` and its fast path
+> unreachable until `fw_20260315_01` lands session state; agents apply `fresh_bootstrap`.
+> `work.md` carries no fast-path text.
+
 This spec holds the target-state runtime design for the ai_ops context routing system.
 These specifications require session-state tracking that current stateless LLM chat
 agents cannot evaluate.

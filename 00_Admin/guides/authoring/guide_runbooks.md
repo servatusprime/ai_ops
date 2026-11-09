@@ -74,7 +74,6 @@ Template starters:
 
 - `01_Resources/templates/workflows/rb_template_generic.md`
 - `01_Resources/templates/workflows/runbundle_readme_template.md`
-- `01_Resources/templates/workflows/runbundle_pipeline_template.md`
 - `01_Resources/templates/workflows/run_family_manifest_template.yaml`
 - `01_Resources/templates/workflows/run_family_index_readme_template.md`
 
@@ -83,18 +82,15 @@ Recommended internal layout for scalable runbundles:
 ```text
 rnb_<bundle_name>/
   README.md
-  rnb_<bundle_name>_<nn>.md          # optional local pipeline artifact
   runbooks/
     rb_<step_00>.md
     rb_<step_01>.md
     rb_<step_02>.md
 ```
 
-Queue rule:
+Reference rule:
 
-- Runbundle pipelines SHOULD reference runbooks by stable ID and a path resolved
-  from the consumer manifest. Local `runbooks/rb_<step>.md` remains valid when
-  it is the runbook's canonical home.
+- Local `runbooks/rb_<step>.md` remains valid when it is the runbook's canonical home.
 - Parent-relative entries MUST be replaced with stable ID/path references in
   the same migration batch; they are not a standing compatibility surface.
 
@@ -125,22 +121,14 @@ evidence. This keeps a shared intake provider reusable across consumers: each
 consumer binds to the normalized outputs and the disposition contract, not to
 one project's raw package.
 
-## 2.2) Runprogram Pipeline (Optional)
+## 2.2) Runprogram Sequencing
 
-Runprogram pipelines are optional execution-queue artifacts for sequencing multiple runbundles in one runprogram.
+A runprogram sequences its runbundles in its colocated execution control graph
+(`execution_graph.yaml`); no separate queue file is kept. Keep runprogram roots focused on
+orchestration: shared runbundle and runbook implementations stay in their neutral canonical
+homes and are consumed by reference.
 
-- Suggested artifact location: `run_program_<program_id>/`
-- Suggested file pattern: `runprogram_pipeline_<nn>.md`
-- Keep governance commitments in the runprogram execution control graph (`execution_graph.yaml`); use pipeline artifacts for execution
-  queueing and gate visibility.
-- Keep runprogram roots focused on orchestration. Shared runbundle and runbook
-  implementations remain in their neutral canonical homes and are consumed by
-  reference.
-
-Template starters:
-
-- `01_Resources/templates/workflows/runprogram_readme_template.md`
-- `01_Resources/templates/workflows/runprogram_pipeline_template.md`
+Template starter: `01_Resources/templates/workflows/runprogram_readme_template.md`.
 
 ## 2.3) Run-Family Development and Promotion Workflow
 
@@ -292,7 +280,8 @@ Execution topology routing fields:
 - `execution_topology`: `single_agent`, `multi_agent`, or `hybrid`
 - `activated_lanes`: canonical lanes active for the run
 - `delegation_policy`: `none`, `explicit_only`, `coordinator_judgment`, `conditional`, or `proactive_allowed`
-- `convergence_profile`: named review/rework loop posture
+- `convergence_profile`: `iterative_convergence_minimal` (tier-1 cap 1 loop) or
+  `iterative_convergence_standard` (up to 3); see `crosscheck.md` "Loop Control"
 - `parallel_coordination_id`: conditional coordination identifier when sibling
   active artifacts may run concurrently
 
@@ -304,7 +293,7 @@ Runbooks should keep the same two-layer pattern as workbooks:
 
 Books and runbooks own their own execution contract. Program-level control
 surfaces -- the run-family execution control graph (authoritative for routing
-and gates) and the work-family spine/pipelines -- carry coordination across
+and gates) and the work-family execution spine -- carry coordination across
 artifacts; they do not restate a book's internal contract.
 
 `model_profile` usage:

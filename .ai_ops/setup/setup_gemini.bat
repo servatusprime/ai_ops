@@ -87,9 +87,6 @@ if not exist ".ai_ops\local\work_state.yaml" (
     echo   active_artifacts: []
     echo   updated_at: null
     echo   checkpoints: []
-    echo telemetry:
-    echo   last_bootstrap_mode: null
-    echo   last_context_refresh: null
   ) > ".ai_ops\local\work_state.yaml"
   echo Created .ai_ops\local\work_state.yaml ^(empty initial state^).
 )

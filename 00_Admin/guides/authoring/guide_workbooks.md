@@ -1,9 +1,9 @@
 ---
 title: Guide: AI Workbooks
-version: 1.11.1
+version: 1.11.2
 status: active
 license: Apache-2.0
-last_updated: 2026-07-22
+last_updated: 2026-11-06
 owner: ai_ops
 related:
 - ./guide_markdown_authoring.md
@@ -29,17 +29,13 @@ Related specs and template:
 - `00_Admin/specs/spec_workbook_structure.md` (governance)
 - `00_Admin/specs/spec_repo_metadata_standard.md` (front-matter fields)
 - `00_Admin/specs/spec_workbundle_dependency_tracking.md` (depends_on/affects contract)
-- `00_Admin/specs/spec_workbundle_placement_suggestion.md` (placement decision echo contract)
+- `00_Admin/specs/spec_work_mode.md` (mode rules and placement decision echo)
 - `00_Admin/specs/spec_infrastructure_change_validation_gate.md` (infra-touching validation gate)
 - `01_Resources/templates/workflows/wb_template_generic.md` (starter template)
 - `01_Resources/templates/workflows/workbundle_readme_template.md` (workbundle README)
 - `01_Resources/templates/workflows/workprogram_readme_template.md` (workprogram README)
-- `01_Resources/templates/workflows/workbundle_pipeline_template.md` (workbundle pipeline)
-- `01_Resources/templates/workflows/workprogram_pipeline_template.md` (workprogram pipeline)
 - `01_Resources/templates/workflows/runprogram_readme_template.md` (runprogram README)
 - `01_Resources/templates/workflows/runbundle_readme_template.md` (runbundle README)
-- `01_Resources/templates/workflows/runbundle_pipeline_template.md` (runbundle pipeline)
-- `01_Resources/templates/workflows/runprogram_pipeline_template.md` (runprogram pipeline)
 - `01_Resources/templates/workflows/governed_repo_bootstrap.md` (governed-repo bootstrap starter)
 
 Note: The spec defines mandatory requirements; this guide provides practical authoring guidance. If there is a
@@ -55,18 +51,10 @@ This guide is downstream of `00_Admin/guides/ai_operations/guide_workflows.md`.
 Keep governance upstream and use this guide/templates for workbook-specific
 execution context.
 
-Use this matrix for template selection:
-
-| Template | Use When | Authority Fit |
-| --- | --- | --- |
-| `wb_template_first_run.md` | First reliable lane run with unstable behavior | L3; L4 with approved proposal |
-| `wb_template_lite.md` | Bounded single-run lane with known behavior and low coordination overhead | Level 3 |
-| `wb_template_generic.md` | Multi-phase, higher-risk, or governance-heavy execution | L3/L4-touching execution lanes |
-
-First-run exploratory means first reliable execution for a lane
-configuration, not "first task in a chat session." Its output should
-stabilize into lite or generic usage, or explicitly escalate blocked
-conditions.
+Use `01_Resources/templates/workflows/wb_template_generic.md`, the one workbook template: fill
+cues for what only the author knows and a trigger table for conditional contracts. A first run
+of a lane configuration or a bounded single-run fix uses the same template; its trigger table
+names the extra blocks (2.14 to 2.17 for a first run).
 
 For heavy edits/replacements of canonical guidance artifacts, maintain a
 relocation map (`keep/move/remove/derive`) before removing canonical sections.
@@ -96,49 +84,11 @@ Shape checkpoint:
 
 ## 2) Required workbook sections
 
-- **Status Checklist**: at-a-glance phase progress; checkbox items per phase; MUST appear first.
-- **Approvals and Decisions**: pre-authorizations and open items; MUST appear before the execution queue.
-- **Execution Topology Contract**: orchestration and delegation metadata; MUST
-  appear after Approvals and Decisions and before the execution queue. For
-  fully single-agent lanes, the contract may be minimal but is still required
-  in new ai_ops workbook templates.
-- **Ordered Execution Queue**: primary navigation aid; Phase 0 (cold-start) is always first.
-- Overview (or Scope): what the workbook does and where it applies.
-- Inputs/assumptions: files, datasets, or context the AI can rely on.
-- Pre-Execution Readiness Gate: preflight checks before any task execution.
-- Tasks/Steps: explicit actions for the executor to perform.
-- Outputs/deliverables: paths and files to create or update.
-- Section applicability contract: classify optional/conditional sections as
-  `execute`, `skip`, or `not_applicable`, with rationale.
-- Do-not-execute/Future items: clearly label non-execution or deferred work.
-- Scope boundaries and deferred work: when deferring in-scope work, include
-  rationale and explicit decision owner approval.
-- Validation Commands: required when automated checks must be run (place after Tasks or before Outputs).
-- Crosscheck stop marker: required before `/closeout`; workbook must explicitly
-  block closeout until crosscheck is non-blocking and synchronized with selfcheck.
-- Scoped targets: optional. If included, list repo IDs or paths that already exist in
-  `AGENTS.md` workspace topology and do not redefine work/resource repo classes.
-- Work summary: required for workbundle closeout (see Section 3.3).
-- Parallel work guidance: include execution metadata in front matter and a short README note when relevant.
-
-Recommended execution-oriented section order for CSCC lanes:
-
-1. Status Checklist (Sec.2 -- required; at top)
-2. Approvals and Decisions (Sec.3 -- required; before execution queue)
-3. Execution Topology Contract (Sec.4 -- required; near-top)
-4. Ordered Execution Queue (Sec.5 -- required; Phase 0 first)
-5. Cold-Start Execution Contract
-6. Pre-Execution Readiness Gate
-7. Placement Decision Record
-8. Scope and authority
-9. Inputs and preconditions
-10. Target files / Outputs
-11. Design Principles / Rules
-12. Validation commands
-13. Verification checklist
-14. Selfcheck Results
-15. Crosscheck Stop Marker
-16. Requestor Review Gate
+The one normative list of required sections is `spec_workbook_structure.md` section 4: the
+five headings VS024 pins, the reviewer-checked content areas and the gate behaviors. The
+workbook template (`wb_template_generic.md`) lays them out in order and carries a trigger
+table; the conditional contracts in this section (2.1 onward) are read only when a trigger
+fires.
 
 ## 2.0.1 Approvals and Decisions
 
@@ -166,7 +116,7 @@ pre-authorizations and open decisions before execution begins.
 ```
 
 **Execution rule:** If any Open Item remains unresolved at the end of Phase 0, the workbook MUST
-NOT proceed to Phase 1. The Phase 0 Ambiguity Stop Gate (task 0.5) enforces this.
+NOT proceed to Phase 1. The Phase 0 Ambiguity Stop Gate (task 0.4) enforces this.
 
 **Dual benefit:**
 
@@ -174,16 +124,41 @@ NOT proceed to Phase 1. The Phase 0 Ambiguity Stop Gate (task 0.5) enforces this
 2. Pre-authorized items allow the executor to run without intermediate stop-approvals.
 
 **Placement:** Between `## Status Checklist` (Sec.2) and `## Ordered Execution Queue` (Sec.4).
-See templates: `01_Resources/templates/workflows/wb_template_lite.md`,
-`01_Resources/templates/workflows/wb_template_generic.md`,
-`01_Resources/templates/workflows/wb_template_first_run.md`.
+See the template: `01_Resources/templates/workflows/wb_template_generic.md`.
 
 ## 2.1 Capability-Gated Execution
 
-Use a capability-gated execution profile when one or more execution steps have
-low reliability for the current executor (tooling, modality, or model
-capability limits). See template section "Capability-Gated Execution Profile"
-for the gate definition table.
+Use a capability-gated execution profile (the "Capability-Gated
+Execution Profile") when one or more execution steps have low reliability for the current
+executor (tooling, modality, or model capability limits); the skeleton's Trigger Table points
+here. If the row fires and nothing turns out to be gated, record `not_applicable` and a
+one-line reason in the Readiness Gate.
+
+| Gate ID | Step | Type | Executor | Confirmer | Rationale |
+| --- | --- | --- | --- | --- | --- |
+| `G-01` | `<step>` | `handoff` or `checkpoint` | `<role>` | `<role>` | `<why gated>` |
+
+- `handoff`: the step passes to a different role (requestor, external operator or a
+  higher-capability agent); the executor stops and resumes only after that role reports
+  completion.
+- `checkpoint`: the executor produces the output and another role confirms it before
+  downstream execution continues.
+- Actor-neutral roles: `requestor`, `executor`, `approver`, `external_operator`; use these
+  instead of tool or agent names.
+- Model selection when spawning: read-only exploration at the low tier, implementation and
+  file writes at the medium tier, high-stakes or architectural decisions at the high tier;
+  record the tier in the gate row when it is a constraint.
+
+When the executor reaches a gated step it cannot perform, it records:
+
+```text
+GATE REACHED: <gate_id>
+  Step: <step description>
+  Gate type: <handoff|checkpoint>
+  Current executor cannot proceed because: <specific limitation>
+  Required action: <what the gated role must do>
+  Resume condition: <what must be true before executor resumes>
+```
 
 Rules:
 
@@ -199,7 +174,8 @@ Rules:
 ## 2.2 Parameter Manifest Contract
 
 When a workbook or runbook depends on business parameters, define a parameter
-manifest per template section "B4. Parameter Manifest Contract."
+manifest (the skeleton's Trigger Table points here); if the row fires and the work turns out
+to have no business parameters, record `parameters: none`.
 
 Business-logic parameters/values are values that change deliverable content
 (for example geometry, classification, stationing) rather than runtime behavior
@@ -219,6 +195,25 @@ Lifecycle note: the parameter manifest may be run-scoped/transient, but
 resolved effective business values MUST be preserved in execution evidence
 (run manifests/log outputs).
 
+Manifest template:
+
+```yaml
+parameter_manifest:
+  contract_id: '<C42 or domain contract ID>'
+  contract_version: '<version>'
+  parameters:
+    required:
+      - name: '<param_name>'
+        source: '<baseline | requestor | override>'
+        value: '<resolved value>'
+    optional:
+      - name: '<param_name>'
+        source: '<baseline | requestor | override>'
+        value: '<resolved value or null>'
+        default_label: '<runtime | technical>'
+  override_source: '<path to override document or "none">'
+```
+
 Additional guidance:
 
 - Workbooks and runbooks MUST state required requestor-provided inputs before
@@ -234,14 +229,27 @@ Additional guidance:
 
 ## 2.3 Export Bundle Contract
 
-When a workbook produces a portable deliverable bundle, apply the export bundle
-contract per template section "G1. Export Bundle Contract."
+When a workbook produces a portable deliverable bundle, apply this export bundle contract
+(the skeleton's Trigger Table points here). The bundle is `<bundle_id>/` holding a required
+`README.md` (the bundle manifest) and the deliverable files; the README carries at least:
 
-Portability and privacy guardrails:
+```yaml
+bundle_manifest:
+  bundle_id: '<unique identifier>'
+  created_at: '<ISO 8601 timestamp>'
+  artifacts:
+    - path: '<relative path within bundle>'
+      type: '<file type description>'
+  portability_check: '<pass | fail | not_run>'
+  privacy_check: '<pass | fail | not_run>'
+```
+
+Portability, privacy and completeness checks before delivery:
 
 - No project-file patching while the authoring tool has the file open.
-- Relative datasource paths only -- no absolute or user-specific paths.
-- Metadata scrub before bundling.
+- Relative datasource paths only -- no absolute or user-specific paths (portability).
+- Metadata scrub before bundling, so no user-specific metadata remains (privacy).
+- Every manifest artifact exists at its declared path (completeness).
 - Domain-specific close-file edit guards where applicable.
 
 Keep governance wording tool-agnostic so equivalent controls apply to non-GIS
@@ -287,6 +295,11 @@ Rules:
 - If any required module import fails, mark the run blocked until dependency
   remediation is complete.
 - Record module gate evidence in `Selfcheck Results` with environment tags.
+
+For a heavy external toolchain beyond Python imports (desktop GIS or CAD applications, model
+weights, font or locale packs, datum grids), also list each dependency with its version pin and
+isolation hazard (env-var pinning, sandboxed write limits), using the "Runtime Environment &
+External Data Gate" table of `01_Resources/templates/workflows/rb_template_generic.md`.
 
 ## 2.7 Offline Dependency Staging Contract
 
@@ -370,7 +383,7 @@ these contracts when applicable:
 
 Normative sources:
 
-- `00_Admin/specs/spec_workbundle_placement_suggestion.md`
+- `00_Admin/specs/spec_work_mode.md`
 - `00_Admin/specs/spec_workbundle_dependency_tracking.md`
 - `00_Admin/specs/spec_infrastructure_change_validation_gate.md`
 
@@ -448,6 +461,38 @@ guides/templates) to runtime **code capabilities**. It directly mitigates
 template/capability drift -- the meta-risk of repeatedly drafting similar
 scripts from scratch instead of converging on one canonical implementation.
 
+## 2.14 First-Run Semantics
+
+Trigger: the first reliable execution attempt of a lane configuration (not the first task in a
+session).
+
+- The objective is controlled learning with audit evidence, not maximum throughput.
+- Unknowns found during the run go into the defect log (2.16) and become explicit follow-on
+  controls.
+- The run's output should stabilize into ordinary use of the workbook template, or escalate its
+  blocked conditions explicitly.
+
+## 2.15 Hotfix and Recovery Loop
+
+Trigger: an unexpected failure or output mismatch during a first run.
+
+- Capture the failure evidence, apply the minimal fix, and rerun the failed step only.
+- Exit when the step passes or the blocker is escalated.
+
+## 2.16 Defect Log
+
+Trigger: a first run records defects. Keep the log in the workbook's Execution Notes:
+
+| Defect ID | Step | Symptom | Root Cause | Fix | Status |
+| --- | --- | --- | --- | --- | --- |
+
+## 2.17 Seed Capture Log
+
+Trigger: a first run surfaces follow-on ideas. Keep the log in the workbook's Execution Notes:
+
+| Seed ID | Observation | Proposed Scope | Disposition |
+| --- | --- | --- | --- |
+
 ## 3) Naming and file layout
 
 - Name files `wb_<topic>_<phase>.md` (e.g., `wb_gis_data_source_discovery_combined_final.md`).
@@ -474,16 +519,8 @@ A Workbundle is a transient folder that groups a workbook with any companion art
 Workbundles are only used when the workbook depends on companion artifacts; otherwise a standalone workbook file is
 preferred.
 
-Optional pipeline artifact:
-
-- For multi-workbook or multi-phase workbundle execution, add a workbundle
-  pipeline artifact instantiated from
-  `01_Resources/templates/workflows/workbundle_pipeline_template.md`.
-- For multi-workbundle workprogram execution, add a workprogram pipeline
-  artifact instantiated from
-  `01_Resources/templates/workflows/workprogram_pipeline_template.md`.
-- Keep governance commitments in the execution spine when one exists; use
-  pipeline artifacts as execution queues.
+Sequencing: a bundle README holds its own order and batches; a workprogram's execution spine
+holds sequence and gate authority. No separate queue file is kept.
 
 Frontmatter self-check (required before marking "done"):
 
@@ -518,7 +555,7 @@ activated_lanes:
   - Executor
   - Reviewer
 delegation_policy: none | explicit_only | coordinator_judgment | conditional | proactive_allowed
-convergence_profile: iterative_convergence_minimal | iterative_convergence_standard | <custom>
+convergence_profile: iterative_convergence_minimal | iterative_convergence_standard
 parallel_coordination_id: <string-or-omit>
 ```
 
@@ -611,10 +648,11 @@ Rules:
 - Put surface-specific delegation recipes in skills, governed-repo runbooks,
   or runtime-local artifacts instead of canonical templates.
 
-### Execution Topology Contract (required)
+### Execution Topology Contract (material delegation only)
 
-Place this section after `## Approvals and Decisions` and before
-`## Ordered Execution Queue`.
+When delegation is write-capable, shared-state, authority-sensitive, long-running,
+or independently resumable, place this section after `## Approvals and Decisions`
+and before `## Ordered Execution Queue`. Omit it for non-material delegation.
 
 Template:
 
@@ -657,7 +695,7 @@ Rules:
 - Frontmatter handles early routing. The `execution_topology_contract` handles
   auditable task shaping.
 - Books and runbooks are the authoritative home for the full contract.
-  Spines/pipelines should carry only the coordination summary and references to
+  Spines should carry only the coordination summary and references to
   child execution artifacts.
 - Selective-subagent rule: use subagents only for bounded sidecar tasks where
   delegation is actually efficient.
@@ -697,6 +735,9 @@ Compatibility:
 
 - `Coordinator`, `Executor`, `Builder`, and `Validator` remain the compatibility
   keys for `role_assignments`.
+- `activated_lanes` is the canonical lane declaration; `role_assignments` is a
+  compatibility-only tier override and must not invent lanes or lower Level-4
+  handling.
 - Profile labels (`ai-ops-planner`, `ai-ops-reviewer`, `ai-ops-closer`, etc.)
   are derivative subagent presets, generated by `/profiles`
   (`00_Admin/scripts/regenerate_profiles.py`) from
@@ -736,13 +777,21 @@ Before executing workbook tasks, confirm these context artifacts are loaded and 
 
 If any required context artifact is missing, execution MUST stop until context is restored.
 
-Before executing workbook tasks, confirm the near-top orchestration contract is
+Before executing workbook tasks, confirm the near-top orchestration fields are
 loaded in addition to the context artifacts above:
 
 - frontmatter routing fields:
   `execution_topology`, `activated_lanes`, `delegation_policy`,
   `convergence_profile`
-- `execution_topology_contract` section in the workbook body
+- if the Trigger Table's material-delegation condition fires, the
+  `execution_topology_contract` section in the workbook body
+
+For single-agent or otherwise non-material delegation, the frontmatter fields
+are the contract and the expanded section is omitted. If the material-delegation
+condition fires and the expanded section is missing or malformed, execution MUST
+stop until the workbook is corrected. The structure rule and this guide use the
+same condition; VS024 validates the frontmatter routing vocabulary and required
+values, while reviewers still check the expanded body contract.
 
 If the workbook is in a workbundle, add a "Parallel Work Guidance" section to the workbundle README with a one-line
 summary (e.g., "WB-02 and WB-04 may run in parallel; WB-03 must follow WB-01").
@@ -786,7 +835,7 @@ Template:
 Workbook complexity thresholds:
 
 - **1-14 tasks**: Single workbook, flat task list. No phases needed.
-- **15-24 tasks**: Consider organizing into execution phases (see template section F1).
+- **15-24 tasks**: Consider organizing into execution phases (the skeleton's Ordered Execution Queue).
 - **25+ tasks**: Split into multiple workbooks grouped in a workbundle; use a workprogram when coordinating
   multiple workbundles.
 
@@ -818,36 +867,7 @@ Rules:
 
 ## 5) Minimal Scaffold
 
-```markdown
-<!-- File: 90_Sandbox/ai_workbooks/wb_example_phase_1.md -->
----
-title: Example Workbook
-version: 0.1.0
-updated: 2025-12-05
-status: active
-owner: ai_ops
----
-
-## Example Workbook
-
-## Overview
-
-- Purpose and scope in 2-3 bullets.
-
-## Tasks
-
-1. Step one.
-2. Step two.
-
-## Outputs
-
-- List expected files/paths to create or update.
-
-## Do Not Execute / Future
-
-- Items to defer or keep non-executable.
-
-```text
+The scaffold is `01_Resources/templates/workflows/wb_template_generic.md`; copy it and fill its cues.
 
 ## 6) When adding new workbooks
 
@@ -868,8 +888,8 @@ When authoring or updating a workbook, include `related_refs` in front matter fo
 | YAML front matter    | `00_Admin/guides/authoring/guide_yaml_authoring.md`                                |
 | Naming conventions   | `00_Admin/guides/architecture/guide_naming_conventions.md`                         |
 | Repository structure | `00_Admin/guides/architecture/guide_repository_structure.md`                       |
-| AI Ops Stack         | `00_Admin/guides/ai_operations/guide_ai_operations_stack.md`                      |
-| Vocabulary           | `00_Admin/guides/ai_operations/guide_ai_ops_vocabulary.md`                        |
+| AI Ops Stack         | `00_Admin/guides/ai_operations/guide_ai_operations_stack.md`                       |
+| Vocabulary           | `00_Admin/guides/ai_operations/guide_ai_ops_vocabulary.md`                         |
 
 If a workbook deprecates or supersedes files, it MUST:
 
@@ -945,19 +965,9 @@ section-level delta precision:
 
 ## 10) Concise Workbook Authoring
 
-Workbooks should be executable without bloat:
-
-- prefer targeted deltas over full-file replacements;
-- keep context summaries compact and decision-oriented;
-- reference canonical contracts instead of duplicating long guidance blocks;
-- place repeatable execution checks in templates for machine-like reuse.
-
-## 11) Anti-Patterns
-
-- workbook-sized execution proposed without a workbook;
-- vague scope with no measurable completion evidence;
-- duplicating workflow/template execution checks in guide prose;
-- replacing sections without relocation proof.
+The template's fill cues bound each section: prefer targeted deltas over full-file
+replacements, write per-resume blocks instead of narration, and cite evidence by path instead of
+pasting it.
 
 ## 12) Between-Workbook Transition
 
@@ -1078,10 +1088,10 @@ non-authority operational decisions.
 
 ### Iterative Quality Loops
 
-Workbooks with repeated adjudication or quality loops must instantiate
-`01_Resources/templates/workflows/quality_loop_convergence_template.md` and
-declare validator thresholds, zero-tolerance plausibility checks, allowed
-informational residue, maximum loop count, and operator sign-off.
+Workbooks with repeated review, adjudication or quality loops instantiate
+`01_Resources/templates/workflows/quality_loop_convergence_template.md` (the loop-control
+contract: profile, cap, tiers, budget, residuals and operator sign-off). The rules live in
+`.ai_ops/workflows/crosscheck.md` "Loop Control".
 
 ## 12.3) State Surfaces — Required vs Optional by Tier
 
@@ -1097,9 +1107,9 @@ Status table, `work_state.yaml` active artifacts entry, and harvest/plan docs.
 | Tier | Required Surfaces | Optional Surfaces |
 | --- | --- | --- |
 | Solitary workbook (no workbundle) | workbook frontmatter (`version`, `status`); `.ai_ops/local/work_state.yaml` entry | harvest doc; plan doc |
-| Workbundle — single workbook | workbook frontmatter; bundle README Status table; `work_state.yaml` entry | harvest doc |
-| Workbundle — two or more workbooks | each workbook frontmatter; bundle README Status table; `work_state.yaml` entry | plan doc; harvest doc |
-| Workprogram | each workbook frontmatter; execution spine; program README Status table; `work_state.yaml` entry | per-bundle docs; harvest doc |
+| Workbundle — single workbook | workbook frontmatter; bundle README Status checklist; `work_state.yaml` entry | harvest doc |
+| Workbundle — two or more workbooks | each workbook frontmatter; bundle README Status checklist; `work_state.yaml` entry | plan doc; harvest doc |
+| Workprogram | each workbook frontmatter; execution spine; program README Status checklist; `work_state.yaml` entry | per-bundle docs; harvest doc |
 
 ### Normative Rules
 
@@ -1113,13 +1123,21 @@ Status table, `work_state.yaml` active artifacts entry, and harvest/plan docs.
 - Required surfaces are the minimum signal set for resumption and crosscheck. Omitting
   them creates context gaps that increase cold-start overhead.
 - `work_state.yaml` is always required because it is the single canonical active-artifact
-  index. Update it on activation, on status change, and on closeout.
-- The bundle README Status table is required for all workbundle tiers because it provides
-  the operator at-a-glance view without reading individual workbooks.
+  index. Update it on activation, on status change, and on closeout; `/closeout` runs
+  `update_artifact_status.py --check` and then `--remove` for the published entry. Status values
+  are the five in `policy_status_values.md`, and notes are capped at 300 characters.
+- The bundle README Status checklist is required for all workbundle tiers because it provides
+  the operator at-a-glance view without reading individual workbooks. It is a human-facing
+  handoff surface, not a second machine state store; `work_state.yaml` remains the
+  machine-authoritative active-artifact index.
 - `00_Admin/scripts/update_artifact_status.py --id <artifact_id> --status <status>
-  [--note "<text>"]` updates both the `work_state.yaml` entry and the matching bundle
-  README Status table row in one step (use `--dry-run` to preview; `--no-readme` to skip
-  the README update). Prefer it over hand-editing both surfaces separately.
+  [--note "<text>"]` updates the `work_state.yaml` entry only (use `--dry-run` to preview);
+  update the bundle README Status checklist by hand in the same material handoff pass.
+  Automatic README synchronization is intentionally not part of the script contract.
+  `--remove` deletes an exact-ID entry only when its status is `completed` or `deprecated`;
+  closeout sets that status after the final receipt. `--check` reports off-policy statuses,
+  over-cap notes and duplicate IDs without writing. A machine parity validator is not implied by this
+  contract and would require separate approval.
 - Harvest docs and plan docs are optional because they are supplementary artifacts —
   their absence does not block resumption.
 
@@ -1310,7 +1328,8 @@ for the workbook (keep it current, not exhaustive). For Level 4 work, the handof
 
 Workbundle status reflects orchestration readiness. Phase status reflects
 completion of each phase. A workbundle can be active while Phase 1 is stub and
-Phase 2 is active. This is expected for multi-phase workbundles.
+Phase 2 is active. This is expected for multi-phase workbundles. Both use the five values in
+`policy_status_values.md`.
 
 ## 19) Verification Command Guidance
 
@@ -1404,9 +1423,6 @@ Scope: Standardize runbook references and update documentation
 
 ```text
 
-Note: `rb_` is the canonical prefix for runbooks per `guide_naming_conventions.md`. Do not confuse this with an older
-`runbook_` naming, which is deprecated.
-
 ### Anti-Pattern 5: Over-Documenting Workbundles
 
 Wrong:
@@ -1437,9 +1453,9 @@ wb_workbook_phase_02.md (Phase 2)
 
 ```text
 
-Principle: Workbundles are suitcases. Keep them lean and portable. Canonical references are fine, but avoid creating
-extra companion files unless they are required for execution. If you need large replacement content, store it as a
-patch file inside the workbundle (companion artifact).
+Principle: Workbundles are suitcases. Keep them lean and portable (companion artifacts only when execution needs
+them, section 3.1). If you need large replacement content, store it as a patch file inside the workbundle (companion
+artifact).
 
 Test: Could you zip this folder and hand it to someone as a runnable unit (with canonical references available)? If
 yes, you have the right amount of documentation. If no, you have too much.

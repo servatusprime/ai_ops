@@ -50,16 +50,6 @@ runbundle may be consumed by multiple runprograms without being copied.
 
 **Actor:** `executor`, `requestor`, `approver`, `external_operator`
 
-## Execution Lane Contract
-
-Canonical lanes during execution:
-
-- `Coordinator`: runprogram sequencing and gate ownership.
-- `Executor`: runbundle/runbook task execution.
-- `Builder`: tooling/config implementation lanes when present.
-- `Reviewer`: review and crosscheck verdict ownership.
-- `Linter`: mechanical validation/report-only gate ownership.
-
 ## Sequence Naming Contract
 
 Use numbered runbook names for fixed-order execution across runbundles in this
@@ -70,14 +60,14 @@ program:
 
 Rule:
 
-- If `execution_graph.yaml` or `runprogram_pipeline_<nn>.md` encodes strict
+- If `execution_graph.yaml` encodes strict
   order, apply `rb_NN_` naming for affected books.
 - If order is informal or parallel-safe, numbering is optional.
 
 Batch-sequenced parallel guidance:
 
 - For staged execution with parallel batches, define explicit batch gates in
-  `execution_graph.yaml` or `runprogram_pipeline_<nn>.md`.
+  `execution_graph.yaml`.
 - Runbooks may run in parallel within a batch only when `execution_mode` and
   lock declarations allow it.
 - Rule: batch `NN+1` cannot start until all required runbooks in batch `NN`
@@ -97,7 +87,7 @@ runbundles are independent and orderless.
 - **Explicit stage order and boundaries.** State the stage sequence and the
   boundary/relationship assumptions between stages (inputs may coincide,
   overlap, or differ; do not assume they coincide). Encode strict order in
-  `execution_graph.yaml` or the pipeline artifact and apply `rb_NN_` naming.
+  `execution_graph.yaml` and apply `rb_NN_` naming.
 - **Per-stage acceptance disposition.** Each stage output carries a disposition:
   `candidate` -> `validated` (passed the stage's QA/residual checks) ->
   `accepted` (approved for downstream consumption). Downstream stages consume
@@ -119,14 +109,11 @@ Stage table starter:
 - Control-flow authority: colocated `execution_graph.yaml` (routing, gates,
   bounded loops, escalation; see `spec_execution_control_graph.md`). Runprograms
   use the control graph, not a work-family execution spine.
-- Queue mirror (optional): `runprogram_pipeline_<nn>.md`
-- Conflict rule: the control graph governs control flow; the pipeline is a synced
-  queue mirror.
 
 ## CSCC Preflight
 
 - [ ] Consumer manifest IDs, constraints, profiles, and resolved homes are valid.
-- [ ] Runprogram README/`execution_graph.yaml`/pipeline references are valid.
+- [ ] Runprogram README and `execution_graph.yaml` references are valid.
 - [ ] Runbundle inventory reflects current execution scope.
 - [ ] Compacted context source is known (runprogram or runbundle README).
 - [ ] Gate owners/approval mode are explicit.
@@ -153,4 +140,3 @@ Stage table starter:
 
 - `<path/to/runbook_or_guide>`
 - `execution_graph.yaml` (colocated control surface; see `spec_execution_control_graph.md`)
-- `runprogram_pipeline_<nn>.md` (optional)

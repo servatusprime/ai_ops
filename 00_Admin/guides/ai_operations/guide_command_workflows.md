@@ -491,8 +491,8 @@ table documents the known mapping.
 
 | Concept | Canonical source | Heading name(s) actually used |
 | --- | --- | --- |
-| Direct/Governed/Standalone mode resolution | `AGENTS.md` `## Mode Detection` | `work.md`: `## Mode and Target Selection` (an inline pointer to `AGENTS.md`, not a duplicate table); `bootstrap.md`: `## Mode Detection` (matches, plus its own bootstrap-specific quick-reference table) |
-| Pre-write authority classification | `AGENTS.md` `### Path-Based Authority Guard (Pre-Write)` | `work.md`: `## Pre-Write Authority Guard (Mandatory)` (an inline pointer, not a duplicate table) |
+| Direct/Governed/Standalone mode resolution | `AGENTS.md` `## Mode Detection` | `work.md`: `## Scope Block: Intake Classification and Boundary Statement (Mandatory)`, item 1 "Target and mode" (an inline pointer to `AGENTS.md`, not a duplicate table); `bootstrap.md`: `## Mode Detection` (matches, plus its own bootstrap-specific quick-reference table) |
+| Pre-write authority classification | `AGENTS.md` `### Path-Based Authority Guard (Pre-Write)` | `work.md`: the "Pre-write authority guard" bullet under `## Scope Block: Intake Classification and Boundary Statement (Mandatory)` (an inline pointer, not a duplicate table) |
 | Cold-start branching by active-artifact state | No single canonical source | `## Decision Matrix (Cold-Start)` in 10 of 13 commands; absent from `work.md`, `ai_ops_setup.md`, and `work_savepoint.md` (all three have equivalent branching logic under their own `(Mandatory)` gate sections or `## Steps` instead -- a presence variance, not purely a naming one) |
 
 ## Open Questions and Discussion

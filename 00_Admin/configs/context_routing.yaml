@@ -10,10 +10,12 @@
 #
 # Quick-read contract:
 # - Tier 1 (always read): usage, fallback, reporting, commands, skills, policy.
+#   /work reads only commands._defaults, commands.work and
+#   policy.global_execution_gates, by key search.
 
-version: 0.8.1
+version: 0.9.0
 status: active
-updated: 2026-10-23
+updated: 2026-11-09
 owner: ai_ops
 usage:
   resolution_order:
@@ -75,7 +77,7 @@ commands:
     onboarding_tiers:
       resolution_order:
       - fresh_bootstrap
-      - resume_same_scope
+      - resume_same_scope  # unreachable until fw_20260315_01 lands session state; agents apply fresh_bootstrap
       - recenter
       fresh_bootstrap:
         description: Unknown state or missing bootstrap requirements.
@@ -89,6 +91,7 @@ commands:
         - ai_ops/AGENTS.md
         # Session-state fast-path conditions: see spec_context_routing_runtime.md
         # Fallback if state unverifiable: apply fresh_bootstrap.
+        # This tier is unreachable until fw_20260315_01 lands session state; agents apply fresh_bootstrap.
       recenter:
         description: Explicit recenter trigger requires bootstrap refresh.
         bootstrap_path: recenter
@@ -96,7 +99,7 @@ commands:
         - ai_ops/AGENTS.md
   _family_baselines:
     execution:
-      resume_policy: resume_same_scope_supported
+      resume_policy: fresh_bootstrap_until_session_state  # resume_same_scope remains target-state only; agents apply fresh_bootstrap
       expected_outputs:
       - bootstrap_path
       - resume_basis
@@ -144,15 +147,25 @@ commands:
       require_work_handoff_for_canonical_edits: false
       require_context_reset: true
       require_scope_echo: true
+    report_metadata:
+      # /work emits these fields; use emit_work_route_metadata.py for a
+      # validated, side-effect-free block. scope_echo and context_reset_applied are
+      # consumed by the guard_profile keys; routing_profile, routing_fallback_used and
+      # routing_fallback_reason do not apply to /work; output_root_echo and
+      # exclusions_echo belong to report-writing commands.
+      required_fields:
+      - bootstrap_path
+      - resume_basis
+      - reads_applied
+      - context_reset_applied
+      - scope_echo
     default:
       always_read:
       - ai_ops/AGENTS.md
       - ai_ops/.ai_ops/workflows/work.md
       - ai_ops/00_Admin/configs/context_routing.yaml
       read_on_demand:
-      - ai_ops/00_Admin/specs/spec_work_mode_direct.md
-      - ai_ops/00_Admin/specs/spec_work_mode_governed.md
-      - ai_ops/00_Admin/specs/spec_work_focus_recenter.md
+      - ai_ops/00_Admin/specs/spec_work_mode.md
       - ai_ops/00_Admin/specs/spec_artifact_graph_identity.md
       - ai_ops/00_Admin/specs/spec_run_family_composition.md
       - ai_ops/00_Admin/runbooks/run_family_registry.yaml
@@ -162,10 +175,10 @@ commands:
     mode_overrides:
       direct:
         must_read:
-        - ai_ops/00_Admin/specs/spec_work_mode_direct.md
+        - ai_ops/00_Admin/specs/spec_work_mode.md
       governed:
         must_read:
-        - ai_ops/00_Admin/specs/spec_work_mode_governed.md
+        - ai_ops/00_Admin/specs/spec_work_mode.md
       standalone:
         must_read: []
   bootstrap:
@@ -351,11 +364,8 @@ closeout_packet:
     elapsed_seconds: 120
 # hook_points moved to spec_context_routing_runtime.md (no current implementation).
 policy:
-  max_required_ref_depth: 2
-  related_refs_classification:
-    required_labels:
-    - must_read
-    - may_consult
+  # max_required_ref_depth retired (no reader); related_refs labels moved to
+  # spec_workbook_structure.md section 8.1.
   seed_id_in_canonical_docs: forbidden
   # The prohibition above is extended, as advisory guidance, to durable
   # scripts/configs/pipeline-docs and other canon-destined artifacts (and to
@@ -365,9 +375,7 @@ policy:
   # is intentionally not expressed as a separate policy key here.
   co_promotion_requirements:
     work_mode_routing:
-    - ai_ops/00_Admin/specs/spec_work_mode_direct.md
-    - ai_ops/00_Admin/specs/spec_work_mode_governed.md
-    - ai_ops/00_Admin/specs/spec_work_focus_recenter.md
+    - ai_ops/00_Admin/specs/spec_work_mode.md
   implicit_invocation_policy:
     default: true
     explicit_false_commands:
@@ -428,7 +436,7 @@ policy:
     bootstrap_read_policy:
       strategy: once_per_session_or_recenter
       resume_same_scope_fast_path:
-        enabled: true
+        enabled: false  # not implemented until fw_20260315_01 lands session state
         # Evaluation conditions require session state; see spec_context_routing_runtime.md
         fallback_on_unknown_state: fresh_bootstrap
       reread_triggers:

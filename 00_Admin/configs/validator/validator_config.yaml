@@ -57,6 +57,9 @@ rules:
         - completed
         - deprecated
         - archived
+        # Workflow receipts may remain owner-gated until the explicit
+        # acknowledgement/publication gate is satisfied.
+        - pending_owner_gate
   - id: VS004
     enabled: true
     paths:
@@ -294,6 +297,7 @@ rules:
         - "## Ordered Execution Queue"
         - "## Verification Checklist"
         - "## Selfcheck Results"
+      check_topology: true
   - id: VS027
     enabled: true
     paths:
@@ -406,7 +410,7 @@ rules:
       severity: warning
       description: >-
         Flag files with status:active in frontmatter that are missing a
-        ## Purpose heading. Scope: non-trash .md files with YAML frontmatter.
+        Purpose heading (numbered or unnumbered). Scope: non-trash .md files with YAML frontmatter.
         (fw_20260324_02)
   - id: VS033
     enabled: true

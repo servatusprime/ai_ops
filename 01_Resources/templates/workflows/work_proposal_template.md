@@ -39,6 +39,15 @@ related:
 - Selected approach and why.
 - Alternatives considered and why rejected.
 
+## Decisions
+
+One row per decision the requestor must make; the recommendation comes first, and a decision
+with no open alternative is a locked line in Rationale instead.
+
+| # | Decision | Authority, risk, cost | Context | Options | Recommend | Why (axis; cold-start and AI-first reasoning) | Reply |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| D-01 | `<what is decided>` | `<Level n; risk; cost>` | `<evidence path>` | `<A; B>` | `<A>` | `<axis: reason>` | `APPROVE D-01` or the alternative |
+
 ## Approval Status and Decision Log
 
 - Approver: `<requestor_or_role>`

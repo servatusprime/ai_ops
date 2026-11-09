@@ -37,6 +37,9 @@ Each Work Proposal MUST include:
 - Affected files (explicit list)
 - Proposed changes (concise list)
 - Rationale and alternatives
+- Decisions: one row per requestor decision (authority, risk and cost; context; options;
+  recommendation first; axis; cold-start and AI-first reasoning; reply), as in
+  `01_Resources/templates/workflows/work_proposal_template.md`
 - Approval status and decision log
 - Approver and approval date
 
@@ -144,6 +147,8 @@ H1: Work Proposal: <Topic>
 ## Proposed changes
 
 ## Rationale and alternatives
+
+## Decisions
 
 ## Approval status and decision log
 ```

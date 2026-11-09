@@ -1,9 +1,9 @@
 ---
 title: HUMANS - Start Here
-version: 1.1.1
+version: 1.2.0
 status: active
 license: Apache-2.0
-last_updated: 2026-07-22
+last_updated: 2026-11-09
 owner: ai_ops
 description: Human-oriented onboarding and command reference for ai_ops.
 related:
@@ -561,7 +561,8 @@ Run once after setup (or when your environment changes):
 - **Default reasoning level:** Set whether the agent defaults to fast/bounded
   reasoning (Level 1-2) or deeper deliberation (Level 3-4). Most work uses
   Level 2. Level 3 is for architecture and governance. Level 4 (Maximum) is
-  for policy authorship, canonical specification, and L4 crosscheck tasks.
+  for policy authorship, canonical specification, or a contested Blocker after
+  a Level 3 review.
 
 Settings are saved to `.ai_ops/local/config.yaml` (gitignored -- machine-local).
 
@@ -749,7 +750,7 @@ flowchart LR
 | Executor | Per work step | Execute current step, maintain logs, flag blockers | 2 | Level 1: fully deterministic tasks (optimize down) |
 | Builder | When tooling needed | Write tools, implement automation, update configs | 2 | Level 1: routine tasks (optimize down); Level 3: policy-boundary tooling |
 | Linter | When mechanical validation is needed | Run validators/linters and report tool-backed findings | 1 | No variation — Level 1 always |
-| Reviewer | After meaningful execution phases | Judge correctness, governance fit, and adequacy of decisions | 2 | Level 3: Elevated Crosscheck; Level 4: L4 crosscheck |
+| Reviewer | After meaningful execution phases | Judge correctness, governance fit, and adequacy of decisions | 2 | Level 2: tier 1 self-crosscheck; Level 3: tier 2 for Level 4 scope or the first independent review of a new design; Level 4: policy authorship or a contested Blocker after a Level 3 review |
 | Closer | Finalization and handoff readiness | Sweep completion state and finalize closeout | 2 | No variation — Level 2 always |
 
 Model levels: 1 = Low, 2 = Medium, 3 = High, 4 = Maximum (extended thinking / max reasoning). See `AGENTS.md §AI Model Level Reference` for per-lane escalation conditions.

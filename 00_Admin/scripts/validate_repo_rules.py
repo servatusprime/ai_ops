@@ -34,6 +34,18 @@ IMPLEMENTED_RULE_IDS = {f"VS{number:03d}" for number in range(1, 38)}
 _MARKDOWNLINT_COMMAND = "markdownlint"
 _MARKDOWNLINT_FIXED_ARGS = ("--config", ".markdownlint.json")
 _SAFE_ISSUE_CODES = frozenset({"VS-CONFIG", *(f"VS{number:03d}" for number in range(1, 38))})
+_WORKBOOK_TOPOLOGIES = frozenset({"single_agent", "multi_agent", "hybrid"})
+_WORKBOOK_LANES = frozenset(
+    {"Coordinator", "Planner", "Researcher", "Executor", "Builder", "Reviewer", "Linter", "Closer"}
+)
+_WORKBOOK_DELEGATION_POLICIES = frozenset(
+    {"none", "explicit_only", "coordinator_judgment", "conditional", "proactive_allowed"}
+)
+_WORKBOOK_CONVERGENCE_PROFILES = frozenset(
+    {"iterative_convergence_minimal", "iterative_convergence_standard"}
+)
+_WORKBOOK_MODEL_LEVELS = frozenset({"low", "medium", "high"})
+_WORKBOOK_MODEL_PROFILE_LEVELS = frozenset({"low", "medium", "high", "maximum"})
 
 
 def _sanitize_issue(message: str, repo_root: str) -> str:
@@ -453,13 +465,30 @@ def list_tracked_files(root: str) -> List[str]:
         errors="replace",
         check=False,
     )
-    if tracked.returncode != 0 or untracked.returncode != 0:
+    deleted = subprocess.run(
+        [
+            "git",
+            "-c",
+            "core.quotepath=false",
+            "-C",
+            root,
+            "ls-files",
+            "--deleted",
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+    if tracked.returncode != 0 or untracked.returncode != 0 or deleted.returncode != 0:
         return []
+    deleted_paths = {line.strip() for line in deleted.stdout.splitlines() if line.strip()}
     return sorted(
         {
             line.strip()
             for line in tracked.stdout.splitlines() + untracked.stdout.splitlines()
-            if line.strip()
+            if line.strip() and line.strip() not in deleted_paths
         }
     )
 
@@ -1117,8 +1146,8 @@ def check_active_status_has_purpose(
     severity: str,
     rule_id: str,
 ) -> None:
-    """VS032: Flag status:active files that are missing a ## Purpose heading."""
-    purpose_re = re.compile(r"^##\s+Purpose\b", re.MULTILINE)
+    """VS032: Flag status:active files that are missing a Purpose heading."""
+    purpose_re = re.compile(r"^##\s+(?:\d+\.\s+)?Purpose\b", re.MULTILINE)
     for path in files:
         text = read_text(path)
         fm, body = split_front_matter(text)
@@ -1130,7 +1159,7 @@ def check_active_status_has_purpose(
                 errors,
                 warnings,
                 severity,
-                f"{rule_id}: {path} has status:active but is missing a '## Purpose' heading"
+                f"{rule_id}: {path} has status:active but is missing a Purpose heading"
             )
 
 
@@ -1622,6 +1651,140 @@ def check_required_sections(
                     severity,
                     f"{rule_id}: required section '{section}' missing in {path}",
                 )
+
+
+def check_workbook_topology_contract(
+    paths: List[str],
+    errors: List[str],
+    warnings: List[str],
+    severity: str,
+    rule_id: str,
+) -> None:
+    """Validate the workbook frontmatter routing vocabulary used at cold start."""
+
+    try:
+        import yaml  # local import: VS024 only needs full YAML parsing here
+    except ImportError as exc:
+        record_issue(errors, warnings, severity, f"{rule_id}: PyYAML is required for topology validation: {exc}")
+        return
+
+    frontmatter_re = re.compile(r"\A---\s*\n(.*?)\n---(?:\s*\n|\Z)", flags=re.DOTALL)
+    for path in paths:
+        text = read_text(path)
+        match = frontmatter_re.match(text)
+        if not match:
+            record_issue(errors, warnings, severity, f"{rule_id}: {path}: frontmatter is missing or not closed")
+            continue
+        try:
+            frontmatter = yaml.safe_load(match.group(1)) or {}
+        except yaml.YAMLError as exc:
+            record_issue(errors, warnings, severity, f"{rule_id}: {path}: frontmatter YAML is invalid: {exc}")
+            continue
+        if not isinstance(frontmatter, dict):
+            record_issue(errors, warnings, severity, f"{rule_id}: {path}: frontmatter must be a mapping")
+            continue
+
+        model_profile = frontmatter.get("model_profile")
+        if not isinstance(model_profile, str) or not model_profile.strip():
+            record_issue(errors, warnings, severity, f"{rule_id}: {path}: model_profile must be a non-empty string")
+        else:
+            profile_parts = [part.strip() for part in model_profile.split("|")]
+            profile_valid = all(
+                part in _WORKBOOK_MODEL_PROFILE_LEVELS
+                or (
+                    ":" in part
+                    and part.rsplit(":", 1)[1].strip() in _WORKBOOK_MODEL_PROFILE_LEVELS
+                    and bool(part.rsplit(":", 1)[0].strip())
+                )
+                for part in profile_parts
+            )
+            if not profile_parts or not profile_valid:
+                record_issue(
+                    errors,
+                    warnings,
+                    severity,
+                    f"{rule_id}: {path}: model_profile must be a tier or model:tier expression",
+                )
+
+        ai_role = frontmatter.get("ai_role")
+        if not isinstance(ai_role, str) or not ai_role.strip():
+            record_issue(errors, warnings, severity, f"{rule_id}: {path}: ai_role must be a non-empty string")
+
+        topology = frontmatter.get("execution_topology")
+        if not isinstance(topology, str) or topology not in _WORKBOOK_TOPOLOGIES:
+            record_issue(
+                errors,
+                warnings,
+                severity,
+                f"{rule_id}: {path}: execution_topology must be one of {sorted(_WORKBOOK_TOPOLOGIES)}",
+            )
+
+        lanes = frontmatter.get("activated_lanes")
+        if not isinstance(lanes, list) or not lanes:
+            record_issue(errors, warnings, severity, f"{rule_id}: {path}: activated_lanes must be a non-empty list")
+        else:
+            invalid_lanes = sorted(
+                {
+                    repr(lane)
+                    for lane in lanes
+                    if not isinstance(lane, str) or lane not in _WORKBOOK_LANES
+                }
+            )
+            duplicate_lanes = sorted(
+                {lane for lane in lanes if isinstance(lane, str) and lanes.count(lane) > 1}
+            )
+            if invalid_lanes:
+                record_issue(
+                    errors,
+                    warnings,
+                    severity,
+                    f"{rule_id}: {path}: activated_lanes contains non-canonical lanes {invalid_lanes}",
+                )
+            if duplicate_lanes:
+                record_issue(
+                    errors,
+                    warnings,
+                    severity,
+                    f"{rule_id}: {path}: activated_lanes contains duplicates {duplicate_lanes}",
+                )
+
+        delegation_policy = frontmatter.get("delegation_policy")
+        if not isinstance(delegation_policy, str) or delegation_policy not in _WORKBOOK_DELEGATION_POLICIES:
+            record_issue(
+                errors,
+                warnings,
+                severity,
+                f"{rule_id}: {path}: delegation_policy must be one of {sorted(_WORKBOOK_DELEGATION_POLICIES)}",
+            )
+
+        convergence_profile = frontmatter.get("convergence_profile")
+        if not isinstance(convergence_profile, str) or convergence_profile not in _WORKBOOK_CONVERGENCE_PROFILES:
+            record_issue(
+                errors,
+                warnings,
+                severity,
+                f"{rule_id}: {path}: convergence_profile must be one of {sorted(_WORKBOOK_CONVERGENCE_PROFILES)}",
+            )
+
+        role_assignments = frontmatter.get("role_assignments")
+        if role_assignments is not None:
+            if not isinstance(role_assignments, dict):
+                record_issue(errors, warnings, severity, f"{rule_id}: {path}: role_assignments must be a mapping")
+            else:
+                invalid_levels = sorted(
+                    {
+                        repr(value)
+                        for value in role_assignments.values()
+                        if not isinstance(value, str) or value not in _WORKBOOK_MODEL_LEVELS
+                    }
+                )
+                if invalid_levels:
+                    record_issue(
+                        errors,
+                        warnings,
+                        severity,
+                        f"{rule_id}: {path}: role_assignments contains invalid model levels {invalid_levels}",
+                    )
 
 
 def check_workbook_command_path_base_consistency(
@@ -2208,6 +2371,8 @@ def main() -> int:
             required_sections = params.get("required_sections", [])
             if required_sections:
                 check_required_sections(paths, required_sections, errors, warnings, severity, rule_id)
+            if str(params.get("check_topology", "false")).lower() == "true":
+                check_workbook_topology_contract(paths, errors, warnings, severity, rule_id)
         elif rule_id == "VS027":
             params = rule.get("params", {})
             severity = params.get("severity", "error")

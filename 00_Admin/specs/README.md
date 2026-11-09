@@ -40,7 +40,7 @@ Read specs in this order:
 ### Priority 3: Execution Coordination Contracts
 
 1. `spec_workbundle_dependency_tracking.md` - Workbook dependency and impact declarations
-1. `spec_workbundle_placement_suggestion.md` - Placement scoring and decision-echo contract
+1. `spec_work_mode.md` - `/work` Direct and Governed mode rules, placement decision echo, cross-repo reference rule
 1. `spec_infrastructure_change_validation_gate.md` - Infrastructure-touching validation gate
 1. `spec_context_routing_runtime.md` - Target-state runtime design for context_routing.yaml
 1. `spec_cross_surface_coordination.md` - Cross-surface state, source-control, and validation coordination

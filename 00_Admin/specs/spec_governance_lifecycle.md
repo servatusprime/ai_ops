@@ -14,8 +14,7 @@ related:
   - 00_Admin/specs/spec_policy_decision_record.md
   - 00_Admin/specs/spec_async_approval_contract.md
   - 00_Admin/specs/spec_cost_governance.md
-  - 00_Admin/specs/spec_work_mode_direct.md
-  - 00_Admin/specs/spec_work_mode_governed.md
+  - 00_Admin/specs/spec_work_mode.md
   - AGENTS.md
 ---
 

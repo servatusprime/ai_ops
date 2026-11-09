@@ -199,7 +199,7 @@ class GovernanceSeedContractTests(unittest.TestCase):
             self.assertEqual([], warnings)
             self.assertEqual(
                 [
-                    f"VS032: {path} has status:active but is missing a '## Purpose' heading"
+                    f"VS032: {path} has status:active but is missing a Purpose heading"
                 ],
                 errors,
             )

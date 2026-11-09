@@ -31,7 +31,11 @@ REVIEW_RECEIPT_VERSION = "0.2.0"
 DETERMINISTIC_RECEIPT_VERSION = "0.4.0"
 POLICY_PATH = "00_Admin/configs/closeout_security_tiers.yaml"
 HOOK_MARKER = "validate_closeout_security_head.py"
-DEFAULT_MAX_TOTAL_REVIEW_TOKENS = 200000
+# Aggregate review size is intentionally unbounded.  Capacity is controlled by
+# per-packet sizing and the workbook's review-loop contract instead of a
+# repository-wide token ceiling.
+DEFAULT_MAX_TOTAL_REVIEW_TOKENS = None
+REVIEW_COST_VISIBILITY_THRESHOLD = 200_000
 MIN_FORCED_T2_PREFIXES = (
     ".ai_ops/workflows/",
     "00_Admin/configs/",
@@ -54,6 +58,60 @@ MIN_FORCED_T2_FILES = (
 
 def fail(message: str) -> "NoReturn":
     raise SystemExit(f"closeout-security-prepass: {message}")
+
+
+def review_cost_warning(total_review_tokens: int) -> str | None:
+    if total_review_tokens <= REVIEW_COST_VISIBILITY_THRESHOLD:
+        return None
+    return (
+        "WARN review_tokens_total="
+        f"{total_review_tokens} exceeds visibility threshold "
+        f"{REVIEW_COST_VISIBILITY_THRESHOLD}; aggregate gate disabled; "
+        "per-packet controls remain active"
+    )
+
+
+def build_review_batches(
+    packet_files: list[str], packet_tokens: list[int], session_budget: int | None
+) -> list[dict[str, Any]]:
+    """Split packets without imposing an aggregate budget when it is unset."""
+    batches: list[dict[str, Any]] = []
+    current_files: list[str] = []
+    current_tokens: list[int] = []
+    for path, tokens in zip(packet_files, packet_tokens, strict=False):
+        if session_budget is not None and tokens > session_budget:
+            fail(f"single reviewer packet exceeds session token budget: {path}")
+        if current_files and (
+            session_budget is None or sum(current_tokens) + tokens > session_budget
+        ):
+            batches.append(
+                {
+                    "id": f"batch-{len(batches) + 1:03d}",
+                    "packet_files": current_files,
+                    "packet_estimated_tokens": current_tokens,
+                    "packet_sha256": [
+                        hashlib.sha256(Path(item).read_bytes()).hexdigest()
+                        for item in current_files
+                    ],
+                }
+            )
+            current_files = []
+            current_tokens = []
+        current_files.append(path)
+        current_tokens.append(tokens)
+    if current_files:
+        batches.append(
+            {
+                "id": f"batch-{len(batches) + 1:03d}",
+                "packet_files": current_files,
+                "packet_estimated_tokens": current_tokens,
+                "packet_sha256": [
+                    hashlib.sha256(Path(item).read_bytes()).hexdigest()
+                    for item in current_files
+                ],
+            }
+        )
+    return batches
 
 
 def rel_path(value: str) -> str:
@@ -554,6 +612,8 @@ def enforce_total_review_budget(packet_tokens: list[int], config: dict[str, Any]
     configured = config.get("packet", {}).get(
         "max_total_review_tokens", DEFAULT_MAX_TOTAL_REVIEW_TOKENS
     )
+    if configured is None:
+        return total
     maximum = positive_integer(configured, "max_total_review_tokens")
     if total > maximum:
         fail(
@@ -868,7 +928,7 @@ def main() -> int:
             "policy_source": args.policy_source,
             "policy_version": str(config.get("version", "unknown")),
             "validator_mode": "deterministic_admission",
-            "packet_builder_version": "closeout_security_prepass/0.4.0",
+            "packet_builder_version": "closeout_security_prepass/0.4.1",
             "known_tripwire_results": {
                 "status": "candidate" if candidate_rows else "clean",
                 "candidate_rows": candidate_rows,
@@ -907,35 +967,19 @@ def main() -> int:
     )
     for row in rows:
         row["chunk_count"] = chunk_counts[row["path"]]
-    batches: list[dict[str, Any]] = []
-    current_files: list[str] = []
-    current_tokens: list[int] = []
-    session_budget = int(config.get("packet", {}).get("session_token_budget", 200000))
-    for path, tokens in zip(packet_files, packet_tokens, strict=False):
-        if tokens > session_budget:
-            fail(f"single reviewer packet exceeds session token budget: {path}")
-        if current_files and sum(current_tokens) + tokens > session_budget:
-            batches.append({
-                "id": f"batch-{len(batches) + 1:03d}",
-                "packet_files": current_files,
-                "packet_estimated_tokens": current_tokens,
-                "packet_sha256": [hashlib.sha256(Path(item).read_bytes()).hexdigest() for item in current_files],
-            })
-            current_files = []
-            current_tokens = []
-        current_files.append(path)
-        current_tokens.append(tokens)
-    if current_files:
-        batches.append({
-            "id": f"batch-{len(batches) + 1:03d}",
-            "packet_files": current_files,
-            "packet_estimated_tokens": current_tokens,
-            "packet_sha256": [hashlib.sha256(Path(item).read_bytes()).hexdigest() for item in current_files],
-        })
-    receipt["review_batches"] = batches
+    configured_session_budget = config.get("packet", {}).get("session_token_budget")
+    session_budget = (
+        positive_integer(configured_session_budget, "session_token_budget")
+        if configured_session_budget is not None
+        else None
+    )
+    receipt["review_batches"] = build_review_batches(packet_files, packet_tokens, session_budget)
     receipt["review_tokens_total"] = total_review_tokens
     args.receipt_path.parent.mkdir(parents=True, exist_ok=True)
     args.receipt_path.write_text(yaml.safe_dump(receipt, sort_keys=False), encoding="utf-8", newline="\n")
+    warning = review_cost_warning(total_review_tokens)
+    if warning:
+        print(warning)
     print(f"PREPASS {len(rows)} files source={args.source} receipt={args.receipt_path}")
     print(f"include_set_sha256={receipt['include_set_sha256']}")
     print(f"candidates={sum(row['prepass_status'] == 'candidate' for row in rows)}")

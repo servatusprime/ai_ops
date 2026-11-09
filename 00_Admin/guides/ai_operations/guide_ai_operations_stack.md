@@ -1,9 +1,9 @@
 ---
 title: "Guide: ai_ops"
-version: 2.3.6
+version: 2.3.7
 status: active
 license: Apache-2.0
-last_updated: 2026-07-22
+last_updated: 2026-11-06
 owner: ai_ops
 related:
   - ./guide_ai_ops_vocabulary.md
@@ -133,6 +133,10 @@ exclusions, see `guide_ai_ops_vocabulary.md` Section 3.
 | Execution | Runbook, Runbundle, Runprogram, Pipeline, Module, Tool |
 | Verification | Contract, Validator, Logs |
 
+For the pipeline boundary, see `guide_ai_ops_vocabulary.md`: Pipeline remains
+canonical where an actual pipeline or DAG is used, while work-family queue-template
+mirrors are not canonical sequencing artifacts.
+
 Compacted Context and Scratchpad are Meta artifacts because they provide
 cross-cutting shared context and working notes rather than execution logic or
 verification proof.
@@ -194,10 +198,13 @@ declare the overall tier and active lane set. The `model` parameter on the Agent
 tool controls the actual model used when spawning. (`role_assignments` broad-role
 keys are deprecated -- see `AGENTS.md` AI Model Level Reference.)
 
-**Enhanced Crosscheck Mode:** A pattern where the executor spawns a higher-tier
-sub-agent specifically for the crosscheck phase, enabling a more capable model to
-review the work. Enable by setting a higher review tier in workbook frontmatter
-and using the high-tier runtime model when spawning the review agent.
+**Enhanced Crosscheck Mode:** A pattern where the executor spawns a separate review
+sub-agent for the crosscheck phase at the reviewer level required by the applicable
+`AGENTS.md` Reviewer row. Set the review tier in workbook frontmatter and use that
+model when spawning the review agent. Tier 1 runs 1 loop under
+`iterative_convergence_minimal` and up to 3 under `iterative_convergence_standard`,
+and tier 2 once; each workbook declares its caps and review budget in the
+`crosscheck.md` "Loop Control" contract.
 
 **Relational sliders** (Communication Depth, Tone Warmth, Formality, Directness)
 apply to the **primary agent / Coordinator profile only** -- subagents return

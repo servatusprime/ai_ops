@@ -1,6 +1,6 @@
 ---
 template_type: decision_card
-version: 1.0.0
+version: 1.1.0
 status: active
 license: Apache-2.0
 created: 2026-06-18
@@ -37,8 +37,17 @@ human operator and needs a structured, async-safe reply. Common triggers:
 VS Code extension, email, or Slack relay. The card is platform-neutral; the
 operator chooses the delivery channel.
 
-**One card per decision.** Do not stack multiple decisions in one card. If two
-gates fire together, emit one card per gate.
+**One card per decision**, unless several decisions reach the requestor together (for
+example a phase-admission card). Then use the decision-table form inside one card, one row
+per decision with the recommendation first, and keep the heading, the five bold fields and
+**Reply:**:
+
+| # | Decision | Recommend | Why (axis) | Alternative |
+| --- | --- | --- | --- | --- |
+| D1 | \<what is decided\> | \<recommended option\> | \<axis: reason\> | \<other option\> |
+
+With a table, **Reply:** accepts `APPROVE card` (every recommendation) or per-row answers
+(`D1: alternative`).
 
 ## Field Guidance
 
@@ -77,4 +86,5 @@ item in the workbook Approvals section and continues with remaining in-scope tas
 
 ## Change Log
 
+- 1.1.0 (2026-11-04): Decision-table form for several decisions in one card.
 - 1.0.0 (2026-06-18): Initial version (wb_proposal_seeds_01, fw_20260423_02).

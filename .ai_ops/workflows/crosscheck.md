@@ -2,7 +2,7 @@
 description: Conduct a structured peer review of work.
 name: crosscheck
 kind: workflow
-version: 0.2.3
+version: 0.3.0
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -151,7 +151,7 @@ review-local defaults and workflow-specific deltas.
      inventory on the workbook's Ordered Execution Queue and evidence ledger
      rather than staged diff.
    - **Hybrid**: run top-down first, then bottom-up, then reconcile discrepancies.
-10. For workbook/runbook/spine/pipeline scope, run an execution-topology
+10. For workbook/runbook/spine scope, run an execution-topology
     alignment pass:
     - verify `execution_topology`, `activated_lanes`, `delegation_policy`, and
       `convergence_profile` are present when required,
@@ -257,6 +257,46 @@ review-local defaults and workflow-specific deltas.
    - Key observations
    - Recommendations
 7. Do not reference ai_ops internal paths or templates.
+
+## Loop Control
+
+These rules bound every review loop. The workbook's Crosscheck Stop Marker records the
+profile, the loops used against the cap, the tier-2 status, the budget and the residual
+dispositions; `quality_loop_convergence_template.md` is the loop-control contract.
+
+1. **Two tiers.** Tier 1 is a self-crosscheck that remediates before tier 2. Tier 2 is one
+   independent review in a separate session with the review packet and accepted residuals,
+   not tier 1's findings. Tier 2 is `not_required` only for Level 0 to 2 work; from Level 3 it
+   is mandatory. If no subagent is available, tier 1 is a fresh-context second pass by the same
+   agent or an operator-run pass, and the substitute is recorded.
+2. **Caps.** `iterative_convergence_minimal` permits 1 tier-1 loop; the standard profile permits
+   up to 3. Later tier-1 loops are delta-only, tier 2 runs once, and a tier-2 Major or Blocker
+   fix gets at most 2 separate-session delta passes. A workbook declares caps and budget in its
+   Stop Marker and `cost_governance`. Any other convergence value stops at the `/work`
+   Workbook Preflight Gate until the requestor sets one of the two, recorded in the resume-delta
+   block; there is no silent mapping. A partial review records completed and remaining checks,
+   evidence, and next action; continuation or packet splitting consumes the same counter.
+3. **Cap decisions.** A loop, delta-pass, or review-budget cap hit goes to a decision card,
+   never silent acceptance. In-scope remediation and focused verification continue without
+   a new request; scope, authority, budget/cap, safety, or publication triggers create a
+   decision card.
+4. **Severity gating.** Only Blocker and Major findings trigger another round; Minor and Low
+   findings are fixed or listed as residuals. The lead may not reject or downgrade a tier-2
+   Major or Blocker: it goes to a decision card and is listed at the publication gate.
+   `accepted` is never a legal disposition for a tier-2 Major or Blocker.
+5. **Delta-only reruns, frozen scope.** A rerun reviews only what changed since the last
+   round, against the scope frozen at the first round. Only changed lanes are re-reviewed; a
+   records-only edit triggers no full re-review unless a count, gate, status or security
+   claim changes.
+6. **One reviewer type per question, and a findings quality bar.** Each finding carries a
+   severity and evidence (path and line, or command output); Major and above also carry a
+   failure scenario; the reviewer lists what was verified and what was tried.
+7. **Packet capacity (advisory).** Set review intent once in the workbook's
+   `cost_governance`; estimate packet cost before dispatch and split an oversized packet into
+   explicit bounded lanes. There is no aggregate review-token ceiling. Per-packet sizing,
+   loop caps and the Stop Marker remain the controls. If a packet still does not fit the
+   available context, emit `PARK` with the exact resume point and preserve receipt and
+   manifest hashes.
 
 ## Outputs
 

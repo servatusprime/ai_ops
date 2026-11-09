@@ -1,9 +1,9 @@
 ---
 title: Agents Start Here
-version: 3.8.0
+version: 3.9.0
 status: active
 license: Apache-2.0
-last_updated: 2026-09-06
+last_updated: 2026-11-09
 owner: ai_ops
 description: Bootstrap and authority contract for AI agents operating in ai_ops.
 related:
@@ -185,6 +185,10 @@ LOOP until (clean OR blocked OR iterations >= 3):
   6. If clean -> exit loop
 END LOOP
 ```
+
+Selfcheck re-reads the workbook's own tasks and evidence. A self-crosscheck is
+a separate subagent review governed by `.ai_ops/workflows/crosscheck.md` Loop
+Control.
 
 **Exit conditions:**
 
@@ -707,8 +711,8 @@ Use this table to select a model level for each lane assignment.
 | --- | --- | --- | --- |
 | 1 | Low | Bounded extraction, formatting, mechanical validation, simple edits | Researcher (bounded discovery), Executor (bounded execution), Linter, Builder (routine tasks) |
 | 2 | Medium | Scoped implementation, multi-step work, standard planning/review | Coordinator (standard), Planner, Executor (judgment needed), Builder, Reviewer (standard), Closer |
-| 3 | High | Architecture, governance, precedent-setting, elevated review | Coordinator (L4 decisions), Planner (architecture-heavy), Reviewer (Elevated Crosscheck) |
-| 4 | Maximum | Policy authorship, canonical specification, L4 crosscheck, extended reasoning tasks | Coordinator (policy decisions), Reviewer (L4 crosscheck), Planner (system-level design) |
+| 3 | High | Architecture, governance, precedent-setting, elevated review | Coordinator (L4 decisions), Planner (architecture-heavy), Reviewer (tier 2 for Level 4 scope or a first independent design review; tier 1 stays at Level 2) |
+| 4 | Maximum | Policy authorship, canonical specification, L4 crosscheck, extended reasoning tasks | Coordinator (policy decisions), Reviewer (a contested Blocker after a Level 3 review, or policy authorship), Planner (system-level design) |
 
 **Per-lane reasoning levels and variation conditions:**
 
@@ -720,7 +724,7 @@ Use this table to select a model level for each lane assignment.
 | Executor | 2 | Level 1: fully deterministic tasks (optimize down) |
 | Builder | 2 | Level 1: routine tasks (optimize down); Level 3: substrate changes touching policy boundaries |
 | Linter | 1 | No variation - Level 1 always |
-| Reviewer | 2 | Level 3: Elevated Crosscheck or L3+ scope; Level 4: L4 crosscheck or policy-boundary review |
+| Reviewer | 2 | Level 2: tier 1 self-crosscheck; Level 3: tier 2 for Level 4 scope or the first independent review of a new design; Level 4: policy authorship or a contested Blocker after a Level 3 review |
 | Closer | 2 | No variation - Level 2 always |
 
 **Notes:**
@@ -743,8 +747,7 @@ subagent type rather than a generic one -- it already carries the correct
 `model`, preloaded `skills`, and `tools`/`permissionMode` envelope for that
 lane, so the orchestrator does not have to reconstruct it by hand. If the
 surface does not expose it (custom subagent discovery is environment- and
-launch-root-dependent -- see `guide_workbooks.md`'s subagent-profile
-mapping), apply that profile's `tools`, `permissionMode`, and `model`
+launch-root-dependent), apply that profile's `tools`, `permissionMode`, and `model`
 manually and record the substitution in the run's execution notes.
 
 This is a recommended default with mandatory disclosure, not a stop-gate:
@@ -775,8 +778,8 @@ Riders only come into play when the operator selects one via `/profiles`. Withou
 profile, the primary agent runs in default out-of-box posture. Riders do not assign to lanes
 and are not per-lane defaults.
 
-See **Profiles** for how riders combine with parameter sliders to form a named behavioral
-contract. Per-lane base parameters are in the generated map:
+Riders combine with the parameter sliders to form a named behavioral contract
+(set through `/profiles`). Per-lane base parameters are in the generated map:
 `02_Modules/01_agent_profiles/generated/single_agent_profile_map.md`.
 
 **Do not hand-edit** files in `plugins/ai-ops-governance/agents/`. These are generated. Use

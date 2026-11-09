@@ -45,18 +45,6 @@ Briefly describe why this workbundle exists and what it will accomplish.
 
 **Actor:** `executor`, `requestor`, `approver`, `external_operator`
 
-## Execution Lane Contract
-
-Canonical lanes during execution:
-
-- `Coordinator`: sequencing and approval/gate ownership.
-- `Executor`: workbook task execution and evidence capture.
-- `Builder`: tooling/config implementation when invoked by workbook scope.
-- `Reviewer`: judgment-heavy review and crosscheck findings.
-- `Linter`: mechanical validation findings and report-only checks.
-
-Profile/subagent labels are presets; role semantics remain canonical.
-
 ## Sequence Naming Contract
 
 Use numbered workbook names when execution order is fixed and coordinated
@@ -67,7 +55,7 @@ inside this bundle:
 
 Rule:
 
-- If this README or a local pipeline defines a strict order, apply `wb_NN_`
+- If this README defines a strict order, apply `wb_NN_`
   naming.
 - If order is informal, do not force numbering.
 
@@ -75,15 +63,14 @@ Batch-sequenced parallel guidance:
 
 - If books run in parallel batches that must occur in strict stage order,
   keep `wb_NN_` numbering aligned to batch sequence.
-- Use one queue section per batch (for example `Batch 01`, `Batch 02`) in the
-  local pipeline/README and mark books within a batch as parallel-safe.
+- Use one queue section per batch (for example `Batch 01`, `Batch 02`) in this
+  README and mark books within a batch as parallel-safe.
 - Rule: all books in batch `NN` must complete before any book in batch `NN+1`
   starts.
 
 ## Authority Source
 
 - Parent authority (if program-scoped): `../execution_spine.md`
-- Local queue mirror (optional): `wb_pipeline_<bundle_name>_<nn>.md`
 - Conflict rule: parent spine wins where applicable.
 
 ## CSCC Preflight
@@ -124,4 +111,3 @@ archival. `/closeout` reconciles every row before it can archive the bundle.
 ## References
 
 - `<path/to/runbook_or_guide>`
-- `wb_pipeline_<bundle_name>_<nn>.md` (optional pipeline artifact)

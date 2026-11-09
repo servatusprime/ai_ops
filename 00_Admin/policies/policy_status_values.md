@@ -1,7 +1,7 @@
 ---
 title: Status Values Policy
-version: 0.2.0
-updated: 2026-02-12
+version: 0.2.1
+updated: 2026-11-09
 status: active
 license: Apache-2.0
 ---
@@ -20,6 +20,9 @@ Define the canonical status vocabulary for documents and metadata.
 - `active`: implemented and in use; reasonably complete.
 - `completed`: finished work; retained for reference.
 - `deprecated`: superseded or being phased out; avoid new dependencies.
+- `pending_owner_gate`: a workflow receipt or handoff is complete enough for
+  review but awaits explicit owner acknowledgement or publication; this is
+  not a permitted execution-workbook status.
 
 ## Normalization Rules
 
@@ -31,6 +34,8 @@ Define the canonical status vocabulary for documents and metadata.
 ## Allowed Transitions
 
 - `planned` -> `stub` -> `active` -> `completed`.
+- A receipt or handoff may move from `active` to `pending_owner_gate` while its
+  explicit owner/publication gate is open, then to `completed` after that gate.
 - Use `deprecated` only when an artifact is superseded or explicitly phased out.
 - Backwards transitions require explicit rationale in the owning artifact.
 

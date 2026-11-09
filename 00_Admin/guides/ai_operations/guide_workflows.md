@@ -19,7 +19,7 @@ related:
 ## Purpose
 
 Defines Workflows and their relationship to Runbooks and Workbooks within the AI Operations Stack. Covers
-placement rules, artifact selection, pipeline artifact patterns, governance boundaries, and agent decision
+placement rules, artifact selection, sequencing surfaces, governance boundaries, and agent decision
 matrices. Normative - if this guide conflicts with a spec, the spec wins.
 
 This guide defines **Workflows** and how they relate to Runbooks and Workbooks. It is normative.
@@ -80,13 +80,13 @@ Execution mechanics and index hierarchy are defined in:
 - `00_Admin/specs/spec_runbook_structure.md`
 - `00_Admin/specs/spec_workbook_structure.md`
 - `00_Admin/specs/spec_workbundle_dependency_tracking.md`
-- `00_Admin/specs/spec_workbundle_placement_suggestion.md`
+- `00_Admin/specs/spec_work_mode.md`
 - `00_Admin/specs/spec_infrastructure_change_validation_gate.md`
 
 For CSCC-first workflow lanes:
 
 - `/work` relevance-gate behavior should follow placement decision echo fields
-  defined by `spec_workbundle_placement_suggestion.md`.
+  defined by `spec_work_mode.md` section 4.
 - workbook templates should include dependency declarations (`depends_on`,
   `affects`) aligned to `spec_workbundle_dependency_tracking.md`.
 - closeout lanes should apply the infrastructure validation checklist when
@@ -118,70 +118,13 @@ Resolve exact versions, paths, profiles, hashes, and gates into a run-instance
 lock before execution. See `spec_artifact_graph_identity.md` and
 `spec_run_family_composition.md` for normative rules.
 
-## Pipeline Artifacts (Execution Queue)
+## Sequencing Surfaces
 
-Pipeline artifacts are optional execution-queue files used to sequence books and bundles without changing governance
-authority.
-
-Boundary rule:
-
-- **Execution spine** is the governance/commitment authority for sequencing gates in the work-family; for run-family runprograms the colocated `execution_graph.yaml` is the control authority.
-- **Pipeline artifacts** are operational queue views for run execution.
-- If both exist, update spine first, then align pipeline artifacts.
-
-Creation rules:
-
-- Create pipeline artifacts when one of these is true:
-  - 3+ ordered steps must be run repeatedly.
-  - A bundle/program has manual gates that benefit from explicit queue visibility.
-  - Handoffs require a single "entrypoint" artifact for execution order.
-- Skip pipeline artifacts for simple one- or two-step flows where README + runbook/workbook order is already obvious.
-
-Placement and naming:
-
-- Workbundle pipeline:
-  - location: workbundle root
-  - pattern: `wb_pipeline_<bundle_name>_<nn>.md`
-  - template: `01_Resources/templates/workflows/workbundle_pipeline_template.md`
-- Execution spine (workprogram authority source):
-  - location: workprogram root
-  - pattern: `execution_spine.md`
-  - template: `01_Resources/templates/workflows/execution_spine_template.md`
-- Workprogram pipeline:
-  - location: workprogram root
-  - pattern: `workprogram_pipeline_<nn>.md`
-  - template: `01_Resources/templates/workflows/workprogram_pipeline_template.md`
-- Runbundle pipeline:
-  - location: runbundle root
-  - pattern: `rnb_<bundle_name>_<nn>.md`
-  - template: `01_Resources/templates/workflows/runbundle_pipeline_template.md`
-- Runprogram pipeline:
-  - location: runprogram root
-  - pattern: `runprogram_pipeline_<nn>.md`
-  - template: `01_Resources/templates/workflows/runprogram_pipeline_template.md`
-
-Pipeline queue entries SHOULD use stable artifact IDs plus manifest-resolved
-paths. Parent-relative paths are compatibility data only and MUST NOT be hidden
-authority defaults.
-
-Minimum section contract for pipeline artifacts:
-
-1. Purpose
-1. Inputs
-1. Preconditions
-1. Ordered Execution Queue
-1. Manual Gates (if any)
-1. Validation Commands
-1. Outputs
-1. Postconditions
-1. References
-
-Execution-oriented templates should include coordination metadata:
-
-- `execution_mode`
-- `depends_on`
-- `shared_files`
-- `lock_scope`
+- **Execution spine** (`execution_spine.md` at the workprogram root, from
+  `01_Resources/templates/workflows/execution_spine_template.md`) is the governance and
+  commitment authority for sequencing gates in the work family; for run-family runprograms the
+  colocated `execution_graph.yaml` is the control.
+- Bundle READMEs hold their own order and batches. No separate queue file is kept.
 
 ## Front Matter Profiles
 
@@ -193,7 +136,6 @@ artifact with execution-only fields.
 | --- | --- | --- | --- |
 | README templates (`workbundle`, `workprogram`, `runbundle`, `runprogram`) | `title`, `version`, `status`, `created`, `updated`, `owner`, `description`, `related` | `primary_axis`, `lifecycle` | `execution_mode`, `depends_on`, `shared_files`, `lock_scope` |
 | Spine templates (`execution_spine`) | README profile + `id`, `primary_axis` | `lifecycle`, `execution_topology`, `activated_lanes`, `delegation_policy`, `convergence_profile`, `parallel_coordination_id` | `execution_mode`, `depends_on`, `shared_files`, `lock_scope` |
-| Pipeline templates (`workbundle/workprogram/runbundle/runprogram pipeline`) | spine profile + `execution_mode`, `depends_on`, `shared_files`, `lock_scope` | `primary_axis`, `lifecycle`, `execution_topology`, `activated_lanes`, `delegation_policy`, `convergence_profile`, `parallel_coordination_id` | none |
 | Workbook/runbook templates (`wb_*`, `rb_*`) | follow `guide_workbooks.md` / `guide_runbooks.md` front matter requirements + `model_profile` (`model:reasoning`) + `execution_topology` + `activated_lanes` + `delegation_policy` + `convergence_profile` | `parallel_coordination_id` when sibling artifacts may run concurrently | n/a |
 <!-- markdownlint-enable MD013 -->
 
@@ -205,7 +147,9 @@ Reference key normalization:
 
 Cost governance: the `cost_governance:` field is optional for all artifact families in
 the table above. All values default to `null` - agents apply thrift judgment without a
-hard budget constraint. See `00_Admin/specs/spec_cost_governance.md` for the full schema.
+hard budget constraint. Review-spend and token estimates are advisory; declared
+round/turn ceilings and `PARK` behavior govern when estimates are inaccurate. See
+`00_Admin/specs/spec_cost_governance.md` for the full schema.
 
 ## Execution Topology Placement
 
@@ -227,10 +171,6 @@ Placement rules:
   repeat routing fields and convergence profile, but they should reference
   child execution artifacts instead of duplicating their full
   `execution_topology_contract` blocks.
-- **Pipeline artifacts** summarize queue ordering, dependency/lock data, and
-  coordination metadata. They may repeat routing fields when needed for early
-  triage, but they should not become a second source of truth for child
-  delegation payloads.
 
 Single-agent default:
 
@@ -396,13 +336,6 @@ Use base work-family templates:
 - `01_Resources/templates/workflows/wb_template_generic.md`
 - `01_Resources/templates/workflows/work_proposal_template.md` (Level 4 governance proposals)
 
-Use pipeline templates when queue artifacts are warranted:
-
-- `01_Resources/templates/workflows/workbundle_pipeline_template.md`
-- `01_Resources/templates/workflows/workprogram_pipeline_template.md`
-- `01_Resources/templates/workflows/runbundle_pipeline_template.md`
-- `01_Resources/templates/workflows/runprogram_pipeline_template.md`
-
 ## Request Clarification Gate
 
 If a request is vague or underspecified, stop and clarify before selecting artifacts or starting execution. Use this
@@ -410,7 +343,7 @@ minimum set:
 
 - Desired outcome and deliverable
 - Scope boundaries (in/out)
-- Target artifact type (runbook/workbook/spec/pipeline/spine)
+- Target artifact type (runbook/workbook/spec/spine)
 - Constraints (time, tools, data sources)
 - Success criteria or acceptance checks
 

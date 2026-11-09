@@ -35,7 +35,10 @@ DETERMINISTIC_DISPOSITIONS = {
     "deterministic_admission",
     "split_required",
 }
-DEFAULT_MAX_TOTAL_REVIEW_TOKENS = 200000
+# Aggregate review size is intentionally unbounded.  Capacity is controlled by
+# per-packet sizing and the workbook's review-loop contract instead of a
+# repository-wide token ceiling.
+DEFAULT_MAX_TOTAL_REVIEW_TOKENS = None
 MIN_FORCED_T2_PREFIXES = (
     ".ai_ops/workflows/",
     "00_Admin/configs/",
@@ -182,6 +185,8 @@ def enforce_total_review_budget(packet_tokens: list[int], config: dict[str, Any]
     configured = config.get("packet", {}).get(
         "max_total_review_tokens", DEFAULT_MAX_TOTAL_REVIEW_TOKENS
     )
+    if configured is None:
+        return
     maximum = positive_integer(configured, "max_total_review_tokens")
     total = sum(packet_tokens)
     if total > maximum:
@@ -1057,8 +1062,13 @@ def main() -> int:
     if str(receipt.get("ruleset_version")) != str(config.get("ruleset_version")):
         fail("receipt ruleset_version does not match the active policy")
     packet = config.get("packet", {})
-    packet_budget = int(packet.get("estimated_tokens_per_packet", 20000))
-    session_budget = int(packet.get("session_token_budget", 200000))
+    packet_budget = positive_integer(packet.get("estimated_tokens_per_packet", 20000), "estimated_tokens_per_packet")
+    configured_session_budget = packet.get("session_token_budget")
+    session_budget = (
+        positive_integer(configured_session_budget, "session_token_budget")
+        if configured_session_budget is not None
+        else None
+    )
     if str(receipt["receipt_version"]) == "0.2.0":
         packet_groups = [
             (
@@ -1088,7 +1098,7 @@ def main() -> int:
     for batch_id, packet_paths, packet_tokens, packet_digests in packet_groups:
         if any(value > packet_budget for value in packet_tokens):
             fail(f"packet token cap exceeded: max={packet_budget}")
-        if sum(packet_tokens) > session_budget:
+        if session_budget is not None and sum(packet_tokens) > session_budget:
             fail(f"review batch token cap exceeded: max={session_budget}; batch={batch_id}")
         batch_actual_tokens: list[int] = []
         for packet_path, recorded_sha in zip(packet_paths, packet_digests, strict=False):

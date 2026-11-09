@@ -63,27 +63,58 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
         self.assertEqual("full_content", PREPASS.review_basis("deleted", False))
         self.assertEqual("digest_bound_binary", PREPASS.review_basis("binary", True))
 
-    def test_total_review_budget_is_enforced(self) -> None:
+    def test_total_review_budget_is_optional(self) -> None:
         config = {**self.config, "packet": {"max_total_review_tokens": 100}}
         self.assertEqual(100, PREPASS.enforce_total_review_budget([60, 40], config))
         with self.assertRaises(SystemExit):
             PREPASS.enforce_total_review_budget([60, 41], config)
         with self.assertRaises(SystemExit):
             VALIDATOR.enforce_total_review_budget([60, 41], config)
+        self.assertEqual(101, PREPASS.enforce_total_review_budget([60, 41], self.config))
+        self.assertEqual(
+            101,
+            PREPASS.enforce_total_review_budget(
+                [60, 41], {**self.config, "packet": {"max_total_review_tokens": None}}
+            ),
+        )
+        VALIDATOR.enforce_total_review_budget(
+            [60, 41], {**self.config, "packet": {"max_total_review_tokens": None}}
+        )
         with self.assertRaises(SystemExit):
             PREPASS.enforce_total_review_budget([1], {**self.config, "packet": {"max_total_review_tokens": True}})
         with self.assertRaises(SystemExit):
             VALIDATOR.enforce_total_review_budget([1], {**self.config, "packet": {"max_total_review_tokens": "100"}})
+
+    def test_null_session_budget_batches_each_packet_without_dropping_scope(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            packet_paths = []
+            for name in ("packet-a.md", "packet-b.md", "packet-c.md"):
+                path = Path(temp_dir) / name
+                path.write_text(name + "\n", encoding="utf-8")
+                packet_paths.append(str(path))
+            batches = PREPASS.build_review_batches(packet_paths, [10, 20, 30], None)
+        self.assertEqual(3, len(batches))
+        self.assertEqual(packet_paths, [batch["packet_files"][0] for batch in batches])
+
+    def test_review_cost_warning_is_non_gating_and_thresholded(self) -> None:
+        self.assertIsNone(
+            PREPASS.review_cost_warning(PREPASS.REVIEW_COST_VISIBILITY_THRESHOLD)
+        )
+        warning = PREPASS.review_cost_warning(
+            PREPASS.REVIEW_COST_VISIBILITY_THRESHOLD + 1
+        )
+        self.assertIn("WARN review_tokens_total=", warning)
+        self.assertIn("aggregate gate disabled", warning)
 
     def test_default_review_budget_matches_policy_headroom(self) -> None:
         policy = yaml.safe_load(
             (ROOT / "00_Admin/configs/closeout_security_tiers.yaml").read_text(encoding="utf-8")
         )
         packet = policy["packet"]
-        self.assertEqual(200000, packet["session_token_budget"])
-        self.assertEqual(200000, packet["max_total_review_tokens"])
-        self.assertEqual(200000, PREPASS.DEFAULT_MAX_TOTAL_REVIEW_TOKENS)
-        self.assertEqual(200000, VALIDATOR.DEFAULT_MAX_TOTAL_REVIEW_TOKENS)
+        self.assertIsNone(packet["session_token_budget"])
+        self.assertIsNone(packet["max_total_review_tokens"])
+        self.assertIsNone(PREPASS.DEFAULT_MAX_TOTAL_REVIEW_TOKENS)
+        self.assertIsNone(VALIDATOR.DEFAULT_MAX_TOTAL_REVIEW_TOKENS)
         self.assertEqual(128846, PREPASS.enforce_total_review_budget([128846], {}))
 
     def test_canonical_policy_enables_deterministic_admission_for_missing_policy_only(self) -> None:

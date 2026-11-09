@@ -2,7 +2,7 @@
 description: Validate and record a scoped work-in-progress savepoint; publish through one structured approval turn covering commit, push, and optional PR merge.
 name: work_savepoint
 kind: workflow
-version: 1.8.0
+version: 1.8.1
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -68,8 +68,7 @@ the matching `.ai_ops/local/config.yaml` `workspace.work_repos` entry; a conflic
 stops for clarification. `BRG-01` is the bootstrap-required guard in
 `00_Admin/configs/context_routing.yaml`. Direct mode means the target is `ai_ops`;
 governed mode means ai_ops governs a different target. Read the applicable
-contract: `00_Admin/specs/spec_work_mode_direct.md` or
-`00_Admin/specs/spec_work_mode_governed.md`.
+contract: `00_Admin/specs/spec_work_mode.md`.
 
 A `checkpoint record` is the records-only savepoint output written to the
 active workbook's Execution Notes or an existing workbundle state surface. It
@@ -252,6 +251,13 @@ gate. On Windows record `core.longpaths`, the longest changed path, and
 `longpath_risk` when the configured path limit could block publication. Record
 all validation commands and any permitted network skip as partial evidence.
 
+## Review Capacity Boundary
+
+Apply the `/crosscheck` Loop Control contract for review tiers, caps, budgets, and
+`PARK`; a savepoint does not reset counters or authorize a new commit. A savepoint
+remains a records-only checkpoint by default; route a capacity stop to `/work` or
+`/closeout` and preserve the receipt and manifest hashes.
+
 ## Publication Preview and Approval Gates
 
 For `--commit`, re-read branch, HEAD, remote, dirty-tree scope, security
@@ -302,8 +308,7 @@ clear active work, mark a workbook completed, or replace `/closeout`.
 ## Resources
 
 Resources: `00_Admin/configs/context_routing.yaml`, the selected
-workbook/workbundle, packet schemas, `spec_work_mode_direct.md`,
-`spec_work_mode_governed.md`, `spec_cross_surface_coordination.md`,
+workbook/workbundle, packet schemas, `spec_work_mode.md`, `spec_cross_surface_coordination.md`,
 `policy_git_workflow_conventions.md`, and `rb_closeout_security_review_01.md`.
 Read them in that order as applicable: context routing, selected artifact and
 packet schemas, mode spec, cross-surface and Git policies, then the security

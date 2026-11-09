@@ -179,10 +179,8 @@ Work-family containers:
   or `.../work_program_<id>/work_packets/wb_<id>_<YYYY-MM-DD>/`.
 - Workprogram (program-level work-family coordination):
   `90_Sandbox/ai_workbooks/work_program_<id>/`.
-- Pipeline artifacts are optional queue mirrors and should be co-located with
-  the bundle/program root. For runprograms, the colocated
-  `execution_graph.yaml` is the gate/control authority; the work-family
-  execution spine is the authority for workprograms.
+- Sequencing surfaces: the work-family execution spine for workprograms and the
+  colocated `execution_graph.yaml` for runprograms.
 
 ## By Scope
 

@@ -70,13 +70,34 @@ def list_tracked_files(root: Path) -> List[str]:
         errors="replace",
         check=False,
     )
-    if tracked.returncode != 0 or untracked.returncode != 0:
+    deleted = subprocess.run(
+        [
+            "git",
+            "-c",
+            "core.quotepath=false",
+            "-C",
+            str(root),
+            "ls-files",
+            "--deleted",
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+    if tracked.returncode != 0 or untracked.returncode != 0 or deleted.returncode != 0:
         return []
+    deleted_paths = {
+        line.strip()
+        for line in deleted.stdout.splitlines()
+        if line.strip()
+    }
     return sorted(
         {
             line.strip()
             for line in tracked.stdout.splitlines() + untracked.stdout.splitlines()
-            if line.strip()
+            if line.strip() and line.strip() not in deleted_paths
         }
     )
 

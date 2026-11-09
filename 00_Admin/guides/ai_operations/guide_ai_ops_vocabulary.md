@@ -1,9 +1,9 @@
 ---
 title: Guide: AI Ops Vocabulary
-version: 1.1.2
+version: 1.1.3
 status: active
 license: Apache-2.0
-last_updated: 2026-07-16
+last_updated: 2026-11-06
 owner: ai_ops
 related:
 - ./guide_ai_operations_stack.md
@@ -114,6 +114,13 @@ workbooks, but they are not interchangeable (different artifact types and locati
 
 Terminology stability rule: avoid churn between workpacket/workbundle naming. Use **workbundle** as canonical; historical
 aliases appear only in this glossary.
+
+Pipeline boundary: Pipeline remains a canonical Execution artifact when the work
+actually uses a pipeline or DAG. Work-family queue-template mirrors named like
+`*_pipeline_*` are not canonical sequencing artifacts; those sequences belong in the workprogram README,
+execution spine, or colocated `execution_graph.yaml` as applicable. This boundary
+does not retire Pipeline as an artifact type or prohibit domain-specific pipeline
+uses.
 
 ### Term Normalization Rule
 
