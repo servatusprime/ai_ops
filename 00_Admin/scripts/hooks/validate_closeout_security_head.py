@@ -11,6 +11,7 @@ import tempfile
 from pathlib import Path
 
 VALIDATOR = "00_Admin/scripts/validate_closeout_security_receipt.py"
+POLICY = "00_Admin/configs/closeout_security_tiers.yaml"
 FORCED_PREFIXES = (
     ".ai_ops/workflows/",
     "00_Admin/configs/",
@@ -83,6 +84,34 @@ def trusted_validator_present(repo: Path) -> bool:
     ).returncode == 0
 
 
+def staged_policy_upgrade(repo: Path, paths: set[str]) -> bool:
+    """Recognize the separately gated first landing of the canonical policy."""
+
+    if POLICY not in paths:
+        return False
+    result = subprocess.run(
+        ["git", "-C", str(repo), "show", f":{POLICY}"],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode:
+        return False
+    staged = result.stdout.decode("utf-8", errors="replace")
+    head = head_text(repo, POLICY)
+
+    def versions(text: str) -> tuple[str, str] | None:
+        version = re.search(r"^version:\s*[\"']?([^\"'\\s#]+)", text, re.MULTILINE)
+        ruleset = re.search(r"^ruleset_version:\s*[\"']?([^\"'\\s#]+)", text, re.MULTILINE)
+        if not version or not ruleset:
+            return None
+        return version.group(1), ruleset.group(1)
+
+    staged_versions = versions(staged)
+    head_versions = versions(head)
+    return staged_versions is not None and head_versions is not None and staged_versions != head_versions
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
@@ -92,8 +121,12 @@ def main() -> int:
     args = parser.parse_args()
     repo = args.repo_root.resolve()
     receipt = (repo / args.receipt).resolve() if not args.receipt.is_absolute() else args.receipt.resolve()
-    protected = security_paths(staged_paths(repo))
+    paths = staged_paths(repo)
+    protected = security_paths(paths)
     trusted = trusted_validator_present(repo)
+    if staged_policy_upgrade(repo, paths):
+        print("closeout-security-hook: first-landing policy upgrade; ordinary commit is unchanged")
+        return 0
     has_trailer = False
     if args.commit_msg_file:
         message = args.commit_msg_file.read_text(encoding="utf-8")

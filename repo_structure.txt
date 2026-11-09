@@ -200,6 +200,7 @@
 |   |   |-- closeout_security_prepass.py
 |   |   |-- complete_future_work.py
 |   |   |-- diagnose_file_locks.ps1
+|   |   |-- emit_work_route_metadata.py
 |   |   |-- fixtures/
 |   |   |   |-- run_validate_repo_rules_fixtures.py
 |   |   |   |-- test_bootstrap_governed_repo.py
@@ -255,6 +256,7 @@
 |   |   |-- spec_slider_manifest.md
 |   |   |-- spec_subagent_file.md
 |   |   |-- spec_work_focus_recenter.md
+|   |   |-- spec_work_mode.md
 |   |   |-- spec_work_mode_direct.md
 |   |   |-- spec_work_mode_governed.md
 |   |   |-- spec_workbook_structure.md
@@ -287,12 +289,14 @@
 |   |   |       |-- run_family_shared_valid.yaml
 |   |   |       |-- run_instance_lock_valid.yaml
 |   |   |       +-- run_receipt_valid.yaml
+|   |   |-- test_ai_role_validator_contract.py
 |   |   |-- test_check_outside_writes.py
 |   |   |-- test_claude_settings_policy.py
 |   |   |-- test_closeout_applicability.py
 |   |   |-- test_closeout_packet_contract.py
 |   |   |-- test_closeout_scope.py
 |   |   |-- test_closeout_security_receipt.py
+|   |   |-- test_emit_work_route_metadata.py
 |   |   |-- test_future_work_completion.py
 |   |   |-- test_future_work_registry_lifecycle.py
 |   |   |-- test_governance_seed_contracts.py
@@ -300,6 +304,8 @@
 |   |   |-- test_guard_workspace_writes.py
 |   |   |-- test_release_quality_gate.py
 |   |   |-- test_run_family_graph.py
+|   |   |-- test_update_artifact_status.py
+|   |   |-- test_validate_repo_rules.py
 |   |   |-- test_validation_command_policy.py
 |   |   |-- test_work_savepoint_contract.py
 |   |   |-- test_workflow_export_workspace_preview.py
