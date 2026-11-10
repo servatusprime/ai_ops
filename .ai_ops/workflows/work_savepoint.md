@@ -2,7 +2,7 @@
 description: Validate and record a scoped work-in-progress savepoint; publish through one structured approval turn covering commit, push, and optional PR merge.
 name: work_savepoint
 kind: workflow
-version: 1.8.1
+version: 1.9.3
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -49,6 +49,7 @@ implies merging. Published work remains active.
 ```text
 bootstrap/context -> resolve scope -> projected-tree validation
   -> focused validation -> read-only checkpoint
+  -> [--commit?] publication-route/CI preflight
   -> [--commit?] Publication Preview and Approval Gates
   -> exact commit -> approved push -> optional approved PR/merge
   -> active work remains in_progress
@@ -90,6 +91,15 @@ apply BRG-01 and resolve onboarding tiers in order:
 artifact and repository before entering the steps. This lane does not make
 content or remediation edits; route requested changes to `/work`.
 
+### Run-Family Graph Hook
+
+For run-family scope, load the identity/composition specs and generated
+registry on demand. Verify registry/graph parity, generated-view
+non-authority, exact run-instance lock/receipt linkage, and a validation
+receipt or approved disposition for every affected consumer. Missing fan-out
+evidence blocks publication; generated graph content is evidence only and
+never grants write authority.
+
 ## Steps and command boundary
 
 ### Repository and Validation Preflight
@@ -114,6 +124,47 @@ selected repo as `cwd`; reject shell metacharacters, unapproved executables, and
 paths outside the workspace. Retry a configured network-sensitive command once,
 then record a permitted partial result and `validation_escalated: true`; never
 silently skip a required check.
+
+### Publication Route and CI Preflight
+
+The default checkpoint is read-only and does not enter this publication lane.
+Only when `--commit` is requested, before approval, resolve and record the
+provider publication route:
+`publication_route` (`direct` or `pr_required`), protected/default branch,
+required status checks, allowed merge methods, selected remote, and
+`hook_runtime`. Do not test a protected branch with a direct push. If provider
+metadata or hook execution cannot be verified, emit `PARK` and stop before
+staging. When `pr_required` applies, create or select the branch before staging
+and bind its head, base, and merge method to the approval rows; a later push
+rejection must not trigger a route change or force-push.
+
+Publication preflight is an evidence record, not a prose assertion:
+`build_closeout_packet.py --publication-preflight <path>` requires the route,
+base/head, required checks, merge method, remote, and verified pre-commit and
+commit-msg runtime evidence, and the approval packet schema binds that record
+to the projected tree.
+
+When workflow, validator, hook, or CI surfaces are in the savepoint include set,
+run `python 00_Admin/scripts/run_release_quality_gate.py` before approval. The
+canonical lint result is the CI-parity precondition; focused validation alone
+does not establish release readiness. A failed quality gate routes to `/work`.
+
+Freeze the active-work records surface before security admission. Do not append
+clerical records or repair receipt text after admission. Savepoint receipts
+must bind a stable artifact identity, the exact active path, and the active
+`HEAD`; savepoint never relocates or archives an artifact. If an active
+artifact is completed or relocated, route through `/closeout`, where the
+existing archive-gate receipt and post-relocation
+`complete_future_work.py --verify` provide registry/receipt consistency
+evidence; the archive-gate receipt remains the proof of source/destination
+bytes and source absence. When a durable YAML checkpoint receipt is produced,
+validate it with `python 00_Admin/scripts/validate_work_savepoint_receipt.py
+--repo-root <repo_root> --receipt <receipt> --head <HEAD> --branch <branch>`;
+the bound CLI and schema enforce artifact identity, active path, HEAD, branch,
+future-work state, and the exact include-set hash. Preserve
+receipt reviewer references exactly; changed evidence requires a new review
+and a new binding. If finalization cannot be proven in closeout, report
+`receipt_finalization: unavailable` and stop.
 
 Use fixed argument-array commands only. Resolve and validate `repo_root` before
 Git operations; reject reparse paths, detached heads, shell metacharacters,
@@ -298,7 +349,8 @@ remote, or change the merge method. A pushed but unmerged savepoint remains acti
 
 ## Outputs
 
-Report `target_repo`, `repo_root`, `git_root`, `safe_directory_applied`, branch,
+Report `target_repo`, `repo_root`, `git_root`, `safe_directory_applied`,
+`publication_route`, required checks, merge method, `hook_runtime`, branch,
 HEAD, `push_preflight_result`, `core_longpaths`, `longest_changed_path_length`,
 `longpath_risk_path`, validation commands, security admission fields, the four
 scope buckets, `projected_include_tree`, `artifact_scope_drift`, approval state, commit/push/PR/merge

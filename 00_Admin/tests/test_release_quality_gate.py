@@ -13,6 +13,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "00_Admin" / "scripts" / "run_release_quality_gate.py"
+FUTURE_WORK_REGISTRY = ROOT / "00_Admin" / "backlog" / "future_work_registry.yaml"
 SPEC = importlib.util.spec_from_file_location("run_release_quality_gate", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 MODULE = importlib.util.module_from_spec(SPEC)
@@ -20,6 +21,11 @@ SPEC.loader.exec_module(MODULE)
 
 
 class ReleaseQualityGateTests(unittest.TestCase):
+    def test_future_work_registry_has_no_yaml_blank_line_run(self) -> None:
+        content = FUTURE_WORK_REGISTRY.read_text(encoding="utf-8")
+
+        self.assertNotIn("\n\n\n\n", content)
+
     def test_safe_console_text_handles_legacy_windows_encoding(self) -> None:
         rendered = MODULE._safe_console_text("diagnostic: \u2014 \ufffd", "cp1252")
 
@@ -33,9 +39,11 @@ class ReleaseQualityGateTests(unittest.TestCase):
 
     def test_gate_collects_all_failures_before_reporting_result(self) -> None:
         observed = []
+        commands = {}
 
         def fake_run_check(name, cmd, cwd, dry_run):
             observed.append(name)
+            commands[name] = list(cmd)
             return name, 1 if name == "governance-tests" else 0
 
         with patch.object(MODULE, "run_check", side_effect=fake_run_check), patch.object(
@@ -46,6 +54,11 @@ class ReleaseQualityGateTests(unittest.TestCase):
         self.assertEqual(1, result)
         self.assertGreater(len(observed), 1)
         self.assertEqual("governance-tests", observed[0])
+        self.assertIn(
+            "--dry-run",
+            commands["workflow-export-generation"],
+            "release gate export generation must be read-only",
+        )
 
     def test_run_check_omits_command_paths_from_output(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -244,6 +244,7 @@ def main() -> int:
             [
                 python_exe,
                 "00_Admin/scripts/generate_workflow_exports.py",
+                "--dry-run",
                 "--targets",
                 "plugin",
                 "claude",

@@ -23,7 +23,7 @@ from typing import Any
 
 import yaml
 
-PACKET_VERSION = "0.3.0"
+PACKET_VERSION = "0.3.1"
 PACKET_SCHEMA_PATH = (
     Path(__file__).resolve().parents[1]
     / "configs"
@@ -39,6 +39,9 @@ DEFAULT_LIMITS = {
     "elapsed_seconds": 120,
 }
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
+HEX64 = re.compile(r"^[0-9a-f]{64}$")
+CLOSEOUT_TRAILER = re.compile(r"^Closeout-Security:\s+(\S+)\s+(\S+)\s+(\S+)$")
+SECURITY_RECEIPT_REL = Path(".ai_ops/local/closeout_security/latest.yaml")
 
 
 class PacketError(RuntimeError):
@@ -277,6 +280,34 @@ def normalize_commit_message(message: str) -> str:
     return normalized
 
 
+def _validate_security_trailer_binding(repo: Path, message: str, include: list[str]) -> None:
+    """Reject a packet whose security trailer disagrees with its receipt/scope."""
+
+    trailers = [line.strip() for line in message.splitlines() if line.strip().startswith("Closeout-Security:")]
+    if not trailers:
+        return
+    if len(trailers) != 1:
+        raise PacketError("commit message must contain exactly one Closeout-Security trailer")
+    match = CLOSEOUT_TRAILER.fullmatch(trailers[0])
+    if not match:
+        raise PacketError("Closeout-Security trailer has an invalid format")
+    receipt_path = repo / SECURITY_RECEIPT_REL
+    if not receipt_path.is_file():
+        raise PacketError("Closeout-Security trailer requires latest.yaml security receipt")
+    try:
+        receipt = yaml.safe_load(receipt_path.read_text(encoding="utf-8")) or {}
+    except (OSError, UnicodeError, yaml.YAMLError) as exc:
+        raise PacketError("cannot read latest.yaml security receipt for trailer binding") from exc
+    receipt_digest = receipt.get("receipt_sha256")
+    if not isinstance(receipt_digest, str) or not HEX64.fullmatch(receipt_digest):
+        raise PacketError("latest.yaml security receipt has no valid receipt_sha256")
+    expected_include = sha256_bytes("\n".join(sorted(include)).encode("utf-8"))
+    if match.group(1) != "pass" or match.group(2) != expected_include or match.group(3) != receipt_digest:
+        raise PacketError(
+            "Closeout-Security trailer does not match latest.yaml and the packet include set"
+        )
+
+
 def _git_env() -> dict[str, str]:
     env = os.environ.copy()
     for key in (
@@ -456,6 +487,93 @@ def policy_snapshot(repo: Path) -> dict[str, str]:
     return {"source": "target_HEAD", "version": version, "path": relative, "sha256": sha256_bytes(head_bytes)}
 
 
+def _fixture_publication_preflight(branch: str) -> dict[str, Any]:
+    """Return explicit fixture evidence for isolated packet-contract tests."""
+
+    return {
+        "publication_route": "direct",
+        "protected_default_branch": "main",
+        "base_branch": "main",
+        "head_branch": branch,
+        "required_status_checks": [],
+        "allowed_merge_methods": ["merge", "squash", "rebase"],
+        "selected_merge_method": "merge",
+        "selected_remote": "origin",
+        "hook_runtime": {
+            "status": "verified",
+            "pre_commit": "verified",
+            "commit_msg": "verified",
+            "evidence": "isolated packet-contract hook fixture",
+        },
+    }
+
+
+def publication_preflight_snapshot(
+    repo: Path,
+    branch: str,
+    path: Path | None,
+    *,
+    allow_fixture_defaults: bool,
+) -> dict[str, Any]:
+    """Load and enforce the publication evidence bound into a packet."""
+
+    if path is None:
+        if not allow_fixture_defaults:
+            raise PacketError(
+                "publication preflight evidence is required; pass --publication-preflight"
+            )
+        value: Any = _fixture_publication_preflight(branch)
+    else:
+        relative = _repo_relative(repo, path)
+        source = _repo_file(repo, relative)
+        try:
+            value = yaml.safe_load(source.read_text(encoding="utf-8")) or {}
+        except (OSError, UnicodeError, yaml.YAMLError) as exc:
+            raise PacketError(f"cannot read publication preflight: {relative}") from exc
+    if not isinstance(value, dict):
+        raise PacketError("publication preflight must contain a mapping")
+    required = (
+        "publication_route",
+        "protected_default_branch",
+        "base_branch",
+        "head_branch",
+        "required_status_checks",
+        "allowed_merge_methods",
+        "selected_merge_method",
+        "selected_remote",
+        "hook_runtime",
+    )
+    missing = [key for key in required if key not in value]
+    if missing:
+        raise PacketError("publication preflight is missing: " + ", ".join(missing))
+    if value["publication_route"] not in {"direct", "pr_required"}:
+        raise PacketError("publication preflight has an invalid publication_route")
+    for key in ("protected_default_branch", "base_branch", "head_branch", "selected_remote"):
+        if not isinstance(value[key], str) or not value[key].strip():
+            raise PacketError(f"publication preflight {key} must be non-empty")
+    if value["head_branch"] != branch:
+        raise PacketError("publication preflight head_branch does not match the packet branch")
+    if not isinstance(value["required_status_checks"], list) or not all(
+        isinstance(item, str) and item.strip() for item in value["required_status_checks"]
+    ):
+        raise PacketError("publication preflight required_status_checks must be a string list")
+    if not isinstance(value["allowed_merge_methods"], list) or not value["allowed_merge_methods"]:
+        raise PacketError("publication preflight allowed_merge_methods must be non-empty")
+    if not all(
+        isinstance(item, str) and item in {"merge", "squash", "rebase"}
+        for item in value["allowed_merge_methods"]
+    ):
+        raise PacketError("publication preflight allowed_merge_methods contains an invalid method")
+    if value["selected_merge_method"] not in value["allowed_merge_methods"]:
+        raise PacketError("publication preflight selected_merge_method is not allowed")
+    hook = value["hook_runtime"]
+    if not isinstance(hook, dict) or any(
+        hook.get(key) != "verified" for key in ("status", "pre_commit", "commit_msg")
+    ) or not isinstance(hook.get("evidence"), str) or not hook["evidence"].strip():
+        raise PacketError("publication preflight hook_runtime must contain verified evidence for both hooks")
+    return value
+
+
 def routing_snapshot(repo: Path, *, allow_fixture_defaults: bool = False) -> dict[str, Any]:
     """Load the canonical packet limits instead of silently using code defaults."""
     path = repo / "00_Admin" / "configs" / "context_routing.yaml"
@@ -570,6 +688,7 @@ def mutation_plan(packet: dict[str, Any]) -> dict[str, Any]:
         "remote": packet["remote"],
         "branch": packet["branch"],
         "archive_gate": packet["archive_gate"],
+        "publication_preflight": packet["publication_preflight"],
         "approval_turn": "combined",
         "push_separate_approval": False,
         "merge_approval_in_same_turn": True,
@@ -594,6 +713,7 @@ def build_packet(
     allow_fixture_defaults: bool = False,
     archive_gate_path: Path | None = None,
     archive_gate_not_applicable: bool = False,
+    publication_preflight_path: Path | None = None,
 ) -> Path:
     started = datetime.now(timezone.utc)
     repo = repo.resolve()
@@ -601,6 +721,7 @@ def build_packet(
     include = sorted({_safe_path(path) for path in include})
     if not include:
         raise PacketError("at least one include path is required")
+    _validate_security_trailer_binding(repo, message, include)
     if archive_gate_path is not None and archive_gate_not_applicable:
         raise PacketError("archive gate receipt and not_applicable cannot both be selected")
     _validate_generated_coupling(include)
@@ -611,6 +732,14 @@ def build_packet(
     branch = _git(repo, "branch", "--show-current")
     if not branch:
         raise PacketError("detached HEAD cannot produce a publication packet")
+    publication_preflight = publication_preflight_snapshot(
+        repo,
+        branch,
+        publication_preflight_path,
+        allow_fixture_defaults=allow_fixture_defaults,
+    )
+    if publication_preflight["selected_remote"] != remote:
+        raise PacketError("publication preflight selected_remote does not match the packet remote")
     remote_url = _git_optional(repo, "remote", "get-url", remote) or None
     changes, tree_manifest, observed = projection(repo, include)
     sandbox_deletions = {
@@ -661,6 +790,7 @@ def build_packet(
         "remote": remote,
         "branch": branch,
         "archive_gate": archive_gate,
+        "publication_preflight": publication_preflight,
         "approval_turn": "combined",
         "push_separate_approval": False,
         "merge_approval_in_same_turn": True,
@@ -683,6 +813,7 @@ def build_packet(
         "projected_tree_manifest": tree_manifest,
         "projected_tree_sha256": sha256_bytes(_canonical_bytes(tree_manifest)),
         "archive_gate": archive_gate,
+        "publication_preflight": publication_preflight,
         "pre_existing_index": index,
         "pre_existing_index_preserved": index_snapshot(repo, exclude_paths=set(include)),
         "hook_fingerprint": hook_snapshot(repo),
@@ -723,6 +854,7 @@ def main() -> int:
     archive_group = parser.add_mutually_exclusive_group()
     archive_group.add_argument("--archive-gate", default=None)
     archive_group.add_argument("--archive-gate-not-applicable", action="store_true")
+    parser.add_argument("--publication-preflight", default=None)
     args = parser.parse_args()
     try:
         path = build_packet(
@@ -733,6 +865,9 @@ def main() -> int:
             args.remote,
             archive_gate_path=Path(args.archive_gate) if args.archive_gate else None,
             archive_gate_not_applicable=args.archive_gate_not_applicable,
+            publication_preflight_path=(
+                Path(args.publication_preflight) if args.publication_preflight else None
+            ),
         )
     except (OSError, PacketError, ValueError) as exc:
         print(f"closeout-packet-builder: {exc}", file=sys.stderr)

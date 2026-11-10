@@ -1,5 +1,5 @@
 $schema: https://json-schema.org/draft/2020-12/schema
-$id: urn:ai-ops:schema:closeout-approval-packet:0.3.0
+$id: urn:ai-ops:schema:closeout-approval-packet:0.3.1
 title: Closeout Approval Packet
 type: object
 additionalProperties: false
@@ -23,6 +23,7 @@ required:
   - pre_existing_index
   - pre_existing_index_preserved
   - hook_fingerprint
+  - publication_preflight
   - policy
   - routing_contract
   - cost_profile
@@ -32,7 +33,7 @@ required:
   - packet_sha256
   - prepared_packet_sha256
 properties:
-  packet_version: {const: "0.3.0"}
+  packet_version: {const: "0.3.1"}
   run_id: {type: string, format: uuid}
   repo_id: {type: string, minLength: 1}
   repo_root: {type: string, minLength: 1}
@@ -147,6 +148,37 @@ properties:
       sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
       hooks_path: {type: string}
       files: {type: array, items: {type: object}}
+  publication_preflight:
+    type: object
+    additionalProperties: false
+    required:
+      - publication_route
+      - protected_default_branch
+      - base_branch
+      - head_branch
+      - required_status_checks
+      - allowed_merge_methods
+      - selected_merge_method
+      - selected_remote
+      - hook_runtime
+    properties:
+      publication_route: {enum: [direct, pr_required]}
+      protected_default_branch: {type: string, minLength: 1}
+      base_branch: {type: string, minLength: 1}
+      head_branch: {type: string, minLength: 1}
+      required_status_checks: {type: array, items: {type: string, minLength: 1}}
+      allowed_merge_methods: {type: array, minItems: 1, items: {type: string, minLength: 1}}
+      selected_merge_method: {enum: [merge, squash, rebase]}
+      selected_remote: {type: string, minLength: 1}
+      hook_runtime:
+        type: object
+        additionalProperties: false
+        required: [status, pre_commit, commit_msg, evidence]
+        properties:
+          status: {const: verified}
+          pre_commit: {const: verified}
+          commit_msg: {const: verified}
+          evidence: {type: string, minLength: 1}
   policy:
     type: object
     additionalProperties: false

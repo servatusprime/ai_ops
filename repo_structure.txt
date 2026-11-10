@@ -84,6 +84,7 @@
 |   |   |   |-- schema_run_family_registry.yaml
 |   |   |   |-- schema_run_instance_lock.yaml
 |   |   |   |-- schema_run_receipt.yaml
+|   |   |   |-- schema_work_savepoint_receipt.yaml
 |   |   |   |-- schema_workflow_frontmatter.yaml
 |   |   |   +-- validator_config.yaml
 |   |   +-- workspace_containment.yaml
@@ -233,6 +234,7 @@
 |   |   |-- validate_repo_rules.py
 |   |   |-- validate_run_family_graph.py
 |   |   |-- validate_setup_destination.py
+|   |   |-- validate_work_savepoint_receipt.py
 |   |   |-- validate_workbook_cli_contracts.py
 |   |   +-- validate_workflow_frontmatter.py
 |   |-- specs/
@@ -304,6 +306,8 @@
 |   |   |-- test_validate_repo_rules.py
 |   |   |-- test_validation_command_policy.py
 |   |   |-- test_work_savepoint_contract.py
+|   |   |-- test_work_savepoint_receipt.py
+|   |   |-- test_workflow_export_drift.py
 |   |   |-- test_workflow_export_workspace_preview.py
 |   |   +-- workflow_smoke_tests.yaml
 |   +-- tooling/

@@ -35,6 +35,15 @@ PRIMARY_MANIFEST_REL = Path(".ai_ops/exports/manifest.yaml")
 EXPECTED_SOURCE_ROOT_REL = Path(".ai_ops/workflows")
 GENERATOR_REL = Path("00_Admin/scripts/generate_workflow_exports.py")
 _REPARSE_POINT = 0x400
+_IGNORED_LOCAL_OUTPUT_KINDS = {
+    "claude_skill",
+    "codex_skill_primary",
+    "codex_skill_primary_openai_yaml",
+    "codex_skill_compat",
+    "codex_skill_compat_openai_yaml",
+}
+_IGNORED_LOCAL_OUTPUT_ROOTS = (".agents/skills/", ".claude/skills/", ".codex/skills/")
+_CANONICAL_REPO_TARGETS = frozenset({"plugin", "claude", "codex"})
 
 
 def _is_reparse_point(path: Path) -> bool:
@@ -75,6 +84,49 @@ def sha12(path: Path) -> str:
     # Windows and Unix checkout styles.
     text = path.read_text(encoding="utf-8")
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+
+
+def _is_ignored_local_output(repo_root: Path, output: Dict) -> bool:
+    """Return whether a missing manifest output is an intentional local install.
+
+    Claude/Codex skill wrappers are generated into gitignored runtime folders.
+    They remain hash-checked when present, but a clean checkout must not fail
+    merely because a machine-local install has not been performed yet.
+    """
+
+    if output.get("publication") != "ignored_local":
+        return False
+    if output.get("kind") not in _IGNORED_LOCAL_OUTPUT_KINDS:
+        return False
+    raw_path = output.get("path")
+    if not isinstance(raw_path, str):
+        return False
+    normalized = raw_path.replace("\\", "/")
+    if not normalized.startswith(_IGNORED_LOCAL_OUTPUT_ROOTS):
+        return False
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(repo_root), "check-ignore", "--no-index", "--quiet", "--", normalized],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError:
+        return False
+    return result.returncode == 0
+
+
+def _target_drift(scope: object, manifest_targets: set[str]) -> List[str]:
+    """Enforce the canonical repo export surface independently of the manifest."""
+
+    findings: List[str] = []
+    if scope != "repo":
+        findings.append(f"manifest scope must equal repo (got {scope!r})")
+    missing = sorted(_CANONICAL_REPO_TARGETS - manifest_targets)
+    extra = sorted(manifest_targets - _CANONICAL_REPO_TARGETS)
+    findings.extend(f"manifest missing canonical target: {target}" for target in missing)
+    findings.extend(f"manifest has unsupported repo target: {target}" for target in extra)
+    return findings
 
 
 def independently_rendered_manifest(
@@ -179,6 +231,7 @@ def main() -> int:
         for target in manifest_targets_raw:
             if isinstance(target, str):
                 manifest_targets.add(target)
+    source_drift.extend(_target_drift(manifest.get("scope"), manifest_targets))
 
     source_root_rel = manifest.get("source_root", EXPECTED_SOURCE_ROOT_REL.as_posix())
     discovered_sources: set[str] = set()
@@ -281,6 +334,8 @@ def main() -> int:
                 output_drift.append(f"invalid output: {exc}")
                 continue
             if not out_path.exists():
+                if _is_ignored_local_output(repo_root, output):
+                    continue
                 output_drift.append(f"missing {out_kind}: {out_rel}")
                 continue
             current_out_hash = sha12(out_path)
@@ -321,10 +376,11 @@ def main() -> int:
             for output in workflow.get("outputs", [])
             if isinstance(workflow.get("outputs", []), list)
         )
+        render_targets = sorted(_CANONICAL_REPO_TARGETS)
         rendered = independently_rendered_manifest(
             repo_root,
-            manifest_targets_list,
-            scope,
+            render_targets,
+            "repo",
             codex_compat=manifest_has_codex_compat,
         )
         if rendered is None:
@@ -366,6 +422,8 @@ def main() -> int:
                         )
                         continue
                     if not out_path.exists():
+                        if _is_ignored_local_output(repo_root, output):
+                            continue
                         continue  # already reported as missing in output_drift above
                     actual_hash = sha12(out_path)
                     if actual_hash != expected_hash:

@@ -2,7 +2,7 @@ title: Workflow Smoke Tests
 version: 0.2.0
 status: active
 created: 2026-01-29
-updated: 2026-02-28
+updated: 2026-11-10
 owner: ai_ops
 description: >
   Minimal smoke tests for ai_ops slash command workflows.
@@ -145,6 +145,8 @@ tests:
     expected_outputs:
       - Exact include, related_scope_requires_confirmation, exclude, and ignored_unpublished buckets
       - Validation results and proposed savepoint commit message
+      - Publication route, required checks, merge method, and hook runtime preflight
+      - CI-parity release-quality result when workflow or validator surfaces are touched
       - Exact push remote and branch
       - Final approval request before any Git mutation
       - After approval, exact-path staging, commit hash, and push status
