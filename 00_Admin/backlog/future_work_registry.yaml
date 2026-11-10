@@ -539,44 +539,6 @@ entries:
       proposed_workbook are reset to null. Interim allowance approval does not
       complete or supersede this item.
 
-  - id: fw_20260721_02
-    title: Delegation capability parity and installed-surface verification
-    domain: governance
-    target_repo: ai_ops
-    source_workbook: >-
-      99_Trash/wb_lead_managed_execution_uplift_01_2026-07-20/wb_lead_managed_execution_uplift_01.md
-    completion_workbook: null
-    proposed_workbook: 99_Trash/wb_codex_subagent_governance_handshake_01_2026-09-09/wb_delegation_capability_parity_01.md
-    scope: >-
-      Candidate C-18, routed out of the lead-managed execution uplift. Represent
-      delegation-relevant runtime support as a small truthful capability state
-      and verify installed wrapper parity where it affects a delegation
-      decision, so a lead does not assume unsupported runtime capability. Keep
-      the capability record small and capability-oriented. No per-run capability
-      dossier and no static provider aliases.
-    priority: medium
-    benefit: medium
-    effort: m
-    readiness: ready
-    risk_if_deferred: medium
-    activation_trigger: >-
-      Requestor authorizes the named independent workbook, or a delegation
-      decision is made on an unverified runtime capability assumption.
-    next_review: 2026-12-15
-    status: active
-    owner: ai_ops
-    created: 2026-07-21
-    notes: >-
-      Read-only parity workbook execution and independent crosscheck completed
-      2026-09-09. On 2026-11-09 the authorized small host-local capability
-      state was written to .ai_ops/local/config.yaml: wrapper parity is pass,
-      runtime delegation support remains unknown, and no provider aliases or
-      per-run dossier were added. The substantive implementation is complete;
-      completion_workbook remains null because the receipt-backed completion
-      command requires the proposed-workbook binding to exist at HEAD. After a
-      normal publication commit binds the current repository-relative workbook
-      path, run complete_future_work.py once and prune this row; do not infer
-      runtime delegation support from wrapper or profile presence.
   - id: fw_20260721_03
     title: Remove Director-receipt dependency from run-family adoption handoff
     domain: governance
@@ -1058,104 +1020,12 @@ entries:
       an exact approval/waiver record; and commit-message behavior that cannot silently bypass the
       selected disposition.
 
-  - id: fw_20261104_01
-    title: Apply the work-workflow simplification AGENTS.md handoff
-    domain: governance
-    target_repo: ai_ops
-    source_workbook: 90_Sandbox/ai_workbooks/wb_work_workflow_simplification_01_2026-11-03/work_proposal_work_workflow_simplification_01.md
-    completion_workbook: null
-    proposed_workbook: 90_Sandbox/ai_workbooks/wb_work_workflow_simplification_01_2026-11-03/wb_04_handoff_ai_role_parity_01_2026-11-09.md
-    scope: >-
-      After the active workbook produces and the requestor approves the handoff, apply only
-      the accepted AGENTS.md corrections: the dead guide citations (:746, :691,
-      :738, :778), the Selfcheck Loop wording, and the Reviewer model-level rows
-      made stale by the accepted reviewer-row decision, plus the explicitly named
-      HUMANS.md and guide_design_and_philosophy.md mirror rows where alignment is
-      required. Lane fields are not touched.
-      Rebind line references and preserve the authority, path-guard, Level-4,
-      approval, commit, and push rules. Do not perform a broad AGENTS.md rewrite,
-      general slimming pass, or lane/profile definition change. Evidence must
-      include the accepted handoff, two-way citation checks, validator results,
-      and an independent crosscheck.
-    priority: medium
-    benefit: medium
-    effort: m
-    readiness: ready
-    risk_if_deferred: medium
-    activation_trigger: >-
-      An accepted handoff exists and the requestor separately authorizes its
-      Level-4 application; the application completes before any affected
-      review-tier contract is activated or published. The active workbook closeout may supply
-      the accepted handoff but is not itself sufficient.
-    next_review: 2026-12-15
-    status: active
-    owner: ai_ops
-    created: 2026-11-04
-    compacted_context:
-      source: >-
-        The work-workflow simplification proposal keeps
-        AGENTS.md outside the active workbook's write scope and routes the corrections through a
-        follow-on handoff.
-      note: >-
-        This is a follow-on implementation item, not authorization to edit
-        AGENTS.md. It stays separate from the proposal's sandbox review and
-        from any future lane/profile design workbook.
-    notes: >-
-      Before authorization, this row implied no canonical AGENTS.md or
-      mirror-surface edit and required a separate accepted handoff. It was
-      activated on 2026-11-09 under requestor-authorized scope expansion; the
-      exact handoff is now applied in the working tree, evidence is recorded in
-      the bound workbook and receipt completion remains publication-gated.
-
-  - id: fw_20261104_02
-    title: Align the ai_role validator contract across ai_ops and governed repos
-    domain: validation
-    target_repo: both
-    source_workbook: 90_Sandbox/ai_workbooks/wb_work_workflow_simplification_01_2026-11-03/work_proposal_work_workflow_simplification_01.md
-    completion_workbook: null
-    proposed_workbook: 90_Sandbox/ai_workbooks/wb_work_workflow_simplification_01_2026-11-03/wb_04_handoff_ai_role_parity_01_2026-11-09.md
-    scope: >-
-      ai_role stays in both current validators until this item runs. Define and implement one compatible ai_role contract across
-      the ai_ops VS006 validator and the governed-repo VS006 validator, updating
-      the affected templates, guidance, fixtures, and validator tests together.
-      Preserve ai_role in the current proposal and do not drop or weaken either
-      validator as an interim shortcut. The follow-on must include a separate
-      Level-4 handoff/workbook, cross-repository compatibility evidence, and an
-      independent crosscheck before publication.
-    priority: medium
-    benefit: medium
-    effort: m
-    readiness: ready
-    risk_if_deferred: medium
-    activation_trigger: >-
-      The requestor authorizes the cross-repository validator handoff; until
-      then ai_role stays in both validators.
-    next_review: 2026-12-15
-    status: active
-    owner: ai_ops
-    created: 2026-11-04
-    compacted_context:
-      source: >-
-        The work-workflow simplification proposal: ai_role remains in both current
-        validator contracts, while a later handoff may change both
-        validators together.
-      note: >-
-        This item is intentionally separate from fw_20260716_02, whose scope is
-        the R-6 checklist allowance and VS035 active-state enforcement.
-    notes: >-
-      No validator, template, or governed-repo file is changed by this registry
-      entry. Bind an execution workbook only after the cross-repository
-      compatibility scope is approved. This row stands even if the proposal is
-      not executed. Activated on 2026-11-09 under requestor-authorized scope
-      expansion. The compatible contract is evidenced by both validator
-      configurations, mirrored negative tests and independent review; receipt
-      completion remains publication-gated.
 
   - id: fw_20261106_01
     title: Enforce factory/local profile output isolation before /profiles customization
     domain: tooling
     target_repo: ai_ops
-    source_workbook: 90_Sandbox/ai_workbooks/wb_work_workflow_simplification_01_2026-11-03/wb_02_lane_profile_fitness.md
+    source_workbook: 99_Trash/wb_work_workflow_simplification_01_2026-11-03/wb_02_lane_profile_fitness.md
     completion_workbook: null
     proposed_workbook: null
     scope: >-
@@ -1221,7 +1091,7 @@ entries:
     title: Verify cited closeout receipt before active-artifact removal
     domain: validation
     target_repo: ai_ops
-    source_workbook: 90_Sandbox/ai_workbooks/wb_work_workflow_simplification_01_2026-11-03/remediation_report_wb1_expanded_scope_2026-11-06.md
+    source_workbook: 99_Trash/wb_work_workflow_simplification_01_2026-11-03/remediation_report_wb1_expanded_scope_2026-11-06.md
     completion_workbook: null
     proposed_workbook: null
     scope: >-
@@ -1267,7 +1137,7 @@ entries:
     title: Validate material-delegation topology contract semantics
     domain: validation
     target_repo: ai_ops
-    source_workbook: 90_Sandbox/ai_workbooks/wb_work_workflow_simplification_01_2026-11-03/remediation_report_wb1_expanded_scope_2026-11-06.md
+    source_workbook: 99_Trash/wb_work_workflow_simplification_01_2026-11-03/remediation_report_wb1_expanded_scope_2026-11-06.md
     completion_workbook: null
     proposed_workbook: null
     scope: >-

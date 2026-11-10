@@ -1303,9 +1303,9 @@ future_work_completion:
   actor: Codex
   scorecard_source_sha256: 658106f2914fb54ff91ac0668308a80013ca6486ee5d9d19f2418d8f53811317
   evidence_refs:
-  - 90_Sandbox/ai_workbooks/wb_work_workflow_simplification_01_2026-11-03/review_completion_fw_20261022_01_2026-11-08.md
+  - 99_Trash/wb_work_workflow_simplification_01_2026-11-03/review_completion_fw_20261022_01_2026-11-08.md
   review_refs:
-  - 90_Sandbox/ai_workbooks/wb_work_workflow_simplification_01_2026-11-03/review_completion_fw_20261022_01_2026-11-08.md
+  - 99_Trash/wb_work_workflow_simplification_01_2026-11-03/review_completion_fw_20261022_01_2026-11-08.md
 ```
 
 ### 2026-11-09 | reverse-review follow-up remediation authorization
@@ -1363,3 +1363,84 @@ future_work_completion:
   `fw_20261104_01` and `fw_20261104_02`. No completion command, registry
   mutation or archive move was performed; the bundle remains active pending
   HEAD-bound receipt, cross-repository handoff acceptance and publication gates.
+
+### Future-work completion receipt: 4f7b3e44-1b31-4e8e-a2ea-4fd891f3a6be
+
+```yaml
+future_work_completion:
+  registry_id: fw_20260721_02
+  run_id: 4f7b3e44-1b31-4e8e-a2ea-4fd891f3a6be
+  status: success
+  exit_code: 0
+  scope_sha256: 699404f4d823b1f953d6a79c87fd803dc2f027f9bd3cf5af58e6ab7f7fafca96
+  completion_artifact_sha256: edd84c801ecf276ea0d2003362b2c97773010f58d9121d32838a5d0631804a58
+  completion_workbook: 99_Trash/wb_codex_subagent_governance_handshake_01_2026-09-09/wb_delegation_capability_parity_01.md
+  completion_state: completed
+  actor: codex
+  scorecard_source_sha256: 826a448ed7d55da550662eae93a66bba1c559fc589bec614267d871ce37f73da
+  evidence_refs:
+  - 99_Trash/wb_work_workflow_simplification_01_2026-11-03/registry_residual_execution_receipt_2026-11-09.md
+  - 99_Trash/wb_work_workflow_simplification_01_2026-11-03/review_completion_fw_20260721_02_2026-11-09.md
+  review_refs:
+  - 99_Trash/wb_work_workflow_simplification_01_2026-11-03/review_completion_fw_20260721_02_2026-11-09.md
+```
+
+### Future-work completion receipt: 4c0d69a6-04f4-4c8d-bfca-2c7bd8ef4b6f
+
+```yaml
+future_work_completion:
+  registry_id: fw_20261104_01
+  run_id: 4c0d69a6-04f4-4c8d-bfca-2c7bd8ef4b6f
+  status: success
+  exit_code: 0
+  scope_sha256: 88b82c28f8fb3b689a8b3913d048a20908fcda5af1e4ff0366c3cd181fd2a368
+  completion_artifact_sha256: b3b4fcf382d4d68e72d282fc39e409a9bc65240adf3222e28e2cd89c03a5895c
+  completion_workbook: 99_Trash/wb_work_workflow_simplification_01_2026-11-03/wb_04_handoff_ai_role_parity_01_2026-11-09.md
+  completion_state: ready_for_receipt
+  actor: Codex
+  scorecard_source_sha256: f2548b40dd2bca98427c99887ccf7f2305b8f2e8c05e184a4bf189b54c6e010e
+  evidence_refs:
+  - 99_Trash/wb_work_workflow_simplification_01_2026-11-03/review_completion_wb4_publication_2026-11-10.md
+  - ai_ops:HEAD:783c1dd
+  review_refs:
+  - 99_Trash/wb_work_workflow_simplification_01_2026-11-03/review_completion_wb4_publication_2026-11-10.md
+```
+
+### Workbundle closeout: wb_work_workflow_simplification_01_2026-11-10
+
+- WB-1, WB-2, WB-3 and WB-4 completed; WB-4 receipts
+  `4c0d69a6-04f4-4c8d-bfca-2c7bd8ef4b6f` and
+  `75ac0f43-03bd-4b1d-a9b5-a8b3db5d55ae` verified.
+- The governed-repository D4 publication was pushed as `d35c77c`; the WB-4
+  eleven-path publication was pushed as `3f7d883`.
+- Canonical future-work source pointers were rebound from the active bundle path
+  to `99_Trash/wb_work_workflow_simplification_01_2026-11-03` before archive.
+- Recoverable move completed:
+  `90_Sandbox/ai_workbooks/wb_work_workflow_simplification_01_2026-11-03`
+  -> `99_Trash/wb_work_workflow_simplification_01_2026-11-03`.
+- The bundle and completed child workbook entries were removed from local active
+  state after the move; historical receipt paths remain retained as evidence.
+
+### Future-work completion receipt: 75ac0f43-03bd-4b1d-a9b5-a8b3db5d55ae
+
+```yaml
+future_work_completion:
+  registry_id: fw_20261104_02
+  run_id: 75ac0f43-03bd-4b1d-a9b5-a8b3db5d55ae
+  status: success
+  exit_code: 0
+  scope_sha256: 4e6894996f8df5563cb740c473e876fd1e985817e81daac0b1ba15b4c98b8d48
+  completion_artifact_sha256: ced6946a7fe5e99bd5bd2fd94d65e1fe82aa5c715c59b34a4bcd3de031a5db48
+  completion_workbook: 99_Trash/wb_work_workflow_simplification_01_2026-11-03/wb_04_handoff_ai_role_parity_01_2026-11-09.md
+  completion_state: ready_for_receipt
+  actor: Codex
+  scorecard_source_sha256: 64e998d55472b3a871ccc57afc993c46c652c5d656e7beff898254411b26bca9
+  evidence_refs:
+  - 99_Trash/wb_work_workflow_simplification_01_2026-11-03/review_completion_wb4_publication_2026-11-10.md
+  - 99_Trash/wb_work_workflow_simplification_01_2026-11-03/review_d4_receiving_registry_publication_readiness_2026-11-10.md
+  - governed_repo:commit:3f7d883
+  - governed_repo:commit:d35c77c
+  - governed_repo:origin/main:3f7d883
+  review_refs:
+  - 99_Trash/wb_work_workflow_simplification_01_2026-11-03/review_completion_wb4_publication_2026-11-10.md
+```
