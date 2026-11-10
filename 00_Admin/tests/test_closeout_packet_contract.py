@@ -269,6 +269,57 @@ class CloseoutPacketContractTests(unittest.TestCase):
         self.assertEqual(self.repo, run.call_args.kwargs["cwd"])
         self.assertEqual({"GIT_INDEX_FILE": "isolated"}, run.call_args.kwargs["env"])
 
+    def test_windows_msys_pre_commit_launcher_failure_uses_native_runner(self) -> None:
+        failed = mock.Mock(returncode=1, stdout="", stderr="NtCreateDirectoryObject: access denied")
+        with mock.patch.object(APPLIER.os, "name", "nt"):
+            with mock.patch.object(APPLIER.subprocess, "run", return_value=failed):
+                with mock.patch.object(APPLIER, "_run_native_pre_commit", return_value=(0, "native", "")) as native:
+                    result = APPLIER._run_hook(self.repo, "pre-commit", {"GIT_INDEX_FILE": "isolated"})
+
+        self.assertEqual((0, "native", ""), result)
+        native.assert_called_once_with(self.repo, {"GIT_INDEX_FILE": "isolated"})
+
+    def test_windows_msys_commit_launcher_failure_uses_native_commit_msg_and_no_verify_flag(self) -> None:
+        failed = mock.Mock(returncode=1, stdout="", stderr="NtCreateDirectoryObject: access denied")
+        committed = mock.Mock(returncode=0, stdout="[main abc1234] test\n", stderr="")
+        with mock.patch.object(APPLIER.os, "name", "nt"):
+            with mock.patch.object(APPLIER.subprocess, "run", side_effect=[failed, committed]) as run:
+                with mock.patch.object(
+                    APPLIER, "_run_native_pre_commit", return_value=(0, "pre-commit checked", "")
+                ) as pre_commit:
+                    with mock.patch.object(
+                        APPLIER, "_run_native_commit_msg_hook", return_value=(0, "commit-msg checked", "")
+                    ):
+                        with mock.patch.object(APPLIER.builder, "index_snapshot", return_value={"paths": []}):
+                            with mock.patch.object(APPLIER.builder, "projection", return_value=([], [], {})):
+                                result = APPLIER._run_commit(self.repo, "test", ["existing.txt"])
+
+        self.assertEqual(0, result[0])
+        self.assertIn("native pre-commit/commit-msg fallback", result[1])
+        pre_commit.assert_called_once_with(self.repo, None)
+        self.assertNotIn("--no-verify", run.call_args.args[0])
+
+    def test_windows_fallback_rejects_native_hook_index_mutation(self) -> None:
+        failed = mock.Mock(returncode=1, stdout="", stderr="NtCreateDirectoryObject: access denied")
+        with mock.patch.object(APPLIER.os, "name", "nt"):
+            with mock.patch.object(APPLIER.subprocess, "run", return_value=failed) as run:
+                with mock.patch.object(APPLIER, "_run_native_pre_commit", return_value=(0, "checked", "")):
+                    with mock.patch.object(
+                        APPLIER, "_run_native_commit_msg_hook", return_value=(0, "unused", "")
+                    ) as commit_msg:
+                        with mock.patch.object(
+                            APPLIER.builder,
+                            "index_snapshot",
+                            side_effect=[{"paths": []}, {"paths": ["changed.txt"]}],
+                        ):
+                            with mock.patch.object(APPLIER.builder, "projection", return_value=([], [], {})):
+                                result = APPLIER._run_commit(self.repo, "test", ["existing.txt"])
+
+        self.assertEqual(1, result[0])
+        self.assertIn("changed the index", result[2])
+        self.assertEqual(1, run.call_count)
+        commit_msg.assert_not_called()
+
     def test_hook_failure_detail_keeps_stdout_and_stderr(self) -> None:
         self.assertEqual(
             "stdout: hook output\nstderr: launcher output",

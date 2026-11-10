@@ -2,7 +2,7 @@
 description: Prepare a read-only closeout packet, then publish through exact approval-gated commit, push, and PR-merge steps.
 name: closeout
 kind: workflow
-version: 0.10.1
+version: 0.10.2
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -56,6 +56,7 @@ bootstrap/context -> resolve scope -> future-work review (optional, read-only)
   -> security admission -> packet/hash binding
   -> one publication approval turn
   -> exact commit -> approved push -> approved PR/merge -> final receipt/status
+  -> terminal packet retention sweep
 ```
 
 ## Inputs and Preconditions
@@ -174,6 +175,13 @@ Publication preflight is an evidence record, not a prose assertion:
 base/head, required checks, merge method, remote, and verified pre-commit and
 commit-msg runtime evidence, and the approval packet schema binds that record
 to the projected tree.
+
+On Windows, if Git's MSYS hook launcher fails with the specific
+`NtCreateDirectoryObject` error, the packet applier may retry the repository's
+native `pre-commit` framework for both pre-commit and commit-message stages.
+The retry preserves the staged index, uses the repository-local pre-commit
+cache when no cache is configured, records the fallback in the packet result,
+and never uses `--no-verify`; any other hook failure remains a hard stop.
 
 Run the canonical release-quality gate before publication approval:
 `python 00_Admin/scripts/run_release_quality_gate.py`. Its lint result is the
@@ -368,6 +376,7 @@ Preparation may describe commands; mutation requires the approval rows below.
 | push | `git -C <repo> push <approved remote> <approved branch>` | push row naming packet-bound commit |
 | create/update PR | GitHub provider action | PR/merge row |
 | merge PR | provider action with approved PR, head, base, and method | merge row |
+| packet retention | `python 00_Admin/scripts/prune_closeout_packets.py --repo-root <repo_root> --keep-run-id <final_run_id> [--apply]` | final merge verification and retention row |
 
 Use argument arrays; reject shell metacharacters, reparse paths, detached heads,
 force/delete options, `--no-verify`, and commands outside the selected repo.
@@ -408,6 +417,33 @@ projected-tree, packet, scope, or security hashes. Stop before staging, present
 the changed values, and obtain a new approval turn; only unchanged exact bindings
 may reuse the prior approval.
 
+## Closeout Packet Retention
+
+Closeout packets are run-scoped verification evidence, not durable work
+artifacts. Preserve every packet while the closeout is active so failed or
+interrupted attempts remain diagnosable. After the final PR merge is verified,
+identify the final successful packet by its run ID and run the retention sweep
+in read-only mode:
+
+```text
+python 00_Admin/scripts/prune_closeout_packets.py \
+  --repo-root <repo_root> --keep-run-id <final_run_id>
+```
+
+Review the plan, then add `--apply` to archive terminal non-final packets to
+`99_Trash/closeout_packets/<repo_id>/<run_id>/`. The sweep preserves the
+operator-selected final `APPLIED` packet, all `PENDING` and `APPROVED` packets,
+malformed packets, unknown states, and directories that contain only a
+future-work completion receipt. It never deletes evidence and never follows a
+reparse point. An active or malformed packet requires explicit later
+disposition; it is not silently pruned. If the sweep cannot complete, report
+`packet_retention: unavailable` and retain the source packet root.
+
+The final closeout report records `packet_retention` with the selected run ID,
+planned/archive counts, protected active or unsafe counts, and every archive
+destination. A packet retention sweep does not widen the publication include
+set and does not change the already-verified commit, push, or merge result.
+
 ## Outputs
 
 Commit only after required checks pass, the archive result is `passed` when
@@ -447,7 +483,7 @@ Report `target_repo`, `repo_root`, branch, HEAD, `publication_route`,
 required checks, merge method, `hook_runtime`, `receipt_finalization`, scope buckets,
 `future_work`, `projected_include_tree`, `excluded_scope_conflict` when present,
 security admission fields, archive result, validation commands, approval state,
-commit/push/PR/merge status, and all receipt paths. Keep work summaries and
+commit/push/PR/merge status, `packet_retention`, and all receipt paths. Keep work summaries and
 active-state claims synchronized. Generated views remain non-authoritative.
 
 ## Review Capacity Boundary

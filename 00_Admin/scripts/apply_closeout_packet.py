@@ -22,6 +22,8 @@ from typing import Any
 import build_closeout_packet as builder
 import yaml
 
+MSYS_LAUNCHER_FAILURE = "NtCreateDirectoryObject"
+
 
 def _load(path: Path) -> dict[str, Any]:
     value = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
@@ -64,6 +66,63 @@ def _run_commit(
             text=True,
             env=builder._git_env(),
         )
+        if (
+            completed.returncode
+            and os.name == "nt"
+            and MSYS_LAUNCHER_FAILURE in completed.stderr
+            and hooks_path is None
+        ):
+            fallback_index = builder.index_snapshot(repo)
+            fallback_changes, fallback_tree, _fallback_observed = builder.projection(repo, paths)
+            native_pre_commit_code, native_pre_commit_stdout, native_pre_commit_stderr = _run_native_pre_commit(
+                repo, None
+            )
+            if native_pre_commit_code:
+                return native_pre_commit_code, native_pre_commit_stdout, native_pre_commit_stderr
+            if builder.index_snapshot(repo) != fallback_index:
+                return 1, native_pre_commit_stdout, "native pre-commit changed the index before fallback commit"
+            current_changes, current_tree, _current_observed = builder.projection(repo, paths)
+            if current_changes != fallback_changes or current_tree != fallback_tree:
+                return 1, native_pre_commit_stdout, "native pre-commit changed approved bytes before fallback commit"
+            native_code, native_stdout, native_stderr = _run_native_commit_msg_hook(repo, message_file)
+            if native_code:
+                return native_code, native_stdout, native_stderr
+            if builder.index_snapshot(repo) != fallback_index:
+                return 1, native_pre_commit_stdout, "native commit-msg changed the index before fallback commit"
+            current_changes, current_tree, _current_observed = builder.projection(repo, paths)
+            if current_changes != fallback_changes or current_tree != fallback_tree:
+                return 1, native_pre_commit_stdout, "native commit-msg changed approved bytes before fallback commit"
+            hooks_root = repo / "tmp"
+            hooks_root.mkdir(parents=True, exist_ok=True)
+            with tempfile.TemporaryDirectory(prefix="closeout-native-hooks-", dir=hooks_root) as empty_hooks:
+                native_command = [
+                    "git",
+                    "-C",
+                    str(repo),
+                    "-c",
+                    f"core.hooksPath={Path(empty_hooks).as_posix()}",
+                    "commit",
+                    "--only",
+                    "--cleanup=verbatim",
+                    "-F",
+                    str(message_file),
+                    "--",
+                    *paths,
+                ]
+                native_commit = subprocess.run(
+                    native_command,
+                    check=False,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    env=builder._git_env(),
+                )
+                fallback_note = "native pre-commit/commit-msg fallback after Windows MSYS hook launcher failure"
+                return (
+                    native_commit.returncode,
+                    f"{fallback_note}\n{native_pre_commit_stdout}\n{native_stdout}\n{native_commit.stdout}".strip(),
+                    f"{fallback_note}\n{native_pre_commit_stderr}\n{native_stderr}\n{native_commit.stderr}".strip(),
+                )
         return completed.returncode, completed.stdout, completed.stderr
     finally:
         if message_file is not None:
@@ -175,6 +234,73 @@ def _run_hook(repo: Path, hook_name: str, env: dict[str, str] | None = None) -> 
         stderr=subprocess.PIPE,
         text=True,
         env=effective_env,
+    )
+    if (
+        completed.returncode
+        and os.name == "nt"
+        and hook_name == "pre-commit"
+        and MSYS_LAUNCHER_FAILURE in completed.stderr
+    ):
+        return _run_native_pre_commit(repo, env)
+    return completed.returncode, completed.stdout, completed.stderr
+
+
+def _pre_commit_env(repo: Path, env: dict[str, str] | None) -> dict[str, str]:
+    effective = dict(env or builder._git_env())
+    effective.setdefault("PRE_COMMIT_HOME", str(repo / ".ai_ops" / "local" / "pre-commit"))
+    return effective
+
+
+def _staged_paths(repo: Path, env: dict[str, str]) -> list[str]:
+    completed = subprocess.run(
+        ["git", "-C", str(repo), "diff", "--cached", "--name-only", "--no-renames", "--"],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=env,
+    )
+    if completed.returncode:
+        raise builder.PacketError(f"native pre-commit staged-path lookup failed: {completed.stderr.strip()}")
+    return sorted({line.strip().replace("\\", "/") for line in completed.stdout.splitlines() if line.strip()})
+
+
+def _run_native_pre_commit(repo: Path, env: dict[str, str] | None) -> tuple[int, str, str]:
+    effective = _pre_commit_env(repo, env)
+    paths = _staged_paths(repo, effective)
+    command = [sys.executable, "-m", "pre_commit", "run", "--hook-stage", "pre-commit"]
+    command.extend(["--files", *paths] if paths else ["--all-files"])
+    completed = subprocess.run(
+        command,
+        cwd=repo,
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=effective,
+    )
+    return completed.returncode, completed.stdout, completed.stderr
+
+
+def _run_native_commit_msg_hook(repo: Path, message_file: Path) -> tuple[int, str, str]:
+    effective = _pre_commit_env(repo, None)
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pre_commit",
+            "run",
+            "--hook-stage",
+            "commit-msg",
+            "--commit-msg-filename",
+            str(message_file),
+        ],
+        cwd=repo,
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=effective,
     )
     return completed.returncode, completed.stdout, completed.stderr
 

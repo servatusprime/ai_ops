@@ -144,6 +144,13 @@ base/head, required checks, merge method, remote, and verified pre-commit and
 commit-msg runtime evidence, and the approval packet schema binds that record
 to the projected tree.
 
+On Windows, if Git's MSYS hook launcher fails with the specific
+`NtCreateDirectoryObject` error, the packet applier may retry the repository's
+native `pre-commit` framework for both pre-commit and commit-message stages.
+The retry preserves the staged index, uses the repository-local pre-commit
+cache when no cache is configured, records the fallback in the packet result,
+and never uses `--no-verify`; any other hook failure remains a hard stop.
+
 When workflow, validator, hook, or CI surfaces are in the savepoint include set,
 run `python 00_Admin/scripts/run_release_quality_gate.py` before approval. The
 canonical lint result is the CI-parity precondition; focused validation alone
