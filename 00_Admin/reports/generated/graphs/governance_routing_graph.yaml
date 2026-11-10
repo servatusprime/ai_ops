@@ -2,7 +2,7 @@ graph_version: 0.1.0
 authority: derived_non_authoritative
 generated_by: 00_Admin/scripts/generate_run_family_views.py
 generator_version: 0.2.0
-source_digest: 78bef905e518d20f23002a758cf80ab7063f4dc0b39c6b41b13a18732f330d89
+source_digest: fe13cdc67a3acac6f61aa479d7f348f5189ec29b2dddd6d5cbee84ca8e91331b
 graph_kind: governance_routing_graph
 scope: run_family_workflow_spec_validator_projection
 nodes:
@@ -30,6 +30,8 @@ nodes:
   kind: command
 - id: command:work
   kind: command
+- id: command:work_savepoint
+  kind: command
 - id: validator:VS036
   kind: validator_rule
 - id: workflow:.ai_ops/workflows/closeout.md
@@ -41,6 +43,9 @@ nodes:
 - id: workflow:.ai_ops/workflows/work.md
   kind: workflow_source
   path: .ai_ops/workflows/work.md
+- id: workflow:.ai_ops/workflows/work_savepoint.md
+  kind: workflow_source
+  path: .ai_ops/workflows/work_savepoint.md
 edges:
 - source: command:closeout
   target: artifact:00_Admin/runbooks/run_family_registry.yaml
@@ -88,6 +93,10 @@ edges:
   provenance: context_routing
 - source: command:work
   target: workflow:.ai_ops/workflows/work.md
+  kind: implemented_by
+  provenance: canonical_workflow_source
+- source: command:work_savepoint
+  target: workflow:.ai_ops/workflows/work_savepoint.md
   kind: implemented_by
   provenance: canonical_workflow_source
 - source: validator:VS036

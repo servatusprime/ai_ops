@@ -55,6 +55,39 @@ class WorkSavepointContractTests(unittest.TestCase):
             self.savepoint,
         )
 
+    def test_publication_route_and_finalization_preflight_are_shared(self) -> None:
+        for marker in (
+            "publication_route",
+            "required status checks",
+            "allowed merge methods",
+            "hook_runtime",
+            "run_release_quality_gate.py",
+            "CI-parity precondition",
+            "complete_future_work.py --verify",
+            "receipt_finalization: unavailable",
+            "reviewer references exactly",
+        ):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, self.savepoint)
+                self.assertIn(marker, self.closeout)
+
+        self.assertIn(
+            "validate_work_savepoint_receipt.py --repo-root <repo_root>",
+            self.savepoint,
+        )
+
+        self.assertIn("Publication Route and CI Preflight", self.savepoint)
+        self.assertIn("Publication Route and Finalization Preflight", self.closeout)
+
+        self.assertLess(
+            self.closeout.index("Publication Route and Finalization Preflight"),
+            self.closeout.index("## Projected-Tree Validation Boundary"),
+        )
+        self.assertLess(
+            self.savepoint.index("Publication Route and CI Preflight"),
+            self.savepoint.index("## Projected-Tree Validation Boundary"),
+        )
+
     def test_scope_and_failure_guards_are_explicit(self) -> None:
         required = (
             "`related_scope_requires_confirmation`",
@@ -201,6 +234,28 @@ class WorkSavepointContractTests(unittest.TestCase):
         ):
             with self.subTest(marker=marker):
                 self.assertIn(marker, graph)
+
+    def test_generated_governance_graph_keeps_savepoint_membership(self) -> None:
+        graph = GOVERNANCE_GRAPH.read_text(encoding="utf-8")
+        for marker in (
+            "id: command:work_savepoint",
+            "id: workflow:.ai_ops/workflows/work_savepoint.md",
+            "source: command:work_savepoint",
+        ):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, graph)
+
+    def test_savepoint_publication_preflight_is_commit_only(self) -> None:
+        graph = self.savepoint[
+            self.savepoint.index("## Workflow graph") : self.savepoint.index(
+                "## Inputs and Preconditions"
+            )
+        ]
+        self.assertLess(
+            graph.index("read-only checkpoint"),
+            graph.index("publication-route/CI preflight"),
+        )
+        self.assertIn("Only when `--commit` is requested", self.savepoint)
 
     def test_closeout_archive_precedes_publication(self) -> None:
         archive = self.closeout.index("Archive and Completion Boundary")

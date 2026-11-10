@@ -127,6 +127,44 @@ class CloseoutPacketContractTests(unittest.TestCase):
         )
         packet_data = yaml.safe_load(packet.read_text(encoding="utf-8"))
         self.assertEqual("not_applicable", packet_data["archive_gate"]["status"])
+        self.assertEqual("verified", packet_data["publication_preflight"]["hook_runtime"]["status"])
+
+    def test_builder_requires_publication_preflight_outside_fixture_mode(self) -> None:
+        (self.repo / "existing.txt").write_text("changed\n", encoding="utf-8")
+        with self.assertRaisesRegex(BUILDER.PacketError, "publication preflight evidence is required"):
+            BUILDER.build_packet(
+                self.repo,
+                ["existing.txt"],
+                "publication evidence required",
+                self.repo / "packets",
+            )
+
+    def test_builder_rejects_unverified_hook_runtime(self) -> None:
+        (self.repo / "existing.txt").write_text("changed\n", encoding="utf-8")
+        evidence = self.repo / "publication-preflight.yaml"
+        evidence.write_text(
+            yaml.safe_dump(
+                {
+                    **BUILDER._fixture_publication_preflight("main"),
+                    "hook_runtime": {
+                        "status": "blocked",
+                        "pre_commit": "verified",
+                        "commit_msg": "verified",
+                        "evidence": "launcher failed",
+                    },
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(BUILDER.PacketError, "hook_runtime"):
+            BUILDER.build_packet(
+                self.repo,
+                ["existing.txt"],
+                "verified hook required",
+                self.repo / "packets",
+                publication_preflight_path=evidence,
+            )
 
     def test_builder_requires_archive_receipt_for_sandbox_deletion(self) -> None:
         source = self.repo / "90_Sandbox" / "completed.txt"

@@ -91,7 +91,7 @@ def build_governance_routing_view(repo_root: Path) -> dict[str, Any]:
     edges: list[dict[str, str]] = []
     workflow_hashes: dict[str, str] = {}
 
-    for command_name in ("work", "crosscheck", "closeout"):
+    for command_name in ("work", "crosscheck", "work_savepoint", "closeout"):
         profile = commands.get(command_name, {})
         workflow_rel = f".ai_ops/workflows/{command_name}.md"
         workflow_path = repo_root / workflow_rel
@@ -181,7 +181,7 @@ def build_governance_routing_view(repo_root: Path) -> dict[str, Any]:
     source_digest = digest({
         "routing_commands": {
             name: commands.get(name, {})
-            for name in ("work", "crosscheck", "closeout")
+            for name in ("work", "crosscheck", "work_savepoint", "closeout")
         },
         "validator_rule": vs036 or {},
         "workflow_hashes": workflow_hashes,

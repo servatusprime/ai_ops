@@ -2,7 +2,7 @@
 description: Prepare a read-only closeout packet, then publish through exact approval-gated commit, push, and PR-merge steps.
 name: closeout
 kind: workflow
-version: 0.9.1
+version: 0.10.1
 status: active
 owner: ai_ops
 license: Apache-2.0
@@ -52,7 +52,8 @@ to `/work`.
 bootstrap/context -> resolve scope -> future-work review (optional, read-only)
   -> archive applicability/rows -> existing container-completion decision
   -> approved archive move -> stale-reference check -> re-freeze scope
-  -> projected-tree validation -> security admission -> packet/hash binding
+  -> publication-route/CI/finalization preflight -> projected-tree validation
+  -> security admission -> packet/hash binding
   -> one publication approval turn
   -> exact commit -> approved push -> approved PR/merge -> final receipt/status
 ```
@@ -155,6 +156,46 @@ shell metacharacters, unapproved executables, and paths outside the workspace.
 Retry a configured network-sensitive command once, then record a permitted
 partial result and `validation_escalated: true`; never silently skip a required
 check.
+
+### Publication Route and Finalization Preflight
+
+Before staging or requesting publication approval, resolve the publication route
+from the provider and local repository state. Record `publication_route`
+(`direct` or `pr_required`), the protected/default branch, required status checks,
+the allowed merge methods, the selected remote, and `hook_runtime`. Do not probe
+a protected branch with a direct push. If provider metadata or the hook runtime
+cannot be verified, emit `PARK` with the exact missing evidence and stop before
+mutation. When `pr_required` is reported, create or select the publication branch
+before staging and bind its head, base, and merge method to the packet and
+approval rows.
+
+Publication preflight is an evidence record, not a prose assertion:
+`build_closeout_packet.py --publication-preflight <path>` requires the route,
+base/head, required checks, merge method, remote, and verified pre-commit and
+commit-msg runtime evidence, and the approval packet schema binds that record
+to the projected tree.
+
+Run the canonical release-quality gate before publication approval:
+`python 00_Admin/scripts/run_release_quality_gate.py`. Its lint result is the
+CI-parity precondition; a local validator-only pass is insufficient. A failed
+quality gate routes to `/work` and no commit or push is authorized.
+
+Freeze the final records surface before security admission. This includes the
+run log, future-work registry/scorecard, archive map, receipt references, and
+generated views in the selected include set. Do not append clerical records or
+repair receipt text after the receipt is admitted. When relocation is
+applicable, the existing archive-gate receipt is the finalization proof: every
+entry binds `source`, `destination`, `source_sha256`, and `destination_sha256`,
+and the receipt proves `source_absent: true`, `collision_free: true`, and the
+manifest hash. For future-work completion receipts, run
+`complete_future_work.py --verify` after relocation and before packet
+admission; it proves registry/receipt consistency, while the archive-gate
+receipt proves source/destination bytes, source absence, and collision safety.
+Never hand-edit a receipt to repair a moved path. Preserve the
+receipt's reviewer references exactly; any changed evidence requires a new
+review and a new packet binding. If the archive gate or receipt verification
+cannot produce a bound result, report `receipt_finalization: unavailable` and
+stop.
 
 ## Future-Work Applicability Gate
 
@@ -402,7 +443,8 @@ report it and continue; exit 2 means an ambiguous ID, ineligible status, or
 another error: stop and report. A merge that lands after the session is handled
 by the resumed closeout.
 
-Report `target_repo`, `repo_root`, branch, HEAD, scope buckets,
+Report `target_repo`, `repo_root`, branch, HEAD, `publication_route`,
+required checks, merge method, `hook_runtime`, `receipt_finalization`, scope buckets,
 `future_work`, `projected_include_tree`, `excluded_scope_conflict` when present,
 security admission fields, archive result, validation commands, approval state,
 commit/push/PR/merge status, and all receipt paths. Keep work summaries and
