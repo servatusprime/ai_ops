@@ -449,6 +449,7 @@ def main() -> int:
                 {
                     "path": command_path.relative_to(repo_root).as_posix(),
                     "kind": "plugin_command",
+                    "publication": "tracked",
                     "sha256_12": sha12(command_content),
                 }
             )
@@ -472,6 +473,7 @@ def main() -> int:
                 {
                     "path": plugin_skill_path.relative_to(repo_root).as_posix(),
                     "kind": "plugin_skill",
+                    "publication": "tracked",
                     "sha256_12": sha12(plugin_skill_content),
                 }
             )
@@ -495,6 +497,7 @@ def main() -> int:
                     {
                         "path": claude_skill_path.relative_to(repo_root).as_posix(),
                         "kind": "claude_skill",
+                        "publication": "ignored_local",
                         "sha256_12": sha12(claude_skill_content),
                     }
                 )
@@ -534,6 +537,7 @@ def main() -> int:
                     {
                         "path": codex_primary_path.relative_to(repo_root).as_posix(),
                         "kind": "codex_skill_primary",
+                        "publication": "ignored_local",
                         "sha256_12": sha12(codex_skill_content),
                     }
                 )
@@ -541,6 +545,7 @@ def main() -> int:
                     {
                         "path": codex_primary_yaml_path.relative_to(repo_root).as_posix(),
                         "kind": "codex_skill_primary_openai_yaml",
+                        "publication": "ignored_local",
                         "sha256_12": sha12(codex_openai_yaml_content),
                     }
                 )
@@ -558,6 +563,7 @@ def main() -> int:
                         {
                             "path": codex_compat_path.relative_to(repo_root).as_posix(),
                             "kind": "codex_skill_compat",
+                            "publication": "ignored_local",
                             "sha256_12": sha12(codex_skill_content),
                         }
                     )
@@ -565,6 +571,7 @@ def main() -> int:
                         {
                             "path": codex_compat_yaml_path.relative_to(repo_root).as_posix(),
                             "kind": "codex_skill_compat_openai_yaml",
+                            "publication": "ignored_local",
                             "sha256_12": sha12(codex_openai_yaml_content),
                         }
                     )

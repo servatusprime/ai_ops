@@ -307,6 +307,7 @@
 |   |   |-- test_validation_command_policy.py
 |   |   |-- test_work_savepoint_contract.py
 |   |   |-- test_work_savepoint_receipt.py
+|   |   |-- test_workflow_export_drift.py
 |   |   |-- test_workflow_export_workspace_preview.py
 |   |   +-- workflow_smoke_tests.yaml
 |   +-- tooling/

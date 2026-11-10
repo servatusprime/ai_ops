@@ -39,6 +39,9 @@ DEFAULT_LIMITS = {
     "elapsed_seconds": 120,
 }
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
+HEX64 = re.compile(r"^[0-9a-f]{64}$")
+CLOSEOUT_TRAILER = re.compile(r"^Closeout-Security:\s+(\S+)\s+(\S+)\s+(\S+)$")
+SECURITY_RECEIPT_REL = Path(".ai_ops/local/closeout_security/latest.yaml")
 
 
 class PacketError(RuntimeError):
@@ -275,6 +278,34 @@ def normalize_commit_message(message: str) -> str:
     if not normalized:
         raise PacketError("commit message must contain non-whitespace text")
     return normalized
+
+
+def _validate_security_trailer_binding(repo: Path, message: str, include: list[str]) -> None:
+    """Reject a packet whose security trailer disagrees with its receipt/scope."""
+
+    trailers = [line.strip() for line in message.splitlines() if line.strip().startswith("Closeout-Security:")]
+    if not trailers:
+        return
+    if len(trailers) != 1:
+        raise PacketError("commit message must contain exactly one Closeout-Security trailer")
+    match = CLOSEOUT_TRAILER.fullmatch(trailers[0])
+    if not match:
+        raise PacketError("Closeout-Security trailer has an invalid format")
+    receipt_path = repo / SECURITY_RECEIPT_REL
+    if not receipt_path.is_file():
+        raise PacketError("Closeout-Security trailer requires latest.yaml security receipt")
+    try:
+        receipt = yaml.safe_load(receipt_path.read_text(encoding="utf-8")) or {}
+    except (OSError, UnicodeError, yaml.YAMLError) as exc:
+        raise PacketError("cannot read latest.yaml security receipt for trailer binding") from exc
+    receipt_digest = receipt.get("receipt_sha256")
+    if not isinstance(receipt_digest, str) or not HEX64.fullmatch(receipt_digest):
+        raise PacketError("latest.yaml security receipt has no valid receipt_sha256")
+    expected_include = sha256_bytes("\n".join(sorted(include)).encode("utf-8"))
+    if match.group(1) != "pass" or match.group(2) != expected_include or match.group(3) != receipt_digest:
+        raise PacketError(
+            "Closeout-Security trailer does not match latest.yaml and the packet include set"
+        )
 
 
 def _git_env() -> dict[str, str]:
@@ -690,6 +721,7 @@ def build_packet(
     include = sorted({_safe_path(path) for path in include})
     if not include:
         raise PacketError("at least one include path is required")
+    _validate_security_trailer_binding(repo, message, include)
     if archive_gate_path is not None and archive_gate_not_applicable:
         raise PacketError("archive gate receipt and not_applicable cannot both be selected")
     _validate_generated_coupling(include)

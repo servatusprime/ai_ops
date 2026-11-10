@@ -166,6 +166,30 @@ class CloseoutPacketContractTests(unittest.TestCase):
                 publication_preflight_path=evidence,
             )
 
+    def test_builder_rejects_mistyped_closeout_security_trailer(self) -> None:
+        (self.repo / "existing.txt").write_text("changed\n", encoding="utf-8")
+        receipt_dir = self.repo / ".ai_ops" / "local" / "closeout_security"
+        receipt_dir.mkdir(parents=True)
+        (receipt_dir / "latest.yaml").write_text(
+            yaml.safe_dump({"receipt_sha256": "b" * 64}, sort_keys=False),
+            encoding="utf-8",
+        )
+        message = (
+            "security trailer binding\n\n"
+            "Closeout-Security: pass "
+            + "a" * 64
+            + " "
+            + "b" * 64
+        )
+        with self.assertRaisesRegex(BUILDER.PacketError, "trailer does not match"):
+            BUILDER.build_packet(
+                self.repo,
+                ["existing.txt"],
+                message,
+                self.repo / "packets",
+                allow_fixture_defaults=True,
+            )
+
     def test_builder_requires_archive_receipt_for_sandbox_deletion(self) -> None:
         source = self.repo / "90_Sandbox" / "completed.txt"
         source.parent.mkdir(parents=True, exist_ok=True)
