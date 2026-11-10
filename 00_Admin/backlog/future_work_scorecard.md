@@ -2,7 +2,7 @@
 title: Future Work Scorecard
 version: 0.1.0
 status: active
-updated: '2026-11-09'
+updated: '2026-11-10'
 source_registry: 00_Admin/backlog/future_work_registry.yaml
 generated_by: 00_Admin/scripts/generate_future_work_scorecard.py
 ---
@@ -21,12 +21,9 @@ generated_by: 00_Admin/scripts/generate_future_work_scorecard.py
 | fw_20260726_01 | Runprogram wiring audit as a scoped health gate | validation | both | high | high | m | ready | high | 2026-12-15 |
 | fw_20261106_01 | Enforce factory/local profile output isolation before /profiles customization | tooling | ai_ops | high | high | m | partial | high | 2026-12-15 |
 | fw_20260619_02 | Reduce git permission-prompt friction (atomic invocation convention + git rebase allowlist) | operations | both | medium | medium | s | ready | low | 2026-12-15 |
-| fw_20260721_02 | Delegation capability parity and installed-surface verification | governance | ai_ops | medium | medium | m | ready | medium | 2026-12-15 |
 | fw_20260721_03 | Remove Director-receipt dependency from run-family adoption handoff | governance | ai_ops | medium | medium | s | ready | medium | 2026-12-15 |
 | fw_20260820_01 | Sweep and reconcile "packet"/work_packets terminology across ai_ops guides | documentation | ai_ops | medium | medium | m | blocked | medium | 2026-12-15 |
 | fw_20260902_02 | Adjudicate validator warning-to-blocker policy for SEC-AIOPS-020 | validation | ai_ops | medium | high | m | partial | medium | 2026-12-15 |
-| fw_20261104_01 | Apply the work-workflow simplification AGENTS.md handoff | governance | ai_ops | medium | medium | m | ready | medium | 2026-12-15 |
-| fw_20261104_02 | Align the ai_role validator contract across ai_ops and governed repos | validation | both | medium | medium | m | ready | medium | 2026-12-15 |
 | fw_20260216_01 | Protected-path authority evidence enforcement for workflow edits | governance | ai_ops | medium | high | m | deferred | medium | 2027-01-15 |
 | fw_20260504_01 | Bounded subagent budget guidance for discretionary delegation | governance | ai_ops | medium | medium | m | deferred | low | 2027-01-15 |
 | fw_20260716_01 | Advanced run-family version resolution and migration automation | tooling | both | medium | medium | l | deferred | low | 2027-01-15 |
