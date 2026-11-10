@@ -112,11 +112,13 @@ tests:
       - Proposed commit message, remote, and branch
       - Commit only after exact approval
       - Push or pull request only after separate approval
+      - Final merge verification and packet-retention plan/application
     failure_indicators:
       - Agent commits without approval
       - Agent skips validation steps
       - Agent stages or commits during read-only preparation
       - Agent pushes without separate explicit approval
+      - Agent deletes active, malformed, or non-closeout packet evidence
 
   - id: smoke_harvest
     workflow: /harvest
