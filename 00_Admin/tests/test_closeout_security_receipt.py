@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import os
 import subprocess
 import sys
 import tempfile
@@ -1211,18 +1212,29 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
     def test_head_hook_leaves_manual_first_landing_without_trailer_alone(self) -> None:
         hook = ROOT / "00_Admin/scripts/hooks/validate_closeout_security_head.py"
         receipt = ROOT / ".ai_ops/local/closeout_security/first_landing_only.yaml"
-        result = subprocess.run(
-            [
-                sys.executable,
-                str(hook),
-                "--repo-root", str(ROOT),
-                "--receipt", str(receipt),
-                "--staged",
-            ],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            isolated_index = Path(temp_dir) / "index"
+            hook_env = {**os.environ, "GIT_INDEX_FILE": str(isolated_index)}
+            subprocess.run(
+                ["git", "-C", str(ROOT), "read-tree", "HEAD"],
+                env=hook_env,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(hook),
+                    "--repo-root", str(ROOT),
+                    "--receipt", str(receipt),
+                    "--staged",
+                ],
+                env=hook_env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("no receipt", result.stdout)
 
