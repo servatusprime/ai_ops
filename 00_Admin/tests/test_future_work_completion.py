@@ -100,6 +100,7 @@ class FutureWorkCompletionTests(unittest.TestCase):
             self.assertNotIn("fw_20261023_90", registry.read_text(encoding="utf-8"))
             self.assertIn("run_id: 00000000-0000-4000-8000-000000000090", log.read_text(encoding="utf-8"))
             self.assertNotIn("fw_20261023_90", scorecard.read_text(encoding="utf-8"))
+            self.assertTrue(scorecard.read_bytes().endswith(b"\n"))
             receipt_data = yaml.safe_load(receipt.read_text(encoding="utf-8"))
             self.assertEqual(MODULE._sha256(log.read_bytes()), receipt_data["run_log_sha256"])
             MODULE.verify_receipt(

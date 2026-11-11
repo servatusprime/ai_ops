@@ -168,6 +168,8 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         validator = Path(tmp) / "validate_closeout_security_receipt.py"
         validator.write_text(head_text(repo, VALIDATOR), encoding="utf-8")
+        target_paths = Path(tmp) / "target_paths.py"
+        target_paths.write_text(head_text(repo, "00_Admin/scripts/target_paths.py"), encoding="utf-8")
         command = [
             sys.executable,
             str(validator),

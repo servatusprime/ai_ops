@@ -14,6 +14,11 @@ from typing import Any
 
 import yaml
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+from target_paths import resolve_repo_input, resolve_repo_root  # noqa: E402
+
 SCHEMA = Path(__file__).resolve().parents[1] / "configs" / "validator" / "schema_work_savepoint_receipt.yaml"
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 SHA40 = re.compile(r"^[0-9a-f]{40}$")
@@ -146,14 +151,25 @@ def validate_receipt(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", type=Path, required=True)
+    parser.add_argument("--workspace-root", type=Path, help="workspace containing named governed repositories")
     parser.add_argument("--receipt", type=Path, required=True)
     parser.add_argument("--head", dest="expected_head", required=True)
     parser.add_argument("--branch", dest="expected_branch", required=True)
     args = parser.parse_args()
     try:
-        validate_receipt(
+        workspace_root = args.workspace_root.resolve() if args.workspace_root else None
+        repo_root = resolve_repo_root(
+            args.repo_root, workspace_root=workspace_root, cwd=Path.cwd()
+        )
+        receipt_path = resolve_repo_input(
             args.receipt,
-            repo_root=args.repo_root,
+            repo_root,
+            workspace_root=workspace_root,
+            cwd=Path.cwd(),
+        )
+        validate_receipt(
+            receipt_path,
+            repo_root=repo_root,
             expected_head=args.expected_head,
             expected_branch=args.expected_branch,
         )

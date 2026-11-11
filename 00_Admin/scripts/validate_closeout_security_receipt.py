@@ -17,6 +17,7 @@ import json
 import math
 import re
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, NoReturn
@@ -28,6 +29,11 @@ except ImportError as exc:  # pragma: no cover - environment diagnostic
 
 
 ROOT = Path(__file__).resolve().parents[2]
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+from target_paths import resolve_repo_input, resolve_repo_root  # noqa: E402
+
 POLICY_PATH = "00_Admin/configs/closeout_security_tiers.yaml"
 HOOK_MARKER = "validate_closeout_security_head.py"
 RECEIPT_VERSIONS = {"0.1.0", "0.2.0", "0.4.0"}
@@ -83,38 +89,24 @@ def target_policy_present(repo: Path) -> bool:
 
 def closeout_hook_present(repo: Path) -> bool:
     """Return whether an installed hook invokes the HEAD closeout validator."""
-    completed = subprocess.run(
-        ["git", "-C", str(repo), "config", "--get", "core.hooksPath"],
+    resolved = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "--git-path", "hooks"],
         check=False,
+        text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    if completed.returncode not in (0, 1):
-        fail(
-            "cannot resolve core.hooksPath: "
-            + completed.stderr.decode("utf-8", errors="replace").strip()
-        )
-    configured = completed.stdout.decode("utf-8", errors="replace").strip()
-    if configured:
-        hook_dir = Path(configured)
-        if not hook_dir.is_absolute():
-            hook_dir = (repo / hook_dir).resolve()
-    else:
-        resolved = subprocess.run(
-            ["git", "-C", str(repo), "rev-parse", "--git-path", "hooks"],
-            check=False,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        if resolved.returncode:
-            fail("cannot resolve Git hooks path: " + resolved.stderr.strip())
-        candidate = resolved.stdout.strip()
-        if not candidate:
-            fail("cannot resolve Git hooks path: Git returned an empty path")
-        hook_dir = Path(candidate)
-        if not hook_dir.is_absolute():
-            hook_dir = (repo / hook_dir).resolve()
+    if resolved.returncode:
+        error = resolved.stderr
+        if isinstance(error, bytes):
+            error = error.decode("utf-8", errors="replace")
+        fail("cannot resolve Git hooks path: " + str(error).strip())
+    candidate = resolved.stdout.strip()
+    if not candidate:
+        fail("cannot resolve Git hooks path: Git returned an empty path")
+    hook_dir = Path(candidate)
+    if not hook_dir.is_absolute():
+        hook_dir = (repo / hook_dir).resolve()
     dispatcher_present = False
     for name in (
         "pre-commit",
@@ -450,6 +442,199 @@ def expected_review_basis(
     return "full_content"
 
 
+def git_delta(repo: Path, path: str, source: str, context_lines: int) -> str:
+    """Return the same bounded source delta emitted by the pre-pass."""
+
+    if source == "staged":
+        command = [
+            "git", "-C", str(repo), "diff", "--cached", "--no-ext-diff",
+            f"--unified={context_lines}", "--", path,
+        ]
+    elif source == "worktree":
+        command = [
+            "git", "-C", str(repo), "diff", "HEAD", "--no-ext-diff",
+            f"--unified={context_lines}", "--", path,
+        ]
+    else:
+        return "(source=head; no new source delta is available)"
+    completed = subprocess.run(
+        command, check=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+    if completed.returncode:
+        fail(f"cannot read source delta for {path}: {completed.stderr.strip()}")
+    return completed.stdout or "(no source delta; current bytes equal the reviewed baseline)"
+
+
+def delta_packet_content(
+    row: dict[str, Any], repo: Path, source: str, context_lines: int
+) -> str:
+    return (
+        "Baseline attestation is reused for unchanged bytes.\n"
+        f"baseline_receipt: {row['_baseline_receipt']}\n"
+        f"baseline_sha256: {row['_baseline_sha256']}\n"
+        f"current_sha256: {row['sha256']}\n"
+        f"source_delta_unified_lines: {context_lines}\n\n"
+        "source_delta:\n"
+        f"{git_delta(repo, row['path'], source, context_lines)}\n"
+    )
+
+
+def validate_baseline_receipt_integrity(
+    repo: Path, baseline: dict[str, Any], current: dict[str, Any]
+) -> None:
+    """Validate the prior receipt's own binding before reusing any attestation."""
+
+    validate_shape(baseline)
+    if baseline.get("receipt_version") != "0.2.0":
+        fail("delta baseline must be a reviewer-read receipt")
+    if baseline.get("repo_root") != current.get("repo_root"):
+        fail("delta baseline repo_root does not match current receipt")
+    if baseline.get("base_head") != current.get("base_head"):
+        fail("delta baseline base_head does not match current receipt")
+    if baseline.get("tiers_config_version") != current.get("tiers_config_version"):
+        fail("delta baseline policy version does not match current receipt")
+    if baseline.get("ruleset_version") != current.get("ruleset_version"):
+        fail("delta baseline ruleset version does not match current receipt")
+    recorded = baseline.get("receipt_sha256")
+    if not isinstance(recorded, str) or not re.fullmatch(r"[0-9a-f]{64}", recorded):
+        fail("delta baseline lacks its own receipt_sha256")
+    if hashlib.sha256(canonical_receipt(baseline)).hexdigest() != recorded:
+        fail("delta baseline receipt_sha256 does not match its content")
+    rows = baseline.get("rows", [])
+    paths = sorted(str(row["path"]) for row in rows)
+    if include_hash(paths) != baseline.get("include_set_sha256"):
+        fail("delta baseline include-set hash does not match its rows")
+    if not re.fullmatch(r"[0-9a-f]{64}", str(baseline.get("scope_lock_sha256", ""))):
+        fail("delta baseline scope lock is invalid")
+    baseline_statuses = baseline.get("scope_statuses")
+    if not isinstance(baseline_statuses, dict) or set(baseline_statuses) != set(paths):
+        fail("delta baseline lacks complete scope status evidence")
+    if scope_lock(paths, rows, baseline_statuses) != baseline.get("scope_lock_sha256"):
+        fail("delta baseline scope lock does not match its recorded statuses")
+    packet_paths = [
+        str(value)
+        for batch in baseline.get("review_batches", [])
+        for value in batch.get("packet_files", [])
+    ]
+    packet_hashes = [
+        str(value)
+        for batch in baseline.get("review_batches", [])
+        for value in batch.get("packet_sha256", [])
+    ]
+    if len(packet_paths) != len(packet_hashes):
+        fail("delta baseline packet bindings are inconsistent")
+    sections: list[dict[str, Any]] = []
+    for packet_path, digest in zip(packet_paths, packet_hashes, strict=False):
+        target = Path(packet_path)
+        if not target.is_absolute():
+            target = repo / target
+        target = target.resolve()
+        try:
+            target.relative_to(repo.resolve())
+        except ValueError:
+            fail(f"delta baseline packet escapes repository: {packet_path}")
+        try:
+            data = target.read_bytes()
+        except OSError as exc:
+            fail(f"cannot read delta baseline packet {packet_path}: {exc}")
+        if hashlib.sha256(data).hexdigest() != digest:
+            fail(f"delta baseline packet digest mismatch: {packet_path}")
+        sections.extend(parse_packet_sections(data))
+    by_path: dict[str, list[dict[str, Any]]] = {}
+    for section in sections:
+        by_path.setdefault(section["path"], []).append(section)
+    for row in rows:
+        path = str(row["path"])
+        if row.get("coverage") != "fully_reviewed" or row.get("disposition") != "pass":
+            continue
+        if row.get("tier") == "T2":
+            if row.get("independent_pass") is not True:
+                fail(f"delta baseline lacks independent T2 pass: {path}")
+            if str(row.get("independent_reviewer")) in {"", "pending", str(row.get("reviewer"))}:
+                fail(f"delta baseline lacks a distinct T2 reviewer: {path}")
+            validate_independent_snapshot(
+                repo, row, str(row.get("independent_evidence", "")), baseline
+            )
+        if row.get("review_basis") != "full_content" or row.get("file_kind") in {"binary", "deleted_binary"}:
+            continue
+        prior_bytes = git_bytes(repo, f"HEAD:{path}")
+        ordered = sorted(by_path.get(path, []), key=lambda section: int(section["chunk"]))
+        if not ordered or "".join(section.get("content") or "" for section in ordered) != prior_bytes.decode(
+            "utf-8", errors="replace"
+        ):
+            fail(f"delta baseline packet does not bind full HEAD content: {path}")
+
+
+def validate_delta_baseline(
+    repo: Path,
+    receipt: dict[str, Any],
+    row: dict[str, Any],
+    source: str,
+    *,
+    require_attestation: bool = True,
+) -> None:
+    """Require an immutable, fully reviewed prior row before delta reuse."""
+
+    if source not in {"staged", "worktree"}:
+        fail(f"delta_with_baseline requires staged or worktree source: {row['path']}")
+    if row.get("file_kind") not in {"text", "generated"}:
+        fail(f"delta_with_baseline is limited to text/generated rows: {row['path']}")
+    baseline_ref = receipt.get("baseline_receipt")
+    baseline_hash = receipt.get("baseline_receipt_sha256")
+    if not isinstance(baseline_ref, str) or not isinstance(baseline_hash, str):
+        fail(f"delta row lacks a bound baseline receipt: {row['path']}")
+    baseline_path = (repo / Path(safe_path(baseline_ref))).resolve()
+    try:
+        baseline_path.relative_to(repo.resolve())
+    except ValueError:
+        fail(f"baseline receipt escapes repository: {baseline_ref}")
+    try:
+        baseline_bytes = baseline_path.read_bytes()
+    except OSError as exc:
+        fail(f"cannot read baseline receipt {baseline_ref}: {exc}")
+    if hashlib.sha256(baseline_bytes).hexdigest() != baseline_hash:
+        fail(f"baseline receipt digest mismatch: {baseline_ref}")
+    try:
+        baseline = yaml.safe_load(baseline_bytes.decode("utf-8")) or {}
+    except (UnicodeDecodeError, yaml.YAMLError) as exc:
+        fail(f"cannot parse baseline receipt {baseline_ref}: {exc}")
+    if not isinstance(baseline, dict) or baseline.get("receipt_version") != "0.2.0":
+        fail(f"baseline receipt must be a reviewer-read v0.2.0 receipt: {baseline_ref}")
+    validate_baseline_receipt_integrity(repo, baseline, receipt)
+    baseline_rows = {
+        str(item.get("path")): item
+        for item in baseline.get("rows", [])
+        if isinstance(item, dict)
+    }
+    prior = baseline_rows.get(str(row["path"]))
+    if not isinstance(prior, dict):
+        fail(f"baseline receipt does not cover delta row: {row['path']}")
+    if prior.get("mode") != row.get("mode"):
+        fail(f"delta row mode differs from its baseline for {row['path']}")
+    if prior.get("file_kind") != row.get("file_kind"):
+        fail(f"delta row file kind differs from its baseline for {row['path']}")
+    if prior.get("prepass_status") != row.get("prepass_status"):
+        fail(f"delta row pre-pass status differs from its baseline for {row['path']}")
+    if not re.fullmatch(r"[0-9a-f]{64}", str(prior.get("sha256", ""))):
+        fail(f"delta baseline has an invalid source digest: {row['path']}")
+    if not head_path_exists(repo, str(row["path"])):
+        fail(f"delta baseline requires an existing HEAD file: {row['path']}")
+    head_digest = hashlib.sha256(git_bytes(repo, f"HEAD:{row['path']}")).hexdigest()
+    if head_digest != str(prior["sha256"]):
+        fail(f"delta baseline does not bind the target HEAD bytes: {row['path']}")
+    if prior.get("review_basis") != "full_content":
+        fail(f"delta baseline must originate from full_content review: {row['path']}")
+    if prior.get("coverage") != "fully_reviewed" or prior.get("disposition") != "pass":
+        fail(f"delta baseline is not a passing full review: {row['path']}")
+    if prior.get("review_method") != "full-file-plus-diff" or prior.get("reviewer") in {None, "", "pending"}:
+        fail(f"delta baseline lacks a complete reviewer attestation: {row['path']}")
+    if require_attestation:
+        if row.get("review_method") != "delta-plus-baseline":
+            fail(f"delta row review_method is incomplete: {row['path']}")
+        if row.get("coverage") != "fully_reviewed" or row.get("disposition") != "pass":
+            fail(f"delta row must retain passing coverage: {row['path']}")
+
+
 def scan_text(path: str, data: bytes, config: dict[str, Any]) -> tuple[str, list[str]]:
     """Recompute the pre-pass classification from trusted bytes and policy."""
     if is_binary(path, data, config):
@@ -499,6 +684,47 @@ def validate_evidence_ref(repo: Path, value: str, *, expected_hash: str | None =
         fail(f"evidence digest mismatch: {path}")
     if expected_hash is not None and actual_hash != expected_hash:
         fail(f"evidence does not preserve the deleted artifact digest: {path}")
+
+
+def validate_independent_snapshot(
+    repo: Path,
+    row: dict[str, Any],
+    evidence: str,
+    receipt: dict[str, Any] | None = None,
+) -> None:
+    """Validate the structured independent-review artifact bound to a T2 row."""
+
+    snapshot_ref = note_value(evidence, "snapshot")
+    evidence_hash = note_value(evidence, "evidence_sha256")
+    if snapshot_ref is None or evidence_hash is None:
+        fail(f"independent T2 reviewer evidence is incomplete: {row['path']}")
+    validate_evidence_ref(repo, f"{snapshot_ref}@{evidence_hash}")
+    snapshot_path, snapshot_bytes = evidence_bytes(repo, snapshot_ref)
+    try:
+        snapshot = yaml.safe_load(snapshot_bytes.decode("utf-8")) or {}
+    except (UnicodeDecodeError, yaml.YAMLError) as exc:
+        fail(f"independent snapshot is not valid YAML: {snapshot_path}: {exc}")
+    if not isinstance(snapshot, dict) or snapshot.get("snapshot_version") != "1.0.0":
+        fail(f"independent snapshot version is invalid: {snapshot_path}")
+    if receipt is not None:
+        for key in ("repo_root", "base_head", "scope_lock_sha256"):
+            if snapshot.get(key) != receipt.get(key):
+                fail(f"independent snapshot {key} mismatch: {snapshot_path}")
+    rows = {
+        str(item.get("path")): item
+        for item in snapshot.get("rows", [])
+        if isinstance(item, dict) and item.get("path")
+    }
+    snapshot_row = rows.get(str(row["path"]))
+    if not isinstance(snapshot_row, dict):
+        fail(f"independent snapshot does not cover: {row['path']}")
+    for key in ("sha256", "mode", "disposition"):
+        if snapshot_row.get(key) != row.get(key):
+            fail(f"independent snapshot {key} mismatch: {row['path']}")
+    if snapshot_row.get("reviewer") != row.get("independent_reviewer"):
+        fail(f"independent snapshot reviewer mismatch: {row['path']}")
+    if snapshot_row.get("disposition") != "pass":
+        fail(f"independent snapshot disposition is not pass: {row['path']}")
 
 
 def validate_structured_deleted_data_review(repo: Path, row: dict[str, Any]) -> None:
@@ -710,7 +936,12 @@ def validate_shape(receipt: dict[str, Any]) -> None:
         fail(f"receipt missing fields: {', '.join(missing)}")
     top_allowed = required | {"receipt_sha256"}
     if version == "0.2.0":
-        top_allowed |= {"review_approval"}
+        top_allowed |= {
+            "review_approval",
+            "baseline_receipt",
+            "baseline_receipt_sha256",
+            "scope_statuses",
+        }
     elif version == "0.4.0":
         top_allowed |= set()
     unknown_top = sorted(set(receipt) - top_allowed)
@@ -739,6 +970,13 @@ def validate_shape(receipt: dict[str, Any]) -> None:
     elif version in {"0.2.0", "0.4.0"}:
         if not re.fullmatch(r"[0-9a-f]{64}", str(receipt.get("scope_lock_sha256", ""))):
             fail("scope_lock_sha256 must be a lowercase SHA-256")
+        if "scope_statuses" in receipt:
+            statuses = receipt["scope_statuses"]
+            if not isinstance(statuses, dict) or any(
+                not isinstance(key, str) or not isinstance(value, str) or not value
+                for key, value in statuses.items()
+            ):
+                fail("scope_statuses must be a non-empty string mapping")
         if version == "0.4.0":
             if not re.fullmatch(r"[0-9a-f]{64}", str(receipt.get("tree_manifest_sha256", ""))):
                 fail("tree_manifest_sha256 must be a lowercase SHA-256")
@@ -836,6 +1074,7 @@ def validate_shape(receipt: dict[str, Any]) -> None:
         if version in {"0.2.0", "0.4.0"}:
             if row.get("review_basis") not in {
                 "full_content",
+                "delta_with_baseline",
                 "digest_bound_binary",
                 "hash_only_deleted_binary",
                 "structured_deleted_data",
@@ -972,6 +1211,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--receipt", type=Path, required=True)
     parser.add_argument("--repo-root", type=Path, default=ROOT)
+    parser.add_argument("--workspace-root", type=Path, help="workspace containing named governed repositories")
     parser.add_argument("--config", type=Path)
     parser.add_argument("--gate", action="store_true", help="apply real closeout admission rules")
     parser.add_argument("--staged", action="store_true", help="validate against staged blobs")
@@ -984,6 +1224,13 @@ def main() -> int:
     parser.add_argument("--commit-msg-file", type=Path)
     parser.add_argument("--discard", action="store_true", help="discard the supplied machine-local receipt")
     args = parser.parse_args()
+    workspace_root = args.workspace_root.resolve() if args.workspace_root else None
+    try:
+        repo = resolve_repo_root(
+            args.repo_root, workspace_root=workspace_root, cwd=Path.cwd()
+        )
+    except ValueError as exc:
+        fail(str(exc))
     if args.commit_msg_file:
         try:
             lines = args.commit_msg_file.read_text(encoding="utf-8").splitlines()
@@ -994,14 +1241,19 @@ def main() -> int:
             fail("commit message must contain exactly one Closeout-Security trailer")
         args.trailer = trailers[0]
     if args.discard:
-        receipt_path = args.receipt.resolve()
-        if receipt_path == (args.repo_root.resolve() / ".ai_ops/local/closeout_security/latest.yaml"):
+        receipt_path = resolve_repo_input(
+            args.receipt, repo, workspace_root=workspace_root, cwd=Path.cwd()
+        )
+        if receipt_path == (repo / ".ai_ops/local/closeout_security/latest.yaml"):
             receipt_path.unlink(missing_ok=True)
             print("DISCARDED closeout security receipt")
             return 0
         fail("--discard is limited to .ai_ops/local/closeout_security/latest.yaml")
+    receipt_path = resolve_repo_input(
+        args.receipt, repo, workspace_root=workspace_root, cwd=Path.cwd()
+    )
     try:
-        receipt = yaml.safe_load(args.receipt.read_text(encoding="utf-8")) or {}
+        receipt = yaml.safe_load(receipt_path.read_text(encoding="utf-8")) or {}
     except OSError as exc:
         fail(f"cannot read receipt: {exc}")
     if not isinstance(receipt, dict):
@@ -1009,7 +1261,6 @@ def main() -> int:
     if receipt.get("receipt_version") not in RECEIPT_VERSIONS:
         fail("unsupported receipt_version")
     validate_shape(receipt)
-    repo = args.repo_root.resolve()
     if args.gate and not args.staged:
         fail("real gate mode requires --staged so the receipt covers the commit slug")
     if args.gate and str(receipt["receipt_version"]) not in {"0.2.0", "0.4.0"}:
@@ -1038,8 +1289,15 @@ def main() -> int:
         fail("receipt base_head is not a lowercase commit SHA")
     if not re.fullmatch(r"[0-9a-f]{64}", str(receipt["include_set_sha256"])):
         fail("receipt include_set_sha256 is not a lowercase SHA-256")
+    resolved_config = (
+        resolve_repo_input(args.config, repo, workspace_root=workspace_root, cwd=Path.cwd())
+        if args.config
+        else None
+    )
     if args.first_landing:
-        config_path = (repo / args.config).resolve() if not args.config.is_absolute() else args.config.resolve()
+        config_path = resolved_config
+        if config_path is None:
+            fail("--first-landing requires an explicit --config")
         staged = staged_records(repo)
         if staged.get("00_Admin/configs/closeout_security_tiers.yaml") not in {"A", "M"}:
             fail("--first-landing requires the canonical policy to be staged")
@@ -1051,12 +1309,12 @@ def main() -> int:
                 and str(head_config.get("ruleset_version")) == str(config.get("ruleset_version"))
             ):
                 fail("--first-landing requires a new canonical policy version")
-    elif args.gate and args.config:
-        config = load_config(repo, args.config)
+    elif args.gate and resolved_config:
+        config = load_config(repo, resolved_config)
     elif args.gate:
         config = load_head_config(repo)
     else:
-        config = load_config(repo, args.config)
+        config = load_config(repo, resolved_config)
     if str(receipt.get("tiers_config_version")) != str(config.get("version")):
         fail("receipt tiers_config_version does not match the active policy")
     if str(receipt.get("ruleset_version")) != str(config.get("ruleset_version")):
@@ -1139,6 +1397,8 @@ def main() -> int:
         statuses = worktree_records(repo, sorted(set(receipt_paths)))
     else:
         statuses = {path: "H" for path in receipt_paths}
+    if "scope_statuses" in receipt and receipt["scope_statuses"] != statuses:
+        fail("receipt scope_statuses do not match the live source status")
     seen: set[str] = set()
     rows_by_path: dict[str, dict[str, Any]] = {}
     dispositions: list[str] = []
@@ -1173,11 +1433,17 @@ def main() -> int:
             if str(row.get("file_kind")) != actual_kind:
                 fail(f"receipt file_kind does not match repository bytes for {path}: {actual_kind}")
             expected_status, expected_findings = scan_text(path, data, config)
-            expected_basis = (
-                expected_review_basis(path, data, config, actual_kind, deleted)
-                if expected_status == "clean"
-                else "full_content"
-            )
+            if str(row.get("review_basis")) == "delta_with_baseline":
+                validate_delta_baseline(
+                    repo, receipt, row, source, require_attestation=args.gate
+                )
+                expected_basis = "delta_with_baseline"
+            else:
+                expected_basis = (
+                    expected_review_basis(path, data, config, actual_kind, deleted)
+                    if expected_status == "clean"
+                    else "full_content"
+                )
             if str(row.get("review_basis")) != expected_basis:
                 fail(f"receipt review_basis does not match file_kind for {path}")
             expected_summary = structured_data_summary(path, data, config)
@@ -1232,6 +1498,8 @@ def main() -> int:
                 validate_evidence_ref(repo, recovery)
             elif review_basis == "structured_deleted_data":
                 validate_structured_deleted_data_review(repo, row)
+            elif review_basis == "delta_with_baseline":
+                validate_delta_baseline(repo, receipt, row, source)
             elif str(row.get("review_method")) != "full-file-plus-diff":
                 fail(f"review attestation is incomplete for {path}")
             if tier == "T2" and row.get("independent_pass") is not True:
@@ -1248,7 +1516,7 @@ def main() -> int:
                     or not re.fullmatch(r"[0-9a-f]{64}", evidence_hash)
                 ):
                     fail(f"independent T2 reviewer evidence is missing for {path}")
-                validate_evidence_ref(repo, f"{snapshot}@{evidence_hash}")
+                validate_independent_snapshot(repo, row, independent_evidence, receipt)
             if (
                 file_kind in {"binary", "generated"}
                 and not any(
@@ -1302,8 +1570,24 @@ def main() -> int:
             ordered = sorted(sections, key=lambda section: int(section["chunk"]))
             if any(section["content"] is None for section in ordered):
                 fail(f"reviewer packet omits text content: {path}")
-            expected_data, _ = source_bytes(repo, path, source, str(row["file_kind"]))
-            expected_text = expected_data.decode("utf-8", errors="replace")
+            if row.get("review_basis") == "delta_with_baseline":
+                context_lines = note_value(str(row.get("coverage_notes", "")), "delta_context_lines")
+                if context_lines is None or not context_lines.isdigit():
+                    fail(f"delta row lacks a valid delta_context_lines note: {path}")
+                baseline_ref = str(receipt.get("baseline_receipt", ""))
+                baseline_hash = str(receipt.get("baseline_receipt_sha256", ""))
+                expected_text = (
+                    "Baseline attestation is reused for unchanged bytes.\n"
+                    f"baseline_receipt: {baseline_ref}\n"
+                    f"baseline_sha256: {baseline_hash}\n"
+                    f"current_sha256: {row['sha256']}\n"
+                    f"source_delta_unified_lines: {int(context_lines)}\n\n"
+                    "source_delta:\n"
+                    f"{git_delta(repo, path, source, int(context_lines))}\n"
+                )
+            else:
+                expected_data, _ = source_bytes(repo, path, source, str(row["file_kind"]))
+                expected_text = expected_data.decode("utf-8", errors="replace")
             if "".join(section["content"] for section in ordered) != expected_text:
                 fail(f"reviewer packet content does not match reviewed bytes: {path}")
     actual_include = include_hash(sorted(seen))

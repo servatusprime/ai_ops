@@ -248,7 +248,10 @@ def _normalized_scorecard(text: str) -> str:
 
 def _scorecard_text(registry_path: Path, registry: dict[str, Any], repo: Path) -> str:
     rows = scorecard._build_rows(registry.get("entries", []))
-    return scorecard._render_markdown(registry_path, rows, repo)
+    rendered = scorecard._render_markdown(registry_path, rows, repo)
+    # Markdownlint MD047 requires one final newline.  Keep generated scorecards
+    # stable even when the renderer returns a non-terminated string.
+    return rendered.rstrip("\r\n") + "\n"
 
 
 def _remove_registry_entry_text(text: str, registry_id: str) -> str:

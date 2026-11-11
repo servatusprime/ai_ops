@@ -102,6 +102,14 @@ hooks enabled for the ordinary commit. A disposable-clone dry run against the
 real ai_ops shims passed on 2026-10-23 after supplying the ignored generated
 wrapper outputs required by export-drift validation.
 
+The applier selects a warm, writable `PRE_COMMIT_HOME` from the explicit
+`AI_OPS_PRE_COMMIT_HOME`, repository-local, user `.ai_cache/<repo>/pre-commit`,
+workspace, or temporary cache candidates within operator-owned roots. It does
+not trust an arbitrary desktop-session override. Record the selected path and
+warm/cold state in the
+hook evidence; for remote-hook repositories, diagnose a cold cache and Python
+or nodeenv runtime before allowing a retry.
+
 Before pushing a packet-applied commit, run:
 
 ```powershell

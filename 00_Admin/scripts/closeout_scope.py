@@ -13,10 +13,16 @@ import argparse
 import json
 import re
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Iterable
 
 import build_closeout_packet as packet_builder
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+from target_paths import resolve_repo_root  # noqa: E402
 
 
 class ScopeError(RuntimeError):
@@ -155,13 +161,18 @@ def scope_report(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", type=Path, default=Path("."))
+    parser.add_argument("--workspace-root", type=Path, help="workspace containing named governed repositories")
     parser.add_argument("--include", action="append", required=True)
     parser.add_argument("--related", action="append", default=[])
     parser.add_argument("--validator-input", action="append", default=[])
     args = parser.parse_args()
     try:
+        workspace_root = args.workspace_root.resolve() if args.workspace_root else None
+        repo_root = resolve_repo_root(
+            args.repo_root, workspace_root=workspace_root, cwd=Path.cwd()
+        )
         report = scope_report(
-            args.repo_root,
+            repo_root,
             args.include,
             related_scope_requires_confirmation=args.related,
             validator_inputs=args.validator_input,

@@ -134,7 +134,7 @@ class WorkSavepointContractTests(unittest.TestCase):
             "scope_pending_confirmation",
             "projected_tree_ready",
             "The policy file is the target's",
-            "git config --get core.hooksPath",
+            "git rev-parse --git-path hooks",
             "new approval binding whenever the rerun changes",
             "A `preparation record` is the records-only closeout output",
             "`linked_only` carries one or more linked IDs as",

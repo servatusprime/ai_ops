@@ -1,5 +1,5 @@
-version: "0.6.0"
-ruleset_version: "0.6.0"
+version: "0.7.0"
+ruleset_version: "0.7.0"
 packet:
   estimated_tokens_per_packet: 20000
   # Review capacity is bounded per packet; aggregate review size is not a
@@ -7,6 +7,12 @@ packet:
   # provide the remaining controls.
   session_token_budget: null
   max_total_review_tokens: null
+  # Reuse a passing full-file attestation for unchanged large text rows.  The
+  # current packet then carries only the bounded source delta and the immutable
+  # baseline binding.
+  delta_reuse_min_bytes: 20000
+  delta_context_lines: 80
+  delta_max_bytes: 100000
 tiers:
   T0:
     reviewer_model: lowest-available
@@ -16,6 +22,9 @@ tiers:
       - "99_Trash/"
     allowed_extensions: [".md", ".txt", ".yaml", ".yml", ".json", ".log"]
     review: full_file_batched
+    reviewer_guidance: >-
+      Disclosed process facts are not findings. Reserve needs_work or escalate
+      for a concrete policy, security, or scope defect.
   T1:
     reviewer_model: medium
     reviewer_runtime: ai-ops-reviewer

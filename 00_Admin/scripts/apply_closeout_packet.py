@@ -58,13 +58,14 @@ def _run_commit(
         message_file = Path(raw_path)
         message_file.write_text(message, encoding="utf-8", newline="\n")
         command.extend(["commit", "--only", "--cleanup=verbatim", "-F", str(message_file), "--", *paths])
+        commit_env = _pre_commit_env(repo, builder._git_env())
         completed = subprocess.run(
             command,
             check=False,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            env=builder._git_env(),
+            env=commit_env,
         )
         if (
             completed.returncode
@@ -115,9 +116,12 @@ def _run_commit(
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
-                    env=builder._git_env(),
+                env=commit_env,
                 )
-                fallback_note = "native pre-commit/commit-msg fallback after Windows MSYS hook launcher failure"
+                fallback_note = (
+                    "native pre-commit/commit-msg fallback after Windows MSYS hook launcher failure; "
+                    f"PRE_COMMIT_HOME={_select_pre_commit_home(repo, commit_env)}"
+                )
                 return (
                     native_commit.returncode,
                     f"{fallback_note}\n{native_pre_commit_stdout}\n{native_stdout}\n{native_commit.stdout}".strip(),
@@ -226,6 +230,8 @@ def _unstage(repo: Path, paths: list[str]) -> bool:
 
 def _run_hook(repo: Path, hook_name: str, env: dict[str, str] | None = None) -> tuple[int, str, str]:
     effective_env = env if env is not None else builder._git_env()
+    if hook_name == "pre-commit":
+        effective_env = _pre_commit_env(repo, effective_env)
     completed = subprocess.run(
         ["git", "-C", str(repo), "hook", "run", hook_name],
         cwd=repo,
@@ -247,8 +253,92 @@ def _run_hook(repo: Path, hook_name: str, env: dict[str, str] | None = None) -> 
 
 def _pre_commit_env(repo: Path, env: dict[str, str] | None) -> dict[str, str]:
     effective = dict(env or builder._git_env())
-    effective.setdefault("PRE_COMMIT_HOME", str(repo / ".ai_ops" / "local" / "pre-commit"))
+    effective["PRE_COMMIT_HOME"] = str(_select_pre_commit_home(repo, effective))
     return effective
+
+
+def _cache_writable(path: Path) -> bool:
+    """Check the cache boundary without creating or mutating it."""
+
+    target = path if path.exists() else path.parent
+    return target.exists() and os.access(target, os.W_OK)
+
+
+def _cache_is_operator_owned(path: Path, repo: Path) -> bool:
+    """Use path containment as the portable Windows ownership boundary."""
+
+    candidate = path.resolve()
+    roots = [
+        Path(os.environ.get("USERPROFILE", str(Path.home()))).resolve(),
+        repo.resolve(),
+        repo.parent.resolve(),
+        Path(os.environ.get("TEMP", tempfile.gettempdir())).resolve(),
+    ]
+    return any(
+        candidate == root or root in candidate.parents
+        for root in roots
+    )
+
+
+def _cache_is_warm(path: Path) -> bool:
+    """Recognize the pre-commit cache marker rather than any random directory."""
+
+    if not path.is_dir():
+        return False
+    try:
+        return (path / "db.db").is_file() or any(
+            child.name.startswith("repo") for child in path.iterdir()
+        )
+    except OSError:
+        return False
+
+
+def _select_pre_commit_home(repo: Path, env: dict[str, str]) -> Path:
+    """Select a warm, writable cache instead of inheriting a desktop override."""
+
+    explicit = env.get("AI_OPS_PRE_COMMIT_HOME")
+    candidates: list[Path] = []
+    if explicit:
+        candidates.append(Path(explicit).expanduser())
+    user_profile = Path(os.environ.get("USERPROFILE", str(Path.home())))
+    candidates.extend(
+        [
+            repo / ".ai_ops" / "local" / "pre-commit",
+            user_profile / ".ai_cache" / repo.name / "pre-commit",
+            repo.parent / ".cache" / "ai_ops" / "pre-commit",
+            Path(os.environ.get("TEMP", tempfile.gettempdir())) / "ai_ops_cache" / repo.name / "pre-commit",
+        ]
+    )
+    normalized: list[Path] = []
+    for candidate in candidates:
+        resolved = candidate.resolve()
+        if (
+            resolved not in normalized
+            and _cache_is_operator_owned(resolved, repo)
+            and _cache_writable(resolved)
+        ):
+            normalized.append(resolved)
+    warm = [candidate for candidate in normalized if _cache_is_warm(candidate)]
+    if warm:
+        return warm[0]
+    if normalized:
+        return normalized[0]
+    return (repo / ".ai_ops" / "local" / "pre-commit").resolve()
+
+
+def _pre_commit_cache_snapshot(repo: Path) -> dict[str, Any]:
+    env = builder._git_env()
+    selected = _select_pre_commit_home(repo, env)
+    try:
+        warm = _cache_is_warm(selected)
+    except OSError:
+        warm = False
+    return {
+        "path": str(selected),
+        "warm": warm,
+        "inherited_pre_commit_home": env.get("PRE_COMMIT_HOME"),
+        "override_ignored": bool(env.get("PRE_COMMIT_HOME") and env.get("PRE_COMMIT_HOME") != str(selected)),
+    }
 
 
 def _staged_paths(repo: Path, env: dict[str, str]) -> list[str]:
@@ -804,6 +894,7 @@ def apply_packet(packet_path: Path, approval_path: Path, first_landing_receipt: 
             "index_match": index_ok,
             "push_allowed": tree_ok and worktree_ok and index_ok,
             "stdout": stdout,
+            "pre_commit_cache": _pre_commit_cache_snapshot(repo),
         }
         if not tree_ok or not worktree_ok or not index_ok:
             raise builder.PacketError("post-commit tree or worktree binding mismatch; push handoff is blocked")

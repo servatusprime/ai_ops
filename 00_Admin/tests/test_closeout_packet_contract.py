@@ -267,7 +267,9 @@ class CloseoutPacketContractTests(unittest.TestCase):
 
         self.assertEqual((0, "", ""), result)
         self.assertEqual(self.repo, run.call_args.kwargs["cwd"])
-        self.assertEqual({"GIT_INDEX_FILE": "isolated"}, run.call_args.kwargs["env"])
+        hook_env = run.call_args.kwargs["env"]
+        self.assertEqual("isolated", hook_env["GIT_INDEX_FILE"])
+        self.assertTrue(hook_env["PRE_COMMIT_HOME"].endswith(".ai_ops\\local\\pre-commit"))
 
     def test_windows_msys_pre_commit_launcher_failure_uses_native_runner(self) -> None:
         failed = mock.Mock(returncode=1, stdout="", stderr="NtCreateDirectoryObject: access denied")
