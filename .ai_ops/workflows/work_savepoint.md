@@ -117,13 +117,16 @@ and record `safe_directory_applied: false`.
 
 In direct ai_ops mode, validate `.ai_ops/local/config.yaml` with
 `00_Admin/scripts/op_validate_config.py` before running its
-`savepoint_validation.minimum_commands`. In governed mode, resolve the
-`governed_repo_validation` contract and execute only validated argv arrays with
-`shell=False`, the trusted interpreter, and the
-selected repo as `cwd`; reject shell metacharacters, unapproved executables, and
-paths outside the workspace. Retry a configured network-sensitive command once,
-then record a permitted partial result and `validation_escalated: true`; never
-silently skip a required check.
+`savepoint_validation.minimum_commands`. In governed mode, run
+`python 00_Admin/scripts/run_governed_repo_quality_gate.py --repo-root <repo_root>
+--workspace-root <workspace_root>`; it resolves the target registration,
+validates the configured argv arrays, uses the trusted interpreter with
+`shell=False`, and executes with the selected repo as `cwd`. The target may be
+named as `<governed_repo>` from the workspace root or passed as an absolute path; do
+not require the caller to be inside `ai_ops`. A target with no configured
+minimum commands reports `validation: unavailable`, not pass. Retry a
+configured network-sensitive command once, then record a permitted partial
+result and `validation_escalated: true`; never silently skip a required check.
 
 ### Publication Route and CI Preflight
 
@@ -132,11 +135,16 @@ Only when `--commit` is requested, before approval, resolve and record the
 provider publication route:
 `publication_route` (`direct` or `pr_required`), protected/default branch,
 required status checks, allowed merge methods, selected remote, and
-`hook_runtime`. Do not test a protected branch with a direct push. If provider
-metadata or hook execution cannot be verified, emit `PARK` and stop before
-staging. When `pr_required` applies, create or select the branch before staging
-and bind its head, base, and merge method to the approval rows; a later push
-rejection must not trigger a route change or force-push.
+`hook_runtime`. Provider protection is `unknown` when `gh` is unauthenticated
+or provider metadata is unavailable; unknown protection selects the conservative
+`pr_required` route and must not be converted into a direct push. Use the
+GitHub provider/connector or another authenticated provider surface for
+branch-protection evidence; `gh` authentication failure is not proof that the
+branch is unprotected. Do not test a protected branch with a direct push. If
+provider metadata or hook execution cannot be verified, emit `PARK` and stop
+before staging. When `pr_required` applies, create or select the branch before
+staging and bind its head, base, and merge method to the approval rows; a later
+push rejection must not trigger a route change or force-push.
 
 Publication preflight is an evidence record, not a prose assertion:
 `build_closeout_packet.py --publication-preflight <path>` requires the route,
@@ -149,12 +157,27 @@ On Windows, if Git's MSYS hook launcher fails with the specific
 native `pre-commit` framework for both pre-commit and commit-message stages.
 The retry preserves the staged index, uses the repository-local pre-commit
 cache when no cache is configured, records the fallback in the packet result,
-and never uses `--no-verify`; any other hook failure remains a hard stop.
+and never uses `--no-verify`; any other hook failure remains a hard stop. Before
+running hooks, record the selected `PRE_COMMIT_HOME` and `pre-commit --version`.
+To force a known cache, set `AI_OPS_PRE_COMMIT_HOME` before packet application;
+the applier derives the effective `PRE_COMMIT_HOME` from that approved value.
+Do not rely on an inherited `PRE_COMMIT_HOME` from the desktop session. Use
+the cache selected by the target repository's local policy or the shared
+workspace cache only when it is writable and within an operator-owned workspace,
+user-profile, repository, or temporary root; do not silently reuse a
+provider-specific cache. For remote-hook repositories, a cold-cache install is
+permitted only after a read-only cache-path and runtime diagnostic; a
+nodeenv/bootstrap failure is a hard hook failure, not a reason to skip hooks.
+Record the effective cache path, whether it was warm, and the exact recovery
+command if a retry was needed.
 
-When workflow, validator, hook, or CI surfaces are in the savepoint include set,
-run `python 00_Admin/scripts/run_release_quality_gate.py` before approval. The
-canonical lint result is the CI-parity precondition; focused validation alone
-does not establish release readiness. A failed quality gate routes to `/work`.
+When workflow, validator, hook, or CI surfaces in `ai_ops` are in the savepoint
+include set, run `python 00_Admin/scripts/run_release_quality_gate.py` before
+approval. For another governed repository, use the target-repository gate
+above; the ai_ops release gate is not silently substituted. The canonical lint
+result is the CI-parity precondition for ai_ops, while a governed-target gate
+reports the registered repository-native minimum checks. A failed or
+unavailable required quality gate routes to `/work`.
 
 Freeze the active-work records surface before security admission. Do not append
 clerical records or repair receipt text after admission. Savepoint receipts
@@ -169,8 +192,20 @@ validate it with `python 00_Admin/scripts/validate_work_savepoint_receipt.py
 --repo-root <repo_root> --receipt <receipt> --head <HEAD> --branch <branch>`;
 the bound CLI and schema enforce artifact identity, active path, HEAD, branch,
 future-work state, and the exact include-set hash. Preserve
-receipt reviewer references exactly; changed evidence requires a new review
-and a new binding. If finalization cannot be proven in closeout, report
+receipt reviewer references exactly. Re-running the pre-pass with the same
+HEAD, source, bytes, and scope preserves passing reviewer attestations and
+emits a baseline-bound delta packet for unchanged large text rows; it does not
+erase the filled receipt. Changed bytes or changed scope invalidate only the
+affected attestation and require review of that changed row. Use
+`record_closeout_security_review.py --receipt <receipt> --updates-file <yaml>`
+for reviewer updates. An independent reviewer can serialize its
+digest/mode/disposition/notes manifest with
+`emit_closeout_security_snapshot.py --receipt <receipt> --evidence-file <yaml>
+--output <snapshot>`, then attach it with
+`record_closeout_security_review.py --snapshot <snapshot>`. The emitter only
+validates and serializes the independent reviewer’s evidence; neither tool
+manufactures an independent disposition. Do not hand-edit receipt YAML. Changed evidence requires a new
+review and a new binding. If finalization cannot be proven in closeout, report
 `receipt_finalization: unavailable` and stop.
 
 Use fixed argument-array commands only. Resolve and validate `repo_root` before
@@ -205,9 +240,9 @@ decision as `/closeout`; a savepoint is never a lower-gate publication lane.
 Resolve target policy and hook against target `HEAD` before a `--commit` preview:
 
 The policy file is the target's `00_Admin/configs/closeout_security_tiers.yaml`
-at `HEAD`. Discover the installed hook with `git config --get core.hooksPath`;
-when it is unset, require a successful `git rev-parse --git-path hooks` and
-inspect the returned directory. Any Git error or empty returned path is
+at `HEAD`. Discover the effective hook directory directly with
+`git rev-parse --git-path hooks`; this avoids a `git config` read that may be
+blocked by a user deny rule. Any Git error or empty returned path is
 `security_admission: unavailable`; never fall back to a guessed `.git/hooks`
 path. A Git error reading the target policy, an installed hook, or its
 dispatcher configuration also yields
@@ -226,7 +261,11 @@ manual waiver, skip, or unrecorded bypass is not a savepoint disposition. For a
 read-only checkpoint, report applicability without Git mutation; for `--commit`,
 an eligible admission and valid receipt are required before approval. Follow
 `00_Admin/runbooks/rb_closeout_security_review_01.md` for the security prepass,
-review caps, receipt, `Closeout-Security` trailer, and first-landing procedure.
+per-packet sizing, baseline/delta review, receipt, `Closeout-Security` trailer,
+and first-landing procedure. A receipt-sync-only commit still requires a new
+HEAD-bound receipt. The baseline/delta route may reduce re-reading within one
+HEAD for receipt/log/registry surfaces, but it is not a cross-commit shortcut
+and cannot cover changed code, policy, workflow, or hook bytes.
 
 ## Future-Work Applicability Gate
 
@@ -311,10 +350,13 @@ all validation commands and any permitted network skip as partial evidence.
 
 ## Review Capacity Boundary
 
-Apply the `/crosscheck` Loop Control contract for review tiers, caps, budgets, and
-`PARK`; a savepoint does not reset counters or authorize a new commit. A savepoint
-remains a records-only checkpoint by default; route a capacity stop to `/work` or
-`/closeout` and preserve the receipt and manifest hashes.
+Apply the `/crosscheck` Loop Control contract for review tiers and `PARK`; a
+savepoint does not reset counters or authorize a new commit. There is no
+aggregate token savepoint ceiling. The pre-pass reports per-packet cost,
+preserves passing attestations, and uses a bound delta packet for unchanged
+large rows. A savepoint remains a records-only checkpoint by default; route a
+capacity stop to `/work` or `/closeout` and preserve the receipt and manifest
+hashes.
 
 ## Publication Preview and Approval Gates
 

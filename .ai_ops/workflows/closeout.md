@@ -150,13 +150,16 @@ trust repair; never run `git config --global`, and record
 
 In direct ai_ops mode, validate `.ai_ops/local/config.yaml` with
 `00_Admin/scripts/op_validate_config.py` before running its
-`savepoint_validation.minimum_commands`. In governed mode, resolve the
-`governed_repo_validation` contract and execute only validated argv arrays with
-`shell=False`, the trusted interpreter, and the selected repo as `cwd`; reject
-shell metacharacters, unapproved executables, and paths outside the workspace.
-Retry a configured network-sensitive command once, then record a permitted
-partial result and `validation_escalated: true`; never silently skip a required
-check.
+`savepoint_validation.minimum_commands`. In governed mode, run
+`python 00_Admin/scripts/run_governed_repo_quality_gate.py --repo-root <repo_root>
+-workspace-root <workspace_root>`; it resolves the target registration,
+validates the configured argv arrays, uses the trusted interpreter with
+`shell=False`, and executes with the selected repo as `cwd`. The target may be
+named as `<governed_repo>` from the workspace root or passed as an absolute path; do
+not require the caller to be inside `ai_ops`. A target with no configured
+minimum commands reports `validation: unavailable`, not pass. Retry a
+configured network-sensitive command once, then record a permitted partial
+result and `validation_escalated: true`; never silently skip a required check.
 
 ### Publication Route and Finalization Preflight
 
@@ -164,11 +167,16 @@ Before staging or requesting publication approval, resolve the publication route
 from the provider and local repository state. Record `publication_route`
 (`direct` or `pr_required`), the protected/default branch, required status checks,
 the allowed merge methods, the selected remote, and `hook_runtime`. Do not probe
-a protected branch with a direct push. If provider metadata or the hook runtime
-cannot be verified, emit `PARK` with the exact missing evidence and stop before
-mutation. When `pr_required` is reported, create or select the publication branch
-before staging and bind its head, base, and merge method to the packet and
-approval rows.
+a protected branch with a direct push. Provider protection is `unknown` when
+`gh` is unauthenticated or provider metadata is unavailable; unknown protection
+selects the conservative `pr_required` route and must not be converted into a
+direct push. Use the GitHub provider/connector or another authenticated
+provider surface for branch-protection evidence; `gh` is not the only source
+and its authentication failure is not proof that the branch is unprotected.
+If provider metadata or the hook runtime cannot be verified, emit `PARK` with
+the exact missing evidence and stop before mutation. When `pr_required` is
+reported, create or select the publication branch before staging and bind its
+head, base, and merge method to the packet and approval rows.
 
 Publication preflight is an evidence record, not a prose assertion:
 `build_closeout_packet.py --publication-preflight <path>` requires the route,
@@ -181,11 +189,27 @@ On Windows, if Git's MSYS hook launcher fails with the specific
 native `pre-commit` framework for both pre-commit and commit-message stages.
 The retry preserves the staged index, uses the repository-local pre-commit
 cache when no cache is configured, records the fallback in the packet result,
-and never uses `--no-verify`; any other hook failure remains a hard stop.
+and never uses `--no-verify`; any other hook failure remains a hard stop. Before
+running hooks, record the selected `PRE_COMMIT_HOME` and `pre-commit --version`.
+To force a known cache, set `AI_OPS_PRE_COMMIT_HOME` before packet application;
+the applier derives the effective `PRE_COMMIT_HOME` from that approved value.
+Do not rely on an inherited `PRE_COMMIT_HOME` from the desktop session. Use
+the cache selected by the target repository's local policy or the shared
+workspace cache only when it is writable and within an operator-owned workspace,
+user-profile, repository, or temporary root; do not silently reuse a
+provider-specific cache. For remote-hook repositories, a cold-cache install is
+permitted only after a read-only cache-path and runtime diagnostic; a
+nodeenv/bootstrap failure is a hard hook failure, not a reason to skip hooks.
+Record the effective cache path, whether it was warm, and the exact recovery
+command if a retry was needed.
 
-Run the canonical release-quality gate before publication approval:
-`python 00_Admin/scripts/run_release_quality_gate.py`. Its lint result is the
-CI-parity precondition; a local validator-only pass is insufficient. A failed
+Run the canonical release-quality gate before publication approval when the
+selected repository is `ai_ops`:
+`python 00_Admin/scripts/run_release_quality_gate.py`. For another governed
+repository, the target-repository gate above is the applicable quality route;
+the ai_ops release gate is not silently substituted. Its lint result is the
+CI-parity precondition for ai_ops, while a governed-target gate reports the
+registered repository-native minimum checks. A failed or unavailable required
 quality gate routes to `/work` and no commit or push is authorized.
 
 Freeze the final records surface before security admission. This includes the
@@ -200,10 +224,36 @@ manifest hash. For future-work completion receipts, run
 admission; it proves registry/receipt consistency, while the archive-gate
 receipt proves source/destination bytes, source absence, and collision safety.
 Never hand-edit a receipt to repair a moved path. Preserve the
-receipt's reviewer references exactly; any changed evidence requires a new
-review and a new packet binding. If the archive gate or receipt verification
+receipt's reviewer references exactly. Re-running the pre-pass with the same
+HEAD, source, bytes, and scope preserves passing reviewer attestations and
+emits a baseline-bound delta packet for unchanged large text rows; it does not
+erase the filled receipt. Changed bytes or changed scope invalidate only the
+affected attestation and require review of that changed row. Use
+`record_closeout_security_review.py --receipt <receipt> --updates-file <yaml>`
+to apply reviewer records. An independent reviewer supplies a manifest with
+`independent_reviewer` and one digest/mode/disposition/notes row per T2 file,
+then runs `emit_closeout_security_snapshot.py --receipt <receipt>
+--evidence-file <yaml> --output <snapshot>`; the emitter only validates and
+serializes that evidence. Attach it with
+`record_closeout_security_review.py --snapshot <snapshot>`; neither tool
+manufactures independent evidence. Do not hand-edit receipt YAML. Any changed evidence
+requires a new review and a new packet binding. If the archive gate or receipt verification
 cannot produce a bound result, report `receipt_finalization: unavailable` and
 stop.
+
+The independent manifest is intentionally small and must be authored by the
+independent reviewer, for example:
+
+```yaml
+independent_reviewer: Sol
+rows:
+  - path: <repo-relative-file>
+    sha256: <receipt-bound-sha256>
+    mode: "100644"
+    reviewer: Sol
+    disposition: pass
+    review_notes: <what was independently checked>
+```
 
 ## Future-Work Applicability Gate
 
@@ -228,6 +278,12 @@ flow. Failed, pending, or stale outcomes preserve the registry. Applicability,
 projected validation, security admission, and publication approval are separate
 user-facing fields. The `closeout_applicability.py` classifier and `complete_future_work.py` remain for
 explicit registry flows and are not ordinary closeout prerequisites.
+
+For a successful `complete_future_work.py` transaction, the exact completion
+workbook is intentionally mandatory in the artifact set. This binds the
+registry deletion and receipt to the control document rather than allowing a
+supporting evidence file to close the registry item alone. The generated
+scorecard is written with one final newline to satisfy Markdown consumers.
 
 An explicit applicability flow exists only when the operator selects one of the
 four states in the preparation record; a title, dependency, or referenced ID is
@@ -337,15 +393,33 @@ not only the latest summary. These rules are defined by the cross-surface and
 infrastructure validation specifications; touching `.ai_ops/workflows/**`
 requires a pre-change baseline, post-change validation, and rollback evidence.
 
+### Completion Scope Modes
+
+Record `completion_scope` explicitly in the preparation record and final report:
+
+- `item` completes only the selected workbook or artifact;
+- `milestone` completes the selected, fully executed child set while its parent
+  workbundle remains active;
+- `container` completes the named workbundle or workprogram and may trigger its
+  approved archive decision.
+
+An `item` or `milestone` closeout never claims or archives the still-active
+parent. Every durable-output row that remains in the active parent must be
+`promoted`, `retained`, or an approved follow-on with `owner`, `next_action`,
+`target`, `registry_id` when applicable, and a due date or trigger. This is the
+documented partial closeout route; it replaces improvised follow-on
+dispositions. `/work_savepoint` remains a checkpoint and cannot claim any of
+these completion states.
+
 ## Security Admission
 
 For an external governed repository, resolve the target closeout-security policy
 and installed hook against target `HEAD` before selecting admission:
 
 The policy file is the target's `00_Admin/configs/closeout_security_tiers.yaml`
-at `HEAD`. Discover the installed hook with `git config --get core.hooksPath`;
-when it is unset, require a successful `git rev-parse --git-path hooks` and
-inspect the returned directory. Any Git error or empty returned path is
+at `HEAD`. Discover the effective hook directory directly with
+`git rev-parse --git-path hooks`; this avoids a `git config` read that may be
+blocked by a user deny rule. Any Git error or empty returned path is
 `security_admission: unavailable`; never fall back to a guessed `.git/hooks`
 path. A Git error reading the target policy, an installed hook, or its
 dispatcher configuration also yields
@@ -361,8 +435,13 @@ the selected ai_ops repository and the same HEAD-bound policy and hook checks.
 
 ai_ops itself remains reviewer-read against its target `HEAD` policy and hook.
 Follow `00_Admin/runbooks/rb_closeout_security_review_01.md` for the security
-prepass, review caps, receipt, `Closeout-Security` trailer, and first-landing
-procedure. Record `admission_mode`, `policy_source`, receipt path, and disposition. A
+prepass, per-packet sizing, baseline/delta review route, receipt,
+`Closeout-Security` trailer, and first-landing procedure. A receipt-sync-only
+commit still requires a new HEAD-bound receipt. The baseline/delta route may
+reduce re-reading within one HEAD for receipt/log/registry surfaces, but it is
+not a cross-commit shortcut and cannot cover changed code, policy, workflow,
+or hook bytes. Record
+`admission_mode`, `policy_source`, receipt path, and disposition. A
 manual waiver, skip, or unrecorded bypass is not an admission result.
 
 ## Publication Command Registry
@@ -417,6 +496,16 @@ projected-tree, packet, scope, or security hashes. Stop before staging, present
 the changed values, and obtain a new approval turn; only unchanged exact bindings
 may reuse the prior approval.
 
+For an ordinary reviewer-read receipt, use the supplied
+`record_closeout_security_review.py` tool for reviewer disposition updates and
+the T2 snapshot attachment. Use
+`emit_closeout_security_snapshot.py` to serialize the independent reviewer's
+manifest; its digest/mode checks prevent a stale or mismatched snapshot from
+being attached. The update schema rejects out-of-scope paths and unknown
+fields, and the pre-pass preserves matching attestations across record-only
+reruns. This is the supported packet route for governed repositories; raw
+receipt or snapshot YAML construction is not required.
+
 ## Closeout Packet Retention
 
 Closeout packets are run-scoped verification evidence, not durable work
@@ -443,6 +532,14 @@ The final closeout report records `packet_retention` with the selected run ID,
 planned/archive counts, protected active or unsafe counts, and every archive
 destination. A packet retention sweep does not widen the publication include
 set and does not change the already-verified commit, push, or merge result.
+
+After packet retention, inspect the workspace temporary area named by the
+repository policy (normally `C:\RE_Projects\tmp`). Delete or archive only
+identified temporary outputs whose retention purpose has expired; retain files
+explicitly referenced by an active packet, receipt, cache, or recovery plan.
+Record the cleanup result in the final report. A stale temporary file is not a
+durable work artifact and must not silently become part of a closeout include
+set.
 
 ## Outputs
 
@@ -488,9 +585,13 @@ active-state claims synchronized. Generated views remain non-authoritative.
 
 ## Review Capacity Boundary
 
-Apply the `/crosscheck` Loop Control contract for review tiers, caps, budgets, and
-`PARK`; closeout does not reset counters or authorize a new commit. Closeout uses
-one final commit after the frozen set; no commit is created merely to bypass review capacity.
+Apply the `/crosscheck` Loop Control contract for review tiers and `PARK`;
+closeout does not reset counters or authorize a new commit. There is no
+aggregate token closeout ceiling. The pre-pass reports per-packet cost,
+reuses passing attestations for unchanged large rows through a bound delta
+packet, and requires a new full review only for changed bytes, scope, policy,
+workflow, or hook surfaces. Closeout uses one final commit after the frozen
+set; no commit is created merely to bypass review capacity.
 
 ## Validation and Limits
 

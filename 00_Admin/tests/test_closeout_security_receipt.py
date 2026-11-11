@@ -26,6 +26,7 @@ def load(name: str, relative: str):
 
 PREPASS = load("closeout_security_prepass", "00_Admin/scripts/closeout_security_prepass.py")
 VALIDATOR = load("validate_closeout_security_receipt", "00_Admin/scripts/validate_closeout_security_receipt.py")
+EMITTER = load("emit_closeout_security_snapshot", "00_Admin/scripts/emit_closeout_security_snapshot.py")
 
 
 class CloseoutSecurityReceiptTests(unittest.TestCase):
@@ -41,6 +42,11 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
             "secret_patterns": [],
             "instruction_patterns": [],
         }
+
+    def _write_receipt(self, path: Path, value: dict) -> None:
+        value.pop("receipt_sha256", None)
+        value["receipt_sha256"] = hashlib.sha256(VALIDATOR.canonical_receipt(value)).hexdigest()
+        path.write_text(yaml.safe_dump(value, sort_keys=False), encoding="utf-8")
 
     def test_forced_t2_and_t0_routing(self) -> None:
         self.assertEqual("T2", PREPASS.tier_for("AGENTS.md", self.config))
@@ -96,15 +102,173 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
         self.assertEqual(3, len(batches))
         self.assertEqual(packet_paths, [batch["packet_files"][0] for batch in batches])
 
-    def test_review_cost_warning_is_non_gating_and_thresholded(self) -> None:
-        self.assertIsNone(
-            PREPASS.review_cost_warning(PREPASS.REVIEW_COST_VISIBILITY_THRESHOLD)
+    def test_review_cost_warning_has_no_aggregate_ceiling(self) -> None:
+        self.assertIsNone(PREPASS.REVIEW_COST_VISIBILITY_THRESHOLD)
+        self.assertIsNone(PREPASS.review_cost_warning(10_000_000))
+
+    def test_changed_text_can_reuse_full_baseline_for_bounded_delta(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            source = repo / "app.py"
+            source.write_text("value = 1\n" + ("# stable\n" * 4000), encoding="utf-8")
+            for command in (
+                ["git", "init", "--quiet"],
+                ["git", "config", "user.email", "test@example.invalid"],
+                ["git", "config", "user.name", "Closeout Test"],
+                ["git", "add", "app.py"],
+                ["git", "commit", "--quiet", "-m", "fixture"],
+            ):
+                subprocess.run(command, cwd=repo, check=True)
+            source.write_text(source.read_text(encoding="utf-8").replace("value = 1", "value = 2"), encoding="utf-8")
+            subprocess.run(["git", "add", "app.py"], cwd=repo, check=True)
+            current = source.read_bytes()
+            old = {
+                "sha256": hashlib.sha256(b"value = 1\n" + (b"# stable\n" * 4000)).hexdigest(),
+                "mode": "100644",
+                "file_kind": "text",
+                "prepass_status": "clean",
+                "review_basis": "full_content",
+                "coverage": "fully_reviewed",
+                "reviewer": "Sol",
+                "reviewer_model": "medium",
+                "reviewer_runtime": "test",
+                "review_method": "full-file-plus-diff",
+                "independent_pass": False,
+                "independent_reviewer": "not_required",
+                "independent_evidence": "not_required",
+                "disposition": "pass",
+                "finding_refs": [],
+                "coverage_notes": "source_bytes=32000; review_basis=full_content",
+            }
+            row = {
+                **old,
+                "path": "app.py",
+                "sha256": hashlib.sha256(current).hexdigest(),
+                "source_bytes": len(current),
+            }
+            PREPASS.preserve_attestation(
+                row,
+                old,
+                baseline_ref=".ai_ops/local/closeout_security/latest.baseline.yaml",
+                baseline_sha256="a" * 64,
+                repo=repo,
+                source="staged",
+                config={"packet": {"delta_reuse_min_bytes": 20, "delta_context_lines": 10, "delta_max_bytes": 20000}},
+            )
+            self.assertEqual("delta_with_baseline", row["review_basis"])
+            self.assertEqual("pending", row["review_method"])
+            self.assertIn("value = 2", row["_packet_content"])
+
+    def test_incomplete_receipt_is_not_promoted_to_baseline(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            packet = repo / "packet.md"
+            packet.write_text("baseline packet\n", encoding="utf-8")
+            receipt_path = repo / "latest.yaml"
+            existing = {
+                "receipt_version": "0.2.0",
+                "review_batches": [{
+                    "id": "batch-001",
+                    "packet_files": [str(packet)],
+                    "packet_estimated_tokens": [4],
+                    "packet_sha256": [hashlib.sha256(packet.read_bytes()).hexdigest()],
+                }],
+            }
+            baseline_path, baseline = PREPASS.copy_baseline_receipt(repo, receipt_path, existing)
+            self.assertIsNone(baseline_path)
+            self.assertIsNone(baseline)
+
+    def test_complete_baseline_capture_preserves_packet_bytes_before_refresh(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            packet = repo / "packet.md"
+            packet.write_text("baseline packet\n", encoding="utf-8")
+            receipt_path = repo / "latest.yaml"
+            existing = {
+                "receipt_version": "0.2.0",
+                "rows": [{
+                    "path": "app.py",
+                    "review_basis": "full_content",
+                    "coverage": "fully_reviewed",
+                    "disposition": "pass",
+                    "review_method": "full-file-plus-diff",
+                    "reviewer": "Sol",
+                }],
+                "review_batches": [{
+                    "id": "batch-001",
+                    "packet_files": [str(packet)],
+                    "packet_estimated_tokens": [4],
+                    "packet_sha256": [hashlib.sha256(packet.read_bytes()).hexdigest()],
+                }],
+            }
+            existing["receipt_sha256"] = PREPASS.receipt_digest(existing)
+            baseline_path, baseline = PREPASS.copy_baseline_receipt(repo, receipt_path, existing)
+            self.assertIsNotNone(baseline_path)
+            self.assertIsNotNone(baseline)
+            preserved_packet = repo / baseline["review_batches"][0]["packet_files"][0]
+            self.assertTrue(preserved_packet.is_file())
+            self.assertEqual(packet.read_bytes(), preserved_packet.read_bytes())
+            self.assertNotEqual(packet.resolve(), preserved_packet.resolve())
+
+    def test_independent_snapshot_emitter_binds_t2_rows(self) -> None:
+        receipt = {
+            "receipt_version": "0.2.0",
+            "repo_root": "C:/repo",
+            "base_head": "a" * 40,
+            "source": "staged",
+            "include_set_sha256": "b" * 64,
+            "tiers_config_version": "0.2.0",
+            "ruleset_version": "0.2.0",
+            "scope_lock_sha256": "c" * 64,
+            "source_bytes_total": 10,
+            "review_tokens_total": 5,
+            "review_batches": [{
+                "id": "batch-001",
+                "packet_files": ["packet.md"],
+                "packet_estimated_tokens": [5],
+                "packet_sha256": ["d" * 64],
+            }],
+            "rows": [{
+                "path": "app.py",
+                "sha256": "e" * 64,
+                "revision_basis": "index:app.py",
+                "file_kind": "text",
+                "review_basis": "full_content",
+                "mode": "100644",
+                "source_bytes": 10,
+                "tier": "T2",
+                "coverage": "fully_reviewed",
+                "prepass_status": "clean",
+                "reviewer": "Primary",
+                "reviewer_model": "maximum",
+                "reviewer_runtime": "ai-ops-reviewer",
+                "review_method": "full-file-plus-diff",
+                "independent_pass": True,
+                "independent_reviewer": "Sol",
+                "independent_evidence": "pending",
+                "chunk_count": 1,
+                "disposition": "pass",
+                "finding_refs": [],
+                "coverage_notes": "",
+            }],
+        }
+        snapshot = EMITTER.build_snapshot(
+            receipt,
+            {
+                "independent_reviewer": "Sol",
+                "rows": [{
+                    "path": "app.py",
+                    "sha256": "e" * 64,
+                    "mode": "100644",
+                    "reviewer": "Sol",
+                    "disposition": "pass",
+                    "review_notes": "Reviewed current staged bytes and bounded diff.",
+                }],
+            },
         )
-        warning = PREPASS.review_cost_warning(
-            PREPASS.REVIEW_COST_VISIBILITY_THRESHOLD + 1
-        )
-        self.assertIn("WARN review_tokens_total=", warning)
-        self.assertIn("aggregate gate disabled", warning)
+        self.assertEqual("1.0.0", snapshot["snapshot_version"])
+        self.assertEqual("app.py", snapshot["rows"][0]["path"])
+        self.assertEqual("Sol", snapshot["rows"][0]["reviewer"])
 
     def test_default_review_budget_matches_policy_headroom(self) -> None:
         policy = yaml.safe_load(
@@ -232,7 +396,7 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
             )
             self.assertEqual(0, validation.returncode, validation.stderr)
             data["overall_disposition"] = "pass"
-            receipt.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+            self._write_receipt(receipt, data)
             invalid_deterministic = subprocess.run(
                 [
                     sys.executable,
@@ -429,7 +593,7 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
                     [], 2, stdout=b"", stderr=b"git metadata unavailable"
                 )
                 with mock.patch.object(module.subprocess, "run", return_value=failed_config):
-                    with self.assertRaisesRegex(SystemExit, "cannot resolve core.hooksPath"):
+                    with self.assertRaisesRegex(SystemExit, "cannot resolve Git hooks path"):
                         module.closeout_hook_present(repo)
 
     def test_policy_lookup_and_hook_read_errors_fail_closed(self) -> None:
@@ -797,7 +961,7 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
             row["file_kind"] = "deleted"
             row["review_basis"] = "full_content"
             row["review_method"] = "full-file-plus-diff"
-            receipt.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+            self._write_receipt(receipt, data)
             result = subprocess.run(
                 [
                     sys.executable,
@@ -815,7 +979,7 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
             row["coverage_notes"] = row["coverage_notes"].replace(
                 f"recovery=deletion-review.txt@{evidence_digest}", "recovery=missing"
             )
-            receipt.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+            self._write_receipt(receipt, data)
             result = subprocess.run(
                 [
                     sys.executable,
@@ -830,7 +994,7 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
             row["coverage_notes"] = row["coverage_notes"].replace(
                 "recovery=missing", f"recovery=missing/path@{'0' * 64}"
             )
-            receipt.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+            self._write_receipt(receipt, data)
             result = subprocess.run(
                 [
                     sys.executable,
@@ -843,7 +1007,7 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
             )
             self.assertNotEqual(0, result.returncode)
             row["coverage_notes"] = valid_notes
-            receipt.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+            self._write_receipt(receipt, data)
             result = subprocess.run(
                 [
                     sys.executable,
@@ -946,7 +1110,7 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
                 "approved_at": "2026-10-21T12:00:00Z",
                 "decision": "approve",
             }
-            receipt.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+            self._write_receipt(receipt, data)
             command = [
                 sys.executable, str(ROOT / "00_Admin/scripts/validate_closeout_security_receipt.py"),
                 "--repo-root", str(repo), "--receipt", str(receipt), "--gate", "--staged",
@@ -954,7 +1118,7 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
             result = subprocess.run(command, capture_output=True, text=True, check=False)
             self.assertEqual(0, result.returncode, result.stderr)
             data["review_approval"]["decision"] = "hold"
-            receipt.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+            self._write_receipt(receipt, data)
             result = subprocess.run(command, capture_output=True, text=True, check=False)
             self.assertNotEqual(0, result.returncode)
 
