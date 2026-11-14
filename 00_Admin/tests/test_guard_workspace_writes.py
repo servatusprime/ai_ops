@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
 import subprocess
 import sys
@@ -14,6 +15,10 @@ ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "00_Admin/scripts/hooks/guard_workspace_writes.py"
 TEMPLATE = ROOT / "01_Resources/templates/config/hooks_template.json"
 REAL_POLICY = ROOT / "00_Admin/configs/workspace_containment.yaml"
+SPEC = importlib.util.spec_from_file_location("guard_workspace_writes", SCRIPT)
+assert SPEC is not None and SPEC.loader is not None
+MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(MODULE)
 
 POLICY = """version: 0.1.0
 workspace:
@@ -180,6 +185,15 @@ class GuardWorkspaceWritesTests(unittest.TestCase):
             text=True, capture_output=True, check=True, cwd=ROOT / "tmp",
         )
         self.assertEqual("", completed.stdout.strip())
+
+    def test_workspace_slug_uses_the_workspace_root_even_when_it_has_00_admin(self) -> None:
+        workspace = self.root / "workspace-with-admin"
+        (workspace / "00_Admin").mkdir(parents=True)
+        expanded = MODULE.expand("<workspace-project>/memory", workspace)
+        drive = workspace.drive.rstrip(":").lower()
+        remainder = str(workspace.resolve())[2:].replace("\\", "-").replace("/", "-").replace("_", "-")
+        expected = Path(f"{drive}-{remainder}") / "memory"
+        self.assertEqual(expected, expanded)
 
     def test_template_pins_the_current_policy_digest(self) -> None:
         command = json.loads(TEMPLATE.read_text(encoding="utf-8"))["hooks"]["PreToolUse"][0]["hooks"][0]["command"]

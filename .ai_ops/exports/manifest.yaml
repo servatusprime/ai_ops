@@ -75,7 +75,7 @@ workflows:
     sha256_12: 6bec19573c50
 - workflow: closeout
   source: .ai_ops/workflows/closeout.md
-  source_sha256_12: d3a1eb602ac6
+  source_sha256_12: 8e9eb8b4c4bc
   description: Prepare a read-only closeout packet, then publish through exact approval-gated
     commit, push, and PR-merge steps.
   outputs:
@@ -101,7 +101,7 @@ workflows:
     sha256_12: 1e342fd677bd
 - workflow: crosscheck
   source: .ai_ops/workflows/crosscheck.md
-  source_sha256_12: eb98d9fb079f
+  source_sha256_12: 1a5b3b3a1704
   description: Conduct a structured peer review of work.
   outputs:
   - path: plugins/ai-ops-governance/commands/crosscheck.md
@@ -303,7 +303,7 @@ workflows:
     sha256_12: faca4d486bb7
 - workflow: work_savepoint
   source: .ai_ops/workflows/work_savepoint.md
-  source_sha256_12: 6948aff16a5e
+  source_sha256_12: ede7182f670b
   description: Validate and record a scoped work-in-progress savepoint; publish through
     one structured approval turn covering commit, push, and optional PR merge.
   outputs:

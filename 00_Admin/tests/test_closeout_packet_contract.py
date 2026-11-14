@@ -271,6 +271,32 @@ class CloseoutPacketContractTests(unittest.TestCase):
         self.assertEqual("isolated", hook_env["GIT_INDEX_FILE"])
         self.assertTrue(hook_env["PRE_COMMIT_HOME"].endswith(".ai_ops\\local\\pre-commit"))
 
+    def test_first_landing_gate_executes_validator_from_head(self) -> None:
+        receipt = self.repo / "first-landing.yaml"
+        receipt.write_text("receipt\n", encoding="utf-8")
+        observed: list[list[str]] = []
+
+        def git_show(_repo: Path, *args: str, text: bool = True) -> bytes:
+            self.assertFalse(text)
+            observed.append(list(args))
+            return b"# trusted HEAD fixture\n"
+
+        completed = mock.Mock(returncode=0, stdout="", stderr="")
+        with mock.patch.object(APPLIER.builder, "_git", side_effect=git_show):
+            with mock.patch.object(APPLIER.subprocess, "run", return_value=completed) as run:
+                APPLIER._run_first_landing_gate(self.repo, ["existing.txt"], receipt)
+
+        self.assertEqual(
+            [
+                ["show", "HEAD:00_Admin/scripts/validate_closeout_security_receipt.py"],
+                ["show", "HEAD:00_Admin/scripts/target_paths.py"],
+            ],
+            observed,
+        )
+        command = run.call_args.args[0]
+        self.assertIn("--first-landing", command)
+        self.assertTrue(Path(command[1]).name == "validate_closeout_security_receipt.py")
+
     def test_windows_msys_pre_commit_launcher_failure_uses_native_runner(self) -> None:
         failed = mock.Mock(returncode=1, stdout="", stderr="NtCreateDirectoryObject: access denied")
         with mock.patch.object(APPLIER.os, "name", "nt"):

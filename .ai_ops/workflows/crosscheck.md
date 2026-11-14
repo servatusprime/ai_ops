@@ -276,6 +276,8 @@ dispositions; `quality_loop_convergence_template.md` is the loop-control contrac
    Workbook Preflight Gate until the requestor sets one of the two, recorded in the resume-delta
    block; there is no silent mapping. A partial review records completed and remaining checks,
    evidence, and next action; continuation or packet splitting consumes the same counter.
+   A tier-0 records-only review is capped at one read plus one fix-verify pass;
+   a records-only edit does not reopen that review.
 3. **Cap decisions.** A loop, delta-pass, or review-budget cap hit goes to a decision card,
    never silent acceptance. In-scope remediation and focused verification continue without
    a new request; scope, authority, budget/cap, safety, or publication triggers create a

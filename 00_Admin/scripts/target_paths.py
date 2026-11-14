@@ -17,7 +17,14 @@ from pathlib import Path
 def default_workspace_root(script_file: str | Path) -> Path:
     """Return the workspace containing the ai_ops repository."""
 
-    return Path(script_file).resolve().parents[3]
+    resolved = Path(script_file).resolve()
+    try:
+        return resolved.parents[3]
+    except IndexError as exc:
+        raise ValueError(
+            f"cannot derive workspace root from script path {resolved}; "
+            "the path must have at least four parent levels"
+        ) from exc
 
 
 def _candidate_paths(value: str | Path, workspace_root: Path, cwd: Path | None) -> list[Path]:

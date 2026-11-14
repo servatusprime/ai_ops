@@ -434,15 +434,13 @@ the selected ai_ops repository and the same HEAD-bound policy and hook checks.
   `fw_20261026_01`, and stop before staging or publication.
 
 ai_ops itself remains reviewer-read against its target `HEAD` policy and hook.
-Follow `00_Admin/runbooks/rb_closeout_security_review_01.md` for the security
-prepass, per-packet sizing, baseline/delta review route, receipt,
-`Closeout-Security` trailer, and first-landing procedure. A receipt-sync-only
-commit still requires a new HEAD-bound receipt. The baseline/delta route may
-reduce re-reading within one HEAD for receipt/log/registry surfaces, but it is
-not a cross-commit shortcut and cannot cover changed code, policy, workflow,
-or hook bytes. Record
-`admission_mode`, `policy_source`, receipt path, and disposition. A
-manual waiver, skip, or unrecorded bypass is not an admission result.
+Follow `00_Admin/runbooks/rb_closeout_security_review_01.md`, the single
+normative source for the shared security admission contract, including
+HEAD-bound first landing, delta/baseline limits, reviewer provenance, receipt
+binding, and the `Closeout-Security` trailer. A receipt-sync-only commit still
+requires a new HEAD-bound receipt. Record `admission_mode`, `policy_source`,
+receipt path, and disposition. A manual waiver, skip, or unrecorded bypass is
+not an admission result.
 
 ## Publication Command Registry
 

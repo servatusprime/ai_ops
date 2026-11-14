@@ -91,6 +91,9 @@ def _render_markdown(
     ]
 
     for row in rows:
+        next_review = _norm(row.get("next_review"))
+        if next_review != "-" and next_review < today:
+            next_review = f"OVERDUE ({next_review})"
         lines.append(
             "| "
             + " | ".join(
@@ -104,7 +107,7 @@ def _render_markdown(
                     _escape_cell(row.get("effort")),
                     _escape_cell(row.get("readiness")),
                     _escape_cell(row.get("risk_if_deferred")),
-                    _escape_cell(row.get("next_review")),
+                    _escape_cell(next_review),
                 ]
             )
             + " |"

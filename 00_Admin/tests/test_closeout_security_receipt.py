@@ -55,6 +55,13 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
         self.assertEqual("T0", PREPASS.tier_for("90_Sandbox/note.md", self.config))
         self.assertEqual("T1", PREPASS.tier_for("00_Admin/scripts/tool.py", self.config))
 
+    def test_target_paths_is_forced_t2_by_the_canonical_policy(self) -> None:
+        policy = yaml.safe_load(
+            (ROOT / "00_Admin/configs/closeout_security_tiers.yaml").read_text(encoding="utf-8")
+        )
+        self.assertTrue(VALIDATOR.forced_t2("00_Admin/scripts/target_paths.py", policy))
+        self.assertEqual("T2", PREPASS.tier_for("00_Admin/scripts/target_paths.py", policy))
+
     def test_prepass_tripwires_candidates(self) -> None:
         status, hits = PREPASS.scan_text("x.py", b"subprocess.run(cmd, shell=True)\n", self.config)
         self.assertEqual("candidate", status)
@@ -102,6 +109,17 @@ class CloseoutSecurityReceiptTests(unittest.TestCase):
             batches = PREPASS.build_review_batches(packet_paths, [10, 20, 30], None)
         self.assertEqual(3, len(batches))
         self.assertEqual(packet_paths, [batch["packet_files"][0] for batch in batches])
+
+    def test_git_delta_uses_raw_utf8_text_without_textconv(self) -> None:
+        completed = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="Δelta\n".encode("utf-8"), stderr=b""
+        )
+        with mock.patch.object(VALIDATOR.subprocess, "run", return_value=completed) as run:
+            self.assertEqual("Δelta\n", VALIDATOR.git_delta(ROOT, "README.md", "staged", 80))
+        command = run.call_args.args[0]
+        self.assertIn("--no-textconv", command)
+        self.assertIn("--text", command)
+        self.assertNotIn("text", run.call_args.kwargs)
 
     def test_review_cost_warning_has_no_aggregate_ceiling(self) -> None:
         self.assertIsNone(PREPASS.REVIEW_COST_VISIBILITY_THRESHOLD)

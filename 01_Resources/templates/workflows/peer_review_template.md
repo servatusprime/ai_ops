@@ -7,6 +7,7 @@ created: YYYY-MM-DD
 owner: ai_ops
 reviewer: <agent_name>
 review_type: completion  # design | mid_execution | completion
+provenance: reviewer_authored  # reviewer_authored | snapshot_bound | relay
 scope: <one-line description of what is being reviewed>
 review_direction: top-down  # top-down | bottom-up | hybrid
 review_strictness: strict  # standard | strict
