@@ -13,6 +13,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 import tempfile
 import uuid
@@ -24,7 +25,7 @@ import build_closeout_packet as packet_builder
 import generate_future_work_scorecard as scorecard
 import yaml
 
-RECEIPT_VERSION = "0.3.0"
+RECEIPT_VERSION = "0.4.0"
 RECEIPT_READY_STATE = "ready_for_receipt"
 PACKET_ROOT = Path("90_Sandbox/ai_workbooks/_closeout_packets")
 RECEIPT_SCHEMA_PATH = (
@@ -180,23 +181,65 @@ def _head_registry_entry(repo: Path, registry_path: Path, registry_id: str) -> d
 def _review_verdicts(text: str) -> list[str]:
     verdicts: list[str] = []
     in_fence = False
-    for line in text.splitlines():
+    for line_number, line in enumerate(text.splitlines(), start=1):
         stripped = line.strip()
         if stripped.startswith("```"):
             in_fence = not in_fence
             continue
         if in_fence:
             continue
-        if stripped.startswith("**"):
-            stripped = stripped[2:].lstrip()
-        if not stripped.lower().startswith("verdict:"):
+        stripped = stripped.lstrip("*").strip()
+        match = re.match(r"^verdict\s*:\s*(.+)$", stripped, flags=re.IGNORECASE)
+        if not match:
             continue
-        value = stripped.split(":", 1)[1].strip().strip("*").strip()
-        verdicts.append(value)
+        value = match.group(1).strip()
+        value = re.sub(r"[*_`]+", " ", value)
+        value = re.sub(r"\s*\([^)]*\)\s*$", "", value)
+        value = re.sub(r"\s+", " ", value).strip().lower()
+        if value == "pass":
+            verdicts.append(value)
+        elif value == "acceptable with notes":
+            verdicts.append(value)
+        else:
+            raise CompletionError(f"unsupported completion verdict on line {line_number}: {line.strip()}")
     return verdicts
 
 
-def _retained_nonblocking_reviews(repo: Path, refs: list[str], completion_workbook: str) -> list[str]:
+def _snapshot_bound_review_is_valid(
+    snapshot_path: Path,
+    expected_workbook: str,
+    expected_verdict: str,
+    actor: str,
+) -> bool:
+    """Require a typed completion snapshot bound to the same workbook/verdict."""
+
+    try:
+        snapshot = _load_mapping(snapshot_path)
+        workbook = _safe_relative(str(snapshot.get("workbook_ref", "")))
+    except CompletionError:
+        return False
+    reviewer_value = snapshot.get("reviewer")
+    if not isinstance(reviewer_value, str):
+        return False
+    reviewer = reviewer_value.strip()
+    verdict = str(snapshot.get("verdict", "")).strip().lower()
+    return (
+        snapshot.get("snapshot_version") == "1.0.0"
+        and snapshot.get("review_type") == "completion"
+        and workbook == expected_workbook
+        and reviewer.lower() not in {"", "pending", "<agent_name>"}
+        and reviewer.casefold() != actor.casefold()
+        and verdict == expected_verdict
+    )
+
+
+def _retained_nonblocking_reviews(
+    repo: Path,
+    refs: list[str],
+    completion_workbook: str,
+    review_provenance: str | None,
+    actor: str,
+) -> list[str]:
     matches: list[str] = []
     expected_workbook = _safe_relative(completion_workbook)
     for relative in refs:
@@ -211,6 +254,44 @@ def _retained_nonblocking_reviews(repo: Path, refs: list[str], completion_workbo
         if frontmatter.get("status") != "completed":
             continue
         if frontmatter.get("review_type") != "completion":
+            continue
+        provenance = str(frontmatter.get("provenance", "")).strip().lower()
+        if review_provenance is None:
+            pass
+        elif review_provenance == "independent":
+            reviewer_value = frontmatter.get("reviewer")
+            if not isinstance(reviewer_value, str):
+                continue
+            reviewer = reviewer_value.strip()
+            if provenance == "reviewer_authored":
+                if reviewer.lower() in {"", "pending", "<agent_name>"} or reviewer.casefold() == actor.casefold():
+                    continue
+            elif provenance == "snapshot_bound":
+                try:
+                    snapshot_ref = _safe_relative(str(frontmatter.get("snapshot_ref", "")))
+                    snapshot_sha256 = str(frontmatter.get("snapshot_sha256", ""))
+                    snapshot_path = _repo_path(repo, snapshot_ref)
+                    reviewer = str(frontmatter.get("reviewer", "")).strip()
+                    verdicts = _review_verdicts(text)
+                    if (
+                        not re.fullmatch(r"[0-9a-f]{64}", snapshot_sha256)
+                        or not snapshot_path.is_file()
+                        or _sha256_file(snapshot_path) != snapshot_sha256
+                        or reviewer.lower() in {"", "pending", "<agent_name>"}
+                        or reviewer.casefold() == actor.casefold()
+                        or not verdicts
+                        or not _snapshot_bound_review_is_valid(
+                            snapshot_path, expected_workbook, verdicts[0], actor
+                        )
+                    ):
+                        continue
+                except (CompletionError, OSError):
+                    continue
+            else:
+                continue
+        elif review_provenance == "relay" and provenance != "relay":
+            continue
+        elif review_provenance not in {"independent", "relay"}:
             continue
         try:
             review_workbook = _safe_relative(str(frontmatter.get("workbook_ref", "")))
@@ -288,6 +369,7 @@ def _marker(
     scorecard_source_sha256: str,
     provenance_refs: list[str],
     review_refs: list[str],
+    review_provenance: str,
 ) -> str:
     payload = {
         "future_work_completion": {
@@ -303,6 +385,7 @@ def _marker(
             "scorecard_source_sha256": scorecard_source_sha256,
             "evidence_refs": provenance_refs,
             "review_refs": review_refs,
+            "review_provenance": review_provenance,
         }
     }
     body = yaml.safe_dump(payload, sort_keys=False, allow_unicode=False)
@@ -464,10 +547,13 @@ def complete(
     actor: str,
     run_id: str | None = None,
     provenance_refs: list[str] | None = None,
+    review_provenance: str = "independent",
     packet_root: Path | None = None,
 ) -> Path:
     if status not in {"success", "failed", "pending", "stale"}:
         raise CompletionError(f"unsupported status: {status}")
+    if review_provenance not in {"independent", "relay"}:
+        raise CompletionError("review_provenance must be independent or relay")
     run_id = run_id or str(uuid.uuid4())
     try:
         parsed_run_id = uuid.UUID(run_id)
@@ -505,7 +591,11 @@ def complete(
             raise CompletionError(
                 "success requires the HEAD registry entry to bind proposed_workbook to the completion workbook"
             )
-    review_refs = _retained_nonblocking_reviews(repo, refs, completion_workbook) if status == "success" else []
+    review_refs = (
+        _retained_nonblocking_reviews(repo, refs, completion_workbook, review_provenance, actor)
+        if status == "success"
+        else []
+    )
     if status == "success":
         if exit_code != 0:
             raise CompletionError("success requires exit_code 0")
@@ -562,6 +652,7 @@ def complete(
         scorecard_source_sha256=scorecard_source_sha256,
         provenance_refs=refs,
         review_refs=review_refs,
+        review_provenance=review_provenance,
     )
     marker_sha256 = _sha256(marker.replace("\r\n", "\n").encode("utf-8"))
     next_log = original_log.decode("utf-8").rstrip("\n") + marker
@@ -587,6 +678,7 @@ def complete(
         "scorecard_source_sha256": scorecard_source_sha256,
         "provenance_refs": refs,
         "review_refs": review_refs,
+        "review_provenance": review_provenance,
         "artifact_manifest": artifact_manifest,
         "registry_entry_sha256": scope_sha256,
         "registry_deleted": status == "success",
@@ -702,13 +794,20 @@ def verify_receipt(
         "actor",
         "scorecard_source_sha256",
         "review_refs",
+        "review_provenance",
     ):
         if marker_payload.get(key) != receipt.get(key):
             raise CompletionError(f"run-log marker does not bind receipt field: {key}")
     review_refs = receipt.get("review_refs", [])
     if (
         receipt["status"] == "success"
-        and _retained_nonblocking_reviews(repo, review_refs, receipt["completion_workbook"])
+        and _retained_nonblocking_reviews(
+            repo,
+            review_refs,
+            receipt["completion_workbook"],
+            receipt.get("review_provenance"),
+            str(receipt.get("actor", "")),
+        )
         != sorted(set(review_refs))
     ):
         raise CompletionError("successful receipt review evidence is missing or no longer non-blocking")
@@ -746,6 +845,7 @@ def main() -> int:
     parser.add_argument("--actor", default=None)
     parser.add_argument("--run-id", default=None)
     parser.add_argument("--provenance-ref", action="append", default=[])
+    parser.add_argument("--review-provenance", choices=["independent", "relay"], default="independent")
     parser.add_argument("--packet-root", default=None)
     args = parser.parse_args()
     try:
@@ -789,6 +889,7 @@ def main() -> int:
             actor=args.actor,
             run_id=args.run_id,
             provenance_refs=args.provenance_ref,
+            review_provenance=args.review_provenance,
             packet_root=Path(args.packet_root) if args.packet_root else None,
         )
     except (OSError, CompletionError, ValueError, yaml.YAMLError) as exc:

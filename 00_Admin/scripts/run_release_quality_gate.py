@@ -212,6 +212,12 @@ def main() -> int:
                 "00_Admin.tests.test_claude_settings_policy",
                 "00_Admin.tests.test_release_quality_gate",
                 "00_Admin.tests.test_validation_command_policy",
+                "00_Admin.tests.test_closeout_security_head",
+                "00_Admin.tests.test_closeout_security_receipt",
+                "00_Admin.tests.test_future_work_completion",
+                "00_Admin.tests.test_future_work_scorecard",
+                "00_Admin.tests.test_guard_workspace_writes",
+                "00_Admin.tests.test_target_paths",
             ],
         ),
         (

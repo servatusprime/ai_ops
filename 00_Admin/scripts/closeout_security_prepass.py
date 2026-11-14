@@ -65,6 +65,7 @@ MIN_FORCED_T2_PREFIXES = (
     "00_Admin/policies/",
     "00_Admin/specs/",
     "01_Resources/templates/config/",
+    ".githooks/",
 )
 MIN_FORCED_T2_FILES = (
     "AGENTS.md",
@@ -76,6 +77,7 @@ MIN_FORCED_T2_FILES = (
     "00_Admin/scripts/check_outside_writes.py",
     "00_Admin/scripts/hooks/guard_workspace_writes.py",
     "00_Admin/scripts/hooks/validate_closeout_security_head.py",
+    "00_Admin/scripts/target_paths.py",
 )
 
 
@@ -613,27 +615,41 @@ def review_basis(file_kind: str, binary: bool, structural_summary: str | None = 
     return "full_content"
 
 
-def git_delta(repo: Path, path: str, source: str, context_lines: int) -> str:
+def git_delta(
+    repo: Path,
+    path: str,
+    source: str,
+    context_lines: int,
+    *,
+    require_real_text: bool = False,
+) -> str:
     """Return a bounded source delta used with a previously attested baseline."""
 
     if source == "staged":
         command = [
-            "git", "-C", str(repo), "diff", "--cached", "--no-ext-diff",
+            "git", "-C", str(repo), "diff", "--cached", "--no-ext-diff", "--no-textconv", "--text",
             f"--unified={context_lines}", "--", path,
         ]
     elif source == "worktree":
         command = [
-            "git", "-C", str(repo), "diff", "HEAD", "--no-ext-diff",
+            "git", "-C", str(repo), "diff", "HEAD", "--no-ext-diff", "--no-textconv", "--text",
             f"--unified={context_lines}", "--", path,
         ]
     else:
         return "(source=head; no new source delta is available)"
-    completed = subprocess.run(
-        command, check=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
+    completed = subprocess.run(command, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if completed.returncode:
-        fail(f"cannot read source delta for {path}: {completed.stderr.strip()}")
-    return completed.stdout or "(no source delta; current bytes equal the reviewed baseline)"
+        error = completed.stderr.decode("utf-8", errors="replace").strip()
+        fail(f"cannot read source delta for {path}: {error}")
+    try:
+        delta = completed.stdout.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        fail(f"source delta is not valid UTF-8 for {path}: {exc}")
+    if not delta:
+        if require_real_text:
+            fail(f"source delta does not contain the changed text for {path}")
+        return "(no source delta; current bytes equal the reviewed baseline)"
+    return delta
 
 
 def delta_packet_content(row: dict[str, Any], repo: Path, source: str, context_lines: int) -> str:
@@ -790,7 +806,13 @@ def preserve_attestation(
         and baseline_sha256
         and row.get("file_kind") in {"text", "generated"}
     ):
-        delta = git_delta(repo, row["path"], source, int(config.get("packet", {}).get("delta_context_lines", 80)))
+        delta = git_delta(
+            repo,
+            row["path"],
+            source,
+            int(config.get("packet", {}).get("delta_context_lines", 80)),
+            require_real_text=changed,
+        )
         delta_bytes = len(delta.encode("utf-8"))
         max_delta_bytes = int(config.get("packet", {}).get("delta_max_bytes", 100000))
         if changed and delta_bytes > max_delta_bytes:
@@ -844,6 +866,16 @@ def enforce_total_review_budget(packet_tokens: list[int], config: dict[str, Any]
             f"estimated={total}; max={maximum}; split include paths or use bounded structural review"
         )
     return total
+
+
+def validate_delta_policy(config: dict[str, Any]) -> None:
+    packet = config.get("packet", {})
+    for name, default in (
+        ("delta_reuse_min_bytes", 20000),
+        ("delta_context_lines", 80),
+        ("delta_max_bytes", 100000),
+    ):
+        positive_integer(packet.get(name, default), name)
 
 
 def tier_for(path: str, config: dict[str, Any]) -> str:
@@ -1077,6 +1109,7 @@ def main() -> int:
         if args.config
         else None,
     )
+    validate_delta_policy(config)
     if args.admission_mode == "deterministic_admission" and not args.policy_source:
         fail("deterministic admission requires --policy-source")
     if args.admission_mode == "deterministic_admission":

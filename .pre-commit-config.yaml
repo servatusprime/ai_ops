@@ -52,14 +52,21 @@ repos:
         stages: [manual]
       - id: ai-ops-closeout-security
         name: ai_ops closeout security receipt
-        entry: python 00_Admin/scripts/hooks/validate_closeout_security_head.py --receipt .ai_ops/local/closeout_security/latest.yaml
+        entry: >-
+           python 00_Admin/scripts/hooks/validate_closeout_security_head.py
+           --receipt .ai_ops/local/closeout_security/latest.yaml
+           --first-landing-receipt .ai_ops/local/closeout_security/first_landing.yaml
         language: system
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
       - id: ai-ops-closeout-security-commit-msg
         name: ai_ops closeout security commit trailer
-        entry: python 00_Admin/scripts/hooks/validate_closeout_security_head.py --receipt .ai_ops/local/closeout_security/latest.yaml --commit-msg-file
+        entry: >-
+           python 00_Admin/scripts/hooks/validate_closeout_security_head.py
+           --receipt .ai_ops/local/closeout_security/latest.yaml
+           --first-landing-receipt .ai_ops/local/closeout_security/first_landing.yaml
+           --commit-msg-file
         language: system
         pass_filenames: true
         stages: [commit-msg]

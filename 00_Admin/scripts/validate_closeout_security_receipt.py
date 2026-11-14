@@ -28,6 +28,36 @@ except ImportError as exc:  # pragma: no cover - environment diagnostic
     raise SystemExit("PyYAML is required; install it before running the validator") from exc
 
 
+class _UniqueKeyLoader(yaml.SafeLoader):
+    """Reject duplicate YAML keys in security policy documents."""
+
+
+def _construct_unique_mapping(loader: _UniqueKeyLoader, node: yaml.MappingNode, deep: bool = False) -> dict:
+    mapping: dict = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if key in mapping:
+            raise ValueError(f"duplicate YAML key: {key}")
+        mapping[key] = loader.construct_object(value_node, deep=deep)
+    return mapping
+
+
+_UniqueKeyLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+    _construct_unique_mapping,
+)
+
+
+def load_policy_yaml(text: str, label: str) -> dict[str, Any]:
+    try:
+        value = yaml.load(text, Loader=_UniqueKeyLoader) or {}
+    except (ValueError, yaml.YAMLError) as exc:
+        fail(f"{label} is not valid YAML with unique keys: {exc}")
+    if not isinstance(value, dict):
+        fail(f"{label} must contain a mapping")
+    return value
+
+
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
@@ -51,6 +81,7 @@ MIN_FORCED_T2_PREFIXES = (
     "00_Admin/policies/",
     "00_Admin/specs/",
     "01_Resources/templates/config/",
+    ".githooks/",
 )
 MIN_FORCED_T2_FILES = (
     "AGENTS.md",
@@ -62,6 +93,7 @@ MIN_FORCED_T2_FILES = (
     "00_Admin/scripts/check_outside_writes.py",
     "00_Admin/scripts/hooks/guard_workspace_writes.py",
     "00_Admin/scripts/hooks/validate_closeout_security_head.py",
+    "00_Admin/scripts/target_paths.py",
 )
 
 
@@ -442,27 +474,41 @@ def expected_review_basis(
     return "full_content"
 
 
-def git_delta(repo: Path, path: str, source: str, context_lines: int) -> str:
+def git_delta(
+    repo: Path,
+    path: str,
+    source: str,
+    context_lines: int,
+    *,
+    require_real_text: bool = False,
+) -> str:
     """Return the same bounded source delta emitted by the pre-pass."""
 
     if source == "staged":
         command = [
-            "git", "-C", str(repo), "diff", "--cached", "--no-ext-diff",
+            "git", "-C", str(repo), "diff", "--cached", "--no-ext-diff", "--no-textconv", "--text",
             f"--unified={context_lines}", "--", path,
         ]
     elif source == "worktree":
         command = [
-            "git", "-C", str(repo), "diff", "HEAD", "--no-ext-diff",
+            "git", "-C", str(repo), "diff", "HEAD", "--no-ext-diff", "--no-textconv", "--text",
             f"--unified={context_lines}", "--", path,
         ]
     else:
         return "(source=head; no new source delta is available)"
-    completed = subprocess.run(
-        command, check=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
+    completed = subprocess.run(command, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if completed.returncode:
-        fail(f"cannot read source delta for {path}: {completed.stderr.strip()}")
-    return completed.stdout or "(no source delta; current bytes equal the reviewed baseline)"
+        error = completed.stderr.decode("utf-8", errors="replace").strip()
+        fail(f"cannot read source delta for {path}: {error}")
+    try:
+        delta = completed.stdout.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        fail(f"source delta is not valid UTF-8 for {path}: {exc}")
+    if not delta:
+        if require_real_text:
+            fail(f"source delta does not contain the changed text for {path}")
+        return "(no source delta; current bytes equal the reviewed baseline)"
+    return delta
 
 
 def delta_packet_content(
@@ -480,7 +526,10 @@ def delta_packet_content(
 
 
 def validate_baseline_receipt_integrity(
-    repo: Path, baseline: dict[str, Any], current: dict[str, Any]
+    repo: Path,
+    baseline: dict[str, Any],
+    current: dict[str, Any],
+    config: dict[str, Any] | None = None,
 ) -> None:
     """Validate the prior receipt's own binding before reusing any attestation."""
 
@@ -545,6 +594,8 @@ def validate_baseline_receipt_integrity(
         by_path.setdefault(section["path"], []).append(section)
     for row in rows:
         path = str(row["path"])
+        if config is not None and forced_t2(path, config) and row.get("tier") != "T2":
+            fail(f"delta baseline forced-T2 path is under-tiered: {path}")
         if row.get("coverage") != "fully_reviewed" or row.get("disposition") != "pass":
             continue
         if row.get("tier") == "T2":
@@ -571,8 +622,9 @@ def validate_delta_baseline(
     row: dict[str, Any],
     source: str,
     *,
+    config: dict[str, Any],
     require_attestation: bool = True,
-) -> None:
+) -> dict[str, Any]:
     """Require an immutable, fully reviewed prior row before delta reuse."""
 
     if source not in {"staged", "worktree"}:
@@ -600,7 +652,7 @@ def validate_delta_baseline(
         fail(f"cannot parse baseline receipt {baseline_ref}: {exc}")
     if not isinstance(baseline, dict) or baseline.get("receipt_version") != "0.2.0":
         fail(f"baseline receipt must be a reviewer-read v0.2.0 receipt: {baseline_ref}")
-    validate_baseline_receipt_integrity(repo, baseline, receipt)
+    validate_baseline_receipt_integrity(repo, baseline, receipt, config)
     baseline_rows = {
         str(item.get("path")): item
         for item in baseline.get("rows", [])
@@ -628,11 +680,17 @@ def validate_delta_baseline(
         fail(f"delta baseline is not a passing full review: {row['path']}")
     if prior.get("review_method") != "full-file-plus-diff" or prior.get("reviewer") in {None, "", "pending"}:
         fail(f"delta baseline lacks a complete reviewer attestation: {row['path']}")
+    packet = config.get("packet", {})
+    if str(prior.get("sha256")) == str(row.get("sha256")) and int(prior.get("source_bytes", 0)) < int(
+        packet.get("delta_reuse_min_bytes", 20000)
+    ):
+        fail(f"delta baseline is below delta_reuse_min_bytes: {row['path']}")
     if require_attestation:
         if row.get("review_method") != "delta-plus-baseline":
             fail(f"delta row review_method is incomplete: {row['path']}")
         if row.get("coverage") != "fully_reviewed" or row.get("disposition") != "pass":
             fail(f"delta row must retain passing coverage: {row['path']}")
+    return prior
 
 
 def scan_text(path: str, data: bytes, config: dict[str, Any]) -> tuple[str, list[str]]:
@@ -1094,9 +1152,9 @@ def validate_shape(receipt: dict[str, Any]) -> None:
 def load_config(repo: Path, config_path: Path | None) -> dict[str, Any]:
     target = config_path or (repo / "00_Admin/configs/closeout_security_tiers.yaml")
     if target.exists():
-        return yaml.safe_load(target.read_text(encoding="utf-8")) or {}
+        return load_policy_yaml(target.read_text(encoding="utf-8"), "closeout security policy")
     raw = git_bytes(repo, "HEAD:00_Admin/configs/closeout_security_tiers.yaml")
-    return yaml.safe_load(raw.decode("utf-8")) or {}
+    return load_policy_yaml(raw.decode("utf-8"), "HEAD closeout security policy")
 
 
 def load_staged_config(repo: Path, config_path: Path) -> dict[str, Any]:
@@ -1107,12 +1165,12 @@ def load_staged_config(repo: Path, config_path: Path) -> dict[str, Any]:
     if relative != "00_Admin/configs/closeout_security_tiers.yaml":
         fail("first-landing policy must be the canonical closeout security policy")
     raw = git_bytes(repo, f":{relative}")
-    return yaml.safe_load(raw.decode("utf-8")) or {}
+    return load_policy_yaml(raw.decode("utf-8"), "staged closeout security policy")
 
 
 def load_head_config(repo: Path) -> dict[str, Any]:
     raw = git_bytes(repo, "HEAD:00_Admin/configs/closeout_security_tiers.yaml")
-    return yaml.safe_load(raw.decode("utf-8")) or {}
+    return load_policy_yaml(raw.decode("utf-8"), "HEAD closeout security policy")
 
 
 def forced_t2(path: str, config: dict[str, Any]) -> bool:
@@ -1321,6 +1379,8 @@ def main() -> int:
         fail("receipt ruleset_version does not match the active policy")
     packet = config.get("packet", {})
     packet_budget = positive_integer(packet.get("estimated_tokens_per_packet", 20000), "estimated_tokens_per_packet")
+    delta_context_limit = positive_integer(packet.get("delta_context_lines", 80), "delta_context_lines")
+    delta_max_bytes = positive_integer(packet.get("delta_max_bytes", 100000), "delta_max_bytes")
     configured_session_budget = packet.get("session_token_budget")
     session_budget = (
         positive_integer(configured_session_budget, "session_token_budget")
@@ -1404,6 +1464,7 @@ def main() -> int:
     dispositions: list[str] = []
     actual_total_tokens = 0
     actual_source_bytes_total = 0
+    delta_prior_sha256: dict[str, str] = {}
     for row in rows:
         if not isinstance(row, dict):
             fail("receipt row must be a mapping")
@@ -1434,9 +1495,10 @@ def main() -> int:
                 fail(f"receipt file_kind does not match repository bytes for {path}: {actual_kind}")
             expected_status, expected_findings = scan_text(path, data, config)
             if str(row.get("review_basis")) == "delta_with_baseline":
-                validate_delta_baseline(
-                    repo, receipt, row, source, require_attestation=args.gate
+                baseline_row = validate_delta_baseline(
+                    repo, receipt, row, source, config=config, require_attestation=args.gate
                 )
+                delta_prior_sha256[path] = str(baseline_row["sha256"])
                 expected_basis = "delta_with_baseline"
             else:
                 expected_basis = (
@@ -1499,7 +1561,7 @@ def main() -> int:
             elif review_basis == "structured_deleted_data":
                 validate_structured_deleted_data_review(repo, row)
             elif review_basis == "delta_with_baseline":
-                validate_delta_baseline(repo, receipt, row, source)
+                validate_delta_baseline(repo, receipt, row, source, config=config)
             elif str(row.get("review_method")) != "full-file-plus-diff":
                 fail(f"review attestation is incomplete for {path}")
             if tier == "T2" and row.get("independent_pass") is not True:
@@ -1574,8 +1636,23 @@ def main() -> int:
                 context_lines = note_value(str(row.get("coverage_notes", "")), "delta_context_lines")
                 if context_lines is None or not context_lines.isdigit():
                     fail(f"delta row lacks a valid delta_context_lines note: {path}")
+                if int(context_lines) != delta_context_limit:
+                    fail(
+                        f"delta row context lines do not match policy for {path}: "
+                        f"{context_lines} != {delta_context_limit}"
+                    )
                 baseline_ref = str(receipt.get("baseline_receipt", ""))
                 baseline_hash = str(receipt.get("baseline_receipt_sha256", ""))
+                require_real_text = delta_prior_sha256.get(path) != str(row["sha256"])
+                source_delta = git_delta(
+                    repo,
+                    path,
+                    source,
+                    int(context_lines),
+                    require_real_text=require_real_text,
+                )
+                if len(source_delta.encode("utf-8")) > delta_max_bytes:
+                    fail(f"delta exceeds delta_max_bytes for {path}")
                 expected_text = (
                     "Baseline attestation is reused for unchanged bytes.\n"
                     f"baseline_receipt: {baseline_ref}\n"
@@ -1583,7 +1660,7 @@ def main() -> int:
                     f"current_sha256: {row['sha256']}\n"
                     f"source_delta_unified_lines: {int(context_lines)}\n\n"
                     "source_delta:\n"
-                    f"{git_delta(repo, path, source, int(context_lines))}\n"
+                    f"{source_delta}\n"
                 )
             else:
                 expected_data, _ = source_bytes(repo, path, source, str(row["file_kind"]))
