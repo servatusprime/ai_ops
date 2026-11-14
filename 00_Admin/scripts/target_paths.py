@@ -44,8 +44,12 @@ def resolve_repo_root(
 ) -> Path:
     """Resolve a repository argument from the caller or workspace root."""
 
-    workspace = (workspace_root or default_workspace_root(__file__)).resolve()
-    candidates = _candidate_paths(value, workspace, cwd)
+    raw = Path(value)
+    if raw.is_absolute():
+        candidates = [raw]
+    else:
+        workspace = (workspace_root or default_workspace_root(__file__)).resolve()
+        candidates = _candidate_paths(raw, workspace, cwd)
     for candidate in candidates:
         resolved = candidate.resolve()
         if resolved.is_dir() and (resolved / ".git").exists():
@@ -63,8 +67,12 @@ def resolve_input_path(
 ) -> Path:
     """Resolve a control input from the caller or workspace root."""
 
-    workspace = (workspace_root or default_workspace_root(__file__)).resolve()
-    candidates = _candidate_paths(value, workspace, cwd)
+    raw = Path(value)
+    if raw.is_absolute():
+        candidates = [raw]
+    else:
+        workspace = (workspace_root or default_workspace_root(__file__)).resolve()
+        candidates = _candidate_paths(raw, workspace, cwd)
     if must_exist:
         for candidate in candidates:
             resolved = candidate.resolve()
