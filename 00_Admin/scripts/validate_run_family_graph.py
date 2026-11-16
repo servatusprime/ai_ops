@@ -1460,6 +1460,45 @@ def validate_graph(
     }
 
 
+CHILD_KIND = {"runprogram": "runbundle", "runbundle": "runbook"}
+
+
+def validate_containment(
+    graph: dict[str, Any], exempt: set[str] | None = None
+) -> list[str]:
+    """Return one finding per run-family parent with no child of the next kind.
+
+    A runprogram consumes at least one runbundle and a runbundle at least one
+    runbook (``spec_run_family_composition.md``). ``exempt`` is a dated
+    baseline kept in the governed repo's config; an exemption that names an
+    unknown artifact or one that now has a child is reported as stale so a
+    baseline cannot outlive its cause.
+    """
+
+    exempt = exempt or set()
+    by_id = {row["artifact_id"]: row for row in graph["artifacts"]}
+    has_child: set[str] = set()
+    for edge in graph["consumes"]:
+        consumer = by_id.get(edge["consumer_id"])
+        provider = by_id.get(edge["provider_id"])
+        if (
+            consumer
+            and provider
+            and CHILD_KIND.get(consumer["artifact_kind"]) == provider["artifact_kind"]
+        ):
+            has_child.add(consumer["artifact_id"])
+    findings: list[str] = []
+    for artifact_id, row in sorted(by_id.items()):
+        child = CHILD_KIND.get(row["artifact_kind"])
+        if child and artifact_id not in has_child and artifact_id not in exempt:
+            findings.append(f"{artifact_id}: {row['artifact_kind']} consumes no {child}")
+    for artifact_id in sorted(exempt):
+        row = by_id.get(artifact_id)
+        if row is None or artifact_id in has_child or row["artifact_kind"] not in CHILD_KIND:
+            findings.append(f"{artifact_id}: stale containment exemption")
+    return findings
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     # The composition source is optional: receipt and execution-graph
@@ -1498,6 +1537,23 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--changed-provider", action="append", default=[])
     parser.add_argument("--registry", type=Path)
     parser.add_argument("--runbooks-readme", type=Path)
+    parser.add_argument(
+        "--check-containment",
+        action="store_true",
+        help="Report a runprogram with no runbundle or a runbundle with no runbook",
+    )
+    parser.add_argument(
+        "--containment-severity",
+        choices=("warning", "error"),
+        default="warning",
+        help="warning lists findings in the receipt and passes; error fails",
+    )
+    parser.add_argument(
+        "--containment-exempt",
+        action="append",
+        default=[],
+        help="Artifact id baselined from the containment check; repeat per id",
+    )
     return parser
 
 
@@ -1540,6 +1596,18 @@ def main(argv: list[str] | None = None) -> int:
             )
             if closure_findings:
                 raise ContractError(closure_findings)
+        containment_findings: list[str] = []
+        if args.check_containment:
+            if normalized is None:
+                raise ContractError([
+                    "--check-containment requires a composition source "
+                    "(--input/--manifest/--discover/--check)"
+                ])
+            containment_findings = validate_containment(
+                normalized, set(args.containment_exempt)
+            )
+            if containment_findings and args.containment_severity == "error":
+                raise ContractError(containment_findings)
         if args.check:
             args.registry = args.registry or args.repo_root / "00_Admin/runbooks/run_family_registry.yaml"
             args.runbooks_readme = args.runbooks_readme or args.repo_root / "00_Admin/runbooks/README.md"
@@ -1580,6 +1648,8 @@ def main(argv: list[str] | None = None) -> int:
             receipt["source_digest"] = digest(normalized)
             receipt["artifact_count"] = len(normalized["artifacts"])
             receipt["edge_count"] = len(normalized["consumes"])
+        if containment_findings:
+            receipt["warnings"] = containment_findings
         if args.receipt:
             args.receipt.parent.mkdir(parents=True, exist_ok=True)
             args.receipt.write_text(

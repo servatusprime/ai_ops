@@ -4,9 +4,9 @@ id: spec_run_family_composition
 module: admin
 status: active
 license: Apache-2.0
-version: 0.3.1
+version: 0.3.2
 created: 2026-07-16
-last_updated: 2026-09-08
+last_updated: 2026-11-16
 owner: ai_ops
 ai_generated: true
 spec_archetype: governance_spec
@@ -38,6 +38,14 @@ A runprogram MAY consume a runbundle also consumed by other runprograms. A
 runbundle MAY consume a runbook also consumed by other runbundles. The graph
 MUST be acyclic. Containment MAY be used for convenient storage, but membership
 and execution order come from explicit references, not directory ancestry.
+
+A runprogram MUST consume at least one runbundle and a runbundle at least one
+runbook; a unit that composes scripts directly is a runbook. The canonical
+run-family validator reports a parent with no child (`--check-containment`):
+a warning by default, an error when the governed repo's config says so. The
+shared engine runs it only for a repo whose config sets `containment_severity`
+or `containment_exempt`. A repo may baseline an artifact id in its own config
+with a dated note, and the validator reports a baseline that no longer applies.
 
 ## Consumer Manifest Authority
 
@@ -238,6 +246,8 @@ definitions. Canonical ai_ops artifacts MUST remain repository-neutral.
 
 ## Change Log
 
+- 0.3.2 (2026-11-16): Added the containment rule (a runprogram consumes a
+  runbundle, a runbundle a runbook) and its validator check.
 - 0.3.1 (2026-09-08): Restored v0.1 manifest compatibility for legacy
   consumers; promotion fields remain validated when present, legacy entry
   metadata is not executable closure evidence, and closure checking is exposed

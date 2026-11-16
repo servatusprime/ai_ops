@@ -36,6 +36,8 @@ cost_governance:  # review budget per crosscheck.md "Loop Control"; null = thrif
 
 ## Status Checklist
 
+Status lives here (or in the bundle README when it coordinates); other files point to it and copy no count or status.
+
 - [ ] **Ph 0: Cold start and pre-flight**
 - [ ] **Ph 1: <phase name>** -- <one-line outcome; VS035 reads these boxes>
 - [ ] **Completion:** selfcheck, crosscheck, requestor review
@@ -124,7 +126,7 @@ Evaluate each row when drafting this workbook and again in Phase 0 (task 0.4). W
 ## Verification Checklist
 
 - [ ] Every output above exists and its check passes
-- [ ] No path outside Outputs and Target Files changed (`git status --short`)
+- [ ] `python <ai_ops>/00_Admin/scripts/check_outputs_declared.py --workbook <this file> [--repo-root <repo you changed>]` reports no undeclared change (triage input: declare in-scope files, explain the rest)
 - [ ] <acceptance condition specific to this work>
 
 ## Execution Notes

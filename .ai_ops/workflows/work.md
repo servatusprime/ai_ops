@@ -111,7 +111,7 @@ completion claims. Write it to the existing state surface -- the workbook Execut
 when the bundle coordinates the run -- as one block per resume, not one per phase. Do not create a new file or
 ledger for it: prior claimed state, live evidence checked, deltas found and corrected, validators or checks rerun or
 owed, and gates still open. If prior claims and live evidence disagree, repair stale wording before moving the run
-forward. See `00_Admin/specs/spec_cross_surface_coordination.md`.
+forward. Copy no count or status into another file; point to the status surface. See `00_Admin/specs/spec_cross_surface_coordination.md`.
 
 ## Active Work and Placement
 
@@ -146,7 +146,9 @@ One flow for every mode; the table lists what changes by mode (`spec_work_mode.m
 2. Record the scope block.
 3. Resolve active artifacts for the target: if some exist, ask continue or switch; if none, ask whether to use an
    existing artifact (one the requestor names) or create one.
-4. Run the placement check and register the selected or created artifact, with its `repo` field.
+4. Run the placement check and register the selected or created artifact, with its `repo` field. Create a new
+   artifact from its template in `01_Resources/templates/README.md`, and create a workbundle or workprogram together
+   with its first workbook (or bundle): a README at `authority_level` 3 or higher with no `wb_*.md` under it fails VS040.
 5. For a new workbook, runbook or spine, run the Execution Topology and Delegation Gate before writing its body. For
    any workbook selected or created, run the Workbook Preflight Gate.
 6. Execute the scoped tasks under the authority guard.
@@ -177,9 +179,13 @@ If checks fail, keep the workbook active, fix, and rerun.
 - Current work context summary and next actions.
 - Clarifying questions when target/scope is ambiguous.
 - Handoff to other command lanes when requested action is out-of-lane.
+- After a bounded set of workbook tasks (not a conversation or a question), end the report with the output of
+  `python <ai_ops>/00_Admin/scripts/workbook_progress.py <workbook> [<workbook> ...]`: tasks ticked per phase, one
+  block per workbook of a bundle, no combined figure. Compute it from the queue; do not estimate it or store it.
 
 ## Resources
 
+- `01_Resources/templates/README.md`
 - `00_Admin/specs/spec_work_mode.md`
 - `00_Admin/specs/spec_workbook_structure.md`
 - `00_Admin/specs/spec_cross_surface_coordination.md`

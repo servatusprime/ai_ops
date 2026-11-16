@@ -144,9 +144,11 @@ review-local defaults and workflow-specific deltas.
    - **Top-down**: verify task completion and acceptance criteria.
    - **Bottom-up**: inventory changed files (staged + unstaged) using an
      unscoped changed-files sweep when source control is available; map each
-     file to authorized scope; reconcile the returned changed-files declaration
-     when one exists; flag untraced edits. An unexplained out-of-scope file is
-     blocking until attributed, not a note.
+     file to authorized scope (`python <ai_ops>/00_Admin/scripts/check_outputs_declared.py --workbook <path>`
+     does the mapping against the workbook's Outputs table; its output is triage input, not a verdict);
+     reconcile the returned changed-files declaration when one exists; flag untraced edits. A file
+     written outside the authorized scope is a `governance` finding and blocks until attributed; a
+     file that is in scope but missing from the declared outputs is a `record` finding.
      If git is unavailable (for example `claude_app` surface), base the
      inventory on the workbook's Ordered Execution Queue and evidence ledger
      rather than staged diff.
@@ -159,9 +161,12 @@ review-local defaults and workflow-specific deltas.
       Queue and delegated-step markers,
     - flag lane-declaration gaps (for example missing `Executor` on write
       phases or missing controlling-artifact freeze gates on derivative lanes).
-11. For completion reviews in ai_ops or governed repos with
+11. For every review type (design, mid_execution or completion) in ai_ops or governed repos with
     `customizations.validation_policy.governed_mode: ai_ops`:
-    - Run validator and include `VS025` results.
+    - Run the shared engine over every registered repo; only the reviewed repo blocks:
+      `python <ai_ops>/00_Admin/scripts/validate_workspace.py --target <reviewed repo>`, or `--target .` from inside
+      the reviewed repo (for example `python ../ai_ops/00_Admin/scripts/validate_workspace.py --target .`). Include
+      `VS025` results.
     - If target repo uses a different validator contract, report equivalent
       readiness signals instead of forcing `VS025`.
     - For each `VS025` warning, record disposition (intentional or oversight).
@@ -235,10 +240,12 @@ review-local defaults and workflow-specific deltas.
     - sample representative promoted content when it encodes judgment,
     - reject generic assertions such as "gate coverage confirmed".
 21. Verify operator decision rows contain decision, rationale, date, and actor.
-    Empty decision or rationale fields remain pending and block convergence.
+    An empty decision field, or a decision with no actor, is `governance`: it stays pending and
+    blocks convergence. A missing rationale or date on a decision that was made is `record`.
 22. For completed workbooks, compare the latest crosscheck verdict with current
     outputs and any later review artifacts. If later evidence overturns
-    acceptance, require remediation and a new completion crosscheck.
+    acceptance, require remediation and a new completion crosscheck. A stale count or status is
+    `record` and does not overturn acceptance.
 23. If inline comments used, remove them before lint/commit.
 <!-- markdownlint-enable MD029 -->
 
@@ -282,14 +289,31 @@ dispositions; `quality_loop_convergence_template.md` is the loop-control contrac
    never silent acceptance. In-scope remediation and focused verification continue without
    a new request; scope, authority, budget/cap, safety, or publication triggers create a
    decision card.
-4. **Severity gating.** Only Blocker and Major findings trigger another round; Minor and Low
-   findings are fixed or listed as residuals. The lead may not reject or downgrade a tier-2
-   Major or Blocker: it goes to a decision card and is listed at the publication gate.
-   `accepted` is never a legal disposition for a tier-2 Major or Blocker.
+4. **Severity gating and finding class.** Each finding is `defect` (code or a rule that would
+   give a wrong outcome), `governance` (work done without a required approval, authority or
+   scope, an approval with no actor, or a gate that did not run) or `record` (a stale count or
+   status, a mismatched claim, a missing rationale or date on work that was authorized, wording
+   in a record, or a stray check, receipt or file made by an earlier round's fix). The class
+   follows the effect of the finding, not the kind of edit that fixes it: a fix to a rule, gate,
+   policy or validator makes the finding `defect` or `governance` even though the file is text,
+   and a defect an earlier fix introduced stays a `defect`. When a finding could be either class,
+   the higher class applies. Only the reviewer assigns or changes a class.
+   Blocker and Major are reserved for `defect` and `governance`; a Blocker or Major labelled
+   `record` is invalid and goes back to the reviewer to relabel or reclassify, and a dispute
+   goes to a decision card. A `record`
+   finding never sets the status to Needs revision or Blocking. This rule governs the other
+   blocking clauses in this file: only a `defect` or `governance` finding blocks under the
+   bottom-up pass, step 21 or step 22; the destination rule in step 15 stays blocking.
+   Only a Blocker or Major triggers another round; Minor and Low findings are fixed once by the
+   author or listed as residuals. The lead may not reject or downgrade a tier-2 Major or Blocker:
+   it goes to a decision card and is listed at the publication gate. `accepted` is never a legal
+   disposition for a tier-2 Major or Blocker.
 5. **Delta-only reruns, frozen scope.** A rerun reviews only what changed since the last
    round, against the scope frozen at the first round. Only changed lanes are re-reviewed; a
-   records-only edit triggers no full re-review unless a count, gate, status or security
-   claim changes.
+   records-only edit triggers no re-review, even when it changes a count or status (the author
+   re-runs `check_outputs_declared.py` and the validator); a changed gate, a changed security
+   claim or a changed gate result (a pass that becomes a fail, or the reverse) is not records-only
+   and does.
 6. **One reviewer type per question, and a findings quality bar.** Each finding carries a
    severity and evidence (path and line, or command output); Major and above also carry a
    failure scenario; the reviewer lists what was verified and what was tried.

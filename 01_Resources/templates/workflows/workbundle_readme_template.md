@@ -9,6 +9,8 @@ owner: ai_ops
 related:
   - 00_Admin/guides/ai_operations/guide_workflows.md
   - 00_Admin/guides/ai_operations/guide_ai_ops_vocabulary.md
+authority_level: 3  # 0-4; at 3 or higher the folder needs a wb_*.md (VS040)
+file_budget: 15  # files allowed in this folder (VS041, warning); raise it here with a reason
 description: Template for workbundle README files.
 ---
 
