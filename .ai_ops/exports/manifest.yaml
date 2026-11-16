@@ -101,7 +101,7 @@ workflows:
     sha256_12: 1e342fd677bd
 - workflow: crosscheck
   source: .ai_ops/workflows/crosscheck.md
-  source_sha256_12: 1a5b3b3a1704
+  source_sha256_12: d2cbe5e3132c
   description: Conduct a structured peer review of work.
   outputs:
   - path: plugins/ai-ops-governance/commands/crosscheck.md
@@ -278,7 +278,7 @@ workflows:
     sha256_12: 0c8a5dc03e6e
 - workflow: work
   source: .ai_ops/workflows/work.md
-  source_sha256_12: 6b0e6dd49613
+  source_sha256_12: 0c0f4fee01c6
   description: Signal that repo rules apply and establish work/run context.
   outputs:
   - path: plugins/ai-ops-governance/commands/work.md

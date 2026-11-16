@@ -247,6 +247,12 @@ rules:
         - README.md
         - manifest.yaml
         - execution_graph.yaml
+      runbundle_globs:
+        - 00_Admin/runbooks/rnb_*
+        - 02_Modules/**/docs/runbooks/rnb_*
+      required_runbundle_files:
+        - README.md
+        - manifest.yaml
   - id: VS020
     enabled: true
     paths:
@@ -478,6 +484,17 @@ rules:
     params:
       guide_path: 00_Admin/guides/ai_operations/guide_skills_commands_classification.md
       workflows_glob: .ai_ops/workflows/*.md
+  - id: VS040
+    enabled: true
+    params:
+      severity: error
+      min_authority_level: 3
+      workbook_glob: "wb_*.md"
+  - id: VS041
+    enabled: true
+    params:
+      severity: warning
+      default_file_budget: 15
   - id: VS036
     enabled: true
     paths:

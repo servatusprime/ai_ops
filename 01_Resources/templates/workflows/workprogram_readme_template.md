@@ -9,6 +9,7 @@ owner: ai_ops
 related:
   - 00_Admin/guides/ai_operations/guide_workflows.md
   - 00_Admin/guides/ai_operations/guide_ai_ops_vocabulary.md
+authority_level: 3  # 0-4; at 3 or higher the folder needs a wb_*.md in a bundle under it (VS040)
 description: Template for workprogram README files.
 ---
 

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import glob
 import hashlib
 import json
@@ -13,7 +14,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
@@ -30,10 +31,12 @@ ALLOWED_STATUS = {
     "archived",
     "pending_owner_gate",
 }
-IMPLEMENTED_RULE_IDS = {f"VS{number:03d}" for number in range(1, 38)}
+# VS038 and VS039 were retired on 2026-09-08 (00_Admin/logs/log_workbook_run.md); their ids are not reused.
+IMPLEMENTED_RULE_IDS = {f"VS{number:03d}" for number in range(1, 38)} | {"VS040", "VS041"}
+SUPPORTED_CONFIG_VERSIONS = frozenset({"0.1.0", "0.1.1"})
 _MARKDOWNLINT_COMMAND = "markdownlint"
 _MARKDOWNLINT_FIXED_ARGS = ("--config", ".markdownlint.json")
-_SAFE_ISSUE_CODES = frozenset({"VS-CONFIG", *(f"VS{number:03d}" for number in range(1, 38))})
+_SAFE_ISSUE_CODES = frozenset({"VS-CONFIG", *IMPLEMENTED_RULE_IDS})
 _WORKBOOK_TOPOLOGIES = frozenset({"single_agent", "multi_agent", "hybrid"})
 _WORKBOOK_LANES = frozenset(
     {"Coordinator", "Planner", "Researcher", "Executor", "Builder", "Reviewer", "Linter", "Closer"}
@@ -373,7 +376,9 @@ def resolve_repo_root(repo_root_arg: str | None, default_root: str) -> str:
         return os.path.normpath(default_root)
     candidate = repo_root_arg
     if not os.path.isabs(candidate):
-        candidate = os.path.join(default_root, candidate)
+        # Relative to the caller's directory, so a governed repo's hook can pass
+        # `--repo-root .` to this engine while the engine lives in ai_ops.
+        candidate = os.path.join(os.getcwd(), candidate)
     return _real_path(candidate)
 
 
@@ -884,7 +889,7 @@ def validate_config_envelope(config: Dict[str, Any], config_path: str, repo_root
     errors: List[str] = []
     if config.get("validator_id") != "validator_v1":
         errors.append(f"VS-CONFIG: unsupported validator_id in {config_path}")
-    if str(config.get("version", "")) != "0.1.0":
+    if str(config.get("version", "")) not in SUPPORTED_CONFIG_VERSIONS:
         errors.append(f"VS-CONFIG: unsupported config version in {config_path}")
     rules = config.get("rules")
     if not isinstance(rules, list) or not rules:
@@ -922,6 +927,35 @@ def validate_config_envelope(config: Dict[str, Any], config_path: str, repo_root
                 and not _is_within(os.path.join(repo_root, raw_path), repo_root)
             ):
                 errors.append(f"VS-CONFIG: {rule_id} path escapes repo root: {raw_path}")
+        baseline = (rule.get("params") or {}).get("baseline_exclude", [])
+        if not isinstance(baseline, list) or any(
+            not isinstance(item, str)
+            or not item.strip()
+            or os.path.isabs(item)
+            or ".." in item.replace("\\", "/").split("/")
+            for item in baseline
+        ):
+            errors.append(f"VS-CONFIG: {rule_id} baseline_exclude must be a list of repo-relative globs")
+        elif any(re.fullmatch(r"[*?/\\\[\]]*", item.strip()) for item in baseline):
+            errors.append(f"VS-CONFIG: {rule_id} baseline_exclude needs a literal path segment, not only wildcards")
+        if rule_id == "VS040" and not re.fullmatch(
+            r"[0-4]", str((rule.get("params") or {}).get("min_authority_level", "3")).strip()
+        ):
+            errors.append("VS-CONFIG: VS040 min_authority_level must be a single digit from 0 to 4")
+        if rule_id == "VS041" and not re.fullmatch(
+            r"\d{1,4}", str((rule.get("params") or {}).get("default_file_budget", "15")).strip()
+        ):
+            errors.append("VS-CONFIG: VS041 default_file_budget must be a whole number")
+        if rule_id == "VS036":
+            vs036 = rule.get("params") or {}
+            exempt = vs036.get("containment_exempt") or []
+            if vs036.get("containment_severity", "warning") not in ("warning", "error") or not isinstance(
+                exempt, list
+            ) or any(not isinstance(item, str) or not _CONTAINMENT_EXEMPT_ID.fullmatch(item) for item in exempt):
+                errors.append(
+                    "VS-CONFIG: VS036 containment_severity must be warning or error "
+                    "and containment_exempt a list of artifact ids"
+                )
     return errors
 
 
@@ -1450,6 +1484,8 @@ def check_program_completeness(
     warnings: List[str],
     severity: str,
     repo_root: str,
+    runbundle_globs: List[str] | None = None,
+    required_runbundle_files: List[str] | None = None,
 ) -> None:
     workprogram_pattern = (
         workprogram_glob if os.path.isabs(workprogram_glob) else os.path.join(repo_root, workprogram_glob)
@@ -1478,6 +1514,15 @@ def check_program_completeness(
                         severity,
                         f"VS019: runprogram missing {pattern} in {program}",
                     )
+
+    for bundle_glob in runbundle_globs or []:
+        bundle_pattern = bundle_glob if os.path.isabs(bundle_glob) else os.path.join(repo_root, bundle_glob)
+        for bundle in glob.glob(bundle_pattern):
+            if not os.path.isdir(bundle):
+                continue
+            for pattern in required_runbundle_files or []:
+                if not glob.glob(os.path.join(bundle, pattern)):
+                    record_issue(errors, warnings, severity, f"VS019: runbundle missing {pattern} in {bundle}")
 
 
 def check_guide_index(
@@ -1650,6 +1695,163 @@ def check_required_sections(
                     warnings,
                     severity,
                     f"{rule_id}: required section '{section}' missing in {path}",
+                )
+
+
+def _declared_int(text: str, key: str) -> Tuple[bool, int | None]:
+    """Read a top-level integer key from the leading front matter block.
+
+    Returns (declared, value); value is None when the key is present but holds no number.
+    Indented keys (nested under another field) are ignored, and a leading BOM is skipped.
+    """
+    text = text.lstrip("\ufeff")
+    end = text.find("\n---", 3) if text.startswith("---") else -1
+    if end == -1:
+        return False, None
+    match = re.search(rf"^{re.escape(key)}[ \t]*:[ \t]*(.*)$", text[3:end], flags=re.MULTILINE)
+    if not match:
+        return False, None
+    digits = re.search(r"\d+", match.group(1).split("#", 1)[0])
+    return True, int(digits.group()) if digits else None
+
+
+def _declared_authority_level(text: str) -> Tuple[bool, int | None]:
+    return _declared_int(text, "authority_level")
+
+
+_DEFAULT_CONTAINER_GLOBS = (
+    "90_Sandbox/ai_workbooks/wb_*",
+    "90_Sandbox/ai_workbooks/wp_*",
+    "90_Sandbox/ai_workbooks/work_program_*",
+)
+_DEFAULT_README_GLOBS = ("90_Sandbox/ai_workbooks/**/README.md",)
+
+
+def _matches_baseline(relative_path: str, patterns: List[str]) -> bool:
+    """True when a repo-relative path matches a rule's baseline_exclude globs."""
+    return any(fnmatch.fnmatch(relative_path, pattern.replace("\\", "/")) for pattern in patterns)
+
+
+def _has_workbook(folder: str, workbook_glob: str) -> bool:
+    for root, dirs, files in os.walk(folder):
+        dirs[:] = [name for name in dirs if not is_reparse(os.path.join(root, name))]
+        if any(fnmatch.fnmatch(name, workbook_glob) for name in files):
+            return True
+    return False
+
+
+def check_workbook_presence(
+    repo_root: str,
+    container_globs: List[str],
+    min_level: int,
+    workbook_glob: str,
+    baseline_exclude: List[str],
+    errors: List[str],
+    warnings: List[str],
+    severity: str,
+    rule_id: str,
+    readme_globs: List[str] | None = None,
+) -> None:
+    """VS040: every bundle or program folder has a README and, at authority_level >= min_level, a workbook.
+
+    VS024 validates workbooks that exist and cannot notice an absent one; this is the
+    enforcement half of the Level 3 rule in AGENTS.md. A folder is a bundle or program when
+    it matches container_globs (folders only, relative to the repo root). Its README must
+    exist. A README with no readable authority_level counts as level 3 or higher, so dropping
+    the field cannot avoid the workbook; a level below min_level needs none. Any other README
+    matching readme_globs (a differently named folder, a nested sub-bundle) that declares
+    min_level or higher needs a workbook in its own folder tree.
+    """
+    seen: set[str] = set()
+    for pattern in container_globs:
+        for folder in sorted(glob.glob(os.path.join(repo_root, pattern))):
+            relative = os.path.relpath(folder, repo_root).replace("\\", "/")
+            if relative in seen or not os.path.isdir(folder) or is_reparse(folder):
+                continue
+            seen.add(relative)
+            if _matches_baseline(relative, baseline_exclude):
+                continue
+            readme = os.path.join(folder, "README.md")
+            if not os.path.isfile(readme):
+                record_issue(errors, warnings, severity, f"{rule_id}: {relative}: no README.md")
+                continue
+            _, level = _declared_authority_level(read_text(readme))
+            if level is not None and level < min_level:
+                continue
+            if not _has_workbook(folder, workbook_glob):
+                declared = "no readable authority_level (counted as 3)" if level is None else f"authority_level {level}"
+                record_issue(
+                    errors,
+                    warnings,
+                    severity,
+                    f"{rule_id}: {relative}: {declared} needs at least one {workbook_glob} in this folder",
+                )
+    for pattern in _DEFAULT_README_GLOBS if readme_globs is None else readme_globs:
+        for readme in sorted(glob.glob(os.path.join(repo_root, pattern), recursive=True)):
+            folder = os.path.dirname(readme)
+            relative = os.path.relpath(folder, repo_root).replace("\\", "/")
+            if relative in seen or is_reparse(folder) or _matches_baseline(relative, baseline_exclude):
+                continue
+            seen.add(relative)
+            _, level = _declared_authority_level(read_text(readme))
+            if level is None or level < min_level or _has_workbook(folder, workbook_glob):
+                continue
+            record_issue(
+                errors,
+                warnings,
+                severity,
+                f"{rule_id}: {relative}: authority_level {level} needs at least one {workbook_glob} in this folder",
+            )
+
+
+_DEFAULT_BUNDLE_GLOBS = (
+    "90_Sandbox/ai_workbooks/wb_*",
+    "90_Sandbox/ai_workbooks/wp_*",
+)
+
+
+def check_bundle_file_budget(
+    repo_root: str,
+    bundle_globs: List[str],
+    default_budget: int,
+    baseline_exclude: List[str],
+    errors: List[str],
+    warnings: List[str],
+    severity: str,
+    rule_id: str,
+) -> None:
+    """VS041: a bundle folder holds at most file_budget files.
+
+    The budget is the README front matter key file_budget, else default_budget. It makes file
+    growth visible at warning severity; raise the budget in the README with a reason, or fold
+    records into the workbook.
+    """
+    seen: set[str] = set()
+    for pattern in bundle_globs:
+        for folder in sorted(glob.glob(os.path.join(repo_root, pattern))):
+            relative = os.path.relpath(folder, repo_root).replace("\\", "/")
+            if relative in seen or not os.path.isdir(folder) or is_reparse(folder):
+                continue
+            seen.add(relative)
+            if _matches_baseline(relative, baseline_exclude):
+                continue
+            budget = default_budget
+            readme = os.path.join(folder, "README.md")
+            if os.path.isfile(readme):
+                declared, value = _declared_int(read_text(readme), "file_budget")
+                if declared and value is not None:
+                    budget = value
+            count = 0
+            for root, dirs, files in os.walk(folder):
+                dirs[:] = [name for name in dirs if name != "__pycache__" and not is_reparse(os.path.join(root, name))]
+                count += len(files)
+            if count > budget:
+                record_issue(
+                    errors,
+                    warnings,
+                    severity,
+                    f"{rule_id}: {relative}: {count} files exceed file_budget {budget}; "
+                    "raise file_budget in the README with a reason, or fold records into the workbook",
                 )
 
 
@@ -1971,13 +2173,22 @@ def check_related_paths(
             )
 
 
+_CONTAINMENT_EXEMPT_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*")
+
+
 def check_run_family_graph_contract(
-    params: Dict[str, Any], repo_root: str, errors: List[str]
+    params: Dict[str, Any],
+    repo_root: str,
+    errors: List[str],
+    warnings: Optional[List[str]] = None,
 ) -> None:
     """VS036: run only fixed helper identities from this validator's ai_ops tree.
 
     ``params`` remains in the signature for compatibility with older configs, but
     config supplied by the target checkout must never choose executable code.
+    Two data-only params switch on the containment check (a runprogram consumes
+    a runbundle, a runbundle a runbook): ``containment_severity`` (``warning`` or
+    ``error``) and ``containment_exempt`` (a dated baseline of artifact ids).
     """
     helper_names = (
         "validate_run_family_graph.py",
@@ -2022,6 +2233,25 @@ def check_run_family_graph_contract(
     except (OSError, TypeError, ValueError) as exc:
         errors.append(f"VS036: configured input path could not be validated: {exc}")
         return
+    containment_args: List[str] = []
+    containment_severity = params.get("containment_severity")
+    if containment_severity is None and params.get("containment_exempt"):
+        containment_severity = "warning"  # an exemption list alone switches the check on at its default severity
+    if containment_severity is not None:
+        exempt = params.get("containment_exempt") or []
+        if containment_severity not in ("warning", "error") or not isinstance(exempt, list) or any(
+            not isinstance(item, str) or not _CONTAINMENT_EXEMPT_ID.fullmatch(item) for item in exempt
+        ):
+            errors.append(
+                "VS036: containment_severity must be warning or error "
+                "and containment_exempt a list of artifact ids"
+            )
+            return
+        containment_args = [
+            "--check-containment",
+            f"--containment-severity={containment_severity}",
+            *[f"--containment-exempt={item}" for item in exempt],
+        ]
     commands = (
         [
             sys.executable,
@@ -2034,6 +2264,7 @@ def check_run_family_graph_contract(
             registry,
             "--runbooks-readme",
             runbooks_readme,
+            *containment_args,
         ],
         [
             sys.executable,
@@ -2060,6 +2291,12 @@ def check_run_family_graph_contract(
         if result.returncode != 0:
             detail = (result.stderr or result.stdout or "no output").strip()
             errors.append(f"VS036: {label} check failed: {detail}")
+        elif containment_args and warnings is not None and label == "contract":
+            try:
+                reported = json.loads(result.stdout).get("warnings") or []
+            except (ValueError, AttributeError):
+                reported = []
+            warnings.extend(f"VS036: containment: {item}" for item in reported)
 
 
 def check_classification_invocation_consistency(
@@ -2135,6 +2372,25 @@ def check_classification_invocation_consistency(
             )
 
 
+def _engine_head(engine_root: str) -> str:
+    """Return the short git HEAD of the ai_ops checkout running this engine (read from .git, no subprocess)."""
+    git_dir = Path(engine_root, ".git")
+    try:
+        head = Path(git_dir, "HEAD").read_text(encoding="utf-8").strip()
+        if not head.startswith("ref: "):
+            return head[:7]
+        ref = head[5:]
+        ref_file = Path(git_dir, *ref.split("/"))
+        if ref_file.is_file():
+            return ref_file.read_text(encoding="utf-8").strip()[:7]
+        for line in Path(git_dir, "packed-refs").read_text(encoding="utf-8").splitlines():
+            if line.endswith(" " + ref):
+                return line.split(" ", 1)[0][:7]
+    except OSError:
+        pass
+    return "unknown"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -2150,8 +2406,9 @@ def main() -> int:
         "--repo-root",
         default=None,
         help=(
-            "Repo root used to resolve configured paths. Defaults to the ai_ops "
-            "repo root inferred from this script location (with git-root fallback)."
+            "Repo root used to resolve configured paths; a relative path resolves "
+            "against the current directory. Defaults to the ai_ops repo root "
+            "inferred from this script location (with git-root fallback)."
         ),
     )
     parser.add_argument(
@@ -2174,6 +2431,7 @@ def main() -> int:
     if not os.path.exists(default_config_probe):
         default_repo_root = detect_git_root(script_dir)
     repo_root = resolve_repo_root(args.repo_root, default_repo_root)
+    print(f"ai_ops engine {_engine_head(default_repo_root)}; checking {os.path.basename(repo_root)}", file=sys.stderr)
     if args.config:
         if os.path.isabs(args.config):
             config_path = args.config
@@ -2235,6 +2493,13 @@ def main() -> int:
         except ValueError as exc:
             errors.append(f"{rule_id}: {exc}")
             continue
+        baseline_exclude = list((rule.get("params") or {}).get("baseline_exclude") or [])
+        if baseline_exclude:
+            paths = [
+                path
+                for path in paths
+                if not _matches_baseline(os.path.relpath(path, repo_root).replace("\\", "/"), baseline_exclude)
+            ]
 
         if rule_id == "VS001":
             check_front_matter(paths, errors)
@@ -2326,6 +2591,8 @@ def main() -> int:
             runprogram_globs = rule.get("params", {}).get("runprogram_globs", [])
             required_workprogram_files = rule.get("params", {}).get("required_workprogram_files", [])
             required_runprogram_files = rule.get("params", {}).get("required_runprogram_files", [])
+            runbundle_globs = rule.get("params", {}).get("runbundle_globs", [])
+            required_runbundle_files = rule.get("params", {}).get("required_runbundle_files", [])
             if workprogram_glob:
                 check_program_completeness(
                     workprogram_glob,
@@ -2336,6 +2603,8 @@ def main() -> int:
                     warnings,
                     severity,
                     repo_root,
+                    runbundle_globs=runbundle_globs,
+                    required_runbundle_files=required_runbundle_files,
                 )
         elif rule_id == "VS020":
             severity = rule.get("params", {}).get("severity", "error")
@@ -2477,10 +2746,37 @@ def main() -> int:
         elif rule_id == "VS035":
             check_status_vs_checklist(paths, errors, rule_id)
         elif rule_id == "VS036":
-            check_run_family_graph_contract(rule.get("params", {}), repo_root, errors)
+            check_run_family_graph_contract(rule.get("params", {}), repo_root, errors, warnings)
         elif rule_id == "VS037":
             check_classification_invocation_consistency(
                 rule.get("params", {}), repo_root, errors, rule_id
+            )
+        elif rule_id == "VS040":
+            params = rule.get("params", {})
+            check_workbook_presence(
+                repo_root,
+                list(params.get("container_globs", _DEFAULT_CONTAINER_GLOBS)),
+                int(params.get("min_authority_level", 3)),
+                str(params.get("workbook_glob", "wb_*.md")),
+                list(params.get("baseline_exclude") or []),
+                errors,
+                warnings,
+                params.get("severity", "error"),
+                rule_id,
+                list(params.get("readme_globs", _DEFAULT_README_GLOBS)),
+            )
+
+        elif rule_id == "VS041":
+            params = rule.get("params", {})
+            check_bundle_file_budget(
+                repo_root,
+                list(params.get("bundle_globs", _DEFAULT_BUNDLE_GLOBS)),
+                int(params.get("default_file_budget", 15)),
+                list(params.get("baseline_exclude") or []),
+                errors,
+                warnings,
+                params.get("severity", "warning"),
+                rule_id,
             )
 
     if errors:

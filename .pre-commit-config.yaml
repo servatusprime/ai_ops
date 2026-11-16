@@ -26,14 +26,14 @@ repos:
         pass_filenames: false
         stages: [pre-commit]
       - id: ai-ops-validator
-        name: ai_ops validator (manual)
+        name: ai_ops validator
         entry: >-
           python 00_Admin/scripts/validate_repo_rules.py
           --repo-root .
           --config 00_Admin/configs/validator/validator_config.yaml
         language: system
         pass_filenames: false
-        stages: [manual]
+        stages: [pre-commit]
       - id: ai-ops-export-drift
         name: ai_ops export drift check
         entry: >-

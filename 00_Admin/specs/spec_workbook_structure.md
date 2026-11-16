@@ -4,9 +4,9 @@ id: spec_workbook_structure
 module: admin
 status: active
 license: Apache-2.0
-version: 0.3.1
+version: 0.3.2
 created: 2026-01-31
-updated: 2026-11-04
+updated: 2026-11-16
 owner: ai_ops
 ai_generated: true
 spec_archetype: governance_spec
@@ -91,6 +91,13 @@ Required gate behavior:
 - The workbook MUST include an explicit crosscheck stop marker before closeout.
 - If no workbundle or workprogram README exists, the workbook MUST include compacted
   context for handoff continuity.
+- A workbundle or workprogram README that declares `authority_level` 3 or higher MUST have
+  at least one `wb_*.md` under its folder (VS040); `/work` creates the two together.
+- Status lives in one place: the workbook's Status Checklist, or the bundle README when it
+  coordinates; other files point to it and copy no count or status. A bundle folder holds at
+  most `file_budget` files (README front matter, default 15; VS041, warning); raise it with a reason.
+- Progress is computed, never stored: `workbook_progress.py` reads the Ordered Execution Queue checkboxes
+  (tasks ticked per phase) for the lead's report after a bounded set of tasks (`work.md` Outputs).
 - The expanded `## Execution Topology Contract` block is required only for material
   delegation as `AGENTS.md` defines it; otherwise it is omitted and the frontmatter lane
   fields stay as they are.
@@ -160,6 +167,8 @@ forbidden. All entries in a block must use the same path anchor convention.
 
 ## Change Log
 
+- 0.3.2 (2026-11-16): Added the workbook-folder rule (VS040), the bundle file budget (VS041),
+  status in one place, and computed progress.
 - 0.3.1 (2026-11-06): VS024 validates workbook frontmatter routing vocabulary;
   the material-delegation body contract remains reviewer-checked.
 - 0.3.0 (2026-11-04): Section 4 is the one home for required workbook sections and pins

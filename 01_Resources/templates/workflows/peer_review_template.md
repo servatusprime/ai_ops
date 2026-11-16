@@ -112,6 +112,7 @@ surface.
 ## Findings (Ordered by Severity)
 
 Severity is `Blocker`, `Major`, `Minor` or `Low` (rules: `crosscheck.md` "Loop Control").
+Class is `defect`, `governance` or `record`; Blocker and Major are reserved for the first two.
 Every finding cites evidence (`E-xx`); a Blocker or Major also states a failure scenario.
 If a severity has no findings, write "None." under it.
 
@@ -120,6 +121,7 @@ If a severity has no findings, write "None." under it.
 #### <finding title>
 
 - Severity: `<Blocker | Major>`
+- Class: `<defect | governance>`
 - <Description of the issue>
 - Evidence: `E-xx`
 - Failure scenario: <concrete input or state, then the wrong or unsafe result>
@@ -132,6 +134,7 @@ If a severity has no findings, write "None." under it.
 #### <finding title>
 
 - Severity: `<Minor | Low>`
+- Class: `<defect | governance | record>`
 - <Description>
 - Evidence: `E-xx`
 - Enforcement type: `<code_enforced | doc_only | process_gap>`
@@ -254,6 +257,9 @@ Empty decision or rationale fields remain pending and block convergence.
 ## Review Status
 
 Status: <Acceptable | Acceptable with minor cleanup | Needs revision | Blocking issues>
+
+Use Needs revision or Blocking issues only while a `defect` or `governance` Blocker or Major is open;
+`record` findings alone give Acceptable with minor cleanup.
 
 ---
 
