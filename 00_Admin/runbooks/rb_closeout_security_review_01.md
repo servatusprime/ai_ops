@@ -18,6 +18,38 @@ evidence.
 Use this runbook for the exact slug scheduled for commit. Resolve the include
 set first; do not infer scope from a diff alone.
 
+## Shared Security Contract
+
+This runbook is the single normative source for the security admission shared by
+`/closeout` and `/work_savepoint`. The workflows reference this section rather
+than restating its rules. The shared implementation surface is the active
+policy, `closeout_security_prepass.py`,
+`validate_closeout_security_receipt.py`,
+`hooks/validate_closeout_security_head.py`, `record_closeout_security_review.py`,
+`emit_closeout_security_snapshot.py`, `closeout_applicability.py`, and the
+savepoint receipt validator. Changes to any of those files require the same
+HEAD-bound admission and regenerated workflow exports.
+
+The hook always judges staged security changes with trusted `HEAD` code. A
+policy/ruleset upgrade is a first-landing transaction: the HEAD validator is
+run with `--first-landing --config` against a separate first-landing receipt,
+version downgrades fail closed, and no policy-upgrade commit may rely on a
+staged validator or a `Closeout-Security` trailer. Packet application passes a
+custom first-landing receipt to the hook through its controlled environment;
+the default path is `.ai_ops/local/closeout_security/first_landing.yaml`.
+Delta packets must use raw UTF-8 text diffs with text conversion disabled,
+respect the configured minimum, context, and maximum limits, and cannot hide a
+changed delta as an empty result. Baseline rows re-apply forced-T2 routing.
+New completion reviews must identify reviewer-authored, snapshot-bound, or
+explicitly relayed provenance; historical receipts remain verifiable without
+retroactive metadata.
+For a new `snapshot_bound` completion review, the referenced snapshot must be
+YAML `snapshot_version: 1.0.0` with `review_type: completion`, the exact
+`workbook_ref`, the same non-blocking `verdict`, and a named reviewer distinct
+from the completion actor. The review frontmatter must bind that snapshot by
+relative path and SHA-256; a merely existing or hash-matching file is not
+independent evidence.
+
 1. Record branch, `HEAD`, repo root, and the exact include paths.
 2. Freeze the include set against the selected `HEAD` and index. The receipt
    scope lock binds every path, change status, and source digest to that
@@ -78,11 +110,11 @@ set first; do not infer scope from a diff alone.
    For the first landing of a policy/ruleset upgrade, stage the canonical
    policy and validator together and run the explicit
    `--first-landing --config` gate manually against a separate first-landing
-   receipt. Do not install that receipt at the hook's `latest.yaml` path and
-   do not add a `Closeout-Security` trailer to this policy-upgrade commit: the
-   unchanged trusted HEAD hook must see an ordinary commit and must never
-   execute staged admission code. After the policy lands, regenerate the
-   normal v0.2 reviewer-read receipt at `latest.yaml` and use the trailer for
+   receipt. The installed hook repeats that HEAD-validator first-landing gate;
+   it never trusts staged validator code. Do not install that receipt at the
+   hook's `latest.yaml` path and do not add a `Closeout-Security` trailer to
+   this policy-upgrade commit. After the policy lands, regenerate the normal
+   v0.2 reviewer-read receipt at `latest.yaml` and use the trailer for
    subsequent ai_ops closeouts. Deterministic receipts use schema 0.4.0 and
    must retain their non-pass disposition in the trailer.
 8. On a discarded or superseded slug, use `--discard` and record the reason.

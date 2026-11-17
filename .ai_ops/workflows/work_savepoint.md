@@ -260,12 +260,11 @@ Record `admission_mode`, `policy_source`, receipt path, and disposition. A
 manual waiver, skip, or unrecorded bypass is not a savepoint disposition. For a
 read-only checkpoint, report applicability without Git mutation; for `--commit`,
 an eligible admission and valid receipt are required before approval. Follow
-`00_Admin/runbooks/rb_closeout_security_review_01.md` for the security prepass,
-per-packet sizing, baseline/delta review, receipt, `Closeout-Security` trailer,
-and first-landing procedure. A receipt-sync-only commit still requires a new
-HEAD-bound receipt. The baseline/delta route may reduce re-reading within one
-HEAD for receipt/log/registry surfaces, but it is not a cross-commit shortcut
-and cannot cover changed code, policy, workflow, or hook bytes.
+`00_Admin/runbooks/rb_closeout_security_review_01.md`, the single normative
+source for the shared security admission contract, including HEAD-bound first
+landing, delta/baseline limits, reviewer provenance, receipt binding, and the
+`Closeout-Security` trailer. A receipt-sync-only commit still requires a new
+HEAD-bound receipt.
 
 ## Future-Work Applicability Gate
 

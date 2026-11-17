@@ -17,7 +17,14 @@ from pathlib import Path
 def default_workspace_root(script_file: str | Path) -> Path:
     """Return the workspace containing the ai_ops repository."""
 
-    return Path(script_file).resolve().parents[3]
+    resolved = Path(script_file).resolve()
+    try:
+        return resolved.parents[3]
+    except IndexError as exc:
+        raise ValueError(
+            f"cannot derive workspace root from script path {resolved}; "
+            "the path must have at least four parent levels"
+        ) from exc
 
 
 def _candidate_paths(value: str | Path, workspace_root: Path, cwd: Path | None) -> list[Path]:
@@ -37,8 +44,12 @@ def resolve_repo_root(
 ) -> Path:
     """Resolve a repository argument from the caller or workspace root."""
 
-    workspace = (workspace_root or default_workspace_root(__file__)).resolve()
-    candidates = _candidate_paths(value, workspace, cwd)
+    raw = Path(value)
+    if raw.is_absolute():
+        candidates = [raw]
+    else:
+        workspace = (workspace_root or default_workspace_root(__file__)).resolve()
+        candidates = _candidate_paths(raw, workspace, cwd)
     for candidate in candidates:
         resolved = candidate.resolve()
         if resolved.is_dir() and (resolved / ".git").exists():
@@ -56,8 +67,12 @@ def resolve_input_path(
 ) -> Path:
     """Resolve a control input from the caller or workspace root."""
 
-    workspace = (workspace_root or default_workspace_root(__file__)).resolve()
-    candidates = _candidate_paths(value, workspace, cwd)
+    raw = Path(value)
+    if raw.is_absolute():
+        candidates = [raw]
+    else:
+        workspace = (workspace_root or default_workspace_root(__file__)).resolve()
+        candidates = _candidate_paths(raw, workspace, cwd)
     if must_exist:
         for candidate in candidates:
             resolved = candidate.resolve()

@@ -1127,6 +1127,148 @@ parameter_profiles: {}
             self.assertIsNotNone(re.fullmatch(pattern, "1.2.0"))
             self.assertIsNone(re.fullmatch(pattern, "latest"))
 
+    def _graph_without_edge(self, consumer: str, provider: str) -> dict:
+        document = load(VALID)
+        document["consumes"] = [
+            edge
+            for edge in document["consumes"]
+            if (edge["consumer_id"], edge["provider_id"]) != (consumer, provider)
+        ]
+        return document
+
+    def test_containment_passes_the_valid_fixture(self):
+        graph = validator.validate_graph(load(VALID))
+        self.assertEqual(validator.validate_containment(graph), [])
+
+    def test_containment_flags_a_runbundle_with_no_runbook(self):
+        document = self._graph_without_edge("runbundle-secondary", "runbook-shared")
+        graph = validator.validate_graph(document)
+        self.assertEqual(
+            validator.validate_containment(graph),
+            ["runbundle-secondary: runbundle consumes no runbook"],
+        )
+
+    def test_containment_flags_a_runprogram_with_no_runbundle(self):
+        document = self._graph_without_edge("runprogram-beta", "runbundle-shared")
+        graph = validator.validate_graph(document)
+        self.assertEqual(
+            validator.validate_containment(graph),
+            ["runprogram-beta: runprogram consumes no runbundle"],
+        )
+
+    def test_containment_exemption_baselines_and_reports_stale_entries(self):
+        document = self._graph_without_edge("runbundle-secondary", "runbook-shared")
+        graph = validator.validate_graph(document)
+        self.assertEqual(
+            validator.validate_containment(graph, {"runbundle-secondary"}), []
+        )
+        stale = validator.validate_containment(
+            graph, {"runbundle-secondary", "runbundle-shared", "no-such-artifact", "runbook-shared"}
+        )
+        self.assertEqual(
+            stale,
+            [
+                "no-such-artifact: stale containment exemption",
+                "runbook-shared: stale containment exemption",
+                "runbundle-shared: stale containment exemption",
+            ],
+        )
+
+    def test_containment_cli_warns_then_fails_by_severity(self):
+        with contained_temporary_directory() as tmp:
+            source = Path(tmp) / "graph.yaml"
+            source.write_text(
+                yaml.safe_dump(self._graph_without_edge("runbundle-secondary", "runbook-shared")),
+                encoding="utf-8",
+            )
+            base = [sys.executable, str(SCRIPTS / "validate_run_family_graph.py"), "--input", str(source)]
+            clean = subprocess.run(base, capture_output=True, text=True, check=False)
+            self.assertEqual(clean.returncode, 0, clean.stderr)
+            self.assertNotIn("warnings", json.loads(clean.stdout))
+            warned = subprocess.run(
+                [*base, "--check-containment"], capture_output=True, text=True, check=False
+            )
+            self.assertEqual(warned.returncode, 0, warned.stderr)
+            self.assertEqual(
+                json.loads(warned.stdout)["warnings"],
+                ["runbundle-secondary: runbundle consumes no runbook"],
+            )
+            failed = subprocess.run(
+                [*base, "--check-containment", "--containment-severity=error"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(failed.returncode, 1)
+            self.assertIn("consumes no runbook", failed.stderr)
+            exempt = subprocess.run(
+                [
+                    *base,
+                    "--check-containment",
+                    "--containment-severity=error",
+                    "--containment-exempt=runbundle-secondary",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(exempt.returncode, 0, exempt.stderr)
+
+    def test_vs036_containment_params_pass_through_and_warn(self):
+        reported = json.dumps(
+            {"result": "pass", "warnings": ["runbundle-x: runbundle consumes no runbook"]}
+        )
+        validated = subprocess.CompletedProcess([], 0, stdout=reported, stderr="")
+        generated = subprocess.CompletedProcess([], 0, stdout="pass", stderr="")
+        with mock.patch.object(
+            repo_validator.subprocess, "run", side_effect=[validated, generated]
+        ) as run:
+            errors: list[str] = []
+            warnings: list[str] = []
+            repo_validator.check_run_family_graph_contract(
+                {
+                    "containment_severity": "warning",
+                    "containment_exempt": ["runbundle-old"],
+                },
+                str(ADMIN.parent),
+                errors,
+                warnings,
+            )
+        self.assertEqual(errors, [])
+        self.assertEqual(
+            warnings, ["VS036: containment: runbundle-x: runbundle consumes no runbook"]
+        )
+        command = run.call_args_list[0].args[0]
+        self.assertIn("--check-containment", command)
+        self.assertIn("--containment-severity=warning", command)
+        self.assertIn("--containment-exempt=runbundle-old", command)
+
+    def test_vs036_exemption_list_alone_switches_containment_on_as_a_warning(self):
+        done = subprocess.CompletedProcess([], 0, stdout="{}", stderr="")
+        with mock.patch.object(
+            repo_validator.subprocess, "run", side_effect=[done, done]
+        ) as run:
+            repo_validator.check_run_family_graph_contract(
+                {"containment_exempt": ["runbundle-old"]}, str(ADMIN.parent), [], []
+            )
+        command = run.call_args_list[0].args[0]
+        self.assertIn("--check-containment", command)
+        self.assertIn("--containment-severity=warning", command)
+        self.assertIn("--containment-exempt=runbundle-old", command)
+
+    def test_vs036_rejects_option_shaped_exemption_ids(self):
+        for bad in ("--check-files", "-x", "a b", ""):
+            errors: list[str] = []
+            with mock.patch.object(repo_validator.subprocess, "run") as run:
+                repo_validator.check_run_family_graph_contract(
+                    {"containment_severity": "warning", "containment_exempt": [bad]},
+                    str(ADMIN.parent),
+                    errors,
+                    [],
+                )
+            self.assertEqual(run.call_count, 0, bad)
+            self.assertEqual(len(errors), 1, bad)
+
 
 if __name__ == "__main__":
     unittest.main()

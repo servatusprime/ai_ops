@@ -63,6 +63,8 @@ class FutureWorkCompletionTests(unittest.TestCase):
             "---\n"
             "status: completed\n"
             "review_type: completion\n"
+            "reviewer: independent-reviewer\n"
+            "provenance: reviewer_authored\n"
             "workbook_ref: 90_Sandbox/ai_workbooks/wb_test_01.md\n"
             "---\n\n"
             "Verdict: PASS\n",
@@ -75,6 +77,187 @@ class FutureWorkCompletionTests(unittest.TestCase):
         subprocess.run(["git", "-C", str(root), "add", "00_Admin/backlog/future_work_registry.yaml"], check=True)
         subprocess.run(["git", "-C", str(root), "commit", "--quiet", "-m", "baseline"], check=True)
         return temp_dir, root, registry, log, scorecard
+
+    def test_verdict_parser_canonicalizes_bold_counted_verdict(self) -> None:
+        self.assertEqual(
+            ["acceptable with notes"],
+            MODULE._review_verdicts("**Verdict: Acceptable with notes** (counts)\n"),
+        )
+
+    def test_verdict_parser_reports_unknown_verdict_with_line_number(self) -> None:
+        with self.assertRaisesRegex(MODULE.CompletionError, "line 1"):
+            MODULE._review_verdicts("Verdict: Maybe\n")
+
+    def test_independent_review_cannot_claim_the_completion_actor(self) -> None:
+        temp_dir, root, registry, log, scorecard = self._fixture("fw_20261023_89")
+        try:
+            review = root / "90_Sandbox" / "ai_workbooks" / "review_pass.md"
+            text = review.read_text(encoding="utf-8").replace(
+                "reviewer: independent-reviewer", "reviewer: test-operator"
+            )
+            review.write_text(text, encoding="utf-8")
+            with self.assertRaises(MODULE.CompletionError):
+                MODULE.complete(
+                    repo=root,
+                    registry_path=registry,
+                    run_log_path=log,
+                    scorecard_path=scorecard,
+                    registry_id="fw_20261023_89",
+                    completion_workbook="90_Sandbox/ai_workbooks/wb_test_01.md",
+                    artifacts=["90_Sandbox/ai_workbooks/wb_test_01.md"],
+                    status="success",
+                    exit_code=0,
+                    actor="test-operator",
+                    run_id="00000000-0000-4000-8000-000000000089",
+                    provenance_refs=["90_Sandbox/ai_workbooks/review_pass.md"],
+                    packet_root=root / "packets",
+                )
+        finally:
+            temp_dir.cleanup()
+
+    def test_snapshot_bound_review_binds_reviewer_workbook_and_verdict(self) -> None:
+        temp_dir, root, registry, log, scorecard = self._fixture("fw_20261023_91")
+        try:
+            review = root / "90_Sandbox" / "ai_workbooks" / "review_pass.md"
+            snapshot = root / "90_Sandbox" / "ai_workbooks" / "completion_snapshot.yaml"
+            snapshot.write_text(
+                yaml.safe_dump(
+                    {
+                        "snapshot_version": "1.0.0",
+                        "review_type": "completion",
+                        "workbook_ref": "90_Sandbox/ai_workbooks/wb_test_01.md",
+                        "verdict": "PASS",
+                        "reviewer": "snapshot-reviewer",
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+            review.write_text(
+                "---\n"
+                "status: completed\n"
+                "review_type: completion\n"
+                "reviewer: snapshot-reviewer\n"
+                "provenance: snapshot_bound\n"
+                "workbook_ref: 90_Sandbox/ai_workbooks/wb_test_01.md\n"
+                f"snapshot_ref: 90_Sandbox/ai_workbooks/completion_snapshot.yaml\n"
+                f"snapshot_sha256: {MODULE._sha256_file(snapshot)}\n"
+                "---\n\n"
+                "Verdict: PASS\n",
+                encoding="utf-8",
+            )
+            receipt = MODULE.complete(
+                repo=root,
+                registry_path=registry,
+                run_log_path=log,
+                scorecard_path=scorecard,
+                registry_id="fw_20261023_91",
+                completion_workbook="90_Sandbox/ai_workbooks/wb_test_01.md",
+                artifacts=["90_Sandbox/ai_workbooks/wb_test_01.md"],
+                status="success",
+                exit_code=0,
+                actor="test-operator",
+                run_id="00000000-0000-4000-8000-000000000091",
+                provenance_refs=["90_Sandbox/ai_workbooks/review_pass.md"],
+                packet_root=root / "packets",
+            )
+            self.assertTrue(receipt.is_file())
+        finally:
+            temp_dir.cleanup()
+
+    def test_snapshot_bound_review_rejects_mismatched_verdict(self) -> None:
+        temp_dir, root, registry, log, scorecard = self._fixture("fw_20261023_92")
+        try:
+            review = root / "90_Sandbox" / "ai_workbooks" / "review_pass.md"
+            snapshot = root / "90_Sandbox" / "ai_workbooks" / "completion_snapshot.yaml"
+            snapshot.write_text(
+                yaml.safe_dump(
+                    {
+                        "snapshot_version": "1.0.0",
+                        "review_type": "completion",
+                        "workbook_ref": "90_Sandbox/ai_workbooks/wb_test_01.md",
+                        "verdict": "NEEDS_REVISION",
+                        "reviewer": "snapshot-reviewer",
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+            review.write_text(
+                "---\nstatus: completed\nreview_type: completion\n"
+                "reviewer: snapshot-reviewer\nprovenance: snapshot_bound\n"
+                "workbook_ref: 90_Sandbox/ai_workbooks/wb_test_01.md\n"
+                "snapshot_ref: 90_Sandbox/ai_workbooks/completion_snapshot.yaml\n"
+                f"snapshot_sha256: {MODULE._sha256_file(snapshot)}\n---\n\n"
+                "Verdict: PASS\n",
+                encoding="utf-8",
+            )
+            with self.assertRaises(MODULE.CompletionError):
+                MODULE.complete(
+                    repo=root,
+                    registry_path=registry,
+                    run_log_path=log,
+                    scorecard_path=scorecard,
+                    registry_id="fw_20261023_92",
+                    completion_workbook="90_Sandbox/ai_workbooks/wb_test_01.md",
+                    artifacts=["90_Sandbox/ai_workbooks/wb_test_01.md"],
+                    status="success",
+                    exit_code=0,
+                    actor="test-operator",
+                    run_id="00000000-0000-4000-8000-000000000092",
+                    provenance_refs=["90_Sandbox/ai_workbooks/review_pass.md"],
+                    packet_root=root / "packets",
+                )
+        finally:
+            temp_dir.cleanup()
+
+    def test_snapshot_bound_review_rejects_null_or_non_string_reviewer(self) -> None:
+        for index, snapshot_reviewer in enumerate((None, 17), start=93):
+            with self.subTest(snapshot_reviewer=snapshot_reviewer):
+                temp_dir, root, registry, log, scorecard = self._fixture(f"fw_20261023_{index}")
+                try:
+                    review = root / "90_Sandbox" / "ai_workbooks" / "review_pass.md"
+                    snapshot = root / "90_Sandbox" / "ai_workbooks" / "completion_snapshot.yaml"
+                    snapshot.write_text(
+                        yaml.safe_dump(
+                            {
+                                "snapshot_version": "1.0.0",
+                                "review_type": "completion",
+                                "workbook_ref": "90_Sandbox/ai_workbooks/wb_test_01.md",
+                                "verdict": "PASS",
+                                "reviewer": snapshot_reviewer,
+                            },
+                            sort_keys=False,
+                        ),
+                        encoding="utf-8",
+                    )
+                    review.write_text(
+                        "---\nstatus: completed\nreview_type: completion\n"
+                        "reviewer: snapshot-reviewer\nprovenance: snapshot_bound\n"
+                        "workbook_ref: 90_Sandbox/ai_workbooks/wb_test_01.md\n"
+                        "snapshot_ref: 90_Sandbox/ai_workbooks/completion_snapshot.yaml\n"
+                        f"snapshot_sha256: {MODULE._sha256_file(snapshot)}\n---\n\n"
+                        "Verdict: PASS\n",
+                        encoding="utf-8",
+                    )
+                    with self.assertRaises(MODULE.CompletionError):
+                        MODULE.complete(
+                            repo=root,
+                            registry_path=registry,
+                            run_log_path=log,
+                            scorecard_path=scorecard,
+                            registry_id=f"fw_20261023_{index}",
+                            completion_workbook="90_Sandbox/ai_workbooks/wb_test_01.md",
+                            artifacts=["90_Sandbox/ai_workbooks/wb_test_01.md"],
+                            status="success",
+                            exit_code=0,
+                            actor="test-operator",
+                            run_id=f"00000000-0000-4000-8000-0000000000{index}",
+                            provenance_refs=["90_Sandbox/ai_workbooks/review_pass.md"],
+                            packet_root=root / "packets",
+                        )
+                finally:
+                    temp_dir.cleanup()
 
     def test_success_deletes_only_after_parity_and_writes_receipt(self) -> None:
         temp_dir, root, registry, log, scorecard = self._fixture("fw_20261023_90")

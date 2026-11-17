@@ -46,7 +46,11 @@ def _set_state(path: Path, packet: dict[str, Any], state: str, result: dict[str,
 
 
 def _run_commit(
-    repo: Path, message: str, paths: list[str], hooks_path: Path | None = None
+    repo: Path,
+    message: str,
+    paths: list[str],
+    hooks_path: Path | None = None,
+    first_landing_receipt: Path | None = None,
 ) -> tuple[int, str, str]:
     command = ["git", "-C", str(repo)]
     if hooks_path is not None:
@@ -59,6 +63,8 @@ def _run_commit(
         message_file.write_text(message, encoding="utf-8", newline="\n")
         command.extend(["commit", "--only", "--cleanup=verbatim", "-F", str(message_file), "--", *paths])
         commit_env = _pre_commit_env(repo, builder._git_env())
+        if first_landing_receipt is not None:
+            commit_env["AI_OPS_FIRST_LANDING_RECEIPT"] = str(first_landing_receipt.resolve())
         completed = subprocess.run(
             command,
             check=False,
@@ -76,7 +82,7 @@ def _run_commit(
             fallback_index = builder.index_snapshot(repo)
             fallback_changes, fallback_tree, _fallback_observed = builder.projection(repo, paths)
             native_pre_commit_code, native_pre_commit_stdout, native_pre_commit_stderr = _run_native_pre_commit(
-                repo, None
+                repo, commit_env
             )
             if native_pre_commit_code:
                 return native_pre_commit_code, native_pre_commit_stdout, native_pre_commit_stderr
@@ -85,7 +91,9 @@ def _run_commit(
             current_changes, current_tree, _current_observed = builder.projection(repo, paths)
             if current_changes != fallback_changes or current_tree != fallback_tree:
                 return 1, native_pre_commit_stdout, "native pre-commit changed approved bytes before fallback commit"
-            native_code, native_stdout, native_stderr = _run_native_commit_msg_hook(repo, message_file)
+            native_code, native_stdout, native_stderr = _run_native_commit_msg_hook(
+                repo, message_file, commit_env
+            )
             if native_code:
                 return native_code, native_stdout, native_stderr
             if builder.index_snapshot(repo) != fallback_index:
@@ -372,8 +380,10 @@ def _run_native_pre_commit(repo: Path, env: dict[str, str] | None) -> tuple[int,
     return completed.returncode, completed.stdout, completed.stderr
 
 
-def _run_native_commit_msg_hook(repo: Path, message_file: Path) -> tuple[int, str, str]:
-    effective = _pre_commit_env(repo, None)
+def _run_native_commit_msg_hook(
+    repo: Path, message_file: Path, env: dict[str, str] | None = None
+) -> tuple[int, str, str]:
+    effective = _pre_commit_env(repo, env)
     completed = subprocess.run(
         [
             sys.executable,
@@ -414,35 +424,46 @@ def _has_hook(packet: dict[str, Any], hook_name: str) -> bool:
 
 
 def _run_first_landing_gate(repo: Path, include: list[str], receipt_path: Path) -> None:
-    """Validate a supplied staged first-landing receipt before commit."""
+    """Validate a first-landing receipt with validator code from target HEAD."""
     _contained_repo_path(receipt_path, repo, "first-landing receipt")
     if not receipt_path.is_file():
         raise builder.PacketError(f"first-landing receipt does not exist: {receipt_path}")
     config = repo / "00_Admin/configs/closeout_security_tiers.yaml"
-    validator = Path(__file__).with_name("validate_closeout_security_receipt.py")
-    gate = subprocess.run(
-        [
-            sys.executable,
-            str(validator),
-            "--repo-root",
-            str(repo),
-            "--config",
-            str(config),
-            "--receipt",
-            str(receipt_path),
-            "--gate",
-            "--staged",
-            "--first-landing",
-        ],
-        check=False,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        env=builder._git_env(),
-    )
-    if gate.returncode:
-        detail = (gate.stderr or gate.stdout).strip()
-        raise builder.PacketError(f"first-landing staged gate failed: {detail}")
+    with tempfile.TemporaryDirectory(prefix="closeout-first-landing-") as temp_dir:
+        validator = Path(temp_dir) / "validate_closeout_security_receipt.py"
+        target_paths = Path(temp_dir) / "target_paths.py"
+        for source, destination in (
+            ("00_Admin/scripts/validate_closeout_security_receipt.py", validator),
+            ("00_Admin/scripts/target_paths.py", target_paths),
+        ):
+            try:
+                payload = builder._git(repo, "show", f"HEAD:{source}", text=False)
+            except builder.PacketError as exc:
+                raise builder.PacketError(f"HEAD first-landing validator is unavailable: {source}") from exc
+            destination.write_bytes(bytes(payload))
+        gate = subprocess.run(
+            [
+                sys.executable,
+                str(validator),
+                "--repo-root",
+                str(repo),
+                "--config",
+                str(config),
+                "--receipt",
+                str(receipt_path),
+                "--gate",
+                "--staged",
+                "--first-landing",
+            ],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=builder._git_env(),
+        )
+        if gate.returncode:
+            detail = (gate.stderr or gate.stdout).strip()
+            raise builder.PacketError(f"first-landing staged gate failed: {detail}")
 
 
 def _recomputed_exceeded(
@@ -668,6 +689,8 @@ def apply_packet(packet_path: Path, approval_path: Path, first_landing_receipt: 
         try:
             try:
                 hook_index_path, hook_env = _prepare_hook_index(repo, include)
+                if first_landing_receipt is not None:
+                    hook_env["AI_OPS_FIRST_LANDING_RECEIPT"] = str(first_landing_receipt.resolve())
             except builder.PacketError as exc:
                 unstaged = _unstage(repo, include)
                 _set_state(
@@ -779,8 +802,19 @@ def apply_packet(packet_path: Path, approval_path: Path, first_landing_receipt: 
         )
         raise builder.PacketError("execution exceeded a configured cost limit before commit; packet is parked")
 
+    # The disposable native-hook dry run passed with ai_ops's real
+    # pre-commit-framework shims. Keep the installed hooks active for the
+    # ordinary commit; the earlier isolated and real-index preflights remain
+    # evidence checks, while native pre-commit/commit-msg hooks retain final
+    # authority at commit time.
+    if first_landing_receipt is None:
+        commit_gate_env = builder._git_env()
+    else:
+        commit_gate_env = builder._git_env()
+        commit_gate_env["AI_OPS_FIRST_LANDING_RECEIPT"] = str(first_landing_receipt.resolve())
+
     if _has_hook(packet, "pre-commit"):
-        hook_code, hook_stdout, hook_stderr = _run_hook(repo, "pre-commit", builder._git_env())
+        hook_code, hook_stdout, hook_stderr = _run_hook(repo, "pre-commit", commit_gate_env)
         if hook_code:
             unstaged = _unstage(repo, include)
             _set_state(
@@ -846,12 +880,15 @@ def apply_packet(packet_path: Path, approval_path: Path, first_landing_receipt: 
             )
             raise builder.PacketError("execution exceeded a configured cost limit at the commit gate; packet is parked")
 
-    # The disposable native-hook dry run passed with ai_ops's real
-    # pre-commit-framework shims. Keep the installed hooks active for the
-    # ordinary commit; the earlier isolated and real-index preflights remain
-    # evidence checks, while native pre-commit/commit-msg hooks retain final
-    # authority at commit time.
-    return_code, stdout, stderr = _run_commit(repo, packet["commit_message"], include)
+    if first_landing_receipt is None:
+        return_code, stdout, stderr = _run_commit(repo, packet["commit_message"], include)
+    else:
+        return_code, stdout, stderr = _run_commit(
+            repo,
+            packet["commit_message"],
+            include,
+            first_landing_receipt=first_landing_receipt,
+        )
     if return_code:
         unstaged = _unstage(repo, include)
         _set_state(

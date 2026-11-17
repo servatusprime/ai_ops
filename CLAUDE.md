@@ -23,8 +23,8 @@ No compiled code. Governance is pure Markdown/YAML.
 - Markdown lint: ai_ops has its own `.pre-commit-config.yaml` and
   `.markdownlint.json` at its repo root; run
   `pre-commit run markdownlint --files <paths>` from the `ai_ops/` repo
-  root for ai_ops files. Do not run from `re_stack/` root for ai_ops
-  content -- that root's config applies to `re_stack/` files, not this
+  root for ai_ops files. Do not run from another repo's root for ai_ops
+  content -- that root's config applies to that repo's files, not this
   repo's.
 - YAML lint: `pre-commit run yamllint --all-files`
 - Repo validator: `00_Admin/runbooks/rb_repo_validator_01.md`

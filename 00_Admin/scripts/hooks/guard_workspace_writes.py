@@ -88,7 +88,7 @@ def deny(cause: str, owner: str = "workspace owner") -> int:
 
 
 def expand(value: str, root: Path) -> Path:
-    workspace = root.parent.resolve() if (root / "00_Admin").exists() else root.resolve()
+    workspace = root.resolve()
     drive = workspace.drive.rstrip(":").lower()
     remainder = str(workspace)[2:].replace("\\", "-").replace("/", "-").replace("_", "-")
     project_slug = f"{drive}-{remainder}"

@@ -4,11 +4,14 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+import yaml
 
 VALIDATOR = "00_Admin/scripts/validate_closeout_security_receipt.py"
 POLICY = "00_Admin/configs/closeout_security_tiers.yaml"
@@ -21,11 +24,13 @@ FORCED_PREFIXES = (
     ".claude/",
     ".agents/",
     "01_Resources/templates/config/",
+    ".githooks/",
 )
 FORCED_FILES = {"AGENTS.md", "CLAUDE.md", ".pre-commit-config.yaml", "SECURITY.md"}
 SECURITY_FILES = {
     "00_Admin/scripts/closeout_security_prepass.py",
     "00_Admin/scripts/validate_closeout_security_receipt.py",
+    "00_Admin/scripts/target_paths.py",
     "00_Admin/scripts/check_outside_writes.py",
     "00_Admin/scripts/hooks/guard_workspace_writes.py",
     "00_Admin/scripts/hooks/validate_closeout_security_head.py",
@@ -84,11 +89,52 @@ def trusted_validator_present(repo: Path) -> bool:
     ).returncode == 0
 
 
-def staged_policy_upgrade(repo: Path, paths: set[str]) -> bool:
-    """Recognize the separately gated first landing of the canonical policy."""
+class _UniqueKeyLoader(yaml.SafeLoader):
+    """Reject duplicate YAML keys instead of silently accepting the last one."""
+
+
+def _construct_unique_mapping(loader: _UniqueKeyLoader, node: yaml.MappingNode, deep: bool = False) -> dict:
+    mapping: dict = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if key in mapping:
+            raise ValueError(f"duplicate YAML key: {key}")
+        mapping[key] = loader.construct_object(value_node, deep=deep)
+    return mapping
+
+
+_UniqueKeyLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+    _construct_unique_mapping,
+)
+
+
+def _policy_versions(text: str) -> tuple[str, str] | None:
+    try:
+        policy = yaml.load(text, Loader=_UniqueKeyLoader) or {}
+    except (ValueError, yaml.YAMLError):
+        return None
+    if not isinstance(policy, dict):
+        return None
+    version = policy.get("version")
+    ruleset = policy.get("ruleset_version")
+    if not isinstance(version, str) or not isinstance(ruleset, str):
+        return None
+    return version.strip(), ruleset.strip()
+
+
+def _version_key(value: str) -> tuple[int, ...] | None:
+    parts = value.split(".")
+    if not parts or any(not part.isdigit() for part in parts):
+        return None
+    return tuple(int(part) for part in parts)
+
+
+def staged_policy_state(repo: Path, paths: set[str]) -> str:
+    """Classify a staged canonical policy change without trusting staged code."""
 
     if POLICY not in paths:
-        return False
+        return "unchanged"
     result = subprocess.run(
         ["git", "-C", str(repo), "show", f":{POLICY}"],
         check=False,
@@ -96,26 +142,65 @@ def staged_policy_upgrade(repo: Path, paths: set[str]) -> bool:
         stderr=subprocess.PIPE,
     )
     if result.returncode:
-        return False
+        return "invalid"
     staged = result.stdout.decode("utf-8", errors="replace")
-    head = head_text(repo, POLICY)
+    try:
+        head = head_text(repo, POLICY)
+    except SystemExit:
+        return "missing-baseline"
+    staged_versions = _policy_versions(staged)
+    head_versions = _policy_versions(head)
+    if staged_versions is None or head_versions is None:
+        return "invalid"
+    if staged_versions == head_versions:
+        return "unchanged"
+    staged_keys = tuple(_version_key(value) for value in staged_versions)
+    head_keys = tuple(_version_key(value) for value in head_versions)
+    if any(value is None for value in staged_keys + head_keys):
+        return "invalid"
+    if any(staged_key < head_key for staged_key, head_key in zip(staged_keys, head_keys, strict=True)):
+        return "downgrade"
+    return "upgrade"
 
-    def versions(text: str) -> tuple[str, str] | None:
-        version = re.search(r"^version:\s*[\"']?([^\"'\\s#]+)", text, re.MULTILINE)
-        ruleset = re.search(r"^ruleset_version:\s*[\"']?([^\"'\\s#]+)", text, re.MULTILINE)
-        if not version or not ruleset:
-            return None
-        return version.group(1), ruleset.group(1)
 
-    staged_versions = versions(staged)
-    head_versions = versions(head)
-    return staged_versions is not None and head_versions is not None and staged_versions != head_versions
+def _run_validator(
+    repo: Path,
+    receipt: Path,
+    *,
+    commit_msg_file: Path | None = None,
+    first_landing: bool = False,
+) -> int:
+    with tempfile.TemporaryDirectory() as tmp:
+        validator = Path(tmp) / "validate_closeout_security_receipt.py"
+        validator.write_text(head_text(repo, VALIDATOR), encoding="utf-8")
+        target_paths = Path(tmp) / "target_paths.py"
+        target_paths.write_text(head_text(repo, "00_Admin/scripts/target_paths.py"), encoding="utf-8")
+        command = [
+            sys.executable,
+            str(validator),
+            "--repo-root",
+            str(repo),
+            "--receipt",
+            str(receipt),
+            "--gate",
+            "--staged",
+        ]
+        if first_landing:
+            command.extend(["--first-landing", "--config", str(repo / POLICY)])
+        elif commit_msg_file:
+            command.extend(["--commit-msg-file", str(commit_msg_file)])
+        return subprocess.run(command, check=False).returncode
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     parser.add_argument("--receipt", type=Path, required=True)
+    parser.add_argument(
+        "--first-landing-receipt",
+        type=Path,
+        default=Path(".ai_ops/local/closeout_security/first_landing.yaml"),
+    )
     parser.add_argument("--staged", action="store_true")
     parser.add_argument("--commit-msg-file", type=Path)
     args = parser.parse_args()
@@ -124,9 +209,37 @@ def main() -> int:
     paths = staged_paths(repo)
     protected = security_paths(paths)
     trusted = trusted_validator_present(repo)
-    if staged_policy_upgrade(repo, paths):
-        print("closeout-security-hook: first-landing policy upgrade; ordinary commit is unchanged")
-        return 0
+    policy_state = staged_policy_state(repo, paths)
+    if policy_state in {"invalid", "missing-baseline"}:
+        print(
+            "closeout-security-hook: staged canonical policy has no valid HEAD-bound version baseline",
+            file=sys.stderr,
+        )
+        return 1
+    if policy_state == "downgrade":
+        print("closeout-security-hook: staged closeout-security policy downgrade is blocked", file=sys.stderr)
+        return 1
+    if policy_state == "upgrade":
+        if not trusted:
+            print(
+                "closeout-security-hook: first landing requires the HEAD validator; none is present",
+                file=sys.stderr,
+            )
+            return 1
+        first_landing_receipt = args.first_landing_receipt
+        env_receipt = os.environ.get("AI_OPS_FIRST_LANDING_RECEIPT")
+        if env_receipt:
+            first_landing_receipt = Path(env_receipt)
+        if not first_landing_receipt.is_absolute():
+            first_landing_receipt = repo / first_landing_receipt
+        first_landing_receipt = first_landing_receipt.resolve()
+        if not first_landing_receipt.exists():
+            print(
+                "closeout-security-hook: first-landing receipt is missing",
+                file=sys.stderr,
+            )
+            return 1
+        return _run_validator(repo, first_landing_receipt, first_landing=True)
     has_trailer = False
     if args.commit_msg_file:
         message = args.commit_msg_file.read_text(encoding="utf-8")
@@ -165,24 +278,7 @@ def main() -> int:
             return 1
         print("closeout-security-hook: receipt is for another repo or HEAD; ordinary commit is unchanged")
         return 0
-    with tempfile.TemporaryDirectory() as tmp:
-        validator = Path(tmp) / "validate_closeout_security_receipt.py"
-        validator.write_text(head_text(repo, VALIDATOR), encoding="utf-8")
-        target_paths = Path(tmp) / "target_paths.py"
-        target_paths.write_text(head_text(repo, "00_Admin/scripts/target_paths.py"), encoding="utf-8")
-        command = [
-            sys.executable,
-            str(validator),
-            "--repo-root",
-            str(repo),
-            "--receipt",
-            str(receipt),
-            "--gate",
-            "--staged",
-        ]
-        if args.commit_msg_file:
-            command.extend(["--commit-msg-file", str(args.commit_msg_file)])
-        return subprocess.run(command, check=False).returncode
+    return _run_validator(repo, receipt, commit_msg_file=args.commit_msg_file)
 
 
 if __name__ == "__main__":
